@@ -8,12 +8,11 @@
             <h2>Zaloguj się</h2>
         </hgroup>
 
-        <div id="login-error" class="error-message" style="display:none;" role="alert">
-            <p>Nieprawidłowa nazwa użytkownika lub hasło.</p>
+        <div id="login-error" style="display:none; background:#ffe0e0; border:1px solid #ff8080; border-radius:8px; padding:1rem; margin-bottom:1rem;" role="alert">
+            <p style="margin:0;">Nieprawidłowa nazwa użytkownika lub hasło.</p>
         </div>
 
-        <form id="login-form" hx-ext="json-enc" hx-post="/api/auth/login"
-              hx-on::after-request="handleLogin(event)">
+        <form id="login-form" onsubmit="return doLogin(event)">
             <label for="username">Nazwa użytkownika</label>
             <input type="text" id="username" name="username" required autofocus>
 
@@ -24,16 +23,28 @@
         </form>
     </main>
 
-    <script src="https://unpkg.com/htmx.org@2.0.2"></script>
-    <script src="https://unpkg.com/htmx-ext-json-enc@2.0.0/json-enc.js"></script>
     <script>
-        function handleLogin(event) {
-            if (event.detail.successful) {
-                window.location.href = '/';
-            } else {
-                const err = document.getElementById('login-error');
-                if (err) err.style.display = 'block';
-            }
+        function doLogin(event) {
+            event.preventDefault();
+            const username = document.getElementById('username').value;
+            const password = document.getElementById('password').value;
+            const errDiv = document.getElementById('login-error');
+
+            fetch('/api/auth/login', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({username: username, password: password})
+            }).then(function(resp) {
+                if (resp.ok) {
+                    window.location.href = '/';
+                } else {
+                    errDiv.style.display = 'block';
+                }
+            }).catch(function() {
+                errDiv.style.display = 'block';
+            });
+
+            return false;
         }
     </script>
 </body>
