@@ -4,6 +4,8 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import pl.michalbzowski.windband.application.command.member.MemberNotFoundException;
+import pl.michalbzowski.windband.domain.band.Band;
+import pl.michalbzowski.windband.domain.band.BandRepository;
 import pl.michalbzowski.windband.domain.inventory.*;
 import pl.michalbzowski.windband.domain.member.Member;
 import pl.michalbzowski.windband.domain.member.MemberRepository;
@@ -15,12 +17,15 @@ public class InventoryCommandService {
 
     private final InventoryRepository inventoryRepository;
     private final MemberRepository memberRepository;
+    private final BandRepository bandRepository;
 
     public UniformItem addUniformItem(String name, String description, Long memberId, OwnershipStatus status) {
+        Band band = bandRepository.findById(1L)
+                .orElseThrow(() -> new IllegalStateException("Default band not found"));
         UniformItem item = switch (status) {
-            case OWNED -> UniformItem.createOwned(name);
-            case BORROWED -> UniformItem.createBorrowed(name);
-            case MISSING -> UniformItem.createMissing(name);
+            case OWNED -> UniformItem.createOwned(name, band);
+            case BORROWED -> UniformItem.createBorrowed(name, band);
+            case MISSING -> UniformItem.createMissing(name, band);
         };
 
         if (description != null) {
@@ -38,10 +43,12 @@ public class InventoryCommandService {
 
     public InstrumentItem addInstrumentItem(String name, String brand, String serialNumber,
                                              String description, Long memberId, OwnershipStatus status) {
+        Band band = bandRepository.findById(1L)
+                .orElseThrow(() -> new IllegalStateException("Default band not found"));
         InstrumentItem item = switch (status) {
-            case OWNED -> InstrumentItem.createOwned(name);
-            case BORROWED -> InstrumentItem.createBorrowed(name);
-            case MISSING -> InstrumentItem.createMissing(name);
+            case OWNED -> InstrumentItem.createOwned(name, band);
+            case BORROWED -> InstrumentItem.createBorrowed(name, band);
+            case MISSING -> InstrumentItem.createMissing(name, band);
         };
 
         if (brand != null || serialNumber != null || description != null) {

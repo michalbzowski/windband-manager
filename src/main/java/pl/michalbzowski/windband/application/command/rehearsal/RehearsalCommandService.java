@@ -4,6 +4,8 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import pl.michalbzowski.windband.application.command.member.MemberNotFoundException;
+import pl.michalbzowski.windband.domain.band.Band;
+import pl.michalbzowski.windband.domain.band.BandRepository;
 import pl.michalbzowski.windband.domain.member.Member;
 import pl.michalbzowski.windband.domain.member.MemberRepository;
 import pl.michalbzowski.windband.domain.rehearsal.*;
@@ -15,12 +17,16 @@ public class RehearsalCommandService {
 
     private final RehearsalRepository rehearsalRepository;
     private final MemberRepository memberRepository;
+    private final BandRepository bandRepository;
 
     public Rehearsal scheduleRehearsal(ScheduleRehearsalCommand cmd) {
+        Band band = bandRepository.findById(1L)
+                .orElseThrow(() -> new IllegalStateException("Default band not found"));
         Rehearsal rehearsal = Rehearsal.schedule(
                 cmd.getDate(),
                 cmd.getStartTime(),
-                cmd.getLocation()
+                cmd.getLocation(),
+                band
         );
         if (cmd.getEndTime() != null) {
             rehearsal.updateTime(cmd.getStartTime(), cmd.getEndTime());

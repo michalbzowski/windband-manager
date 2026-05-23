@@ -4,6 +4,7 @@ import jakarta.persistence.*;
 import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
+import pl.michalbzowski.windband.domain.band.Band;
 
 import java.time.LocalDate;
 import java.util.*;
@@ -46,8 +47,12 @@ public class Member {
     @Column(nullable = false)
     private LocalDate joinedDate;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "band_id", nullable = false)
+    private Band band;
+
     private Member(String firstName, String lastName, LocalDate dateOfBirth,
-                   MemberRole role, boolean ospMember) {
+                   MemberRole role, boolean ospMember, Band band) {
         this.firstName = Objects.requireNonNull(firstName, "firstName required");
         this.lastName = Objects.requireNonNull(lastName, "lastName required");
         this.dateOfBirth = Objects.requireNonNull(dateOfBirth, "dateOfBirth required");
@@ -55,16 +60,27 @@ public class Member {
         this.ospMember = ospMember;
         this.active = true;
         this.joinedDate = LocalDate.now();
+        this.band = Objects.requireNonNull(band, "band required");
     }
 
     public static Member create(String firstName, String lastName, LocalDate dateOfBirth,
-                                MemberRole role, boolean ospMember) {
-        return new Member(firstName, lastName, dateOfBirth, role, ospMember);
+                                MemberRole role, boolean ospMember, Band band) {
+        return new Member(firstName, lastName, dateOfBirth, role, ospMember, band);
     }
 
     public void updateContact(String email, String phone) {
         this.email = email;
         this.phone = phone;
+    }
+
+    public void update(String firstName, String lastName, LocalDate dateOfBirth,
+                       MemberRole role, boolean ospMember, boolean active) {
+        this.firstName = Objects.requireNonNull(firstName, "firstName required");
+        this.lastName = Objects.requireNonNull(lastName, "lastName required");
+        this.dateOfBirth = Objects.requireNonNull(dateOfBirth, "dateOfBirth required");
+        this.role = Objects.requireNonNull(role, "role required");
+        this.ospMember = ospMember;
+        this.active = active;
     }
 
     public void addInstrument(Instrument instrument, boolean isPrimary) {

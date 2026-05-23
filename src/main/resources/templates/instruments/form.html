@@ -1,0 +1,48 @@
+<div id="instruments-content">
+    <h2 th:text="${instrument.id() != null ? '✏️ Edytuj instrument' : '➕ Dodaj instrument'}">Dodaj instrument</h2>
+
+    <form id="instrument-form"
+          hx-target="#instruments-content"
+          hx-swap="innerHTML transition:true">
+
+        <label>
+            Nazwa *
+            <input type="text" name="name" th:value="${instrument.name()}" required>
+        </label>
+
+        <label>
+            Opis
+            <textarea name="description" th:text="${instrument.description()}"></textarea>
+        </label>
+
+        <div style="display:flex; gap:0.5rem; margin-top:1rem;">
+            <button type="submit" class="primary"
+                    th:text="${instrument.id() != null && instrument.id() != 0 ? 'Zapisz zmiany' : 'Dodaj instrument'}">Dodaj</button>
+            <button type="button" class="secondary"
+                    hx-get="/instruments" hx-target="#content"
+                    hx-swap="innerHTML transition:true">Anuluj</button>
+        </div>
+    </form>
+</div>
+
+<script th:inline="javascript">
+    document.body.addEventListener('submit', function(e) {
+        if (e.target.id === 'instrument-form') {
+            e.preventDefault();
+            var form = e.target;
+            var url = '/api/instruments';
+            var method = 'POST';
+            var formData = new FormData(form);
+            var data = {};
+            formData.forEach(function(value, key) { data[key] = value; });
+
+            fetch(url, {
+                method: method,
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify(data)
+            }).then(function() {
+                htmx.ajax('GET', '/instruments', {target: '#content', swap: 'innerHTML transition:true'});
+            });
+        }
+    });
+</script>

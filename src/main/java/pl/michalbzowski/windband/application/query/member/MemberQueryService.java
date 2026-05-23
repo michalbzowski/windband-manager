@@ -68,7 +68,9 @@ public class MemberQueryService {
                 m.isActive(),
                 m.getPrimaryInstrument().map(inst -> inst.getName()).orElse(null),
                 m.getAllInstruments().stream().map(i -> i.getName()).toList(),
-                m.getJoinedDate()
+                m.getJoinedDate(),
+                m.getPrimaryInstrument().map(inst -> inst.getId()).orElse(null),
+                m.getPrimaryInstrument().map(inst -> inst.getName()).orElse(null)
         );
     }
 }

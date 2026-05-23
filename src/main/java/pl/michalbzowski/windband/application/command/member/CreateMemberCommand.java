@@ -13,4 +13,5 @@ public class CreateMemberCommand {
     private boolean ospMember;
     private String email;
     private String phone;
+    private Long instrumentId;
 }

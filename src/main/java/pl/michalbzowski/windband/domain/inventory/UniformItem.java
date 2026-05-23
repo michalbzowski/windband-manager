@@ -3,7 +3,9 @@ package pl.michalbzowski.windband.domain.inventory;
 import jakarta.persistence.*;
 import lombok.AccessLevel;
 import lombok.Getter;
-import lombok.NoArgsConstructor;import pl.michalbzowski.windband.domain.member.Member;
+import lombok.NoArgsConstructor;
+import pl.michalbzowski.windband.domain.band.Band;
+import pl.michalbzowski.windband.domain.member.Member;
 
 import java.util.Objects;
 
@@ -30,21 +32,26 @@ public class UniformItem {
     @Column(nullable = false)
     private OwnershipStatus ownershipStatus;
 
-    private UniformItem(String name, OwnershipStatus ownershipStatus) {
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "band_id", nullable = false)
+    private Band band;
+
+    private UniformItem(String name, OwnershipStatus ownershipStatus, Band band) {
         this.name = Objects.requireNonNull(name, "name required");
         this.ownershipStatus = Objects.requireNonNull(ownershipStatus, "ownershipStatus required");
+        this.band = Objects.requireNonNull(band, "band required");
     }
 
-    public static UniformItem createOwned(String name) {
-        return new UniformItem(name, OwnershipStatus.OWNED);
+    public static UniformItem createOwned(String name, Band band) {
+        return new UniformItem(name, OwnershipStatus.OWNED, band);
     }
 
-    public static UniformItem createBorrowed(String name) {
-        return new UniformItem(name, OwnershipStatus.BORROWED);
+    public static UniformItem createBorrowed(String name, Band band) {
+        return new UniformItem(name, OwnershipStatus.BORROWED, band);
     }
 
-    public static UniformItem createMissing(String name) {
-        return new UniformItem(name, OwnershipStatus.MISSING);
+    public static UniformItem createMissing(String name, Band band) {
+        return new UniformItem(name, OwnershipStatus.MISSING, band);
     }
 
     public void assignTo(Member member) {

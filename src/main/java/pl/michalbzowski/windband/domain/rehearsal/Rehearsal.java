@@ -3,7 +3,9 @@ package pl.michalbzowski.windband.domain.rehearsal;
 import jakarta.persistence.*;
 import lombok.AccessLevel;
 import lombok.Getter;
-import lombok.NoArgsConstructor;import pl.michalbzowski.windband.domain.member.Member;
+import lombok.NoArgsConstructor;
+import pl.michalbzowski.windband.domain.band.Band;
+import pl.michalbzowski.windband.domain.member.Member;
 
 import java.time.LocalDate;
 import java.time.LocalTime;
@@ -32,19 +34,24 @@ public class Rehearsal {
     private String notes;
 
     @OneToMany(mappedBy = "rehearsal", cascade = CascadeType.ALL, orphanRemoval = true)
-        private List<Attendance> attendances = new ArrayList<>();
+    private List<Attendance> attendances = new ArrayList<>();
 
-    private Rehearsal(LocalDate date, LocalTime startTime, String location) {
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "band_id", nullable = false)
+    private Band band;
+
+    private Rehearsal(LocalDate date, LocalTime startTime, String location, Band band) {
         this.date = Objects.requireNonNull(date, "date required");
         this.startTime = Objects.requireNonNull(startTime, "startTime required");
         this.location = location;
+        this.band = Objects.requireNonNull(band, "band required");
     }
 
-    public static Rehearsal schedule(LocalDate date, LocalTime startTime, String location) {
+    public static Rehearsal schedule(LocalDate date, LocalTime startTime, String location, Band band) {
         if (date.isBefore(LocalDate.now())) {
             throw new IllegalArgumentException("Cannot schedule rehearsal in the past");
         }
-        return new Rehearsal(date, startTime, location);
+        return new Rehearsal(date, startTime, location, band);
     }
 
     public void updateTime(LocalTime startTime, LocalTime endTime) {

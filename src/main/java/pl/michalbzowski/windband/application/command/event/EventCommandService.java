@@ -4,6 +4,8 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import pl.michalbzowski.windband.application.command.member.MemberNotFoundException;
+import pl.michalbzowski.windband.domain.band.Band;
+import pl.michalbzowski.windband.domain.band.BandRepository;
 import pl.michalbzowski.windband.domain.event.*;
 import pl.michalbzowski.windband.domain.member.Member;
 import pl.michalbzowski.windband.domain.member.MemberRepository;
@@ -15,15 +17,19 @@ public class EventCommandService {
 
     private final EventRepository eventRepository;
     private final MemberRepository memberRepository;
+    private final BandRepository bandRepository;
 
     public BandEvent createEvent(CreateEventCommand cmd) {
+        Band band = bandRepository.findById(1L)
+                .orElseThrow(() -> new IllegalStateException("Default band not found"));
         EventType type = EventType.valueOf(cmd.getEventType().toUpperCase());
         BandEvent event = BandEvent.create(
                 cmd.getName(),
                 cmd.getDate(),
                 cmd.getStartTime(),
                 cmd.getLocation(),
-                type
+                type,
+                band
         );
         if (cmd.getNotes() != null) {
             event.updateDetails(cmd.getName(), cmd.getDate(), cmd.getStartTime(), cmd.getLocation());

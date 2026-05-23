@@ -3,7 +3,9 @@ package pl.michalbzowski.windband.domain.inventory;
 import jakarta.persistence.*;
 import lombok.AccessLevel;
 import lombok.Getter;
-import lombok.NoArgsConstructor;import pl.michalbzowski.windband.domain.member.Member;
+import lombok.NoArgsConstructor;
+import pl.michalbzowski.windband.domain.band.Band;
+import pl.michalbzowski.windband.domain.member.Member;
 
 import java.util.Objects;
 
@@ -32,21 +34,26 @@ public class InstrumentItem {
     @Column(nullable = false)
     private OwnershipStatus ownershipStatus;
 
-    private InstrumentItem(String name, OwnershipStatus ownershipStatus) {
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "band_id", nullable = false)
+    private Band band;
+
+    private InstrumentItem(String name, OwnershipStatus ownershipStatus, Band band) {
         this.name = Objects.requireNonNull(name, "name required");
         this.ownershipStatus = Objects.requireNonNull(ownershipStatus, "ownershipStatus required");
+        this.band = Objects.requireNonNull(band, "band required");
     }
 
-    public static InstrumentItem createOwned(String name) {
-        return new InstrumentItem(name, OwnershipStatus.OWNED);
+    public static InstrumentItem createOwned(String name, Band band) {
+        return new InstrumentItem(name, OwnershipStatus.OWNED, band);
     }
 
-    public static InstrumentItem createBorrowed(String name) {
-        return new InstrumentItem(name, OwnershipStatus.BORROWED);
+    public static InstrumentItem createBorrowed(String name, Band band) {
+        return new InstrumentItem(name, OwnershipStatus.BORROWED, band);
     }
 
-    public static InstrumentItem createMissing(String name) {
-        return new InstrumentItem(name, OwnershipStatus.MISSING);
+    public static InstrumentItem createMissing(String name, Band band) {
+        return new InstrumentItem(name, OwnershipStatus.MISSING, band);
     }
 
     public void assignTo(Member member) {

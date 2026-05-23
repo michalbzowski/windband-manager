@@ -3,7 +3,9 @@ package pl.michalbzowski.windband.domain.event;
 import jakarta.persistence.*;
 import lombok.AccessLevel;
 import lombok.Getter;
-import lombok.NoArgsConstructor;import pl.michalbzowski.windband.domain.member.Member;
+import lombok.NoArgsConstructor;
+import pl.michalbzowski.windband.domain.band.Band;
+import pl.michalbzowski.windband.domain.member.Member;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -37,20 +39,25 @@ public class BandEvent {
     private String notes;
 
     @OneToMany(mappedBy = "bandEvent", cascade = CascadeType.ALL, orphanRemoval = true)
-        private List<EventParticipation> participations = new ArrayList<>();
+    private List<EventParticipation> participations = new ArrayList<>();
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "band_id", nullable = false)
+    private Band band;
 
     private BandEvent(String name, LocalDate date, LocalTime startTime,
-                      String location, EventType eventType) {
+                      String location, EventType eventType, Band band) {
         this.name = Objects.requireNonNull(name, "name required");
         this.date = Objects.requireNonNull(date, "date required");
         this.startTime = startTime;
         this.location = location;
         this.eventType = Objects.requireNonNull(eventType, "eventType required");
+        this.band = Objects.requireNonNull(band, "band required");
     }
 
     public static BandEvent create(String name, LocalDate date, LocalTime startTime,
-                                   String location, EventType eventType) {
-        return new BandEvent(name, date, startTime, location, eventType);
+                                   String location, EventType eventType, Band band) {
+        return new BandEvent(name, date, startTime, location, eventType, band);
     }
 
     public void updateDetails(String name, LocalDate date, LocalTime startTime, String location) {

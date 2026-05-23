@@ -18,5 +18,7 @@ public record MemberDto(
         boolean active,
         String primaryInstrument,
         List<String> allInstruments,
-        LocalDate joinedDate
+        LocalDate joinedDate,
+        Long instrumentId,
+        String instrumentName
 ) {}

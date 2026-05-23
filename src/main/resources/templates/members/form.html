@@ -42,10 +42,46 @@
             </label>
         </div>
 
-        <label>
-            <input type="checkbox" name="ospMember" th:checked="${member.ospMember()}">
-            Członek OSP
+        <div class="grid">
+            <label>
+                Instrument
+                <select name="instrumentId">
+                    <option value="">Brak</option>
+                    <option th:each="inst : ${instruments}"
+                            th:value="${inst.id()}"
+                            th:text="${inst.name()}"
+                            th:selected="${member.instrumentId() != null && member.instrumentId() == inst.id()}">
+                    </option>
+                </select>
+            </label>
+            <label>
+                <input type="checkbox" name="ospMember" th:checked="${member.ospMember()}">
+                Członek OSP
+            </label>
+        </div>
+
+        <label th:if="${member.id() != null}">
+            <input type="checkbox" name="active" th:checked="${member.active()}">
+            Aktywny
         </label>
+
+        <!-- Dynamic attributes -->
+        <div th:if="${attributeDefs != null && !attributeDefs.isEmpty()}" style="margin-top:1rem;">
+            <h4>Dodatkowe atrybuty</h4>
+            <div th:each="attrDef : ${attributeDefs}" class="grid">
+                <label th:if="${attrDef.type() == 'BOOLEAN'}">
+                    <input type="checkbox" th:name="'attr_' + ${attrDef.id()}"
+                           th:checked="${attributeValues != null && attributeValues.get(attrDef.id()) == 'true'}"
+                           th:value="${attrDef.name()}">
+                    <span th:text="${attrDef.name()}">Atrybut</span>
+                </label>
+                <label th:if="${attrDef.type() == 'TEXT'}">
+                    <span th:text="${attrDef.name()}">Atrybut</span>
+                    <input type="text" th:name="'attr_' + ${attrDef.id()}"
+                           th:value="${attributeValues != null ? attributeValues.get(attrDef.id()) : ''}">
+                </label>
+            </div>
+        </div>
 
         <div style="display:flex; gap:0.5rem; margin-top:1rem;">
             <button type="submit" class="primary" th:text="${member.id() != null ? 'Zapisz zmiany' : 'Dodaj muzyka'}">Dodaj</button>
@@ -68,13 +104,34 @@
             var data = {};
             formData.forEach(function(value, key) { data[key] = value; });
             data.ospMember = formData.has('ospMember');
+            data.active = formData.has('active');
+            if (data.instrumentId === '') delete data.instrumentId;
 
             fetch(url, {
                 method: method,
                 headers: {'Content-Type': 'application/json'},
                 body: JSON.stringify(data)
-            }).then(function() {
-                htmx.ajax('GET', '/members', {target: '#content', swap: 'innerHTML transition:true'});
+            }).then(function(resp) {
+                // Save dynamic attributes only for existing members
+                if (memberId) {
+                    var attrPromises = [];
+                    var inputs = form.querySelectorAll('[name^="attr_"]');
+                    inputs.forEach(function(input) {
+                        var attrId = input.name.replace('attr_', '');
+                        var value = input.type === 'checkbox' ? (input.checked ? 'true' : 'false') : input.value;
+                        var attrUrl = '/api/bands/1/attribute-defs/' + attrId + '/members/' + memberId;
+                        attrPromises.push(fetch(attrUrl, {
+                            method: 'POST',
+                            headers: {'Content-Type': 'application/json'},
+                            body: JSON.stringify({value: value})
+                        }));
+                    });
+                    Promise.all(attrPromises).then(function() {
+                        htmx.ajax('GET', '/members', {target: '#content', swap: 'innerHTML transition:true'});
+                    });
+                } else {
+                    htmx.ajax('GET', '/members', {target: '#content', swap: 'innerHTML transition:true'});
+                }
             });
         }
     });

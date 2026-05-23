@@ -3,6 +3,8 @@ package pl.michalbzowski.windband.application.command.member;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import pl.michalbzowski.windband.domain.band.Band;
+import pl.michalbzowski.windband.domain.band.BandRepository;
 import pl.michalbzowski.windband.domain.member.*;
 
 @Service
@@ -12,25 +14,41 @@ public class MemberCommandService {
 
     private final MemberRepository memberRepository;
     private final InstrumentRepository instrumentRepository;
+    private final BandRepository bandRepository;
 
     public Member createMember(CreateMemberCommand cmd) {
+        Band band = bandRepository.findById(1L)
+                .orElseThrow(() -> new IllegalStateException("Default band not found"));
         MemberRole role = MemberRole.valueOf(cmd.getRole().toUpperCase());
         Member member = Member.create(
                 cmd.getFirstName(),
                 cmd.getLastName(),
                 cmd.getDateOfBirth(),
                 role,
-                cmd.isOspMember()
+                cmd.isOspMember(),
+                band
         );
         if (cmd.getEmail() != null || cmd.getPhone() != null) {
             member.updateContact(cmd.getEmail(), cmd.getPhone());
         }
-        return memberRepository.save(member);
+        member = memberRepository.save(member);
+
+        if (cmd.getInstrumentId() != null) {
+            Instrument instrument = instrumentRepository.findById(cmd.getInstrumentId())
+                    .orElseThrow(() -> new IllegalArgumentException("Instrument not found: " + cmd.getInstrumentId()));
+            member.addInstrument(instrument, true);
+            member = memberRepository.save(member);
+        }
+
+        return member;
     }
 
     public Member updateMember(UpdateMemberCommand cmd) {
         Member member = memberRepository.findById(cmd.getMemberId())
                 .orElseThrow(() -> new MemberNotFoundException(cmd.getMemberId()));
+        MemberRole role = MemberRole.valueOf(cmd.getRole().toUpperCase());
+        member.update(cmd.getFirstName(), cmd.getLastName(), cmd.getDateOfBirth(),
+                role, cmd.isOspMember(), cmd.isActive());
         member.updateContact(cmd.getEmail(), cmd.getPhone());
         return memberRepository.save(member);
     }
