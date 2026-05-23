@@ -1,0 +1,32 @@
+spring:
+  application:
+    name: windband-manager
+
+  datasource:
+    url: jdbc:h2:mem:windband;DB_CLOSE_DELAY=-1
+    username: sa
+    password:
+    driver-class-name: org.h2.Driver
+
+  jpa:
+    hibernate:
+      ddl-auto: create-drop
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.H2Dialect
+    open-in-view: false
+
+  flyway:
+    enabled: false
+
+  thymeleaf:
+    cache: false
+
+server:
+  port: 8080
+
+app:
+  jwt:
+    secret: testSecretKeyForLocalDevelopmentThatIsLongEnough256Bits12345678901234567890
+    expiration-ms: 86400000
+  base-url: http://localhost:8080

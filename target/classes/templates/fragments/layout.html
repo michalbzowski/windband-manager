@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="pl" xmlns:th="http://www.thymeleaf.org" xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
+<head th:fragment="head(title)">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title th:text="${title} + ' — Wind Band Manager'">Wind Band Manager</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.min.css">
+    <link rel="stylesheet" th:href="@{/css/app.css}">
+    <script src="https://unpkg.com/htmx.org@2.0.2"></script>
+</head>
+<body>
+    <nav class="container-fluid" th:fragment="nav" sec:authorize="isAuthenticated()">
+        <ul>
+            <li><strong><a th:href="@{/}" style="text-decoration:none;color:inherit;">🎺 Wind Band Manager</a></strong></li>
+        </ul>
+        <ul>
+            <li><a th:href="@{/members}" hx-target="#content" hx-swap="innerHTML transition:true">Muzycy</a></li>
+            <li><a th:href="@{/rehearsals}" hx-target="#content" hx-swap="innerHTML transition:true">Próby</a></li>
+            <li><a th:href="@{/events}" hx-target="#content" hx-swap="innerHTML transition:true">Wydarzenia</a></li>
+            <li><a th:href="@{/inventory}" hx-target="#content" hx-swap="innerHTML transition:true">Inwentaryzacja</a></li>
+            <li><a th:href="@{/reports}" hx-target="#content" hx-swap="innerHTML transition:true">Raporty</a></li>
+            <li>
+                <form th:action="@{/logout}" method="post" style="display:inline;">
+                    <button class="outline secondary small" type="submit">Wyloguj</button>
+                </form>
+            </li>
+        </ul>
+    </nav>
+
+    <main class="container" id="content">
+        <!-- treść ładowana przez HTMX -->
+    </main>
+
+    <footer th:fragment="footer" class="container">
+        <hr>
+        <small>Wind Band Manager &copy; 2025 Michał Bzowski</small>
+    </footer>
+</body>
+</html>

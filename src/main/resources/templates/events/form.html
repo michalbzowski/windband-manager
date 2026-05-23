@@ -1,0 +1,54 @@
+<div id="events-content">
+    <h2>🎪 Dodaj wydarzenie</h2>
+
+    <form hx-post="/api/events"
+          hx-target="#events-content"
+          hx-swap="innerHTML transition:true">
+
+        <label>
+            Nazwa wydarzenia *
+            <input type="text" name="name" required placeholder="Koncert Noworoczny">
+        </label>
+
+        <div class="grid">
+            <label>
+                Data *
+                <input type="date" name="date" th:value="${today}" required>
+            </label>
+            <label>
+                Godzina
+                <input type="time" name="startTime" value="18:00">
+            </label>
+        </div>
+
+        <div class="grid">
+            <label>
+                Miejsce
+                <input type="text" name="location" placeholder="Rynek, DK Psary...">
+            </label>
+            <label>
+                Typ wydarzenia
+                <select name="eventType" required>
+                    <option value="CONCERT">Koncert</option>
+                    <option value="CEREMONY">Uroczystość</option>
+                    <option value="PARADE">Parada</option>
+                    <option value="COMPETITION">Konkurs</option>
+                    <option value="FESTIVAL">Festiwal</option>
+                    <option value="OTHER">Inne</option>
+                </select>
+            </label>
+        </div>
+
+        <label>
+            Notatki
+            <textarea name="notes" rows="2" placeholder="Dodatkowe informacje..."></textarea>
+        </label>
+
+        <div style="display:flex; gap:0.5rem; margin-top:1rem;">
+            <button type="submit" class="primary">Dodaj wydarzenie</button>
+            <button type="button" class="secondary"
+                    hx-get="/events" hx-target="#content"
+                    hx-swap="innerHTML transition:true">Anuluj</button>
+        </div>
+    </form>
+</div>

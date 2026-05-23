@@ -1,0 +1,67 @@
+<div id="rehearsals-content">
+    <h2>🎵 Szczegóły próby</h2>
+
+    <article>
+        <header>
+            <strong th:text="${rehearsal.date()}">01.01.2025</strong>
+            <span th:text="${rehearsal.startTime()} + ' - ' + ${rehearsal.endTime()}">18:00 - 20:00</span>
+        </header>
+        <p th:if="${rehearsal.location()}" th:text="'Miejsce: ' + ${rehearsal.location()}">Miejsce: Sala prób</p>
+        <p th:if="${rehearsal.notes()}" th:text="${rehearsal.notes()}">Notatki</p>
+    </article>
+
+    <h3>Lista obecności</h3>
+
+    <table role="grid">
+        <thead>
+            <tr>
+                <th>Muzyk</th>
+                <th>Instrument</th>
+                <th>Status</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr th:each="m : ${members}">
+                <td th:text="${m.firstName() + ' ' + m.lastName()}">Jan Kowalski</td>
+                <td th:text="${m.primaryInstrument()}">Trąbka</td>
+                <td>
+                    <select th:name="'status_' + ${m.id()}" th:id="'status_' + ${m.id()}">
+                        <option value="NO_RESPONSE">—</option>
+                        <option value="PRESENT">Obecny</option>
+                        <option value="EXCUSED">Nieobecny (uspraw.)</option>
+                        <option value="UNEXCUSED">Nieobecny (nieuspraw.)</option>
+                    </select>
+                </td>
+            </tr>
+        </tbody>
+    </table>
+
+    <div style="display:flex; gap:0.5rem; margin-top:1rem;">
+        <button type="button" class="primary" id="save-attendance-btn">Zapisz obecność</button>
+        <button type="button" class="secondary"
+                hx-get="/rehearsals" hx-target="#content"
+                hx-swap="innerHTML transition:true">Powrót</button>
+    </div>
+</div>
+
+<script th:inline="javascript">
+    document.getElementById('save-attendance-btn').addEventListener('click', function() {
+        var rehearsalId = [[${rehearsal.id()}]];
+        var selects = document.querySelectorAll('select[id^="status_"]');
+        var promises = [];
+        selects.forEach(function(select) {
+            var memberId = select.id.replace('status_', '');
+            var status = select.value;
+            if (status !== 'NO_RESPONSE') {
+                promises.push(fetch('/api/rehearsals/' + rehearsalId + '/attendance', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({rehearsalId: rehearsalId, memberId: parseInt(memberId), status: status})
+                }));
+            }
+        });
+        Promise.all(promises).then(function() {
+            htmx.ajax('GET', '/rehearsals/' + rehearsalId, {target: '#rehearsals-content', swap: 'innerHTML transition:true'});
+        });
+    });
+</script>

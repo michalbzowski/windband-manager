@@ -1,0 +1,67 @@
+<div id="events-content">
+    <h2>🎪 Szczegóły wydarzenia</h2>
+
+    <article>
+        <header>
+            <strong th:text="${event.name}">Koncert</strong>
+            <span th:text="${event.date}">01.01.2025</span>
+        </header>
+        <p th:if="${event.location}" th:text="'Miejsce: ' + ${event.location}">Miejsce: Rynek</p>
+        <p th:if="${event.startTime}" th:text="'Godzina: ' + ${event.startTime}">Godzina: 18:00</p>
+        <p th:text="'Typ: ' + ${event.eventType}">Typ: CONCERT</p>
+        <p th:if="${event.notes}" th:text="${event.notes}">Notatki</p>
+    </article>
+
+    <h3>Zaproś muzyków</h3>
+    <div style="display:flex; gap:0.5rem; margin-bottom:1rem;">
+        <select id="invite-member-select">
+            <option value="">Wybierz muzyka...</option>
+            <option th:each="m : ${members}" th:value="${m.id}"
+                    th:text="${m.firstName} + ' ' + ${m.lastName}">Jan Kowalski</option>
+        </select>
+        <button class="outline" id="invite-btn">Zaproś</button>
+    </div>
+
+    <h3>Uczestnicy</h3>
+    <table role="grid">
+        <thead>
+            <tr>
+                <th>Muzyk</th>
+                <th>Odpowiedź</th>
+                <th>Wypłata</th>
+                <th>Status wypłaty</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr th:each="p : ${event.participations}">
+                <td th:text="${p.member.firstName} + ' ' + ${p.member.lastName}">Jan Kowalski</td>
+                <td th:text="${p.response}">NO_RESPONSE</td>
+                <td th:text="${p.paymentAmount}">0.00</td>
+                <td th:text="${p.paymentStatus}">NOT_APPLICABLE</td>
+            </tr>
+        </tbody>
+    </table>
+
+    <div style="margin-top:1rem;">
+        <button type="button" class="secondary"
+                hx-get="/events" hx-target="#content"
+                hx-swap="innerHTML transition:true">Powrót</button>
+    </div>
+</div>
+
+<script th:inline="javascript">
+    document.getElementById('invite-btn').addEventListener('click', function() {
+        var select = document.getElementById('invite-member-select');
+        var memberId = select.value;
+        var eventId = [[${event.id}]];
+        if (memberId) {
+            fetch('/api/events/' + eventId + '/invite', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({eventId: eventId, memberId: parseInt(memberId)})
+            }).then(function() {
+                htmx.ajax('GET', '/events/' + eventId, {target: '#events-content', swap: 'innerHTML transition:true'});
+            });
+        }
+    });
+</script>

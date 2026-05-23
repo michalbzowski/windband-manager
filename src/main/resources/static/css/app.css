@@ -1,0 +1,98 @@
+/* Wind Band Manager — custom styles on top of PicoCSS */
+
+/* Mobile-first adjustments */
+body {
+    min-height: 100vh;
+}
+
+/* Navigation */
+nav {
+    margin-bottom: 1rem;
+}
+
+nav ul li a {
+    padding: 0.5rem 0.75rem;
+}
+
+/* Tables responsive */
+table {
+    font-size: 0.9rem;
+}
+
+@media (max-width: 768px) {
+    table {
+        font-size: 0.8rem;
+    }
+
+    nav ul {
+        flex-wrap: wrap;
+    }
+}
+
+/* Badges */
+.badge {
+    display: inline-block;
+    padding: 0.15rem 0.5rem;
+    border-radius: 0.25rem;
+    font-size: 0.75rem;
+    font-weight: 600;
+}
+
+.badge.member {
+    background: #d4edda;
+    color: #155724;
+}
+
+.badge.guest {
+    background: #fff3cd;
+    color: #856404;
+}
+
+.instrument-badge {
+    display: inline-block;
+    padding: 0.15rem 0.5rem;
+    border-radius: 0.25rem;
+    font-size: 0.75rem;
+    background: #e7f1ff;
+    color: #004085;
+}
+
+/* HTMX transitions */
+.htmx-swapping {
+    opacity: 0;
+    transition: opacity 150ms ease-out;
+}
+
+.htmx-request .htmx-indicator {
+    display: inline;
+}
+
+.htmx-indicator {
+    display: none;
+}
+
+/* Error messages */
+.error-message {
+    background: #f8d7da;
+    color: #721c24;
+    padding: 0.75rem 1rem;
+    border-radius: 0.25rem;
+    margin-bottom: 1rem;
+}
+
+/* Small button */
+button.small, a.small {
+    padding: 0.25rem 0.5rem;
+    font-size: 0.8rem;
+}
+
+/* Content area */
+#content {
+    min-height: 60vh;
+}
+
+/* Login page centering */
+.login-container {
+    max-width: 400px;
+    margin: 4rem auto;
+}

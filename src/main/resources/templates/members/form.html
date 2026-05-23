@@ -1,0 +1,81 @@
+<div id="members-content">
+    <h2 th:text="${member.id() != null ? '✏️ Edytuj muzyka' : '➕ Dodaj muzyka'}">Dodaj muzyka</h2>
+
+    <form id="member-form"
+          hx-target="#members-content"
+          hx-swap="innerHTML transition:true"
+          th:attr="data-member-id=${member.id()}">
+
+        <div class="grid">
+            <label>
+                Imię *
+                <input type="text" name="firstName" th:value="${member.firstName()}" required>
+            </label>
+            <label>
+                Nazwisko *
+                <input type="text" name="lastName" th:value="${member.lastName()}" required>
+            </label>
+        </div>
+
+        <div class="grid">
+            <label>
+                Data urodzenia *
+                <input type="date" name="dateOfBirth" th:value="${member.dateOfBirth()}" required>
+            </label>
+            <label>
+                Rola
+                <select name="role">
+                    <option value="MEMBER" th:selected="${member.role() == 'MEMBER'}">Członek</option>
+                    <option value="GUEST" th:selected="${member.role() == 'GUEST'}">Gość</option>
+                </select>
+            </label>
+        </div>
+
+        <div class="grid">
+            <label>
+                E-mail
+                <input type="email" name="email" th:value="${member.email()}">
+            </label>
+            <label>
+                Telefon
+                <input type="tel" name="phone" th:value="${member.phone()}">
+            </label>
+        </div>
+
+        <label>
+            <input type="checkbox" name="ospMember" th:checked="${member.ospMember()}">
+            Członek OSP
+        </label>
+
+        <div style="display:flex; gap:0.5rem; margin-top:1rem;">
+            <button type="submit" class="primary" th:text="${member.id() != null ? 'Zapisz zmiany' : 'Dodaj muzyka'}">Dodaj</button>
+            <button type="button" class="secondary"
+                    hx-get="/members" hx-target="#content"
+                    hx-swap="innerHTML transition:true">Anuluj</button>
+        </div>
+    </form>
+</div>
+
+<script th:inline="javascript">
+    document.body.addEventListener('submit', function(e) {
+        if (e.target.id === 'member-form') {
+            e.preventDefault();
+            var form = e.target;
+            var memberId = form.getAttribute('data-member-id');
+            var url = memberId ? '/api/members/' + memberId : '/api/members';
+            var method = memberId ? 'PUT' : 'POST';
+            var formData = new FormData(form);
+            var data = {};
+            formData.forEach(function(value, key) { data[key] = value; });
+            data.ospMember = formData.has('ospMember');
+
+            fetch(url, {
+                method: method,
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify(data)
+            }).then(function() {
+                htmx.ajax('GET', '/members', {target: '#content', swap: 'innerHTML transition:true'});
+            });
+        }
+    });
+</script>

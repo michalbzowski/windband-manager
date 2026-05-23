@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="pl" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/layout :: head('Próby')}"></head>
+<body>
+    <nav th:replace="~{fragments/layout :: nav}"></nav>
+
+    <main class="container" id="content">
+        <div id="rehearsals-content">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem;">
+                <h2>🎵 Próby</h2>
+                <button hx-get="/rehearsals/new" hx-target="#rehearsals-content"
+                        hx-swap="innerHTML transition:true" class="primary">+ Zaplanuj próbę</button>
+            </div>
+
+            <div th:if="${#lists.isEmpty(rehearsals)}">
+                <article>
+                    <p>Brak zaplanowanych prób.</p>
+                </article>
+            </div>
+
+            <div th:unless="${#lists.isEmpty(rehearsals)}">
+                <table role="grid">
+                    <thead>
+                        <tr>
+                            <th>Data</th>
+                            <th>Godzina</th>
+                            <th>Miejsce</th>
+                            <th>Obecność</th>
+                            <th>Akcje</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr th:each="r : ${rehearsals}">
+                            <td th:text="${r.date()}">01.01.2025</td>
+                            <td th:text="${r.startTime()}">18:00</td>
+                            <td th:text="${r.location()}">Sala prób</td>
+                            <td>
+                                <span th:text="${r.presentCount()} + ' / ' + ${r.attendances().size()}">12 / 15</span>
+                            </td>
+                            <td>
+                                <button class="outline small"
+                                        th:hx-get="@{/rehearsals/{id}(id=${r.id()})}"
+                                        hx-target="#rehearsals-content"
+                                        hx-swap="innerHTML transition:true">Szczegóły</button>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </main>
+
+    <footer th:replace="~{fragments/layout :: footer}"></footer>
+</body>
+</html>

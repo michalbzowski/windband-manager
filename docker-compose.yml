@@ -1,0 +1,48 @@
+version: "3.9"
+
+services:
+  db:
+    image: postgres:16-alpine
+    container_name: windband-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: windband
+      POSTGRES_USER: windband
+      POSTGRES_PASSWORD: windband
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/home/mbzowski/windband-manager/database
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U windband"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: windband-app
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      DB_HOST: db
+      DB_PORT: 5432
+      DB_NAME: windband
+      DB_USER: windband
+      DB_PASS: windband
+      SERVER_PORT: 8080
+      JWT_SECRET: ${JWT_SECRET:-changeMeToASecureRandomStringOfAtLeast256BitsForProduction}
+      MAIL_HOST: ${MAIL_HOST:-smtp.gmail.com}
+      MAIL_PORT: ${MAIL_PORT:-587}
+      MAIL_USER: ${MAIL_USER:-}
+      MAIL_PASS: ${MAIL_PASS:-}
+      BASE_URL: ${BASE_URL:-http://localhost:8080}
+    ports:
+      - "8080:8080"
+
+volumes:
+  pgdata:
