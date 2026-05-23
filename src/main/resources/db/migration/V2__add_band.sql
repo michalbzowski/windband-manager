@@ -5,6 +5,11 @@ CREATE TABLE IF NOT EXISTS bands (
     created_at DATE NOT NULL DEFAULT CURRENT_DATE
 );
 
+-- Insert default band first (before FK constraints reference it)
+INSERT INTO bands (name, description, created_at)
+VALUES ('MOD Strażak', 'Młodzieżowa Orkiestra Dęta Wojkowice Kościelne', CURRENT_DATE)
+ON CONFLICT (name) DO NOTHING;
+
 -- Add band_id to members
 ALTER TABLE IF EXISTS members ADD COLUMN IF NOT EXISTS band_id BIGINT;
 UPDATE members SET band_id = 1 WHERE band_id IS NULL;
@@ -39,7 +44,3 @@ UPDATE instrument_items SET band_id = 1 WHERE band_id IS NULL;
 ALTER TABLE instrument_items ALTER COLUMN band_id SET NOT NULL;
 ALTER TABLE instrument_items ADD CONSTRAINT fk_instrument_items_band FOREIGN KEY (band_id) REFERENCES bands(id);
 CREATE INDEX IF NOT EXISTS idx_instrument_items_band ON instrument_items(band_id);
-
--- Insert default band
-INSERT INTO bands (name, description, created_at)
-VALUES ('MOD Strażak', 'Młodzieżowa Orkiestra Dęta Wojkowice Kościelne', CURRENT_DATE);
