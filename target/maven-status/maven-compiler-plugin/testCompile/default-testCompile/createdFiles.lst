@@ -1,9 +1,0 @@
-pl/michalbzowski/windband/domain/event/BandEventTest.class
-pl/michalbzowski/windband/domain/member/MemberTest.class
-pl/michalbzowski/windband/adapter/out/persistence/MemberRepositoryAdapterIT.class
-pl/michalbzowski/windband/application/query/member/MemberQueryServiceTest.class
-pl/michalbzowski/windband/ApplicationStartupTest.class
-pl/michalbzowski/windband/IntegrationTest.class
-pl/michalbzowski/windband/architecture/ArchitectureTest.class
-pl/michalbzowski/windband/domain/rehearsal/RehearsalTest.class
-pl/michalbzowski/windband/application/command/member/MemberCommandServiceTest.class

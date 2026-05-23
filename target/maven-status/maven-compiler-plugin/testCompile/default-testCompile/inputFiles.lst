@@ -1,9 +1,0 @@
-/home/mbzowski/windband-manager/src/test/java/pl/michalbzowski/windband/ApplicationStartupTest.java
-/home/mbzowski/windband-manager/src/test/java/pl/michalbzowski/windband/IntegrationTest.java
-/home/mbzowski/windband-manager/src/test/java/pl/michalbzowski/windband/adapter/out/persistence/MemberRepositoryAdapterIT.java
-/home/mbzowski/windband-manager/src/test/java/pl/michalbzowski/windband/application/command/member/MemberCommandServiceTest.java
-/home/mbzowski/windband-manager/src/test/java/pl/michalbzowski/windband/application/query/member/MemberQueryServiceTest.java
-/home/mbzowski/windband-manager/src/test/java/pl/michalbzowski/windband/architecture/ArchitectureTest.java
-/home/mbzowski/windband-manager/src/test/java/pl/michalbzowski/windband/domain/event/BandEventTest.java
-/home/mbzowski/windband-manager/src/test/java/pl/michalbzowski/windband/domain/member/MemberTest.java
-/home/mbzowski/windband-manager/src/test/java/pl/michalbzowski/windband/domain/rehearsal/RehearsalTest.java
