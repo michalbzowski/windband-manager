@@ -31,7 +31,9 @@ public class AuthController {
             cookie.setHttpOnly(true);
             cookie.setPath("/");
             cookie.setMaxAge(86400);
+            cookie.setAttribute("SameSite", "Lax");
             response.addCookie(cookie);
+            response.setStatus(200);
             return ResponseEntity.ok().build();
         }
 

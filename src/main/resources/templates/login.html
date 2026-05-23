@@ -12,8 +12,8 @@
             <p>Nieprawidłowa nazwa użytkownika lub hasło.</p>
         </div>
 
-        <form id="login-form" hx-post="/api/auth/login" hx-target="#login-error"
-              hx-swap="outerHTML" hx-on::after-request="handleLogin(event)">
+        <form id="login-form" hx-ext="json-enc" hx-post="/api/auth/login"
+              hx-on::after-request="handleLogin(event)">
             <label for="username">Nazwa użytkownika</label>
             <input type="text" id="username" name="username" required autofocus>
 
@@ -24,6 +24,8 @@
         </form>
     </main>
 
+    <script src="https://unpkg.com/htmx.org@2.0.2"></script>
+    <script src="https://unpkg.com/htmx-ext-json-enc@2.0.0/json-enc.js"></script>
     <script>
         function handleLogin(event) {
             if (event.detail.successful) {
