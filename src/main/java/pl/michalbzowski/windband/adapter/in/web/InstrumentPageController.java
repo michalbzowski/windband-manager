@@ -25,16 +25,16 @@ public class InstrumentPageController {
 
     @GetMapping("/new")
     public String newInstrumentForm(Model model) {
-        model.addAttribute("instrument", new InstrumentForm("", ""));
+        model.addAttribute("instrument", new InstrumentForm(null, "", ""));
         return "instruments/form";
     }
 
     @GetMapping("/{id}/edit")
     public String editInstrumentForm(@PathVariable Long id, Model model) {
         Instrument instrument = instrumentCommandService.getInstrumentById(id);
-        model.addAttribute("instrument", new InstrumentForm(instrument.getName(), instrument.getDescription()));
+        model.addAttribute("instrument", new InstrumentForm(instrument.getId(), instrument.getName(), instrument.getDescription()));
         return "instruments/form";
     }
 
-    public record InstrumentForm(String name, String description) {}
+    public record InstrumentForm(Long id, String name, String description) {}
 }

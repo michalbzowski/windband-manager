@@ -1,40 +1,52 @@
-<div id="instruments-content">
-    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem;">
-        <h2>🎼 Instrumenty</h2>
-        <button hx-get="/instruments/new" hx-target="#instruments-content" hx-swap="innerHTML transition:true"
-                class="primary">+ Dodaj instrument</button>
-    </div>
+<!DOCTYPE html>
+<html lang="pl" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/layout :: head('Instrumenty')}"></head>
+<body>
+    <nav th:replace="~{fragments/layout :: nav}"></nav>
 
-    <div th:if="${#lists.isEmpty(instruments)}">
-        <article>
-            <p>Brak instrumentów w systemu. Dodaj pierwszy!</p>
-        </article>
-    </div>
+    <main class="container" id="content">
+        <div id="instruments-content">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem;">
+                <h2>🎼 Instrumenty</h2>
+                <button hx-get="/instruments/new" hx-target="#instruments-content" hx-swap="innerHTML transition:true"
+                        class="primary">+ Dodaj instrument</button>
+            </div>
 
-    <div th:unless="${#lists.isEmpty(instruments)}">
-        <table role="grid">
-            <thead>
-                <tr>
-                    <th>Nazwa</th>
-                    <th>Opis</th>
-                    <th>Akcje</th>
-                </tr>
-            </thead>
-            <tbody>
-                <tr th:each="inst : ${instruments}">
-                    <td th:text="${inst.name()}">Trąbka</td>
-                    <td th:text="${inst.description()}">Instrument dęty blaszany</td>
-                    <td>
-                        <button class="outline small"
-                                th:hx-get="@{/instruments/{id}/edit(id=${inst.id()})}"
-                                hx-target="#instruments-content" hx-swap="innerHTML transition:true">Edytuj</button>
-                        <button class="outline small secondary"
-                                th:hx-delete="@{/api/instruments/{id}(id=${inst.id()})}"
-                                hx-confirm="Czy na pewno chcesz usunąć ten instrument?"
-                                hx-on::after-request="htmx.ajax('GET', '/instruments', {target: '#content', swap: 'innerHTML transition:true'})">Usuń</button>
-                    </td>
-                </tr>
-            </tbody>
-        </table>
-    </div>
-</div>
+            <div th:if="${#lists.isEmpty(instruments)}">
+                <article>
+                    <p>Brak instrumentów w systemu. Dodaj pierwszy!</p>
+                </article>
+            </div>
+
+            <div th:unless="${#lists.isEmpty(instruments)}">
+                <table role="grid">
+                    <thead>
+                        <tr>
+                            <th>Nazwa</th>
+                            <th>Opis</th>
+                            <th>Akcje</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr th:each="inst : ${instruments}">
+                            <td th:text="${inst.name()}">Trąbka</td>
+                            <td th:text="${inst.description()}">Instrument dęty blaszany</td>
+                            <td>
+                                <button class="outline small"
+                                        th:hx-get="@{/instruments/{id}/edit(id=${inst.id()})}"
+                                        hx-target="#instruments-content" hx-swap="innerHTML transition:true">Edytuj</button>
+                                <button class="outline small secondary"
+                                        th:hx-delete="@{/api/instruments/{id}(id=${inst.id()})}"
+                                        hx-confirm="Czy na pewno chcesz usunąć ten instrument?"
+                                        hx-on::after-request="htmx.ajax('GET', '/instruments', {target: '#content', swap: 'innerHTML transition:true'})">Usuń</button>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </main>
+
+    <footer th:replace="~{fragments/layout :: footer}"></footer>
+</body>
+</html>

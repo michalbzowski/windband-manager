@@ -1,76 +1,86 @@
-<div id="attribute-defs-content">
-    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem;">
-        <h2>🏷️ Atrybuty muzyków</h2>
-        <button id="add-attr-btn" class="primary">+ Dodaj atrybut</button>
-    </div>
+<!DOCTYPE html>
+<html lang="pl" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/layout :: head('Atrybuty muzyków')}"></head>
+<body>
+    <nav th:replace="~{fragments/layout :: nav}"></nav>
 
-    <div id="new-attr-form" style="display:none; margin-bottom:1rem; padding:1rem; border:1px solid var(--pico-muted-border-color); border-radius:8px;">
-        <h4>Nowy atrybut</h4>
-        <div class="grid">
-            <label>
-                Nazwa *
-                <input type="text" id="attr-name" placeholder="np. Członek OSP">
-            </label>
-            <label>
-                Typ
-                <select id="attr-type">
-                    <option value="BOOLEAN">Tak/Nie</option>
-                    <option value="TEXT">Tekst</option>
-                </select>
-            </label>
-        </div>
-        <div class="grid">
-            <label>
-                Kolejność
-                <input type="number" id="attr-order" value="0" min="0">
-            </label>
-            <label>
-                <input type="checkbox" id="attr-required">
-                Wymagany
-            </label>
-        </div>
-        <div style="display:flex; gap:0.5rem; margin-top:0.5rem;">
-            <button id="save-attr-btn" class="primary small">Zapisz</button>
-            <button id="cancel-attr-btn" class="secondary small">Anuluj</button>
-        </div>
-    </div>
+    <main class="container" id="content">
+        <div id="attribute-defs-content">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem;">
+                <h2>🏷️ Atrybuty muzyków</h2>
+                <button id="add-attr-btn" class="primary">+ Dodaj atrybut</button>
+            </div>
 
-    <div id="edit-attr-form" style="display:none; margin-bottom:1rem; padding:1rem; border:1px solid var(--pico-muted-border-color); border-radius:8px;">
-        <h4>Edytuj atrybut</h4>
-        <input type="hidden" id="edit-attr-id">
-        <div class="grid">
-            <label>
-                Nazwa *
-                <input type="text" id="edit-attr-name">
-            </label>
-            <label>
-                Typ
-                <select id="edit-attr-type">
-                    <option value="BOOLEAN">Tak/Nie</option>
-                    <option value="TEXT">Tekst</option>
-                </select>
-            </label>
-        </div>
-        <div class="grid">
-            <label>
-                Kolejność
-                <input type="number" id="edit-attr-order" min="0">
-            </label>
-            <label>
-                <input type="checkbox" id="edit-attr-required">
-                Wymagany
-            </label>
-        </div>
-        <div style="display:flex; gap:0.5rem; margin-top:0.5rem;">
-            <button id="update-attr-btn" class="primary small">Zapisz</button>
-            <button id="cancel-edit-attr-btn" class="secondary small">Anuluj</button>
-        </div>
-    </div>
+            <div id="new-attr-form" style="display:none; margin-bottom:1rem; padding:1rem; border:1px solid var(--pico-muted-border-color); border-radius:8px;">
+                <h4>Nowy atrybut</h4>
+                <div class="grid">
+                    <label>
+                        Nazwa *
+                        <input type="text" id="attr-name" placeholder="np. Członek OSP">
+                    </label>
+                    <label>
+                        Typ
+                        <select id="attr-type">
+                            <option value="BOOLEAN">Tak/Nie</option>
+                            <option value="TEXT">Tekst</option>
+                        </select>
+                    </label>
+                </div>
+                <div class="grid">
+                    <label>
+                        Kolejność
+                        <input type="number" id="attr-order" value="0" min="0">
+                    </label>
+                    <label>
+                        <input type="checkbox" id="attr-required">
+                        Wymagany
+                    </label>
+                </div>
+                <div style="display:flex; gap:0.5rem; margin-top:0.5rem;">
+                    <button id="save-attr-btn" class="primary small">Zapisz</button>
+                    <button id="cancel-attr-btn" class="secondary small">Anuluj</button>
+                </div>
+            </div>
 
-    <div id="attrs-list">
-        <!-- loaded via JS -->
-    </div>
-</div>
+            <div id="edit-attr-form" style="display:none; margin-bottom:1rem; padding:1rem; border:1px solid var(--pico-muted-border-color); border-radius:8px;">
+                <h4>Edytuj atrybut</h4>
+                <input type="hidden" id="edit-attr-id">
+                <div class="grid">
+                    <label>
+                        Nazwa *
+                        <input type="text" id="edit-attr-name">
+                    </label>
+                    <label>
+                        Typ
+                        <select id="edit-attr-type">
+                            <option value="BOOLEAN">Tak/Nie</option>
+                            <option value="TEXT">Tekst</option>
+                        </select>
+                    </label>
+                </div>
+                <div class="grid">
+                    <label>
+                        Kolejność
+                        <input type="number" id="edit-attr-order" min="0">
+                    </label>
+                    <label>
+                        <input type="checkbox" id="edit-attr-required">
+                        Wymagany
+                    </label>
+                </div>
+                <div style="display:flex; gap:0.5rem; margin-top:0.5rem;">
+                    <button id="update-attr-btn" class="primary small">Zapisz</button>
+                    <button id="cancel-edit-attr-btn" class="secondary small">Anuluj</button>
+                </div>
+            </div>
+
+            <div id="attrs-list">
+                <!-- loaded via JS -->
+            </div>
+        </div>
+    </main>
+
+    <footer th:replace="~{fragments/layout :: footer}"></footer>
 
 <script>
 (function() {
@@ -166,3 +176,5 @@
     loadAttrs();
 })();
 </script>
+</body>
+</html>
