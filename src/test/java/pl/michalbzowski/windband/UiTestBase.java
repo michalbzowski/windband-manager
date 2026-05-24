@@ -1,5 +1,6 @@
 package pl.michalbzowski.windband;
 
+import io.github.bonigarcia.wdm.WebDriverManager;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.openqa.selenium.By;
@@ -12,6 +13,8 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.web.server.LocalServerPort;
 import org.springframework.test.context.ActiveProfiles;
 
+import java.io.BufferedReader;
+import java.io.InputStreamReader;
 import java.time.Duration;
 
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
@@ -25,13 +28,140 @@ public abstract class UiTestBase {
 
     @BeforeEach
     void setUp() {
+        String browserPath = detectChromeBinary();
+        String browserVersion = getMajorVersion(browserPath);
+        System.out.println("[UiTestBase] Browser: " + browserPath + " version: " + browserVersion);
+
+        // Try to find matching system chromedriver first
+        String systemDriver = findSystemChromedriver(browserVersion);
+        if (systemDriver != null) {
+            System.setProperty("webdriver.chrome.driver", systemDriver);
+            System.out.println("[UiTestBase] Using system chromedriver: " + systemDriver);
+        } else {
+            // Fall back to WebDriverManager — downloads matching version
+            System.out.println("[UiTestBase] No matching system chromedriver, using WebDriverManager...");
+            if (browserVersion != null) {
+                WebDriverManager.chromedriver().browserVersion(browserVersion).setup();
+            } else {
+                WebDriverManager.chromedriver().setup();
+            }
+        }
+
         ChromeOptions options = new ChromeOptions();
         options.addArguments("--headless=new");
         options.addArguments("--no-sandbox");
         options.addArguments("--disable-dev-shm-usage");
         options.addArguments("--disable-gpu");
-        options.setBinary("/usr/sbin/chromium-browser");
+        if (browserPath != null) {
+            options.setBinary(browserPath);
+        }
         driver = new ChromeDriver(options);
+        System.out.println("[UiTestBase] ChromeDriver session created successfully");
+    }
+
+    /**
+     * Detects Chrome/Chromium binary across different OS/distributions:
+     * Linux (Fedora/RHEL/Debian/Arch), macOS, Snap, Flatpak
+     */
+    private static String detectChromeBinary() {
+        String[] candidates = {
+                "/usr/sbin/chromium-browser",       // Fedora/RHEL
+                "/usr/bin/chromium-browser",         // Debian/Ubuntu
+                "/usr/bin/chromium",                 // Arch/Manjaro
+                "/usr/bin/google-chrome-stable",     // Fedora/RHEL Chrome
+                "/usr/bin/google-chrome",            // Debian/Ubuntu/Arch Chrome
+                "/snap/bin/chromium",               // Snap
+                "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome", // macOS
+                "/Applications/Chromium.app/Contents/MacOS/Chromium"           // macOS
+        };
+        for (String path : candidates) {
+            if (new java.io.File(path).exists()) {
+                return path;
+            }
+        }
+        // Try flatpak
+        try {
+            Process p = new ProcessBuilder("flatpak", "info", "org.chromium.Chromium")
+                    .redirectErrorStream(true).start();
+            if (p.waitFor() == 0) {
+                return "flatpak run org.chromium.Chromium";
+            }
+        } catch (Exception ignored) {}
+        return null;
+    }
+
+    /**
+     * Extracts major version number from browser binary (e.g. "148" from "148.0.7778.96")
+     */
+    private static String getMajorVersion(String browserPath) {
+        if (browserPath == null) return null;
+        try {
+            Process p = new ProcessBuilder(browserPath, "--version")
+                    .redirectErrorStream(true).start();
+            try (BufferedReader reader = new BufferedReader(new InputStreamReader(p.getInputStream()))) {
+                String line = reader.readLine();
+                if (line != null) {
+                    // Parse "Chromium 148.0.7778.96 ..." -> "148"
+                    String[] parts = line.trim().split("\\s+");
+                    for (String part : parts) {
+                        if (part.matches("\\d+\\..*")) {
+                            return part.split("\\.")[0];
+                        }
+                    }
+                }
+            }
+        } catch (Exception e) {
+            System.err.println("[UiTestBase] Failed to detect browser version: " + e.getMessage());
+        }
+        return null;
+    }
+
+    /**
+     * Looks for system chromedriver that matches the browser major version.
+     * Checks common locations and system PATH.
+     */
+    private static String findSystemChromedriver(String browserMajorVersion) {
+        if (browserMajorVersion == null) return null;
+        String[] candidates = {
+                "/usr/lib/chromium-browser/chromedriver",
+                "/usr/bin/chromedriver",
+                "/usr/local/bin/chromedriver"
+        };
+        for (String path : candidates) {
+            if (new java.io.File(path).exists()) {
+                String driverVersion = getChromedriverVersion(path);
+                if (driverVersion != null && driverVersion.startsWith(browserMajorVersion + ".")) {
+                    return path;
+                } else {
+                    System.out.println("[UiTestBase] Found chromedriver at " + path +
+                            " but version mismatch (driver=" + driverVersion + ", browser=" + browserMajorVersion + ")");
+                }
+            }
+        }
+        return null;
+    }
+
+    /**
+     * Gets chromedriver major version (e.g. "148.0.7778.96")
+     */
+    private static String getChromedriverVersion(String driverPath) {
+        try {
+            Process p = new ProcessBuilder(driverPath, "--version")
+                    .redirectErrorStream(true).start();
+            try (BufferedReader reader = new BufferedReader(new InputStreamReader(p.getInputStream()))) {
+                String line = reader.readLine();
+                if (line != null) {
+                    // Parse "ChromeDriver 148.0.7778.96 ..." -> "148.0.7778.96"
+                    String[] parts = line.trim().split("\\s+");
+                    for (String part : parts) {
+                        if (part.matches("\\d+\\..*")) {
+                            return part;
+                        }
+                    }
+                }
+            }
+        } catch (Exception ignored) {}
+        return null;
     }
 
     @AfterEach
