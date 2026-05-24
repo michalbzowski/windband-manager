@@ -1,0 +1,77 @@
+<!-- Attribute form fragment (HTMX) for new/edit -->
+<div id="new-attr-form" style="margin-bottom:1rem; padding:1rem; border:1px solid var(--pico-muted-border-color); border-radius:8px;"
+     th:with="isEdit=${attributeDefId != null}">
+    <h4 th:text="${isEdit} ? 'Edytuj atrybut' : 'Nowy atrybut'">Nowy atrybut</h4>
+
+    <!-- New attribute form (POST) -->
+    <form th:unless="${isEdit}" action="/band/attributes" method="post"
+          hx-post="/band/attributes"
+          hx-target="#attrs-list"
+          hx-swap="innerHTML">
+        <div class="grid">
+            <label>
+                Nazwa *
+                <input type="text" name="name" th:value="${attributeDef.name}" required>
+            </label>
+            <label>
+                Typ
+                <select name="type">
+                    <option value="BOOLEAN" th:selected="${attributeDef.type == 'BOOLEAN'}">Tak/Nie</option>
+                    <option value="TEXT" th:selected="${attributeDef.type == 'TEXT'}">Tekst</option>
+                </select>
+            </label>
+        </div>
+        <div class="grid">
+            <label>
+                Kolejność
+                <input type="number" name="displayOrder" th:value="${attributeDef.displayOrder}" min="0">
+            </label>
+            <label>
+                <input type="checkbox" name="required" th:checked="${attributeDef.required}">
+                Wymagany
+            </label>
+        </div>
+        <div style="display:flex; gap:0.5rem; margin-top:0.5rem;">
+            <button type="submit" class="primary small">Dodaj atrybut</button>
+            <button type="button" class="secondary small"
+                    onclick="document.getElementById('attribute-form-container').innerHTML=''">Anuluj</button>
+        </div>
+    </form>
+
+    <!-- Edit attribute form (PUT) -->
+    <form th:if="${isEdit}"
+          th:action="@{/band/attributes/{id}(id=${attributeDefId})}"
+          th:method="put"
+          th:hx-put="@{/band/attributes/{id}(id=${attributeDefId})}"
+          hx-target="#attrs-list"
+          hx-swap="innerHTML">
+        <div class="grid">
+            <label>
+                Nazwa *
+                <input type="text" name="name" th:value="${attributeDef.name}" required>
+            </label>
+            <label>
+                Typ
+                <select name="type">
+                    <option value="BOOLEAN" th:selected="${attributeDef.type == 'BOOLEAN'}">Tak/Nie</option>
+                    <option value="TEXT" th:selected="${attributeDef.type == 'TEXT'}">Tekst</option>
+                </select>
+            </label>
+        </div>
+        <div class="grid">
+            <label>
+                Kolejność
+                <input type="number" name="displayOrder" th:value="${attributeDef.displayOrder}" min="0">
+            </label>
+            <label>
+                <input type="checkbox" name="required" th:checked="${attributeDef.required}">
+                Wymagany
+            </label>
+        </div>
+        <div style="display:flex; gap:0.5rem; margin-top:0.5rem;">
+            <button type="submit" class="primary small">Zapisz zmiany</button>
+            <button type="button" class="secondary small"
+                    onclick="document.getElementById('attribute-form-container').innerHTML=''">Anuluj</button>
+        </div>
+    </form>
+</div>

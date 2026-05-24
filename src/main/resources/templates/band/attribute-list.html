@@ -1,0 +1,36 @@
+<!-- Attribute list fragment (HTMX) -->
+<div id="attrs-list">
+    <div th:if="${attributeDefs == null or #lists.isEmpty(attributeDefs)}">
+        <p>Brak atrybutów w systemu. Dodaj pierwszy!</p>
+    </div>
+    <table th:if="${attributeDefs != null and !#lists.isEmpty(attributeDefs)}" role="grid">
+        <thead>
+            <tr>
+                <th>Nazwa</th>
+                <th>Typ</th>
+                <th>Wymagany</th>
+                <th>Kolejność</th>
+                <th>Akcje</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr th:each="attrDef : ${attributeDefs}">
+                <td th:text="${attrDef.name}">Nazwa</td>
+                <td th:text="${attrDef.type == 'BOOLEAN'} ? 'Tak/Nie' : 'Tekst'">Typ</td>
+                <td th:text="${attrDef.required} ? '✅' : '❌'">Wymagany</td>
+                <td th:text="${attrDef.displayOrder}">0</td>
+                <td>
+                    <button class="outline small"
+                            th:hx-get="@{/band/attributes/{id}/edit(id=${attrDef.id})}"
+                            hx-target="#attribute-form-container"
+                            hx-swap="innerHTML">Edytuj</button>
+                    <button class="outline small secondary"
+                            th:hx-delete="@{/band/attributes/{id}(id=${attrDef.id})}"
+                            hx-confirm="Czy na pewno chcesz usunąć ten atrybut?"
+                            hx-target="#attrs-list"
+                            hx-swap="innerHTML">Usuń</button>
+                </td>
+            </tr>
+        </tbody>
+    </table>
+</div>

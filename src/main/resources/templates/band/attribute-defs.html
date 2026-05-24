@@ -1,180 +1,27 @@
-<!DOCTYPE html>
-<html lang="pl" xmlns:th="http://www.thymeleaf.org">
-<head th:replace="~{fragments/layout :: head('Atrybuty muzyków')}"></head>
-<body>
-    <nav th:replace="~{fragments/layout :: nav}"></nav>
+<div id="attribute-defs-content">
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem;">
+        <h2>🏷️ Atrybuty muzyków</h2>
+        <button id="add-attr-btn" class="primary"
+                hx-get="/band/attributes/new"
+                hx-target="#attribute-form-container"
+                hx-swap="innerHTML">+ Dodaj atrybut</button>
+    </div>
 
-    <main class="container" id="content">
-        <div id="attribute-defs-content">
-            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem;">
-                <h2>🏷️ Atrybuty muzyków</h2>
-                <button id="add-attr-btn" class="primary">+ Dodaj atrybut</button>
-            </div>
+    <!-- Form container: new/edit forms loaded here via HTMX -->
+    <div id="attribute-form-container"></div>
 
-            <div id="new-attr-form" style="display:none; margin-bottom:1rem; padding:1rem; border:1px solid var(--pico-muted-border-color); border-radius:8px;">
-                <h4>Nowy atrybut</h4>
-                <div class="grid">
-                    <label>
-                        Nazwa *
-                        <input type="text" id="attr-name" placeholder="np. Członek OSP">
-                    </label>
-                    <label>
-                        Typ
-                        <select id="attr-type">
-                            <option value="BOOLEAN">Tak/Nie</option>
-                            <option value="TEXT">Tekst</option>
-                        </select>
-                    </label>
-                </div>
-                <div class="grid">
-                    <label>
-                        Kolejność
-                        <input type="number" id="attr-order" value="0" min="0">
-                    </label>
-                    <label>
-                        <input type="checkbox" id="attr-required">
-                        Wymagany
-                    </label>
-                </div>
-                <div style="display:flex; gap:0.5rem; margin-top:0.5rem;">
-                    <button id="save-attr-btn" class="primary small">Zapisz</button>
-                    <button id="cancel-attr-btn" class="secondary small">Anuluj</button>
-                </div>
-            </div>
-
-            <div id="edit-attr-form" style="display:none; margin-bottom:1rem; padding:1rem; border:1px solid var(--pico-muted-border-color); border-radius:8px;">
-                <h4>Edytuj atrybut</h4>
-                <input type="hidden" id="edit-attr-id">
-                <div class="grid">
-                    <label>
-                        Nazwa *
-                        <input type="text" id="edit-attr-name">
-                    </label>
-                    <label>
-                        Typ
-                        <select id="edit-attr-type">
-                            <option value="BOOLEAN">Tak/Nie</option>
-                            <option value="TEXT">Tekst</option>
-                        </select>
-                    </label>
-                </div>
-                <div class="grid">
-                    <label>
-                        Kolejność
-                        <input type="number" id="edit-attr-order" min="0">
-                    </label>
-                    <label>
-                        <input type="checkbox" id="edit-attr-required">
-                        Wymagany
-                    </label>
-                </div>
-                <div style="display:flex; gap:0.5rem; margin-top:0.5rem;">
-                    <button id="update-attr-btn" class="primary small">Zapisz</button>
-                    <button id="cancel-edit-attr-btn" class="secondary small">Anuluj</button>
-                </div>
-            </div>
-
-            <div id="attrs-list">
-                <!-- loaded via JS -->
-            </div>
-        </div>
-    </main>
-
-    <footer th:replace="~{fragments/layout :: footer}"></footer>
+    <!-- Attribute list loaded via HTMX -->
+    <div id="attrs-list" hx-get="/band/attributes/list" hx-trigger="load, attrSaved from:body">
+        <p>Ładowanie...</p>
+    </div>
+</div>
 
 <script>
-(function() {
-    var bandId = 1; // default band
-
-    function loadAttrs() {
-        fetch('/api/bands/' + bandId + '/attribute-defs')
-            .then(function(r) { return r.json(); })
-            .then(function(attrs) {
-                var html = '<table role="grid"><thead><tr><th>Nazwa</th><th>Typ</th><th>Wymagany</th><th>Kolejność</th><th>Akcje</th></tr></thead><tbody>';
-                attrs.forEach(function(a) {
-                    html += '<tr>';
-                    html += '<td>' + a.name + '</td>';
-                    html += '<td>' + (a.type === 'BOOLEAN' ? 'Tak/Nie' : 'Tekst') + '</td>';
-                    html += '<td>' + (a.required ? '✅' : '❌') + '</td>';
-                    html += '<td>' + a.displayOrder + '</td>';
-                    html += '<td>';
-                    html += '<button class="outline small" onclick="window.editAttr(' + a.id + ',\'' + a.name + '\',\'' + a.type + '\',' + a.required + ',' + a.displayOrder + ')">Edytuj</button> ';
-                    html += '<button class="outline small secondary" onclick="window.deleteAttr(' + a.id + ')">Usuń</button>';
-                    html += '</td></tr>';
-                });
-                html += '</tbody></table>';
-                document.getElementById('attrs-list').innerHTML = html;
-            });
-    }
-
-    document.getElementById('add-attr-btn').addEventListener('click', function() {
-        document.getElementById('new-attr-form').style.display = 'block';
-        document.getElementById('edit-attr-form').style.display = 'none';
-    });
-
-    document.getElementById('cancel-attr-btn').addEventListener('click', function() {
-        document.getElementById('new-attr-form').style.display = 'none';
-    });
-
-    document.getElementById('cancel-edit-attr-btn').addEventListener('click', function() {
-        document.getElementById('edit-attr-form').style.display = 'none';
-    });
-
-    document.getElementById('save-attr-btn').addEventListener('click', function() {
-        var data = {
-            name: document.getElementById('attr-name').value,
-            type: document.getElementById('attr-type').value,
-            required: document.getElementById('attr-required').checked,
-            displayOrder: parseInt(document.getElementById('attr-order').value) || 0
-        };
-        fetch('/api/bands/' + bandId + '/attribute-defs', {
-            method: 'POST',
-            headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify(data)
-        }).then(function() {
-            document.getElementById('new-attr-form').style.display = 'none';
-            document.getElementById('attr-name').value = '';
-            loadAttrs();
-        });
-    });
-
-    document.getElementById('update-attr-btn').addEventListener('click', function() {
-        var id = document.getElementById('edit-attr-id').value;
-        var data = {
-            name: document.getElementById('edit-attr-name').value,
-            type: document.getElementById('edit-attr-type').value,
-            required: document.getElementById('edit-attr-required').checked,
-            displayOrder: parseInt(document.getElementById('edit-attr-order').value) || 0
-        };
-        fetch('/api/bands/' + bandId + '/attribute-defs/' + id, {
-            method: 'PUT',
-            headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify(data)
-        }).then(function() {
-            document.getElementById('edit-attr-form').style.display = 'none';
-            loadAttrs();
-        });
-    });
-
-    window.editAttr = function(id, name, type, required, order) {
-        document.getElementById('edit-attr-id').value = id;
-        document.getElementById('edit-attr-name').value = name;
-        document.getElementById('edit-attr-type').value = type;
-        document.getElementById('edit-attr-required').checked = required;
-        document.getElementById('edit-attr-order').value = order;
-        document.getElementById('edit-attr-form').style.display = 'block';
-        document.getElementById('new-attr-form').style.display = 'none';
-    };
-
-    window.deleteAttr = function(id) {
-        if (!confirm('Czy na pewno chcesz usunąć ten atrybut?')) return;
-        fetch('/api/bands/' + bandId + '/attribute-defs/' + id, {
-            method: 'DELETE'
-        }).then(function() { loadAttrs(); });
-    };
-
-    loadAttrs();
-})();
+// Listen for HTMX events to reload the list after save
+document.body.addEventListener('attrSaved', function() {
+    htmx.ajax('GET', '/band/attributes/list', {target: '#attrs-list', swap: 'innerHTML'});
+});
+document.body.addEventListener('attrDeleted', function() {
+    htmx.ajax('GET', '/band/attributes/list', {target: '#attrs-list', swap: 'innerHTML'});
+});
 </script>
-</body>
-</html>

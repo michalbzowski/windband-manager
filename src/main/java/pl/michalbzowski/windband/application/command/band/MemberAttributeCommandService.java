@@ -38,6 +38,11 @@ public class MemberAttributeCommandService {
         attributeDefRepository.delete(def);
     }
 
+    public MemberAttributeDef getAttributeDefById(Long id) {
+        return attributeDefRepository.findById(id)
+                .orElseThrow(() -> new IllegalArgumentException("AttributeDef not found: " + id));
+    }
+
     public void setAttributeValue(Long memberId, Long attributeDefId, String value) {
         Member member = memberRepository.findById(memberId)
                 .orElseThrow(() -> new pl.michalbzowski.windband.application.command.member.MemberNotFoundException(memberId));

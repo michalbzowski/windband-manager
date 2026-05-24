@@ -32,7 +32,7 @@ public class AuthController {
             cookie.setPath("/");
             cookie.setMaxAge(86400);
             cookie.setAttribute("SameSite", "Lax");
-            response.addCookie(cookie);
+            cookie.setDomain(null);
             response.setStatus(200);
             return ResponseEntity.ok().build();
         }
