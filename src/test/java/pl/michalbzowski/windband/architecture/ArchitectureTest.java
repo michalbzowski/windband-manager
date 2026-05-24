@@ -92,6 +92,8 @@ class ArchitectureTest {
                 .that().resideInAPackage("..adapter.in.web..")
                 .and().haveSimpleNameNotEndingWith("InventoryController")
                 .and().haveSimpleNameNotEndingWith("InventoryPageController")
+                .and().haveSimpleNameNotEndingWith("MemberAttributeController")
+                .and().haveSimpleNameNotEndingWith("MemberPageController")
                 .should().dependOnClassesThat()
                 .haveSimpleNameEndingWith("Repository")
                 .check(classes);
