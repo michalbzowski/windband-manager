@@ -69,16 +69,16 @@
         <div th:if="${attributeDefs != null && !attributeDefs.isEmpty()}" style="margin-top:1rem;">
             <h4>Dodatkowe atrybuty</h4>
             <div th:each="attrDef : ${attributeDefs}" class="grid">
-                <label th:if="${attrDef.type() == 'BOOLEAN'}">
-                    <input type="checkbox" th:name="'attr_' + ${attrDef.id()}"
-                           th:checked="${attributeValues != null && attributeValues.get(attrDef.id()) == 'true'}"
-                           th:value="${attrDef.name()}">
-                    <span th:text="${attrDef.name()}">Atrybut</span>
+                <label th:if="${attrDef.type == 'BOOLEAN'}">
+                    <input type="checkbox" th:name="'attr_' + ${attrDef.id}"
+                           th:checked="${attributeValues != null && attributeValues.get(attrDef.id) == 'true'}"
+                           th:value="${attrDef.name}">
+                    <span th:text="${attrDef.name}">Atrybut</span>
                 </label>
-                <label th:if="${attrDef.type() == 'TEXT'}">
-                    <span th:text="${attrDef.name()}">Atrybut</span>
-                    <input type="text" th:name="'attr_' + ${attrDef.id()}"
-                           th:value="${attributeValues != null ? attributeValues.get(attrDef.id()) : ''}">
+                <label th:if="${attrDef.type == 'TEXT'}">
+                    <span th:text="${attrDef.name}">Atrybut</span>
+                    <input type="text" th:name="'attr_' + ${attrDef.id}"
+                           th:value="${attributeValues != null ? attributeValues.get(attrDef.id) : ''}">
                 </label>
             </div>
         </div>
