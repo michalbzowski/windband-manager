@@ -1,7 +1,7 @@
 <div id="events-content">
     <h2>🎪 Dodaj wydarzenie</h2>
 
-    <form hx-post="/api/events"
+    <form id="event-form"
           hx-target="#events-content"
           hx-swap="innerHTML transition:true">
 
@@ -52,3 +52,23 @@
         </div>
     </form>
 </div>
+
+<script th:inline="javascript">
+    document.body.addEventListener('submit', function(e) {
+        if (e.target.id === 'event-form') {
+            e.preventDefault();
+            var form = e.target;
+            var formData = new FormData(form);
+            var data = {};
+            formData.forEach(function(value, key) { data[key] = value; });
+
+            fetch('/api/events', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify(data)
+            }).then(function() {
+                htmx.ajax('GET', '/events/list', {target: '#events-content', swap: 'innerHTML transition:true'});
+            });
+        }
+    });
+</script>
