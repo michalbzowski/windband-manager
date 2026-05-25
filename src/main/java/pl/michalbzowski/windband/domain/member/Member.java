@@ -102,6 +102,14 @@ public class Member {
         this.resignedDate = LocalDate.now();
     }
 
+    public void setJoinedDate(LocalDate joinedDate) {
+        this.joinedDate = joinedDate;
+    }
+
+    public void setResignedDate(LocalDate resignedDate) {
+        this.resignedDate = resignedDate;
+    }
+
     public boolean isMinor() {
         return dateOfBirth.plusYears(18).isAfter(LocalDate.now());
     }

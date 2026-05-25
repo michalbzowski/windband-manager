@@ -7,6 +7,8 @@ import pl.michalbzowski.windband.domain.band.Band;
 import pl.michalbzowski.windband.domain.band.BandRepository;
 import pl.michalbzowski.windband.domain.member.*;
 
+import java.time.LocalDate;
+
 @Service
 @RequiredArgsConstructor
 @Transactional
@@ -25,6 +27,9 @@ public class MemberCommandService {
                 cmd.getDateOfBirth(),
                 band
         );
+        if (cmd.getJoinedDate() != null) {
+            member.setJoinedDate(cmd.getJoinedDate());
+        }
         if (cmd.getEmail() != null || cmd.getPhone() != null) {
             member.updateContact(cmd.getEmail(), cmd.getPhone());
         }
@@ -45,6 +50,14 @@ public class MemberCommandService {
                 .orElseThrow(() -> new MemberNotFoundException(cmd.getMemberId()));
         member.update(cmd.getFirstName(), cmd.getLastName(), cmd.getDateOfBirth(), cmd.isActive());
         member.updateContact(cmd.getEmail(), cmd.getPhone());
+        if (cmd.getJoinedDate() != null) {
+            member.setJoinedDate(cmd.getJoinedDate());
+        }
+        if (cmd.getResignedDate() != null) {
+            member.setResignedDate(cmd.getResignedDate());
+        } else if (!cmd.isActive()) {
+            member.setResignedDate(LocalDate.now());
+        }
         return memberRepository.save(member);
     }
 

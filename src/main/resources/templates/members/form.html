@@ -24,14 +24,14 @@
             </label>
             <label>
                 Data dołączenia
-                <input type="date" name="joinedDate" th:value="${member.joinedDate()}" readonly>
+                <input type="date" name="joinedDate" th:value="${member.joinedDate() ?: #temporals.format(#dates.createNow(), 'yyyy-MM-dd')}">
             </label>
         </div>
 
-        <div class="grid">
+        <div class="grid" th:if="${member.id() != null}">
             <label>
                 Data rezygnacji
-                <input type="date" name="resignedDate" th:value="${member.resignedDate()}" readonly>
+                <input type="date" name="resignedDate" th:value="${member.resignedDate()}">
             </label>
         </div>
 
@@ -105,6 +105,8 @@
             formData.forEach(function(value, key) { data[key] = value; });
             data.active = formData.has('active');
             if (data.instrumentId === '') delete data.instrumentId;
+            if (data.joinedDate === '') delete data.joinedDate;
+            if (data.resignedDate === '') delete data.resignedDate;
 
             fetch(url, {
                 method: method,

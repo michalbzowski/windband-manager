@@ -10,6 +10,8 @@ public class UpdateMemberCommand {
     private String firstName;
     private String lastName;
     private LocalDate dateOfBirth;
+    private LocalDate joinedDate;
+    private LocalDate resignedDate;
     private boolean active;
     private String email;
     private String phone;
