@@ -15,6 +15,7 @@ import pl.michalbzowski.windband.domain.member.InstrumentRepository;
 import pl.michalbzowski.windband.domain.member.Member;
 import pl.michalbzowski.windband.domain.member.MemberRepository;
 
+import java.time.LocalDate;
 import java.util.List;
 import java.util.Map;
 
@@ -38,6 +39,7 @@ public class MemberPageController {
     @GetMapping("/new")
     public String newMemberForm(Model model) {
         model.addAttribute("member", emptyMemberDto());
+        model.addAttribute("todayJoinedDate", LocalDate.now().toString());
         model.addAttribute("instruments", instrumentRepository.findAll());
         Band band = bandRepository.findById(1L).orElse(null);
         if (band != null) {

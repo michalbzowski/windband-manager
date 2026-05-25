@@ -24,7 +24,7 @@
             </label>
             <label>
                 Data dołączenia
-                <input type="date" name="joinedDate" th:value="${member.joinedDate() ?: #temporals.format(#dates.createNow(), 'yyyy-MM-dd')}">
+                <input type="date" name="joinedDate" th:value="${member.joinedDate() != null ? member.joinedDate() : todayJoinedDate}">
             </label>
         </div>
 
