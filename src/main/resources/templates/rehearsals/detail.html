@@ -3,11 +3,11 @@
 
     <article>
         <header>
-            <strong th:text="${rehearsal.date()}">01.01.2025</strong>
-            <span th:text="${rehearsal.startTime()} + ' - ' + ${rehearsal.endTime()}">18:00 - 20:00</span>
+            <strong th:text="${rehearsal.date}">01.01.2025</strong>
+            <span th:text="${rehearsal.startTime} + ' - ' + ${rehearsal.endTime}">18:00 - 20:00</span>
         </header>
-        <p th:if="${rehearsal.location()}" th:text="'Miejsce: ' + ${rehearsal.location()}">Miejsce: Sala prób</p>
-        <p th:if="${rehearsal.notes()}" th:text="${rehearsal.notes()}">Notatki</p>
+        <p th:if="${rehearsal.location}" th:text="'Miejsce: ' + ${rehearsal.location}">Miejsce: Sala prób</p>
+        <p th:if="${rehearsal.notes}" th:text="${rehearsal.notes}">Notatki</p>
     </article>
 
     <h3>Lista obecności</h3>
@@ -22,10 +22,10 @@
         </thead>
         <tbody>
             <tr th:each="m : ${members}">
-                <td th:text="${m.firstName() + ' ' + m.lastName()}">Jan Kowalski</td>
-                <td th:text="${m.primaryInstrument()}">Trąbka</td>
+                <td th:text="${m.firstName + ' ' + m.lastName}">Jan Kowalski</td>
+                <td th:text="${m.primaryInstrument}">Trąbka</td>
                 <td>
-                    <select th:name="'status_' + ${m.id()}" th:id="'status_' + ${m.id()}">
+                    <select th:name="'status_' + ${m.id}" th:id="'status_' + ${m.id}">
                         <option value="NO_RESPONSE">—</option>
                         <option value="PRESENT">Obecny</option>
                         <option value="EXCUSED">Nieobecny (uspraw.)</option>
@@ -46,7 +46,7 @@
 
 <script th:inline="javascript">
     document.getElementById('save-attendance-btn').addEventListener('click', function() {
-        var rehearsalId = [[${rehearsal.id()}]];
+        var rehearsalId = [[${rehearsal.id}]];
         var selects = document.querySelectorAll('select[id^="status_"]');
         var promises = [];
         selects.forEach(function(select) {

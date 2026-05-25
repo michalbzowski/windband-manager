@@ -33,10 +33,10 @@ public class Rehearsal {
 
     private String notes;
 
-    @OneToMany(mappedBy = "rehearsal", cascade = CascadeType.ALL, orphanRemoval = true)
+    @OneToMany(mappedBy = "rehearsal", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.EAGER)
     private List<Attendance> attendances = new ArrayList<>();
 
-    @ManyToOne(fetch = FetchType.LAZY)
+    @ManyToOne(fetch = FetchType.EAGER)
     @JoinColumn(name = "band_id", nullable = false)
     private Band band;
 
