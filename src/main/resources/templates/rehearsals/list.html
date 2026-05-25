@@ -31,15 +31,15 @@
                     </thead>
                     <tbody>
                         <tr th:each="r : ${rehearsals}">
-                            <td th:text="${r.date()}">01.01.2025</td>
-                            <td th:text="${r.startTime()}">18:00</td>
-                            <td th:text="${r.location()}">Sala prób</td>
+                            <td th:text="${r.date}">01.01.2025</td>
+                            <td th:text="${r.startTime}">18:00</td>
+                            <td th:text="${r.location}">Sala prób</td>
                             <td>
-                                <span th:text="${r.presentCount()} + ' / ' + ${r.attendances().size()}">12 / 15</span>
+                                <span th:text="${r.presentCount} + ' / ' + ${r.attendances.size()}">12 / 15</span>
                             </td>
                             <td>
                                 <button class="outline small"
-                                        th:hx-get="@{/rehearsals/{id}(id=${r.id()})}"
+                                        th:hx-get="@{/rehearsals/{id}(id=${r.id})}"
                                         hx-target="#rehearsals-content"
                                         hx-swap="innerHTML transition:true">Szczegóły</button>
                             </td>
