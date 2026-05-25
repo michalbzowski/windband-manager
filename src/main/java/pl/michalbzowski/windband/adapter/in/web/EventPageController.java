@@ -23,6 +23,12 @@ public class EventPageController {
         return "events/list";
     }
 
+    @GetMapping("/list")
+    public String listFragment(Model model) {
+        model.addAttribute("events", eventQueryService.getAllEvents());
+        return "events/list :: #events-content";
+    }
+
     @GetMapping("/new")
     public String newEventForm(Model model) {
         model.addAttribute("today", LocalDate.now());

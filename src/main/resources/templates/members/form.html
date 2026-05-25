@@ -86,7 +86,7 @@
         <div style="display:flex; gap:0.5rem; margin-top:1rem;">
             <button type="submit" class="primary" th:text="${member.id() != null ? 'Zapisz zmiany' : 'Dodaj muzyka'}">Dodaj</button>
             <button type="button" class="secondary"
-                    hx-get="/members" hx-target="#content"
+                    hx-get="/members/list" hx-target="#members-content"
                     hx-swap="innerHTML transition:true">Anuluj</button>
         </div>
     </form>

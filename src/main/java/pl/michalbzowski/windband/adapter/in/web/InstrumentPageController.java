@@ -23,6 +23,13 @@ public class InstrumentPageController {
         return "instruments/list";
     }
 
+    @GetMapping("/list")
+    public String listFragment(Model model) {
+        List<Instrument> instruments = instrumentCommandService.getAllInstruments();
+        model.addAttribute("instruments", instruments);
+        return "instruments/list :: #instruments-content";
+    }
+
     @GetMapping("/new")
     public String newInstrumentForm(Model model) {
         model.addAttribute("instrument", new InstrumentForm(null, "", ""));

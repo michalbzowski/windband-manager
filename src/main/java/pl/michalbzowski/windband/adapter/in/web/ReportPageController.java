@@ -22,6 +22,12 @@ public class ReportPageController {
         return "reports/list";
     }
 
+    @GetMapping("/list")
+    public String listFragment(Model model) {
+        model.addAttribute("currentMonth", YearMonth.now());
+        return "reports/list :: #reports-content";
+    }
+
     @GetMapping("/generate")
     public String generateReport(@RequestParam int year, @RequestParam int month, Model model) {
         YearMonth ym = YearMonth.of(year, month);

@@ -19,7 +19,7 @@
             <button type="submit" class="primary"
                     th:text="${instrument.id() != null && instrument.id() != 0 ? 'Zapisz zmiany' : 'Dodaj instrument'}">Dodaj</button>
             <button type="button" class="secondary"
-                    hx-get="/instruments" hx-target="#content"
+                    hx-get="/instruments/list" hx-target="#instruments-content"
                     hx-swap="innerHTML transition:true">Anuluj</button>
         </div>
     </form>
@@ -41,7 +41,7 @@
                 headers: {'Content-Type': 'application/json'},
                 body: JSON.stringify(data)
             }).then(function() {
-                htmx.ajax('GET', '/instruments', {target: '#content', swap: 'innerHTML transition:true'});
+                htmx.ajax('GET', '/instruments/list', {target: '#instruments-content', swap: 'innerHTML transition:true'});
             });
         }
     });

@@ -23,6 +23,12 @@ public class RehearsalPageController {
         return "rehearsals/list";
     }
 
+    @GetMapping("/list")
+    public String listFragment(Model model) {
+        model.addAttribute("rehearsals", rehearsalQueryService.getAllRehearsals());
+        return "rehearsals/list :: #rehearsals-content";
+    }
+
     @GetMapping("/new")
     public String newRehearsalForm(Model model) {
         model.addAttribute("today", LocalDate.now());
