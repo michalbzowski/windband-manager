@@ -36,6 +36,12 @@ public class MemberPageController {
         return "members/list";
     }
 
+    @GetMapping("/list")
+    public String listFragment(Model model) {
+        model.addAttribute("members", memberQueryService.getAllActiveMembers());
+        return "members/list :: #members-content";
+    }
+
     @GetMapping("/new")
     public String newMemberForm(Model model) {
         model.addAttribute("member", emptyMemberDto());

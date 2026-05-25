@@ -128,10 +128,10 @@
                         }));
                     });
                     Promise.all(attrPromises).then(function() {
-                        htmx.ajax('GET', '/members', {target: '#members-content', swap: 'innerHTML transition:true'});
+                        htmx.ajax('GET', '/members/list', {target: '#members-content', swap: 'innerHTML transition:true'});
                     });
                 } else {
-                    htmx.ajax('GET', '/members', {target: '#members-content', swap: 'innerHTML transition:true'});
+                    htmx.ajax('GET', '/members/list', {target: '#members-content', swap: 'innerHTML transition:true'});
                 }
             });
         }
