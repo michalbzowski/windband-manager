@@ -29,14 +29,14 @@
                     </thead>
                     <tbody>
                         <tr th:each="inst : ${instruments}">
-                            <td th:text="${inst.name()}">Trąbka</td>
-                            <td th:text="${inst.description()}">Instrument dęty blaszany</td>
+                            <td th:text="${inst.getName()}">Trąbka</td>
+                            <td th:text="${inst.getDescription()}">Instrument dęty blaszany</td>
                             <td>
                                 <button class="outline small"
-                                        th:hx-get="@{/instruments/{id}/edit(id=${inst.id()})}"
+                                        th:hx-get="@{/instruments/{id}/edit(id=${inst.getId()})}"
                                         hx-target="#instruments-content" hx-swap="innerHTML transition:true">Edytuj</button>
                                 <button class="outline small secondary"
-                                        th:hx-delete="@{/api/instruments/{id}(id=${inst.id()})}"
+                                        th:hx-delete="@{/api/instruments/{id}(id=${inst.getId()})}"
                                         hx-confirm="Czy na pewno chcesz usunąć ten instrument?"
                                         hx-on::after-request="htmx.ajax('GET', '/instruments/list', {target: '#instruments-content', swap: 'innerHTML transition:true'})">Usuń</button>
                             </td>
