@@ -29,13 +29,6 @@ public class MemberQueryService {
                 .orElseThrow(() -> new MemberNotFoundException(id));
     }
 
-    public List<MemberDto> getMembersByRole(String role) {
-        var memberRole = pl.michalbzowski.windband.domain.member.MemberRole.valueOf(role.toUpperCase());
-        return memberRepository.findByRole(memberRole).stream()
-                .map(this::toDto)
-                .toList();
-    }
-
     public long getActiveMemberCount() {
         return memberRepository.findAllActive().size();
     }
@@ -63,12 +56,11 @@ public class MemberQueryService {
                 m.isSenior(),
                 m.getEmail(),
                 m.getPhone(),
-                m.getRole().name(),
-                m.isOspMember(),
                 m.isActive(),
                 m.getPrimaryInstrument().map(inst -> inst.getName()).orElse(null),
                 m.getAllInstruments().stream().map(i -> i.getName()).toList(),
                 m.getJoinedDate(),
+                m.getResignedDate(),
                 m.getPrimaryInstrument().map(inst -> inst.getId()).orElse(null),
                 m.getPrimaryInstrument().map(inst -> inst.getName()).orElse(null)
         );

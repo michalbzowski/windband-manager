@@ -5,7 +5,6 @@ import org.springframework.stereotype.Component;
 import pl.michalbzowski.windband.domain.member.Instrument;
 import pl.michalbzowski.windband.domain.member.Member;
 import pl.michalbzowski.windband.domain.member.MemberRepository;
-import pl.michalbzowski.windband.domain.member.MemberRole;
 
 import java.util.List;
 import java.util.Optional;
@@ -29,11 +28,6 @@ public class MemberRepositoryAdapter implements MemberRepository {
     @Override
     public List<Member> findAllActive() {
         return springDataRepo.findByActiveTrue();
-    }
-
-    @Override
-    public List<Member> findByRole(MemberRole role) {
-        return springDataRepo.findByRole(role);
     }
 
     @Override

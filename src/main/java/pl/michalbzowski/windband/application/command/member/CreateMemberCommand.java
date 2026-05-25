@@ -9,8 +9,6 @@ public class CreateMemberCommand {
     private String firstName;
     private String lastName;
     private LocalDate dateOfBirth;
-    private String role;
-    private boolean ospMember;
     private String email;
     private String phone;
     private Long instrumentId;

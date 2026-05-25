@@ -31,41 +31,32 @@ public class Member {
     private String email;
     private String phone;
 
-    @Enumerated(EnumType.STRING)
-    @Column(nullable = false)
-    private MemberRole role;
-
-    @Column(nullable = false)
-    private boolean ospMember;
-
     @Column(nullable = false)
     private boolean active;
 
-    @OneToMany(mappedBy = "member", cascade = CascadeType.ALL, orphanRemoval = true)
-    private List<MemberInstrument> instruments = new ArrayList<>();
-
     @Column(nullable = false)
     private LocalDate joinedDate;
+
+    private LocalDate resignedDate;
+
+    @OneToMany(mappedBy = "member", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<MemberInstrument> instruments = new ArrayList<>();
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "band_id", nullable = false)
     private Band band;
 
-    private Member(String firstName, String lastName, LocalDate dateOfBirth,
-                   MemberRole role, boolean ospMember, Band band) {
+    private Member(String firstName, String lastName, LocalDate dateOfBirth, Band band) {
         this.firstName = Objects.requireNonNull(firstName, "firstName required");
         this.lastName = Objects.requireNonNull(lastName, "lastName required");
         this.dateOfBirth = Objects.requireNonNull(dateOfBirth, "dateOfBirth required");
-        this.role = Objects.requireNonNull(role, "role required");
-        this.ospMember = ospMember;
         this.active = true;
         this.joinedDate = LocalDate.now();
         this.band = Objects.requireNonNull(band, "band required");
     }
 
-    public static Member create(String firstName, String lastName, LocalDate dateOfBirth,
-                                MemberRole role, boolean ospMember, Band band) {
-        return new Member(firstName, lastName, dateOfBirth, role, ospMember, band);
+    public static Member create(String firstName, String lastName, LocalDate dateOfBirth, Band band) {
+        return new Member(firstName, lastName, dateOfBirth, band);
     }
 
     public void updateContact(String email, String phone) {
@@ -73,13 +64,10 @@ public class Member {
         this.phone = phone;
     }
 
-    public void update(String firstName, String lastName, LocalDate dateOfBirth,
-                       MemberRole role, boolean ospMember, boolean active) {
+    public void update(String firstName, String lastName, LocalDate dateOfBirth, boolean active) {
         this.firstName = Objects.requireNonNull(firstName, "firstName required");
         this.lastName = Objects.requireNonNull(lastName, "lastName required");
         this.dateOfBirth = Objects.requireNonNull(dateOfBirth, "dateOfBirth required");
-        this.role = Objects.requireNonNull(role, "role required");
-        this.ospMember = ospMember;
         this.active = active;
     }
 
@@ -109,12 +97,9 @@ public class Member {
                 .toList();
     }
 
-    public void markAsGuest() {
-        this.role = MemberRole.GUEST;
-    }
-
     public void deactivate() {
         this.active = false;
+        this.resignedDate = LocalDate.now();
     }
 
     public boolean isMinor() {

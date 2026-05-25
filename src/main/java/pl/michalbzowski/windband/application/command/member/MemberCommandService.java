@@ -19,13 +19,10 @@ public class MemberCommandService {
     public Member createMember(CreateMemberCommand cmd) {
         Band band = bandRepository.findById(1L)
                 .orElseThrow(() -> new IllegalStateException("Default band not found"));
-        MemberRole role = MemberRole.valueOf(cmd.getRole().toUpperCase());
         Member member = Member.create(
                 cmd.getFirstName(),
                 cmd.getLastName(),
                 cmd.getDateOfBirth(),
-                role,
-                cmd.isOspMember(),
                 band
         );
         if (cmd.getEmail() != null || cmd.getPhone() != null) {
@@ -46,9 +43,7 @@ public class MemberCommandService {
     public Member updateMember(UpdateMemberCommand cmd) {
         Member member = memberRepository.findById(cmd.getMemberId())
                 .orElseThrow(() -> new MemberNotFoundException(cmd.getMemberId()));
-        MemberRole role = MemberRole.valueOf(cmd.getRole().toUpperCase());
-        member.update(cmd.getFirstName(), cmd.getLastName(), cmd.getDateOfBirth(),
-                role, cmd.isOspMember(), cmd.isActive());
+        member.update(cmd.getFirstName(), cmd.getLastName(), cmd.getDateOfBirth(), cmd.isActive());
         member.updateContact(cmd.getEmail(), cmd.getPhone());
         return memberRepository.save(member);
     }

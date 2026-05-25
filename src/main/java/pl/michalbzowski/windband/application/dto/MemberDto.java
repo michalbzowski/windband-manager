@@ -13,12 +13,11 @@ public record MemberDto(
         boolean senior,
         String email,
         String phone,
-        String role,
-        boolean ospMember,
         boolean active,
         String primaryInstrument,
         List<String> allInstruments,
         LocalDate joinedDate,
+        LocalDate resignedDate,
         Long instrumentId,
         String instrumentName
 ) {}

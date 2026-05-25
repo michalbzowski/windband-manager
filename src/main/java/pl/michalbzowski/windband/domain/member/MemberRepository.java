@@ -11,8 +11,6 @@ public interface MemberRepository {
 
     List<Member> findAllActive();
 
-    List<Member> findByRole(MemberRole role);
-
     List<Member> findByInstrument(Instrument instrument);
 
     boolean existsById(Long id);

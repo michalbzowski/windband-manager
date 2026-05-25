@@ -75,8 +75,6 @@ class MemberQueryServiceTest {
         cmd.setFirstName(firstName);
         cmd.setLastName(lastName);
         cmd.setDateOfBirth(dob);
-        cmd.setRole("MEMBER");
-        cmd.setOspMember(false);
         return commandService.createMember(cmd);
     }
 }

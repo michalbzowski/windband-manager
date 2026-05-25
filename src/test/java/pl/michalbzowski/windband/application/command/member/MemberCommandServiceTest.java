@@ -44,8 +44,6 @@ class MemberCommandServiceTest {
         cmd.setFirstName("Jan");
         cmd.setLastName("Kowalski");
         cmd.setDateOfBirth(LocalDate.of(1990, 1, 15));
-        cmd.setRole("MEMBER");
-        cmd.setOspMember(true);
         cmd.setEmail("jan@email.pl");
         cmd.setPhone("123456789");
 
@@ -62,8 +60,6 @@ class MemberCommandServiceTest {
         cmd.setFirstName("Piotr");
         cmd.setLastName("Nowak");
         cmd.setDateOfBirth(LocalDate.of(1985, 6, 20));
-        cmd.setRole("MEMBER");
-        cmd.setOspMember(false);
 
         Member member = commandService.createMember(cmd);
         commandService.deactivateMember(member.getId());

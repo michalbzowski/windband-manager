@@ -23,11 +23,15 @@
                 <input type="date" name="dateOfBirth" th:value="${member.dateOfBirth()}" required>
             </label>
             <label>
-                Rola
-                <select name="role">
-                    <option value="MEMBER" th:selected="${member.role() == 'MEMBER'}">Członek</option>
-                    <option value="GUEST" th:selected="${member.role() == 'GUEST'}">Gość</option>
-                </select>
+                Data dołączenia
+                <input type="date" name="joinedDate" th:value="${member.joinedDate()}" readonly>
+            </label>
+        </div>
+
+        <div class="grid">
+            <label>
+                Data rezygnacji
+                <input type="date" name="resignedDate" th:value="${member.resignedDate()}" readonly>
             </label>
         </div>
 
@@ -53,10 +57,6 @@
                             th:selected="${member.instrumentId() != null && member.instrumentId() == inst.id()}">
                     </option>
                 </select>
-            </label>
-            <label>
-                <input type="checkbox" name="ospMember" th:checked="${member.ospMember()}">
-                Członek OSP
             </label>
         </div>
 
@@ -103,7 +103,6 @@
             var formData = new FormData(form);
             var data = {};
             formData.forEach(function(value, key) { data[key] = value; });
-            data.ospMember = formData.has('ospMember');
             data.active = formData.has('active');
             if (data.instrumentId === '') delete data.instrumentId;
 

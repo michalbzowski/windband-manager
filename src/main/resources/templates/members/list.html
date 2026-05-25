@@ -26,8 +26,8 @@
                             <th>Wiek</th>
                             <th>Instrument</th>
                             <th>Kontakt</th>
-                            <th>Rola</th>
-                            <th>OSP</th>
+                            <th>Dołączył</th>
+                            <th>Rezygnacja</th>
                             <th>Akcje</th>
                         </tr>
                     </thead>
@@ -49,11 +49,10 @@
                                 <small th:if="${m.phone}" th:text="${m.phone}">123456789</small>
                             </td>
                             <td>
-                                <span th:text="${m.role == 'GUEST' ? 'Gość' : 'Członek'}"
-                                      th:class="${m.role == 'GUEST' ? 'badge guest' : 'badge member'}">Członek</span>
+                                <small th:if="${m.joinedDate}" th:text="${#temporals.format(m.joinedDate, 'dd-MM-yyyy')}">01-01-2024</small>
                             </td>
                             <td>
-                                <span th:text="${m.ospMember ? '✅' : '❌'}">✅</span>
+                                <small th:if="${m.resignedDate}" th:text="${#temporals.format(m.resignedDate, 'dd-MM-yyyy')}">01-01-2025</small>
                             </td>
                             <td>
                                 <button class="outline small"
