@@ -26,6 +26,10 @@ public class MemberAttributeController {
 
     @GetMapping
     public String attributesPage(Model model) {
+        Band band = bandRepository.findById(1L).orElse(null);
+        if (band != null) {
+            model.addAttribute("attributeDefs", queryService.getAttributeDefsForBand(band));
+        }
         return "band/attribute-defs";
     }
 
@@ -58,9 +62,9 @@ public class MemberAttributeController {
         Band band = bandRepository.findById(1L)
                 .orElseThrow(() -> new IllegalArgumentException("Band not found: 1"));
         commandService.createAttributeDef(band, form.getName(), form.getType(), form.isRequired(), form.getDisplayOrder());
-        // Return updated list for HTMX
+        // Return updated page with list
         model.addAttribute("attributeDefs", queryService.getAttributeDefsForBand(band));
-        return "band/attribute-list";
+        return "band/attribute-defs";
     }
 
     @PutMapping("/{id}")
@@ -70,7 +74,7 @@ public class MemberAttributeController {
         if (band != null) {
             model.addAttribute("attributeDefs", queryService.getAttributeDefsForBand(band));
         }
-        return "band/attribute-list";
+        return "band/attribute-defs";
     }
 
     @DeleteMapping("/{id}")
@@ -80,7 +84,7 @@ public class MemberAttributeController {
         if (band != null) {
             model.addAttribute("attributeDefs", queryService.getAttributeDefsForBand(band));
         }
-        return "band/attribute-list";
+        return "band/attribute-defs";
     }
 
     @Data

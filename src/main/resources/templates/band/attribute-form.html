@@ -5,10 +5,9 @@
 
     <!-- New attribute form -->
     <form th:unless="${isEdit}"
-          hx-post="/band/attributes"
-          hx-target="#attrs-list"
-          hx-swap="innerHTML"
-          hx-on::after-request="document.getElementById('attribute-form-container').innerHTML=''">
+          hx-post="@{/band/attributes}"
+          hx-target="#attribute-defs-content"
+          hx-swap="innerHTML">
         <div class="grid">
             <label>
                 Nazwa *
@@ -42,9 +41,8 @@
     <!-- Edit attribute form -->
     <form th:if="${isEdit}"
           th:hx-put="@{/band/attributes/{id}(id=${attributeDefId})}"
-          hx-target="#attrs-list"
-          hx-swap="innerHTML"
-          hx-on::after-request="document.getElementById('attribute-form-container').innerHTML=''">
+          hx-target="#attribute-defs-content"
+          hx-swap="innerHTML">
         <div class="grid">
             <label>
                 Nazwa *

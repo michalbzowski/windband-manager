@@ -1,17 +1,58 @@
-<div id="attribute-defs-content">
-    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem;">
-        <h2>🏷️ Atrybuty muzyków</h2>
-        <button class="primary"
-                hx-get="/band/attributes/new"
-                hx-target="#attribute-form-container"
-                hx-swap="innerHTML">+ Dodaj atrybut</button>
-    </div>
+<!DOCTYPE html>
+<html lang="pl" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/layout :: head('Atrybuty')}"></head>
+<body>
+    <nav th:replace="~{fragments/layout :: nav}"></nav>
 
-    <!-- Form container: new/edit forms loaded here via HTMX -->
-    <div id="attribute-form-container"></div>
+    <main class="container" id="content">
+        <div id="attribute-defs-content">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem;">
+                <h2>🏷️ Atrybuty muzyków</h2>
+                <button class="primary"
+                        hx-get="@{/band/attributes/new}"
+                        hx-target="#attribute-form-container"
+                        hx-swap="innerHTML">+ Dodaj atrybut</button>
+            </div>
 
-    <!-- Attribute list -->
-    <div id="attrs-list" hx-get="/band/attributes/list" hx-trigger="load delay:100ms" hx-swap="innerHTML">
-        <p>Ładowanie...</p>
-    </div>
-</div>
+            <!-- Form container: new/edit forms loaded here via HTMX -->
+            <div id="attribute-form-container"></div>
+
+            <!-- Attribute list rendered directly -->
+            <div th:if="${attributeDefs == null or #lists.isEmpty(attributeDefs)}">
+                <p>Brak atrybutów w systemie. Dodaj pierwszy!</p>
+            </div>
+            <table th:if="${attributeDefs != null and !#lists.isEmpty(attributeDefs)}"
+                   style="width:100%; border-collapse:collapse;">
+                <thead>
+                    <tr style="border-bottom:2px solid var(--pico-muted-border-color);">
+                        <th style="text-align:left; padding:0.5rem;">Nazwa</th>
+                        <th style="text-align:left; padding:0.5rem;">Typ</th>
+                        <th style="text-align:center; padding:0.5rem;">Wymagany</th>
+                        <th style="text-align:center; padding:0.5rem;">Kolejność</th>
+                        <th style="text-align:left; padding:0.5rem;">Akcje</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr th:each="attrDef : ${attributeDefs}" style="border-bottom:1px solid var(--pico-muted-border-color);">
+                        <td style="padding:0.5rem;" th:text="${attrDef.name}">Nazwa</td>
+                        <td style="padding:0.5rem;" th:text="${attrDef.type == 'BOOLEAN'} ? 'Tak/Nie' : 'Tekst'">Typ</td>
+                        <td style="padding:0.5rem; text-align:center;" th:text="${attrDef.required} ? '✅' : '❌'">Wymagany</td>
+                        <td style="padding:0.5rem; text-align:center;" th:text="${attrDef.displayOrder}">0</td>
+                        <td style="padding:0.5rem;">
+                            <button class="outline small"
+                                    th:hx-get="@{/band/attributes/{id}/edit(id=${attrDef.id})}"
+                                    hx-target="#attribute-form-container"
+                                    hx-swap="innerHTML">Edytuj</button>
+                            <button class="outline small secondary"
+                                    th:hx-delete="@{/band/attributes/{id}(id=${attrDef.id})}"
+                                    hx-confirm="Czy na pewno chcesz usunąć ten atrybut?"
+                                    hx-target="#attribute-defs-content"
+                                    hx-swap="innerHTML">Usuń</button>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </main>
+</body>
+</html>
