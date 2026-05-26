@@ -25,17 +25,59 @@
                 <td th:text="${m.firstName + ' ' + m.lastName}">Jan Kowalski</td>
                 <td th:text="${m.primaryInstrument}">Trąbka</td>
                 <td>
-                    <select th:name="'status_' + ${m.id}" th:id="'status_' + ${m.id}">
-                        <option value="NO_RESPONSE">—</option>
-                        <option value="PRESENT">Obecny</option>
-                        <option value="EXCUSED">Nieobecny (uspraw.)</option>
-                        <option value="UNEXCUSED">Nieobecny (nieuspraw.)</option>
+                    <select class="status-select" data-member-id="${m.id}" th:name="'status_' + ${m.id}" th:id="'status_' + ${m.id}">
+                        <option value="PRESENT" th:selected="${m.status == 'PRESENT'}">Present</option>
+                        <option value="ABSENT" th:selected="${m.status == 'ABSENT'}">Absent</option>
+                        <option value="LATE" th:selected="${m.status == 'LATE'}">Late</option>
+                        <option value="EXCUSED" th:selected="${m.status == 'EXCUSED'}">Excused</option>
                     </select>
                 </td>
             </tr>
         </tbody>
     </table>
+</div>
 
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const statusSelects = document.querySelectorAll('.status-select');
+        const rehearsalId = [[${rehearsal.id}]];
+
+        statusSelects.forEach(select => {
+            select.addEventListener('change', function(event) {
+                const memberId = event.target.dataset.memberId;
+                const selectedStatus = event.target.value;
+
+                fetch('/api/rehearsals/' + rehearsalId + '/attendance', {
+                    method: 'PATCH',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        rehearsalId: rehearsalId,
+                        memberId: parseInt(memberId),
+                        status: selectedStatus
+                    }),
+                })
+                .then(response => {
+                    if (!response.ok) {
+                        console.error('Failed to update status:', response.statusText);
+                        // Optionally, revert the select to its previous value or show an error message
+                        // For simplicity, we'll just log the error here.
+                    } else {
+                        // Optionally, provide visual feedback to the user that the save was successful
+                        console.log('Status updated successfully');
+                        // To refresh the UI, you could trigger a HTMX reload of the container
+                        htmx.ajax('GET', '/rehearsals/' + rehearsalId, {target: '#rehearsals-content', swap: 'innerHTML'});
+                    }
+                })
+                .catch(error => {
+                    console.error('Error updating status:', error);
+                    // Optionally, revert the select to its previous value or show an error message
+                });
+            });
+        });
+    });
+</script>
     <div style="display:flex; gap:0.5rem; margin-top:1rem;">
         <button type="button" class="primary" id="save-attendance-btn">Zapisz obecność</button>
         <button type="button" class="secondary"
