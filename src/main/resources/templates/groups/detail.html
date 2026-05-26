@@ -1,81 +1,70 @@
-<!DOCTYPE html>
-<html lang="pl" xmlns:th="http://www.thymeleaf.org">
-<head th:replace="~{fragments/layout :: head('Grupa')}"></head>
-<body>
-    <nav th:replace="~{fragments/layout :: nav}"></nav>
+<div id="groups-content">
+    <h2>🎼 <span th:text="${group.name}">Sekcja dęta</span></h2>
 
-    <main class="container" id="content">
-        <div id="groups-content">
-            <h2>🎼 <span th:text="${group.name}">Sekcja dęta</span></h2>
+    <article>
+        <header>
+            <strong>Grupa: </strong>
+            <span th:text="${group.name}">Sekcja dęta</span>
+        </header>
+        <p th:if="${group.description}" th:text="${group.description}">Opis grupy</p>
+        <p><small th:text="'Liczba muzyków: ' + ${group.memberCount}">Liczba: 5</small></p>
+    </article>
 
-            <article>
-                <header>
-                    <strong>Grupa: </strong>
-                    <span th:text="${group.name}">Sekcja dęta</span>
-                </header>
-                <p th:if="${group.description}" th:text="${group.description}">Opis grupy</p>
-                <p><small th:text="'Liczba muzyków: ' + ${group.memberCount}">Liczba: 5</small></p>
-            </article>
+    <h3>Zarządzaj członkami</h3>
+    <div style="display:flex; gap:0.5rem; margin-bottom:1rem;">
+        <select id="add-member-select">
+            <option value="">Wybierz muzyka...</option>
+            <option th:each="m : ${members}" th:value="${m.id}"
+                    th:text="${m.firstName} + ' ' + ${m.lastName} + ' (' + ${m.primaryInstrument} + ')'">
+                Jan Kowalski (Trąbka)
+            </option>
+        </select>
+        <button class="outline" id="add-member-btn">Dodaj</button>
+    </div>
 
-            <h3>Zarządzaj członkami</h3>
-            <div style="display:flex; gap:0.5rem; margin-bottom:1rem;">
-                <select id="add-member-select">
-                    <option value="">Wybierz muzyka...</option>
-                    <option th:each="m : ${members}" th:value="${m.id}"
-                            th:text="${m.firstName} + ' ' + ${m.lastName} + ' (' + ${m.primaryInstrument} + ')'">
-                        Jan Kowalski (Trąbka)
-                    </option>
-                </select>
-                <button class="outline" id="add-member-btn">Dodaj</button>
-            </div>
+    <h3>Muzycy w grupie</h3>
 
-            <h3>Muzycy w grupie</h3>
+    <div th:if="${#lists.isEmpty(group.members)}">
+        <article><p>Brak muzyków w grupie.</p></article>
+    </div>
 
-            <div th:if="${#lists.isEmpty(group.members)}">
-                <article><p>Brak muzyków w grupie.</p></article>
-            </div>
+    <div th:unless="${#lists.isEmpty(group.members)}">
+        <table role="grid">
+            <thead>
+                <tr>
+                    <th>Muzyk</th>
+                    <th>Instrument</th>
+                    <th>Akcje</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr th:each="gm : ${group.members}">
+                    <td th:text="${gm.memberName}">Jan Kowalski</td>
+                    <td th:text="${gm.primaryInstrument}">Trąbka</td>
+                    <td>
+                        <form hx-post="@{/groups/{gid}/members/{mid}/remove(gid=${group.id}, mid=${gm.memberId})}"
+                              hx-target="#groups-content" hx-swap="innerHTML transition:true"
+                              style="display:inline;">
+                            <button class="outline small secondary" type="submit">Usuń</button>
+                        </form>
+                    </td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
 
-            <div th:unless="${#lists.isEmpty(group.members)}">
-                <table role="grid">
-                    <thead>
-                        <tr>
-                            <th>Muzyk</th>
-                            <th>Instrument</th>
-                            <th>Akcje</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <tr th:each="gm : ${group.members}">
-                            <td th:text="${gm.memberName}">Jan Kowalski</td>
-                            <td th:text="${gm.primaryInstrument}">Trąbka</td>
-                            <td>
-                                <form method="post"
-                                      th:action="@{/groups/{gid}/members/{mid}/remove(gid=${group.id}, mid=${gm.memberId})}"
-                                      style="display:inline;">
-                                    <button class="outline small secondary" type="submit">Usuń</button>
-                                </form>
-                            </td>
-                        </tr>
-                    </tbody>
-                </table>
-            </div>
-
-            <div style="display:flex; gap:0.5rem; margin-top:1rem;">
-                <form method="post"
-                      th:action="@{/groups/{id}/delete(id=${group.id})}"
-                      style="display:inline;"
-                      onsubmit="return confirm('Czy na pewno chcesz usunąć tę grupę?');">
-                    <button class="outline small secondary" type="submit">Usuń grupę</button>
-                </form>
-                <button type="button" class="secondary"
-                        hx-get="/groups/list" hx-target="#groups-content"
-                        hx-swap="innerHTML transition:true">Powrót</button>
-            </div>
-        </div>
-    </main>
-
-    <footer th:replace="~{fragments/layout :: footer}"></footer>
-</body>
+    <div style="display:flex; gap:0.5rem; margin-top:1rem;">
+        <form hx-post="@{/groups/{id}/delete(id=${group.id})}"
+              hx-target="#content" hx-swap="innerHTML transition:true"
+              style="display:inline;"
+              onsubmit="return confirm('Czy na pewno chcesz usunąć tę grupę?');">
+            <button class="outline small secondary" type="submit">Usuń grupę</button>
+        </form>
+        <button type="button" class="secondary"
+                hx-get="/groups/list" hx-target="#groups-content"
+                hx-swap="innerHTML transition:true">Powrót</button>
+    </div>
+</div>
 
 <script>
     document.getElementById('add-member-btn').addEventListener('click', function() {
@@ -92,4 +81,3 @@
         }
     });
 </script>
-</html>
