@@ -6,6 +6,8 @@ import org.springframework.transaction.annotation.Transactional;
 import pl.michalbzowski.windband.application.command.event.EventNotFoundException;
 import pl.michalbzowski.windband.application.dto.EventDetailDto;
 import pl.michalbzowski.windband.application.dto.EventDetailDto.ParticipationDto;
+import pl.michalbzowski.windband.application.dto.GroupSummaryDto;
+import pl.michalbzowski.windband.application.query.member.GroupQueryService;
 import pl.michalbzowski.windband.domain.event.BandEvent;
 import pl.michalbzowski.windband.domain.event.EventRepository;
 
@@ -18,6 +20,7 @@ import java.util.List;
 public class EventQueryService {
 
     private final EventRepository eventRepository;
+    private final GroupQueryService groupQueryService;
 
     public BandEvent getEventById(Long id) {
         return eventRepository.findById(id)
@@ -30,11 +33,15 @@ public class EventQueryService {
         List<ParticipationDto> participationDtos = event.getParticipations().stream()
                 .map(p -> new ParticipationDto(
                         p.getId(),
+                        p.getMember().getId(),
                         p.getMember().getFirstName() + " " + p.getMember().getLastName(),
                         p.getResponse().name(),
                         p.getPaymentAmount(),
                         p.getPaymentStatus().name()
                 ))
+                .toList();
+        List<GroupSummaryDto> groups = groupQueryService.getAllGroups().stream()
+                .map(g -> new GroupSummaryDto(g.id(), g.name(), g.description(), g.memberCount()))
                 .toList();
         return new EventDetailDto(
                 event.getId(),
@@ -47,7 +54,8 @@ public class EventQueryService {
                 event.getConfirmedCount(),
                 event.getDeclinedCount(),
                 event.getNoResponseCount(),
-                participationDtos
+                participationDtos,
+                groups
         );
     }
 

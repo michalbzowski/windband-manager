@@ -42,6 +42,14 @@ public class EventController {
         return ResponseEntity.ok().build();
     }
 
+    @PostMapping("/{id}/invite-group")
+    public ResponseEntity<Void> inviteGroup(@PathVariable Long id,
+                                             @RequestBody InviteGroupCommand cmd) {
+        cmd.setEventId(id);
+        commandService.inviteGroup(cmd);
+        return ResponseEntity.ok().build();
+    }
+
     @PostMapping("/{id}/response")
     public ResponseEntity<Void> recordResponse(@PathVariable Long id,
                                                 @RequestBody RecordResponseCommand cmd) {

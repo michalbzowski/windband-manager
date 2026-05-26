@@ -16,10 +16,12 @@ public record EventDetailDto(
         long confirmedCount,
         long declinedCount,
         long noResponseCount,
-        List<ParticipationDto> participations
+        List<ParticipationDto> participations,
+        List<GroupSummaryDto> allGroups
 ) {
     public record ParticipationDto(
             Long id,
+            Long memberId,
             String memberName,
             String response,
             BigDecimal paymentAmount,

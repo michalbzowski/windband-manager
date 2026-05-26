@@ -7,6 +7,8 @@ import pl.michalbzowski.windband.application.command.member.MemberNotFoundExcept
 import pl.michalbzowski.windband.domain.band.Band;
 import pl.michalbzowski.windband.domain.band.BandRepository;
 import pl.michalbzowski.windband.domain.event.*;
+import pl.michalbzowski.windband.domain.member.Group;
+import pl.michalbzowski.windband.domain.member.GroupRepository;
 import pl.michalbzowski.windband.domain.member.Member;
 import pl.michalbzowski.windband.domain.member.MemberRepository;
 
@@ -17,6 +19,7 @@ public class EventCommandService {
 
     private final EventRepository eventRepository;
     private final MemberRepository memberRepository;
+    private final GroupRepository groupRepository;
     private final BandRepository bandRepository;
 
     public BandEvent createEvent(CreateEventCommand cmd) {
@@ -78,5 +81,24 @@ public class EventCommandService {
         BandEvent event = eventRepository.findById(id)
                 .orElseThrow(() -> new EventNotFoundException(id));
         eventRepository.delete(event);
+    }
+
+    public void inviteGroup(InviteGroupCommand cmd) {
+        BandEvent event = eventRepository.findById(cmd.getEventId())
+                .orElseThrow(() -> new EventNotFoundException(cmd.getEventId()));
+        Group group = groupRepository.findById(cmd.getGroupId())
+                .orElseThrow(() -> new IllegalArgumentException("Group not found: " + cmd.getGroupId()));
+
+        // Get already invited member IDs to avoid duplicates
+        var invitedMemberIds = event.getParticipations().stream()
+                .map(p -> p.getMember().getId())
+                .collect(java.util.stream.Collectors.toSet());
+
+        for (var groupMember : group.getMembers()) {
+            if (!invitedMemberIds.contains(groupMember.getMember().getId())) {
+                event.inviteMember(groupMember.getMember());
+            }
+        }
+        eventRepository.save(event);
     }
 }

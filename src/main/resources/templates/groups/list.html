@@ -1,0 +1,39 @@
+<div id="groups-content">
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem;">
+        <h2>🎼 Grupy</h2>
+        <button hx-get="/groups/new" hx-target="#groups-content"
+                hx-swap="innerHTML transition:true" class="primary">+ Dodaj grupę</button>
+    </div>
+
+    <div th:if="${#lists.isEmpty(groups)}">
+        <article>
+            <p>Brak grup w systemie.</p>
+        </article>
+    </div>
+
+    <div th:unless="${#lists.isEmpty(groups)}">
+        <table role="grid">
+            <thead>
+                <tr>
+                    <th>Nazwa</th>
+                    <th>Opis</th>
+                    <th>Liczba muzyków</th>
+                    <th>Akcje</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr th:each="g : ${groups}">
+                    <td><strong th:text="${g.name}">Sekcja dęta</strong></td>
+                    <td th:text="${g.description}">Trąbki, skrzydlówki</td>
+                    <td th:text="${g.memberCount}">5</td>
+                    <td>
+                        <button class="outline small"
+                                th:hx-get="@{/groups/{id}(id=${g.id})}"
+                                hx-target="#groups-content"
+                                hx-swap="innerHTML transition:true">Szczegóły</button>
+                    </td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+</div>

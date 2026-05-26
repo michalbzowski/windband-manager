@@ -12,13 +12,31 @@
         <p th:if="${event.notes}" th:text="${event.notes}">Notatki</p>
     </article>
 
-    <h3>Zaproś muzyków</h3>
-    <div style="display:flex; gap:0.5rem; margin-bottom:1rem;">
-        <select id="invite-member-select">
-            <option value="">Wybierz muzyka...</option>
-            <option th:each="m : ${members}" th:value="${m.id}"
-                    th:text="${m.firstName} + ' ' + ${m.lastName}">Jan Kowalski</option>
-        </select>
+    <h3>Zaproś na wydarzenie</h3>
+
+    <div style="display:flex; gap:0.5rem; margin-bottom:0.5rem; align-items:flex-end;">
+        <div>
+            <label for="invite-group-select">Zaproś grupę</label>
+            <select id="invite-group-select">
+                <option value="">Wybierz grupę...</option>
+                <option th:each="g : ${event.allGroups}" th:value="${g.id}"
+                        th:text="${g.name} + ' (' + ${g.memberCount} + ' muzyków)'">
+                    Sekcja dęta (5 muzyków)
+                </option>
+            </select>
+        </div>
+        <button class="outline" id="invite-group-btn">Zaproś grupę</button>
+    </div>
+
+    <div style="display:flex; gap:0.5rem; margin-bottom:1rem; align-items:flex-end;">
+        <div>
+            <label for="invite-member-select">Zaproś pojedynczego muzyka</label>
+            <select id="invite-member-select">
+                <option value="">Wybierz muzyka...</option>
+                <option th:each="m : ${members}" th:value="${m.id}"
+                        th:text="${m.firstName} + ' ' + ${m.lastName}">Jan Kowalski</option>
+            </select>
+        </div>
         <button class="outline" id="invite-btn">Zaproś</button>
     </div>
 
@@ -50,15 +68,36 @@
 </div>
 
 <script th:inline="javascript">
+    var invitedMemberIds = new Set(
+        [[${event.participations}]].map(function(p) { return p.memberId; })
+    );
+
+    // Invite single member
     document.getElementById('invite-btn').addEventListener('click', function() {
         var select = document.getElementById('invite-member-select');
-        var memberId = select.value;
+        var memberId = parseInt(select.value);
         var eventId = [[${event.id}]];
         if (memberId) {
             fetch('/api/events/' + eventId + '/invite', {
                 method: 'POST',
                 headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({eventId: eventId, memberId: parseInt(memberId)})
+                body: JSON.stringify({eventId: eventId, memberId: memberId})
+            }).then(function() {
+                htmx.ajax('GET', '/events/' + eventId, {target: '#events-content', swap: 'innerHTML transition:true'});
+            });
+        }
+    });
+
+    // Invite entire group
+    document.getElementById('invite-group-btn').addEventListener('click', function() {
+        var select = document.getElementById('invite-group-select');
+        var groupId = select.value;
+        var eventId = [[${event.id}]];
+        if (groupId) {
+            fetch('/api/events/' + eventId + '/invite-group', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({eventId: eventId, groupId: parseInt(groupId)})
             }).then(function() {
                 htmx.ajax('GET', '/events/' + eventId, {target: '#events-content', swap: 'innerHTML transition:true'});
             });

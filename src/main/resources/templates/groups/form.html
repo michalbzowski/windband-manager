@@ -1,0 +1,18 @@
+<div id="groups-content">
+    <h2>🎼 Nowa grupa</h2>
+
+    <form method="post" action="/groups" hx-post="/groups" hx-target="#groups-content" hx-swap="innerHTML transition:true">
+        <label for="name">Nazwa</label>
+        <input type="text" id="name" name="name" required placeholder="np. Sekcja dęta">
+
+        <label for="description">Opis</label>
+        <textarea id="description" name="description" rows="2" placeholder="np. Trąbki, skrzydłówki"></textarea>
+
+        <div style="display:flex; gap:0.5rem; margin-top:1rem;">
+            <button type="submit" class="primary">Utwórz grupę</button>
+            <button type="button" class="secondary"
+                    hx-get="/groups/list" hx-target="#groups-content"
+                    hx-swap="innerHTML transition:true">Anuluj</button>
+        </div>
+    </form>
+</div>
