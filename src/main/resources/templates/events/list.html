@@ -37,7 +37,7 @@
                             <td th:text="${e.location}">Rynek</td>
                             <td th:text="${e.eventType}">CONCERT</td>
                             <td>
-                                <span th:text="${e.confirmedCount()} + ' ✅ / ' + ${e.declinedCount()} + ' ❌ / ' + ${e.noResponseCount} + ' ?'">5 ✅ / 2 ❌ / 8 ?</span>
+                                <span th:text="${e.confirmedCount} + ' ✅ / ' + ${e.declinedCount} + ' ❌ / ' + ${e.noResponseCount} + ' ?'">5 ✅ / 2 ❌ / 8 ?</span>
                             </td>
                             <td>
                                 <button class="outline small"
