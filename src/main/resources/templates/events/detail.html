@@ -53,7 +53,15 @@
         <tbody>
             <tr th:each="p : ${event.participations}">
                 <td th:text="${p.memberName}">Jan Kowalski</td>
-                <td th:text="${p.response}">NO_RESPONSE</td>
+                <td>
+                    <select class="response-select"
+                            th:data-event-id="${event.id}"
+                            th:data-member-id="${p.memberId}">
+                        <option value="CONFIRMED" th:selected="${p.response == 'CONFIRMED'}">✅ Będę</option>
+                        <option value="DECLINED" th:selected="${p.response == 'DECLINED'}">❌ Nie będę</option>
+                        <option value="NO_RESPONSE" th:selected="${p.response == 'NO_RESPONSE'}">❓ Dam znać</option>
+                    </select>
+                </td>
                 <td th:text="${p.paymentAmount}">0.00</td>
                 <td th:text="${p.paymentStatus}">NOT_APPLICABLE</td>
             </tr>
@@ -102,5 +110,21 @@
                 htmx.ajax('GET', '/events/' + eventId, {target: '#events-content', swap: 'innerHTML transition:true'});
             });
         }
+    });
+
+    // Record response
+    document.querySelectorAll('.response-select').forEach(function(select) {
+        select.addEventListener('change', function() {
+            var eventId = this.dataset.eventId;
+            var memberId = this.dataset.memberId;
+            var response = this.value;
+            fetch('/api/events/' + eventId + '/response', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({eventId: parseInt(eventId), memberId: parseInt(memberId), response: response})
+            }).then(function(res) {
+                if (!res.ok) console.error('Failed to update response');
+            });
+        });
     });
 </script>
