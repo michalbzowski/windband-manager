@@ -2,7 +2,7 @@
     <div th:if="${attributeDefs == null or #lists.isEmpty(attributeDefs)}">
         <p>Brak atrybutów w systemie. Dodaj pierwszy!</p>
     </div>
-    <table th:if="${attributeDefs != null and !#lists.isEmpty(attributeDefs)}" role="grid"
+    <table th:if="${attributeDefs != null and !#lists.isEmpty(attributeDefs)}"
            style="width:100%; border-collapse:collapse;">
         <thead>
             <tr style="border-bottom:2px solid var(--pico-muted-border-color);">

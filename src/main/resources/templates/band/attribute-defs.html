@@ -11,7 +11,7 @@
     <div id="attribute-form-container"></div>
 
     <!-- Attribute list -->
-    <div id="attrs-list" hx-get="/band/attributes/list" hx-trigger="load" hx-headers='{"Cache-Control": "no-cache"}'>
+    <div id="attrs-list" hx-get="/band/attributes/list" hx-trigger="load delay:100ms" hx-swap="innerHTML">
         <p>Ładowanie...</p>
     </div>
 </div>
