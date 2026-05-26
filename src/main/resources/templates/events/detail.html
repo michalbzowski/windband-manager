@@ -59,7 +59,8 @@
                             th:data-member-id="${p.memberId}">
                         <option value="CONFIRMED" th:selected="${p.response == 'CONFIRMED'}">✅ Będę</option>
                         <option value="DECLINED" th:selected="${p.response == 'DECLINED'}">❌ Nie będę</option>
-                        <option value="NO_RESPONSE" th:selected="${p.response == 'NO_RESPONSE'}">❓ Dam znać</option>
+                        <option value="LATER" th:selected="${p.response == 'LATER'}">⏳ Dam znać później</option>
+                        <option value="NO_RESPONSE" th:selected="${p.response == 'NO_RESPONSE'}">❓ Brak odpowiedzi</option>
                     </select>
                 </td>
                 <td th:text="${p.paymentAmount}">0.00</td>
