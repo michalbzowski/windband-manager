@@ -34,7 +34,7 @@
         </thead>
         <tbody>
             <tr th:each="p : ${event.participations}">
-                <td th:text="${p.member.firstName} + ' ' + ${p.member.lastName}">Jan Kowalski</td>
+                <td th:text="${p.memberName}">Jan Kowalski</td>
                 <td th:text="${p.response}">NO_RESPONSE</td>
                 <td th:text="${p.paymentAmount}">0.00</td>
                 <td th:text="${p.paymentStatus}">NOT_APPLICABLE</td>

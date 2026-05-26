@@ -37,7 +37,7 @@ public class EventPageController {
 
     @GetMapping("/{id}")
     public String eventDetail(@PathVariable Long id, Model model) {
-        model.addAttribute("event", eventQueryService.getEventById(id));
+        model.addAttribute("event", eventQueryService.getEventDetailById(id));
         model.addAttribute("members", memberQueryService.getAllActiveMembers());
         return "events/detail";
     }
