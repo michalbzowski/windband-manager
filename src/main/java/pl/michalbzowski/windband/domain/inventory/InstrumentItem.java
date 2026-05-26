@@ -34,6 +34,10 @@ public class InstrumentItem {
     @Column(nullable = false)
     private OwnershipStatus ownershipStatus;
 
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false)
+    private ItemLifecycleStatus lifecycleStatus;
+
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "band_id", nullable = false)
     private Band band;
@@ -42,6 +46,7 @@ public class InstrumentItem {
         this.name = Objects.requireNonNull(name, "name required");
         this.ownershipStatus = Objects.requireNonNull(ownershipStatus, "ownershipStatus required");
         this.band = Objects.requireNonNull(band, "band required");
+        this.lifecycleStatus = ItemLifecycleStatus.AVAILABLE;
     }
 
     public static InstrumentItem createOwned(String name, Band band) {
@@ -52,11 +57,10 @@ public class InstrumentItem {
         return new InstrumentItem(name, OwnershipStatus.BORROWED, band);
     }
 
-    public static InstrumentItem createMissing(String name, Band band) {
-        return new InstrumentItem(name, OwnershipStatus.MISSING, band);
-    }
-
     public void assignTo(Member member) {
+        if (lifecycleStatus == ItemLifecycleStatus.DISPOSED) {
+            throw new IllegalStateException("Cannot assign disposed instrument: " + id);
+        }
         this.assignedMember = member;
     }
 
@@ -72,5 +76,24 @@ public class InstrumentItem {
         this.brand = brand;
         this.serialNumber = serialNumber;
         this.description = description;
+    }
+
+    public void retireFromStock() {
+        this.lifecycleStatus = ItemLifecycleStatus.RETIRED_FROM_STOCK;
+    }
+
+    public void dispose() {
+        if (assignedMember != null) {
+            throw new IllegalStateException("Cannot dispose instrument that is assigned to a member: " + id);
+        }
+        this.lifecycleStatus = ItemLifecycleStatus.DISPOSED;
+    }
+
+    public boolean isAvailable() {
+        return lifecycleStatus == ItemLifecycleStatus.AVAILABLE;
+    }
+
+    public boolean isAssigned() {
+        return assignedMember != null;
     }
 }

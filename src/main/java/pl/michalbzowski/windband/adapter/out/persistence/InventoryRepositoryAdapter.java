@@ -2,9 +2,7 @@ package pl.michalbzowski.windband.adapter.out.persistence;
 
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
-import pl.michalbzowski.windband.domain.inventory.InstrumentItem;
-import pl.michalbzowski.windband.domain.inventory.InventoryRepository;
-import pl.michalbzowski.windband.domain.inventory.UniformItem;
+import pl.michalbzowski.windband.domain.inventory.*;
 import pl.michalbzowski.windband.domain.member.Member;
 
 import java.util.List;
@@ -16,6 +14,8 @@ public class InventoryRepositoryAdapter implements InventoryRepository {
 
     private final SpringDataUniformItemRepository uniformRepo;
     private final SpringDataInstrumentItemRepository instrumentRepo;
+    private final SpringDataInventoryOrderRepository orderRepo;
+    private final SpringDataAssetAssignmentHistoryRepository historyRepo;
 
     @Override
     public UniformItem saveUniformItem(UniformItem item) {
@@ -65,5 +65,55 @@ public class InventoryRepositoryAdapter implements InventoryRepository {
     @Override
     public void deleteInstrumentItem(InstrumentItem item) {
         instrumentRepo.delete(item);
+    }
+
+    @Override
+    public InventoryOrder saveOrder(InventoryOrder order) {
+        return orderRepo.save(order);
+    }
+
+    @Override
+    public List<InventoryOrder> findAllOrders() {
+        return orderRepo.findAllByOrderByCreatedAtDesc();
+    }
+
+    @Override
+    public List<InventoryOrder> findOrdersByMember(Member member) {
+        return orderRepo.findByRequesterOrderByCreatedAtDesc(member);
+    }
+
+    @Override
+    public List<InventoryOrder> findOrdersByStatus(OrderStatus status) {
+        return orderRepo.findByStatusOrderByCreatedAtDesc(status);
+    }
+
+    @Override
+    public Optional<InventoryOrder> findOrderById(Long id) {
+        return orderRepo.findById(id);
+    }
+
+    @Override
+    public AssetAssignmentHistory saveAssignment(AssetAssignmentHistory assignment) {
+        return historyRepo.save(assignment);
+    }
+
+    @Override
+    public List<AssetAssignmentHistory> findHistoryByUniformItem(UniformItem item) {
+        return historyRepo.findByUniformItemOrderByAssignedAtDesc(item);
+    }
+
+    @Override
+    public List<AssetAssignmentHistory> findHistoryByInstrumentItem(InstrumentItem item) {
+        return historyRepo.findByInstrumentItemOrderByAssignedAtDesc(item);
+    }
+
+    @Override
+    public List<AssetAssignmentHistory> findHistoryByMember(Member member) {
+        return historyRepo.findByMemberOrderByAssignedAtDesc(member);
+    }
+
+    @Override
+    public List<AssetAssignmentHistory> findActiveAssignments() {
+        return historyRepo.findByActiveTrue();
     }
 }

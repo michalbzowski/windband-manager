@@ -8,62 +8,557 @@
         <div id="inventory-content">
             <h2>📦 Inwentaryzacja</h2>
 
-            <div class="grid">
-                <div>
-                    <h3>🎖️ Stroje</h3>
-                    <table role="grid">
+            <!-- Tabs -->
+            <div style="display:flex; gap:0.5rem; margin-bottom:1rem; border-bottom:1px solid #ddd;">
+                <button class="tab-btn primary" data-tab="orders"
+                        onclick="switchTab('orders')">📋 Zamówienia</button>
+                <button class="tab-btn secondary" data-tab="uniforms"
+                        onclick="switchTab('uniforms')">🎖️ Stroje</button>
+                <button class="tab-btn secondary" data-tab="instruments"
+                        onclick="switchTab('instruments')">🎺 Instrumenty</button>
+            </div>
+
+            <!-- ===== ORDERS TAB ===== -->
+            <div id="tab-orders">
+                <div id="orders-content">
+                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem;">
+                        <h3>Zamówienia</h3>
+                        <button class="primary small" onclick="showOrderForm()">+ Nowe zamówienie</button>
+                    </div>
+
+                    <!-- New order form (hidden by default) -->
+                    <div id="order-form" style="display:none; margin-bottom:1rem;">
+                        <article>
+                            <h4>Nowe zamówienie</h4>
+                            <div style="display:flex; gap:0.5rem; flex-wrap:wrap; align-items:flex-end;">
+                                <div>
+                                    <label for="order-member">Członek</label>
+                                    <select id="order-member">
+                                        <option value="">Wybierz...</option>
+                                        <option th:each="m : ${members}" th:value="${m.id}"
+                                                th:text="${m.firstName} + ' ' + ${m.lastName}">Jan Kowalski</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label for="order-name">Nazwa elementu</label>
+                                    <input id="order-name" type="text" placeholder="np. Czapka koncertowa">
+                                </div>
+                                <div>
+                                    <label for="order-type">Typ</label>
+                                    <select id="order-type">
+                                        <option value="UNIFORM">Stroj</option>
+                                        <option value="INSTRUMENT">Instrument</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label for="order-desc">Opis</label>
+                                    <input id="order-desc" type="text" placeholder="Rozmiar, kolor...">
+                                </div>
+                                <button class="primary small" onclick="submitOrder()">Złóż</button>
+                                <button class="secondary small" onclick="hideOrderForm()">Anuluj</button>
+                            </div>
+                        </article>
+                    </div>
+
+                    <div th:if="${#lists.isEmpty(orders)}">
+                        <article><p>Brak zamówień.</p></article>
+                    </div>
+
+                    <div th:unless="${#lists.isEmpty(orders)}">
+                        <table role="grid">
+                            <thead>
+                                <tr>
+                                    <th>Data</th>
+                                    <th>Składający</th>
+                                    <th>Element</th>
+                                    <th>Typ</th>
+                                    <th>Status</th>
+                                    <th>Akcje</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr th:each="o : ${orders}">
+                                    <td th:text="${#temporals.format(o.createdAt, 'dd.MM.yyyy HH:mm')}">01.01.2025</td>
+                                    <td th:text="${o.requesterName}">Jan Kowalski</td>
+                                    <td th:text="${o.itemName}">Czapka</td>
+                                    <td th:text="${o.orderType}">UNIFORM</td>
+                                    <td>
+                                        <span th:switch="${o.status}">
+                                            <span th:case="'SUBMITTED'" class="badge info">Złożono</span>
+                                            <span th:case="'PENDING_APPROVAL'" class="badge warning">Do akceptacji</span>
+                                            <span th:case="'IN_PRODUCTION'" class="badge warning">W realizacji</span>
+                                            <span th:case="'SHIPPED'" class="badge info">Wysłano</span>
+                                            <span th:case="'DELIVERED'" class="badge success">Odebrano</span>
+                                            <span th:case="'CANCELLED'" class="badge error">Anulowano</span>
+                                        </span>
+                                    </td>
+                                    <td>
+                                        <div style="display:flex; gap:0.25rem; flex-wrap:wrap;">
+                                            <button th:if="${o.status == 'SUBMITTED'}"
+                                                    class="outline small"
+                                                    th:onclick="'advanceOrder(' + ${o.id} + ', \'approve\')'">✓ Akceptuj</button>
+                                            <button th:if="${o.status == 'PENDING_APPROVAL'}"
+                                                    class="outline small"
+                                                    th:onclick="'advanceOrder(' + ${o.id} + ', \'produce\')'">⚙ Realizuj</button>
+                                            <button th:if="${o.status == 'IN_PRODUCTION'}"
+                                                    class="outline small"
+                                                    th:onclick="'advanceOrder(' + ${o.id} + ', \'ship\')'">📦 Wyślij</button>
+                                            <button th:if="${o.status == 'SHIPPED'}"
+                                                    class="outline small"
+                                                    th:onclick="'advanceOrder(' + ${o.id} + ', \'deliver\')'">✅ Odebrano</button>
+                                            <button th:if="${o.status != 'DELIVERED' and o.status != 'CANCELLED'}"
+                                                    class="outline small secondary"
+                                                    th:onclick="'advanceOrder(' + ${o.id} + ', \'cancel\')'">✕ Anuluj</button>
+                                        </div>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ===== UNIFORMS TAB ===== -->
+            <div id="tab-uniforms" style="display:none;">
+                <div id="uniforms-content">
+                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem;">
+                        <h3>Stroje</h3>
+                        <button class="primary small" onclick="showUniformForm()">+ Dodaj stroj</button>
+                    </div>
+
+                    <!-- Add form (hidden) -->
+                    <div id="uniform-form" style="display:none; margin-bottom:1rem;">
+                        <article>
+                            <h4>Nowy element stroju</h4>
+                            <div style="display:flex; gap:0.5rem; flex-wrap:wrap; align-items:flex-end;">
+                                <div>
+                                    <label for="uni-name">Nazwa</label>
+                                    <input id="uni-name" type="text" placeholder="np. Czapka">
+                                </div>
+                                <div>
+                                    <label for="uni-desc">Opis</label>
+                                    <input id="uni-desc" type="text" placeholder="Rozmiar, kolor...">
+                                </div>
+                                <div>
+                                    <label for="uni-member">Przydziel do</label>
+                                    <select id="uni-member">
+                                        <option value="">— Wolny —</option>
+                                        <option th:each="m : ${members}" th:value="${m.id}"
+                                                th:text="${m.firstName} + ' ' + ${m.lastName}">Jan</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label for="uni-ownership">Status</label>
+                                    <select id="uni-ownership">
+                                        <option value="OWNED">Własny</option>
+                                        <option value="BORROWED">Wypożyczony</option>
+                                    </select>
+                                </div>
+                                <button class="primary small" onclick="submitUniform()">Dodaj</button>
+                                <button class="secondary small" onclick="hideUniformForm()">Anuluj</button>
+                            </div>
+                        </article>
+                    </div>
+
+                    <div th:if="${#lists.isEmpty(uniformItems)}">
+                        <article><p>Brak elementów stroju.</p></article>
+                    </div>
+
+                    <table th:unless="${#lists.isEmpty(uniformItems)}" role="grid">
                         <thead>
                             <tr>
-                                <th>Element</th>
-                                <th>Muzyk</th>
-                                <th>Status</th>
+                                <th>Nazwa</th>
+                                <th>Opis</th>
+                                <th>Przydzielony do</th>
+                                <th>Własność</th>
+                                <th>Stan</th>
+                                <th>Akcje</th>
                             </tr>
                         </thead>
                         <tbody>
                             <tr th:each="u : ${uniformItems}">
                                 <td th:text="${u.name}">Czapka</td>
-                                <td th:text="${u.assignedMember != null ? u.assignedMember.firstName + ' ' + u.assignedMember.lastName : '-'}">Jan Kowalski</td>
+                                <td th:text="${u.description}">Czarna, rozmiar L</td>
                                 <td>
-                                    <span th:switch="${u.ownershipStatus.name()}">
-                                        <span th:case="'OWNED'" th:text="'✅ Własny'">Własny</span>
-                                        <span th:case="'BORROWED'" th:text="'🔄 Wypożyczony'">Wypożyczony</span>
-                                        <span th:case="'MISSING'" th:text="'❌ Brak'">Brak</span>
+                                    <span th:if="${u.assignedMemberName != null}" th:text="${u.assignedMemberName}">Jan</span>
+                                    <span th:if="${u.assignedMemberName == null}" style="color:#999;">— Wolny —</span>
+                                </td>
+                                <td>
+                                    <span th:switch="${u.ownershipStatus}">
+                                        <span th:case="'OWNED'">✅ Własny</span>
+                                        <span th:case="'BORROWED'">🔄 Wypożyczony</span>
+                                        <span th:case="'MISSING'">❌ Brak</span>
                                     </span>
+                                </td>
+                                <td>
+                                    <span th:switch="${u.lifecycleStatus}">
+                                        <span th:case="'AVAILABLE'">🟢 Dostępny</span>
+                                        <span th:case="'RETIRED_FROM_STOCK'">🟡 Zlikwidowany ze stanu</span>
+                                        <span th:case="'DISPOSED'">🔴 Zlikwidowany</span>
+                                    </span>
+                                </td>
+                                <td>
+                                    <div style="display:flex; gap:0.25rem; flex-wrap:wrap;">
+                                        <button th:if="${u.assignedMemberName == null && u.lifecycleStatus != 'DISPOSED'}"
+                                                class="outline small"
+                                                th:onclick="'assignUniform(' + ${u.id} + ')'">👤 Przydziel</button>
+                                        <button th:if="${u.assignedMemberName != null}"
+                                                class="outline small"
+                                                th:onclick="'returnUniform(' + ${u.id} + ')'">↩ Zwróć</button>
+                                        <button th:if="${u.lifecycleStatus == 'AVAILABLE'}"
+                                                class="outline small secondary"
+                                                th:onclick="'retireUniform(' + ${u.id} + ')'">📦 Likwiduj ze stanu</button>
+                                        <button th:if="${u.lifecycleStatus != 'DISPOSED' && u.assignedMemberName == null}"
+                                                class="outline small secondary"
+                                                th:onclick="'disposeUniform(' + ${u.id} + ')'">🗑 Zlikwiduj</button>
+                                        <button th:if="${u.lifecycleStatus != 'DISPOSED'}"
+                                                class="outline small"
+                                                th:onclick="'showUniformHistory(' + ${u.id} + ')'">📜 Historia</button>
+                                    </div>
                                 </td>
                             </tr>
                         </tbody>
                     </table>
-                </div>
 
-                <div>
-                    <h3>🎺 Instrumenty</h3>
-                    <table role="grid">
+                    <!-- Assign modal -->
+                    <div id="uni-assign-modal" style="display:none; margin-top:1rem;">
+                        <article>
+                            <h4>Przydziel stroj</h4>
+                            <input type="hidden" id="uni-assign-item-id">
+                            <div style="display:flex; gap:0.5rem; align-items:flex-end;">
+                                <div>
+                                    <label for="uni-assign-member">Muzyk</label>
+                                    <select id="uni-assign-member">
+                                        <option value="">Wybierz...</option>
+                                        <option th:each="m : ${members}" th:value="${m.id}"
+                                                th:text="${m.firstName} + ' ' + ${m.lastName}">Jan</option>
+                                    </select>
+                                </div>
+                                <button class="primary small" onclick="confirmAssignUniform()">OK</button>
+                                <button class="secondary small" onclick="closeUniAssignModal()">Anuluj</button>
+                            </div>
+                        </article>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ===== INSTRUMENTS TAB ===== -->
+            <div id="tab-instruments" style="display:none;">
+                <div id="instruments-content">
+                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem;">
+                        <h3>Instrumenty</h3>
+                        <button class="primary small" onclick="showInstrumentForm()">+ Dodaj instrument</button>
+                    </div>
+
+                    <!-- Add form (hidden) -->
+                    <div id="instrument-form" style="display:none; margin-bottom:1rem;">
+                        <article>
+                            <h4>Nowy instrument</h4>
+                            <div style="display:flex; gap:0.5rem; flex-wrap:wrap; align-items:flex-end;">
+                                <div>
+                                    <label for="inst-name">Nazwa</label>
+                                    <input id="inst-name" type="text" placeholder="np. Trąbka">
+                                </div>
+                                <div>
+                                    <label for="inst-brand">Marka</label>
+                                    <input id="inst-brand" type="text" placeholder="Yamaha">
+                                </div>
+                                <div>
+                                    <label for="inst-serial">Nr seryjny</label>
+                                    <input id="inst-serial" type="text">
+                                </div>
+                                <div>
+                                    <label for="inst-desc">Opis</label>
+                                    <input id="inst-desc" type="text">
+                                </div>
+                                <div>
+                                    <label for="inst-member">Przydziel do</label>
+                                    <select id="inst-member">
+                                        <option value="">— Wolny —</option>
+                                        <option th:each="m : ${members}" th:value="${m.id}"
+                                                th:text="${m.firstName} + ' ' + ${m.lastName}">Jan</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label for="inst-ownership">Status</label>
+                                    <select id="inst-ownership">
+                                        <option value="OWNED">Własny</option>
+                                        <option value="BORROWED">Wypożyczony</option>
+                                    </select>
+                                </div>
+                                <button class="primary small" onclick="submitInstrument()">Dodaj</button>
+                                <button class="secondary small" onclick="hideInstrumentForm()">Anuluj</button>
+                            </div>
+                        </article>
+                    </div>
+
+                    <div th:if="${#lists.isEmpty(instrumentItems)}">
+                        <article><p>Brak instrumentów.</p></article>
+                    </div>
+
+                    <table th:unless="${#lists.isEmpty(instrumentItems)}" role="grid">
                         <thead>
                             <tr>
-                                <th>Instrument</th>
-                                <th>Muzyk</th>
-                                <th>Status</th>
+                                <th>Nazwa</th>
+                                <th>Marka</th>
+                                <th>Nr seryjny</th>
+                                <th>Przydzielony do</th>
+                                <th>Własność</th>
+                                <th>Stan</th>
+                                <th>Akcje</th>
                             </tr>
                         </thead>
                         <tbody>
                             <tr th:each="i : ${instrumentItems}">
                                 <td th:text="${i.name}">Trąbka</td>
-                                <td th:text="${i.assignedMember != null ? i.assignedMember.firstName + ' ' + i.assignedMember.lastName : '-'}">Jan Kowalski</td>
+                                <td th:text="${i.brand}">Yamaha</td>
+                                <td th:text="${i.serialNumber}">YTR-12345</td>
                                 <td>
-                                    <span th:switch="${i.ownershipStatus.name()}">
-                                        <span th:case="'OWNED'" th:text="'✅ Własny'">Własny</span>
-                                        <span th:case="'BORROWED'" th:text="'🔄 Wypożyczony'">Wypożyczony</span>
-                                        <span th:case="'MISSING'" th:text="'❌ Brak'">Brak</span>
+                                    <span th:if="${i.assignedMemberName != null}" th:text="${i.assignedMemberName}">Jan</span>
+                                    <span th:if="${i.assignedMemberName == null}" style="color:#999;">— Wolny —</span>
+                                </td>
+                                <td>
+                                    <span th:switch="${i.ownershipStatus}">
+                                        <span th:case="'OWNED'">✅ Własny</span>
+                                        <span th:case="'BORROWED'">🔄 Wypożyczony</span>
+                                        <span th:case="'MISSING'">❌ Brak</span>
                                     </span>
+                                </td>
+                                <td>
+                                    <span th:switch="${i.lifecycleStatus}">
+                                        <span th:case="'AVAILABLE'">🟢 Dostępny</span>
+                                        <span th:case="'RETIRED_FROM_STOCK'">🟡 Zlikwidowany ze stanu</span>
+                                        <span th:case="'DISPOSED'">🔴 Zlikwidowany</span>
+                                    </span>
+                                </td>
+                                <td>
+                                    <div style="display:flex; gap:0.25rem; flex-wrap:wrap;">
+                                        <button th:if="${i.assignedMemberName == null && i.lifecycleStatus != 'DISPOSED'}"
+                                                class="outline small"
+                                                th:onclick="'assignInstrument(' + ${i.id} + ')'">👤 Przydziel</button>
+                                        <button th:if="${i.assignedMemberName != null}"
+                                                class="outline small"
+                                                th:onclick="'returnInstrument(' + ${i.id} + ')'">↩ Zwróć</button>
+                                        <button th:if="${i.lifecycleStatus == 'AVAILABLE'}"
+                                                class="outline small secondary"
+                                                th:onclick="'retireInstrument(' + ${i.id} + ')'">📦 Likwiduj ze stanu</button>
+                                        <button th:if="${i.lifecycleStatus != 'DISPOSED' && i.assignedMemberName == null}"
+                                                class="outline small secondary"
+                                                th:onclick="'disposeInstrument(' + ${i.id} + ')'">🗑 Zlikwiduj</button>
+                                        <button th:if="${i.lifecycleStatus != 'DISPOSED'}"
+                                                class="outline small"
+                                                th:onclick="'showInstrumentHistory(' + ${i.id} + ')'">📜 Historia</button>
+                                    </div>
                                 </td>
                             </tr>
                         </tbody>
                     </table>
+
+                    <!-- Assign modal -->
+                    <div id="inst-assign-modal" style="display:none; margin-top:1rem;">
+                        <article>
+                            <h4>Przydziel instrument</h4>
+                            <input type="hidden" id="inst-assign-item-id">
+                            <div style="display:flex; gap:0.5rem; align-items:flex-end;">
+                                <div>
+                                    <label for="inst-assign-member">Muzyk</label>
+                                    <select id="inst-assign-member">
+                                        <option value="">Wybierz...</option>
+                                        <option th:each="m : ${members}" th:value="${m.id}"
+                                                th:text="${m.firstName} + ' ' + ${m.lastName}">Jan</option>
+                                    </select>
+                                </div>
+                                <button class="primary small" onclick="confirmAssignInstrument()">OK</button>
+                                <button class="secondary small" onclick="closeInstAssignModal()">Anuluj</button>
+                            </div>
+                        </article>
+                    </div>
                 </div>
             </div>
+
         </div>
     </main>
 
     <footer th:replace="~{fragments/layout :: footer}"></footer>
+
+    <style>
+        .badge { padding:0.15rem 0.5rem; border-radius:0.25rem; font-size:0.75rem; font-weight:600; }
+        .badge.info { background:#e3f2fd; color:#1565c0; }
+        .badge.warning { background:#fff3e0; color:#e65100; }
+        .badge.success { background:#e8f5e9; color:#2e7d32; }
+        .badge.error { background:#ffebee; color:#c62828; }
+        .tab-btn { padding:0.5rem 1rem; border:none; cursor:pointer; border-radius:0.25rem 0.25rem 0 0; }
+    </style>
+
+    <script>
+        // === Tab switching ===
+        function switchTab(tab) {
+            document.querySelectorAll('[id^="tab-"]').forEach(function(el) { el.style.display = 'none'; });
+            document.getElementById('tab-' + tab).style.display = 'block';
+            document.querySelectorAll('.tab-btn').forEach(function(btn) {
+                btn.classList.remove('primary'); btn.classList.add('secondary');
+            });
+            document.querySelector('[data-tab="' + tab + '"]').classList.add('primary');
+            document.querySelector('[data-tab="' + tab + '"]').classList.remove('secondary');
+        }
+
+        // === Order form ===
+        function showOrderForm() { document.getElementById('order-form').style.display = 'block'; }
+        function hideOrderForm() { document.getElementById('order-form').style.display = 'none'; }
+        function submitOrder() {
+            var memberId = document.getElementById('order-member').value;
+            var itemName = document.getElementById('order-name').value;
+            var type = document.getElementById('order-type').value;
+            var desc = document.getElementById('order-desc').value;
+            if (!memberId || !itemName) { alert('Wypełnij członka i nazwę'); return; }
+            var url = type === 'UNIFORM' ? '/api/inventory/orders/uniform' : '/api/inventory/orders/instrument';
+            fetch(url, { method:'POST', headers:{'Content-Type':'application/json'},
+                body: JSON.stringify({memberId: parseInt(memberId), itemName: itemName, description: desc})
+            }).then(function(r) { if(r.ok) { hideOrderForm(); refreshTab('orders'); } });
+        }
+        function advanceOrder(id, action) {
+            fetch('/api/inventory/orders/' + id + '/' + action, {method:'POST'})
+            .then(function(r) { if(r.ok) refreshTab('orders'); });
+        }
+
+        // === Uniform form ===
+        function showUniformForm() { document.getElementById('uniform-form').style.display = 'block'; }
+        function hideUniformForm() { document.getElementById('uniform-form').style.display = 'none'; }
+        function submitUniform() {
+            var name = document.getElementById('uni-name').value;
+            var desc = document.getElementById('uni-desc').value;
+            var memberId = document.getElementById('uni-member').value;
+            var ownership = document.getElementById('uni-ownership').value;
+            if (!name) { alert('Wypełnij nazwę'); return; }
+            fetch('/api/inventory/uniforms', { method:'POST', headers:{'Content-Type':'application/json'},
+                body: JSON.stringify({name:name, description:desc, memberId:memberId?parseInt(memberId):null, ownershipStatus:ownership})
+            }).then(function(r) { if(r.ok) { hideUniformForm(); refreshTab('uniforms'); } });
+        }
+
+        // === Instrument form ===
+        function showInstrumentForm() { document.getElementById('instrument-form').style.display = 'block'; }
+        function hideInstrumentForm() { document.getElementById('instrument-form').style.display = 'none'; }
+        function submitInstrument() {
+            var name = document.getElementById('inst-name').value;
+            var brand = document.getElementById('inst-brand').value;
+            var serial = document.getElementById('inst-serial').value;
+            var desc = document.getElementById('inst-desc').value;
+            var memberId = document.getElementById('inst-member').value;
+            var ownership = document.getElementById('inst-ownership').value;
+            if (!name) { alert('Wypełnij nazwę'); return; }
+            fetch('/api/inventory/instruments', { method:'POST', headers:{'Content-Type':'application/json'},
+                body: JSON.stringify({name:name, brand:brand, serialNumber:serial, description:desc,
+                    memberId:memberId?parseInt(memberId):null, ownershipStatus:ownership})
+            }).then(function(r) { if(r.ok) { hideInstrumentForm(); refreshTab('instruments'); } });
+        }
+
+        // === Assign / Return / Retire / Dispose ===
+        function assignUniform(id) {
+            document.getElementById('uni-assign-item-id').value = id;
+            document.getElementById('uni-assign-modal').style.display = 'block';
+        }
+        function confirmAssignUniform() {
+            var itemId = document.getElementById('uni-assign-item-id').value;
+            var memberId = document.getElementById('uni-assign-member').value;
+            if (!memberId) { alert('Wybierz muzyka'); return; }
+            fetch('/api/inventory/uniforms/' + itemId + '/assign', { method:'POST', headers:{'Content-Type':'application/json'},
+                body: JSON.stringify({memberId: parseInt(memberId)})
+            }).then(function(r) { if(r.ok) { closeUniAssignModal(); refreshTab('uniforms'); } });
+        }
+        function closeUniAssignModal() { document.getElementById('uni-assign-modal').style.display = 'none'; }
+        function returnUniform(id) {
+            fetch('/api/inventory/uniforms/' + id + '/return', {method:'POST', headers:{'Content-Type':'application/json'}, body:'{}'})
+            .then(function(r) { if(r.ok) refreshTab('uniforms'); });
+        }
+        function retireUniform(id) {
+            if (!confirm('Zlikwidować ze stanu?')) return;
+            fetch('/api/inventory/uniforms/' + id + '/retire', {method:'POST'})
+            .then(function(r) { if(r.ok) refreshTab('uniforms'); });
+        }
+        function disposeUniform(id) {
+            if (!confirm('Zlikwidować fizycznie?')) return;
+            fetch('/api/inventory/uniforms/' + id + '/dispose', {method:'POST'})
+            .then(function(r) { if(r.ok) refreshTab('uniforms'); });
+        }
+
+        function assignInstrument(id) {
+            document.getElementById('inst-assign-item-id').value = id;
+            document.getElementById('inst-assign-modal').style.display = 'block';
+        }
+        function confirmAssignInstrument() {
+            var itemId = document.getElementById('inst-assign-item-id').value;
+            var memberId = document.getElementById('inst-assign-member').value;
+            if (!memberId) { alert('Wybierz muzyka'); return; }
+            fetch('/api/inventory/instruments/' + itemId + '/assign', { method:'POST', headers:{'Content-Type':'application/json'},
+                body: JSON.stringify({memberId: parseInt(memberId)})
+            }).then(function(r) { if(r.ok) { closeInstAssignModal(); refreshTab('instruments'); } });
+        }
+        function closeInstAssignModal() { document.getElementById('inst-assign-modal').style.display = 'none'; }
+        function returnInstrument(id) {
+            fetch('/api/inventory/instruments/' + id + '/return', {method:'POST', headers:{'Content-Type':'application/json'}, body:'{}'})
+            .then(function(r) { if(r.ok) refreshTab('instruments'); });
+        }
+        function retireInstrument(id) {
+            if (!confirm('Zlikwidować ze stanu?')) return;
+            fetch('/api/inventory/instruments/' + id + '/retire', {method:'POST'})
+            .then(function(r) { if(r.ok) refreshTab('instruments'); });
+        }
+        function disposeInstrument(id) {
+            if (!confirm('Zlikwidować fizycznie?')) return;
+            fetch('/api/inventory/instruments/' + id + '/dispose', {method:'POST'})
+            .then(function(r) { if(r.ok) refreshTab('instruments'); });
+        }
+
+        // === History ===
+        function showUniformHistory(id) {
+            fetch('/api/inventory/uniforms/' + id + '/history')
+            .then(function(r) { return r.json(); })
+            .then(function(data) { showHistoryModal('uniform', data); });
+        }
+        function showInstrumentHistory(id) {
+            fetch('/api/inventory/instruments/' + id + '/history')
+            .then(function(r) { return r.json(); })
+            .then(function(data) { showHistoryModal('instrument', data); });
+        }
+        function showHistoryModal(type, data) {
+            var html = '<article><h4>📜 Historia przypisań</h4>';
+            if (!data || data.length === 0) { html += '<p>Brak historii.</p>'; }
+            else {
+                html += '<table role="grid"><thead><tr><th>Muzyk</th><th>Od</th><th>Do</th><th>Status</th></tr></thead><tbody>';
+                data.forEach(function(h) {
+                    html += '<tr><td>' + h.memberName + '</td><td>' + h.assignedAt + '</td><td>' +
+                        (h.returnedAt || '<em>aktywne</em>') + '</td><td>' +
+                        (h.active ? '<span class="badge success">Aktywne</span>' : '<span class="badge">Zwrócone</span>') +
+                        '</td></tr>';
+                });
+                html += '</tbody></table>';
+            }
+            html += '<button class="secondary small" onclick="closeHistoryModal()">Zamknij</button></article>';
+            var modal = document.createElement('div');
+            modal.id = 'history-modal';
+            modal.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:1000;';
+            modal.innerHTML = '<div style="background:white;padding:1rem;border-radius:0.5rem;max-width:600px;width:90%;max-height:80vh;overflow:auto;">' + html + '</div>';
+            document.body.appendChild(modal);
+        }
+        function closeHistoryModal() {
+            var modal = document.getElementById('history-modal');
+            if (modal) modal.remove();
+        }
+
+        // === Refresh ===
+        function refreshTab(tab) {
+            var urls = {
+                orders: '/inventory/orders',
+                uniforms: '/inventory/uniforms/fragment',
+                instruments: '/inventory/instruments/fragment'
+            };
+            fetch(urls[tab])
+            .then(function(r) { return r.text(); })
+            .then(function(html) {
+                var targetId = tab === 'orders' ? 'orders-content' : (tab === 'uniforms' ? 'uniforms-content' : 'instruments-content');
+                document.getElementById(targetId).outerHTML = html;
+            });
+        }
+    </script>
 </body>
 </html>
