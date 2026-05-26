@@ -1,7 +1,7 @@
 <div id="attribute-defs-content">
     <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem;">
         <h2>🏷️ Atrybuty muzyków</h2>
-        <button id="add-attr-btn" class="primary"
+        <button class="primary"
                 hx-get="/band/attributes/new"
                 hx-target="#attribute-form-container"
                 hx-swap="innerHTML">+ Dodaj atrybut</button>
@@ -10,18 +10,8 @@
     <!-- Form container: new/edit forms loaded here via HTMX -->
     <div id="attribute-form-container"></div>
 
-    <!-- Attribute list loaded via HTMX -->
-    <div id="attrs-list" hx-get="/band/attributes/list" hx-trigger="load, attrSaved from:body">
+    <!-- Attribute list -->
+    <div id="attrs-list" hx-get="/band/attributes/list" hx-trigger="load">
         <p>Ładowanie...</p>
     </div>
 </div>
-
-<script>
-// Listen for HTMX events to reload the list after save
-document.body.addEventListener('attrSaved', function() {
-    htmx.ajax('GET', '/band/attributes/list', {target: '#attrs-list', swap: 'innerHTML'});
-});
-document.body.addEventListener('attrDeleted', function() {
-    htmx.ajax('GET', '/band/attributes/list', {target: '#attrs-list', swap: 'innerHTML'});
-});
-</script>

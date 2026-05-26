@@ -1,25 +1,25 @@
-<!-- Attribute list fragment (HTMX) -->
 <div id="attrs-list">
     <div th:if="${attributeDefs == null or #lists.isEmpty(attributeDefs)}">
-        <p>Brak atrybutów w systemu. Dodaj pierwszy!</p>
+        <p>Brak atrybutów w systemie. Dodaj pierwszy!</p>
     </div>
-    <table th:if="${attributeDefs != null and !#lists.isEmpty(attributeDefs)}" role="grid">
+    <table th:if="${attributeDefs != null and !#lists.isEmpty(attributeDefs)}" role="grid"
+           style="width:100%; border-collapse:collapse;">
         <thead>
-            <tr>
-                <th>Nazwa</th>
-                <th>Typ</th>
-                <th>Wymagany</th>
-                <th>Kolejność</th>
-                <th>Akcje</th>
+            <tr style="border-bottom:2px solid var(--pico-muted-border-color);">
+                <th style="text-align:left; padding:0.5rem;">Nazwa</th>
+                <th style="text-align:left; padding:0.5rem;">Typ</th>
+                <th style="text-align:center; padding:0.5rem;">Wymagany</th>
+                <th style="text-align:center; padding:0.5rem;">Kolejność</th>
+                <th style="text-align:left; padding:0.5rem;">Akcje</th>
             </tr>
         </thead>
         <tbody>
-            <tr th:each="attrDef : ${attributeDefs}">
-                <td th:text="${attrDef.name}">Nazwa</td>
-                <td th:text="${attrDef.type == 'BOOLEAN'} ? 'Tak/Nie' : 'Tekst'">Typ</td>
-                <td th:text="${attrDef.required} ? '✅' : '❌'">Wymagany</td>
-                <td th:text="${attrDef.displayOrder}">0</td>
-                <td>
+            <tr th:each="attrDef : ${attributeDefs}" style="border-bottom:1px solid var(--pico-muted-border-color);">
+                <td style="padding:0.5rem;" th:text="${attrDef.name}">Nazwa</td>
+                <td style="padding:0.5rem;" th:text="${attrDef.type == 'BOOLEAN'} ? 'Tak/Nie' : 'Tekst'">Typ</td>
+                <td style="padding:0.5rem; text-align:center;" th:text="${attrDef.required} ? '✅' : '❌'">Wymagany</td>
+                <td style="padding:0.5rem; text-align:center;" th:text="${attrDef.displayOrder}">0</td>
+                <td style="padding:0.5rem;">
                     <button class="outline small"
                             th:hx-get="@{/band/attributes/{id}/edit(id=${attrDef.id})}"
                             hx-target="#attribute-form-container"

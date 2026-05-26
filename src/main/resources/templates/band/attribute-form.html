@@ -1,33 +1,34 @@
-<!-- Attribute form fragment (HTMX) for new/edit -->
-<div id="new-attr-form" style="margin-bottom:1rem; padding:1rem; border:1px solid var(--pico-muted-border-color); border-radius:8px;"
+<div id="new-attr-form"
+     style="margin-bottom:1rem; padding:1rem; border:1px solid var(--pico-muted-border-color); border-radius:8px;"
      th:with="isEdit=${attributeDefId != null}">
     <h4 th:text="${isEdit} ? 'Edytuj atrybut' : 'Nowy atrybut'">Nowy atrybut</h4>
 
-    <!-- New attribute form (POST) -->
-    <form th:unless="${isEdit}" action="/band/attributes" method="post"
+    <!-- New attribute form -->
+    <form th:unless="${isEdit}"
           hx-post="/band/attributes"
           hx-target="#attrs-list"
-          hx-swap="innerHTML">
+          hx-swap="innerHTML"
+          hx-on::after-request="document.getElementById('attribute-form-container').innerHTML=''">
         <div class="grid">
             <label>
                 Nazwa *
-                <input type="text" name="name" th:value="${attributeDef.name}" required>
+                <input type="text" name="name" required>
             </label>
             <label>
                 Typ
                 <select name="type">
-                    <option value="BOOLEAN" th:selected="${attributeDef.type == 'BOOLEAN'}">Tak/Nie</option>
-                    <option value="TEXT" th:selected="${attributeDef.type == 'TEXT'}">Tekst</option>
+                    <option value="BOOLEAN">Tak/Nie</option>
+                    <option value="TEXT">Tekst</option>
                 </select>
             </label>
         </div>
         <div class="grid">
             <label>
                 Kolejność
-                <input type="number" name="displayOrder" th:value="${attributeDef.displayOrder}" min="0">
+                <input type="number" name="displayOrder" value="0" min="0">
             </label>
             <label>
-                <input type="checkbox" name="required" th:checked="${attributeDef.required}">
+                <input type="checkbox" name="required">
                 Wymagany
             </label>
         </div>
@@ -38,33 +39,32 @@
         </div>
     </form>
 
-    <!-- Edit attribute form (PUT) -->
+    <!-- Edit attribute form -->
     <form th:if="${isEdit}"
-          th:action="@{/band/attributes/{id}(id=${attributeDefId})}"
-          th:method="put"
           th:hx-put="@{/band/attributes/{id}(id=${attributeDefId})}"
           hx-target="#attrs-list"
-          hx-swap="innerHTML">
+          hx-swap="innerHTML"
+          hx-on::after-request="document.getElementById('attribute-form-container').innerHTML=''">
         <div class="grid">
             <label>
                 Nazwa *
-                <input type="text" name="name" th:value="${attributeDef.name}" required>
+                <input type="text" name="name" th:value="${attributeDef?.name}" required>
             </label>
             <label>
                 Typ
                 <select name="type">
-                    <option value="BOOLEAN" th:selected="${attributeDef.type == 'BOOLEAN'}">Tak/Nie</option>
-                    <option value="TEXT" th:selected="${attributeDef.type == 'TEXT'}">Tekst</option>
+                    <option value="BOOLEAN" th:selected="${attributeDef?.type == 'BOOLEAN'}">Tak/Nie</option>
+                    <option value="TEXT" th:selected="${attributeDef?.type == 'TEXT'}">Tekst</option>
                 </select>
             </label>
         </div>
         <div class="grid">
             <label>
                 Kolejność
-                <input type="number" name="displayOrder" th:value="${attributeDef.displayOrder}" min="0">
+                <input type="number" name="displayOrder" th:value="${attributeDef?.displayOrder}" min="0">
             </label>
             <label>
-                <input type="checkbox" name="required" th:checked="${attributeDef.required}">
+                <input type="checkbox" name="required" th:checked="${attributeDef?.required}">
                 Wymagany
             </label>
         </div>
