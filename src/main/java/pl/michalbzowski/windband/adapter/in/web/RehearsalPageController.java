@@ -6,8 +6,11 @@ import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
 import pl.michalbzowski.windband.application.query.member.MemberQueryService;
 import pl.michalbzowski.windband.application.query.rehearsal.RehearsalQueryService;
+import pl.michalbzowski.windband.domain.rehearsal.AttendanceStatus;
 
 import java.time.LocalDate;
+import java.util.Map;
+import java.util.stream.Collectors;
 
 @Controller
 @RequestMapping("/rehearsals")
@@ -37,8 +40,15 @@ public class RehearsalPageController {
 
     @GetMapping("/{id}")
     public String rehearsalDetail(@PathVariable Long id, Model model) {
-        model.addAttribute("rehearsal", rehearsalQueryService.getRehearsalById(id));
+        var rehearsal = rehearsalQueryService.getRehearsalById(id);
+        model.addAttribute("rehearsal", rehearsal);
         model.addAttribute("members", memberQueryService.getAllActiveMembers());
+        Map<Long, AttendanceStatus> attendanceMap = rehearsal.getAttendances().stream()
+                .collect(Collectors.toMap(
+                        a -> a.getMember().getId(),
+                        a -> a.getStatus()
+                ));
+        model.addAttribute("attendanceMap", attendanceMap);
         return "rehearsals/detail";
     }
 }

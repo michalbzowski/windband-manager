@@ -26,10 +26,10 @@
                 <td th:text="${m.primaryInstrument}">Trąbka</td>
                 <td>
                     <select class="status-select" data-member-id="${m.id}" th:name="'status_' + ${m.id}" th:id="'status_' + ${m.id}">
-                        <option value="PRESENT" th:selected="${m.status == 'PRESENT'}">Present</option>
-                        <option value="ABSENT" th:selected="${m.status == 'ABSENT'}">Absent</option>
-                        <option value="LATE" th:selected="${m.status == 'LATE'}">Late</option>
-                        <option value="EXCUSED" th:selected="${m.status == 'EXCUSED'}">Excused</option>
+                        <option value="PRESENT" th:selected="${attendanceMap[m.id]?.name() == 'PRESENT'}">Present</option>
+                        <option value="EXCUSED" th:selected="${attendanceMap[m.id]?.name() == 'EXCUSED'}">Excused</option>
+                        <option value="UNEXCUSED" th:selected="${attendanceMap[m.id]?.name() == 'UNEXCUSED'}">Unexcused</option>
+                        <option value="NO_RESPONSE" th:selected="${attendanceMap[m.id]?.name() == 'NO_RESPONSE'}">No response</option>
                     </select>
                 </td>
             </tr>
