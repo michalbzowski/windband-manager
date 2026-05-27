@@ -86,30 +86,28 @@ public class InventoryAttributePageController {
     // === Create ===
 
     @PostMapping
-    public ResponseEntity<Void> create(@ModelAttribute AttributeDefForm form) {
+    public ResponseEntity<Void> create(@RequestParam String inventoryType, @ModelAttribute AttributeDefForm form) {
         Band band = getDefaultBand();
-        String type = form.getType();
-        switch (type) {
-            case "UNIFORM" -> uniformCommandService.createAttributeDef(band, form.getName(), form.getType(), form.isRequired(), form.getDisplayOrder(), form.getOptions());
-            case "INSTRUMENT" -> instrumentCommandService.createAttributeDef(band, form.getName(), form.getType(), form.isRequired(), form.getDisplayOrder(), form.getOptions());
-            case "ORDER" -> orderCommandService.createAttributeDef(band, form.getName(), form.getType(), form.isRequired(), form.getDisplayOrder(), form.getOptions());
-            default -> throw new IllegalArgumentException("Unknown type: " + type);
+        switch (inventoryType) {
+            case "UNIFORM" -> uniformCommandService.createAttributeDef(band, form.getName(), form.getAttributeType(), form.isRequired(), form.getDisplayOrder(), form.getOptions());
+            case "INSTRUMENT" -> instrumentCommandService.createAttributeDef(band, form.getName(), form.getAttributeType(), form.isRequired(), form.getDisplayOrder(), form.getOptions());
+            case "ORDER" -> orderCommandService.createAttributeDef(band, form.getName(), form.getAttributeType(), form.isRequired(), form.getDisplayOrder(), form.getOptions());
+            default -> throw new IllegalArgumentException("Unknown inventoryType: " + inventoryType);
         }
-        return ResponseEntity.ok().header("HX-Redirect", "/band/inventory-attributes?type=" + type).build();
+        return ResponseEntity.ok().header("HX-Redirect", "/band/inventory-attributes?type=" + inventoryType).build();
     }
 
     // === Update ===
 
     @PutMapping("/{id}")
-    public ResponseEntity<Void> update(@PathVariable Long id, @ModelAttribute AttributeDefForm form) {
-        String type = form.getType();
-        switch (type) {
-            case "UNIFORM" -> uniformCommandService.updateAttributeDef(id, form.getName(), form.getType(), form.isRequired(), form.getDisplayOrder(), form.getOptions());
-            case "INSTRUMENT" -> instrumentCommandService.updateAttributeDef(id, form.getName(), form.getType(), form.isRequired(), form.getDisplayOrder(), form.getOptions());
-            case "ORDER" -> orderCommandService.updateAttributeDef(id, form.getName(), form.getType(), form.isRequired(), form.getDisplayOrder(), form.getOptions());
-            default -> throw new IllegalArgumentException("Unknown type: " + type);
+    public ResponseEntity<Void> update(@PathVariable Long id, @RequestParam String inventoryType, @ModelAttribute AttributeDefForm form) {
+        switch (inventoryType) {
+            case "UNIFORM" -> uniformCommandService.updateAttributeDef(id, form.getName(), form.getAttributeType(), form.isRequired(), form.getDisplayOrder(), form.getOptions());
+            case "INSTRUMENT" -> instrumentCommandService.updateAttributeDef(id, form.getName(), form.getAttributeType(), form.isRequired(), form.getDisplayOrder(), form.getOptions());
+            case "ORDER" -> orderCommandService.updateAttributeDef(id, form.getName(), form.getAttributeType(), form.isRequired(), form.getDisplayOrder(), form.getOptions());
+            default -> throw new IllegalArgumentException("Unknown inventoryType: " + inventoryType);
         }
-        return ResponseEntity.ok().header("HX-Redirect", "/band/inventory-attributes?type=" + type).build();
+        return ResponseEntity.ok().header("HX-Redirect", "/band/inventory-attributes?type=" + inventoryType).build();
     }
 
     // === Delete ===
@@ -148,16 +146,16 @@ public class InventoryAttributePageController {
     @Data
     public static class AttributeDefForm {
         private String name;
-        private String type;
+        private String attributeType;
         private boolean required;
         private int displayOrder;
         private String options;
 
         public AttributeDefForm() {}
 
-        public AttributeDefForm(String name, String type, boolean required, int displayOrder, String options) {
+        public AttributeDefForm(String name, String attributeType, boolean required, int displayOrder, String options) {
             this.name = name;
-            this.type = type;
+            this.attributeType = attributeType;
             this.required = required;
             this.displayOrder = displayOrder;
             this.options = options;

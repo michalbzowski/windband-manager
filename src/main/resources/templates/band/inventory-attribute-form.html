@@ -20,7 +20,7 @@
                   th:hx-post="@{/band/inventory-attributes}"
                   hx-target="body"
                   hx-swap="none">
-                <input type="hidden" name="type" th:value="${type}">
+                <input type="hidden" name="inventoryType" th:value="${type}">
                 <div class="grid">
                     <label>
                         Nazwa *
@@ -28,7 +28,7 @@
                     </label>
                     <label>
                         Typ
-                        <select name="type" id="attr-type-new" onchange="toggleOptionsField('new')">
+                        <select name="attributeType" id="attr-type-new" onchange="toggleOptionsField('new')">
                             <option value="BOOLEAN">Tak/Nie</option>
                             <option value="TEXT">Tekst</option>
                             <option value="NUMBER">Liczba</option>
@@ -66,7 +66,7 @@
                   th:hx-put="@{/band/inventory-attributes/{id}(id=${attributeDefId})}"
                   hx-target="body"
                   hx-swap="none">
-                <input type="hidden" name="type" th:value="${type}">
+                <input type="hidden" name="inventoryType" th:value="${type}">
                 <div class="grid">
                     <label>
                         Nazwa *
@@ -74,7 +74,7 @@
                     </label>
                     <label>
                         Typ
-                        <select name="type" id="attr-type-edit" onchange="toggleOptionsField('edit')">
+                        <select name="attributeType" id="attr-type-edit" onchange="toggleOptionsField('edit')">
                             <option value="BOOLEAN" th:selected="${attributeDef?.type == 'BOOLEAN'}">Tak/Nie</option>
                             <option value="TEXT" th:selected="${attributeDef?.type == 'TEXT'}">Tekst</option>
                             <option value="NUMBER" th:selected="${attributeDef?.type == 'NUMBER'}">Liczba</option>
