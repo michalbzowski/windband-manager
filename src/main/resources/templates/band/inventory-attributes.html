@@ -21,7 +21,7 @@
         </div>
 
         <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem;">
-            <span th:text="'Typ: ' + ${type == 'UNIFORM'} ? 'Umundurowanie' : (${type == 'INSTRUMENT'} ? 'Instrumenty' : 'Zamówienia')}">Typ</span>
+            <span>Typ: <span th:switch="${type}"><span th:case="'UNIFORM'">Umundurowanie</span><span th:case="'INSTRUMENT'">Instrumenty</span><span th:case="*">Zamówienia</span></span></span>
             <button class="primary"
                     th:hx-get="@{/band/inventory-attributes/new(type=${type})}"
                     hx-target="body"

@@ -10,8 +10,9 @@
         </div>
 
         <h4 th:text="${attributeDefId != null} ? '✏️ Edytuj atrybut' : '➕ Nowy atrybut'">Nowy atrybut</h4>
-        <p style="font-size:0.85rem; color:var(--pico-muted-color);"
-           th:text="'Typ: ' + ${type == 'UNIFORM'} ? 'Umundurowanie' : (${type == 'INSTRUMENT'} ? 'Instrumenty' : 'Zamówienia')}">Typ</p>
+        <p style="font-size:0.85rem; color:var(--pico-muted-color);">
+            Typ: <span th:switch="${type}"><span th:case="'UNIFORM'">Umundurowanie</span><span th:case="'INSTRUMENT'">Instrumenty</span><span th:case="*">Zamówienia</span></span>
+        </p>
 
         <div style="margin-bottom:1rem; padding:1rem; border:1px solid var(--pico-muted-border-color); border-radius:8px;">
             <!-- New form -->
