@@ -70,8 +70,7 @@
                         <button class="outline small secondary"
                                 th:hx-delete="@{/band/attributes/{id}(id=${attrDef.id()},type=${type})}"
                                 hx-confirm="Czy na pewno chcesz usunąć ten atrybut?"
-                                hx-target="body"
-                                hx-swap="innerHTML">Usuń</button>
+                                hx-on::after-request="if (event.detail.successful) htmx.ajax('GET', '/band/attributes?type=[[${type}]]', {target:'body', swap:'innerHTML'})">Usuń</button>
                     </td>
                 </tr>
             </tbody>
