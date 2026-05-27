@@ -12,5 +12,6 @@ public record InventoryItemDto(
         String description,
         String assignedMemberName,
         String ownershipStatus,
-        String lifecycleStatus
+        String lifecycleStatus,
+        String orderNumber
 ) {}

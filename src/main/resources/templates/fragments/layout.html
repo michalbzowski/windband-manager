@@ -22,6 +22,7 @@
             <li><a th:href="@{/instruments}" hx-target="#content" hx-swap="innerHTML transition:true">Instrumenty</a></li>
             <li><a th:href="@{/reports}" hx-target="#content" hx-swap="innerHTML transition:true">Raporty</a></li>
             <li><a th:href="@{/band/attributes}" hx-target="#content" hx-swap="innerHTML transition:true">Atrybuty</a></li>
+            <li><a th:href="@{/band/inventory-attributes(type='UNIFORM')}" hx-target="#content" hx-swap="innerHTML transition:true">Atrybuty inwentarza</a></li>
             <li>
                 <form th:action="@{/logout}" method="post" style="display:inline;">
                     <button class="outline secondary small" type="submit">Wyloguj</button>

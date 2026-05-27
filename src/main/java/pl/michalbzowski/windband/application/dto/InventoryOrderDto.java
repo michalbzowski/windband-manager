@@ -14,5 +14,6 @@ public record InventoryOrderDto(
         String status,
         LocalDateTime createdAt,
         LocalDateTime updatedAt,
-        String notes
+        String notes,
+        String orderNumber
 ) {}

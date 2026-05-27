@@ -1,0 +1,11 @@
+package pl.michalbzowski.windband.adapter.out.persistence;
+
+import org.springframework.data.jpa.repository.JpaRepository;
+import pl.michalbzowski.windband.domain.band.Band;
+import pl.michalbzowski.windband.domain.inventory.UniformAttributeDef;
+
+import java.util.List;
+
+public interface SpringDataUniformAttributeDefRepository extends JpaRepository<UniformAttributeDef, Long> {
+    List<UniformAttributeDef> findByBandOrderByName(Band band);
+}

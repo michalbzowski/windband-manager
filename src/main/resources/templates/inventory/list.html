@@ -73,6 +73,7 @@
                                     <th>Element</th>
                                     <th>Typ</th>
                                     <th>Status</th>
+                                    <th>Nr zamówienia</th>
                                     <th>Akcje</th>
                                 </tr>
                             </thead>
@@ -92,6 +93,7 @@
                                             <span th:case="'CANCELLED'" class="badge error">Anulowano</span>
                                         </span>
                                     </td>
+                                    <td th:text="${o.orderNumber != null} ? ${o.orderNumber} : '-'">ORD-1-20250101</td>
                                     <td>
                                         <div style="display:flex; gap:0.25rem; flex-wrap:wrap;">
                                             <button th:if="${o.status == 'SUBMITTED'}"
@@ -172,6 +174,7 @@
                                 <th>Przydzielony do</th>
                                 <th>Własność</th>
                                 <th>Stan</th>
+                                <th>Nr zamówienia</th>
                                 <th>Akcje</th>
                             </tr>
                         </thead>
@@ -197,6 +200,7 @@
                                         <span th:case="'DISPOSED'">🔴 Zlikwidowany</span>
                                     </span>
                                 </td>
+                                <td th:text="${u.orderNumber != null} ? ${u.orderNumber} : '-'">—</td>
                                 <td>
                                     <div style="display:flex; gap:0.25rem; flex-wrap:wrap;">
                                         <button th:if="${u.assignedMemberName == null && u.lifecycleStatus != 'DISPOSED'}"
@@ -305,6 +309,7 @@
                                 <th>Przydzielony do</th>
                                 <th>Własność</th>
                                 <th>Stan</th>
+                                <th>Nr zamówienia</th>
                                 <th>Akcje</th>
                             </tr>
                         </thead>
@@ -331,6 +336,7 @@
                                         <span th:case="'DISPOSED'">🔴 Zlikwidowany</span>
                                     </span>
                                 </td>
+                                <td th:text="${i.orderNumber != null} ? ${i.orderNumber} : '-'">—</td>
                                 <td>
                                     <div style="display:flex; gap:0.25rem; flex-wrap:wrap;">
                                         <button th:if="${i.assignedMemberName == null && i.lifecycleStatus != 'DISPOSED'}"

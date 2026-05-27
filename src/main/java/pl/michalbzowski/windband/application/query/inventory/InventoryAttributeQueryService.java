@@ -1,0 +1,66 @@
+package pl.michalbzowski.windband.application.query.inventory;
+
+import lombok.RequiredArgsConstructor;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+import pl.michalbzowski.windband.application.dto.UniformAttributeDefDto;
+import pl.michalbzowski.windband.application.dto.InstrumentAttributeDefDto;
+import pl.michalbzowski.windband.application.dto.OrderAttributeDefDto;
+import pl.michalbzowski.windband.domain.band.Band;
+import pl.michalbzowski.windband.domain.inventory.*;
+
+import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
+
+@Service
+@RequiredArgsConstructor
+@Transactional
+public class InventoryAttributeQueryService {
+
+    private final UniformAttributeDefRepository uniformDefRepo;
+    private final UniformAttributeValueRepository uniformValueRepo;
+    private final InstrumentAttributeDefRepository instrumentDefRepo;
+    private final InstrumentAttributeValueRepository instrumentValueRepo;
+    private final OrderAttributeDefRepository orderDefRepo;
+    private final OrderAttributeValueRepository orderValueRepo;
+
+    // === Uniform attributes ===
+
+    public List<UniformAttributeDefDto> getUniformAttributeDefs(Band band) {
+        return uniformDefRepo.findByBand(band).stream()
+                .map(d -> new UniformAttributeDefDto(d.getId(), d.getName(), d.getType(), d.isRequired(), d.getDisplayOrder(), d.getOptions()))
+                .toList();
+    }
+
+    public Map<Long, String> getUniformAttributeValues(UniformItem item) {
+        return uniformValueRepo.findByUniformItem(item).stream()
+                .collect(Collectors.toMap(v -> v.getAttributeDef().getId(), UniformAttributeValue::getValue));
+    }
+
+    // === Instrument attributes ===
+
+    public List<InstrumentAttributeDefDto> getInstrumentAttributeDefs(Band band) {
+        return instrumentDefRepo.findByBand(band).stream()
+                .map(d -> new InstrumentAttributeDefDto(d.getId(), d.getName(), d.getType(), d.isRequired(), d.getDisplayOrder(), d.getOptions()))
+                .toList();
+    }
+
+    public Map<Long, String> getInstrumentAttributeValues(InstrumentItem item) {
+        return instrumentValueRepo.findByInstrumentItem(item).stream()
+                .collect(Collectors.toMap(v -> v.getAttributeDef().getId(), InstrumentAttributeValue::getValue));
+    }
+
+    // === Order attributes ===
+
+    public List<OrderAttributeDefDto> getOrderAttributeDefs(Band band) {
+        return orderDefRepo.findByBand(band).stream()
+                .map(d -> new OrderAttributeDefDto(d.getId(), d.getName(), d.getType(), d.isRequired(), d.getDisplayOrder(), d.getOptions()))
+                .toList();
+    }
+
+    public Map<Long, String> getOrderAttributeValues(InventoryOrder order) {
+        return orderValueRepo.findByOrder(order).stream()
+                .collect(Collectors.toMap(v -> v.getAttributeDef().getId(), OrderAttributeValue::getValue));
+    }
+}

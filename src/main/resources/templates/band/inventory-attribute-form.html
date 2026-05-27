@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="pl" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/layout :: head('Atrybut inwentarza')}"></head>
+<body>
+    <nav th:replace="~{fragments/layout :: nav}"></nav>
+
+    <main class="container" id="content">
+        <div style="margin-bottom:1rem;">
+            <a th:href="@{/band/inventory-attributes(type=${type})}" style="font-size:0.9rem;">← Powrót do listy</a>
+        </div>
+
+        <h4 th:text="${attributeDefId != null} ? '✏️ Edytuj atrybut' : '➕ Nowy atrybut'">Nowy atrybut</h4>
+        <p style="font-size:0.85rem; color:var(--pico-muted-color);"
+           th:text="'Typ: ' + ${type == 'UNIFORM'} ? 'Umundurowanie' : (${type == 'INSTRUMENT'} ? 'Instrumenty' : 'Zamówienia')}">Typ</p>
+
+        <div style="margin-bottom:1rem; padding:1rem; border:1px solid var(--pico-muted-border-color); border-radius:8px;">
+            <!-- New form -->
+            <form th:if="${attributeDefId == null}"
+                  th:hx-post="@{/band/inventory-attributes(type=${type})}"
+                  hx-target="body"
+                  hx-swap="none">
+                <div class="grid">
+                    <label>
+                        Nazwa *
+                        <input type="text" name="name" required>
+                    </label>
+                    <label>
+                        Typ
+                        <select name="type" id="attr-type-new" onchange="toggleOptionsField('new')">
+                            <option value="BOOLEAN">Tak/Nie</option>
+                            <option value="TEXT">Tekst</option>
+                            <option value="NUMBER">Liczba</option>
+                            <option value="SELECT">Wybór (jedna opcja)</option>
+                            <option value="MULTI_SELECT">Wybór (wiele opcji)</option>
+                            <option value="DATE">Data</option>
+                        </select>
+                    </label>
+                </div>
+                <div class="grid">
+                    <label>
+                        Kolejność
+                        <input type="number" name="displayOrder" value="0" min="0">
+                    </label>
+                    <label>
+                        <input type="checkbox" name="required">
+                        Wymagany
+                    </label>
+                </div>
+                <div id="options-field-new" style="display:none; margin-top:0.5rem;">
+                    <label>
+                        Opcje (oddzielone przecinkiem)
+                        <textarea name="options" rows="3" style="font-family:monospace; font-size:0.85rem;"
+                                  placeholder="Puzon, Trąbka, Waltornia, Flet"></textarea>
+                    </label>
+                </div>
+                <div style="display:flex; gap:0.5rem; margin-top:0.5rem;">
+                    <button type="submit" class="primary small">Dodaj atrybut</button>
+                    <a th:href="@{/band/inventory-attributes(type=${type})}" class="secondary small" style="padding:0.4rem 0.8rem; text-decoration:none; border-radius:4px; border:1px solid var(--pico-muted-color);">Anuluj</a>
+                </div>
+            </form>
+
+            <!-- Edit form -->
+            <form th:if="${attributeDefId != null}"
+                  th:hx-put="@{/band/inventory-attributes/{id}(id=${attributeDefId},type=${type})}"
+                  hx-target="body"
+                  hx-swap="none">
+                <div class="grid">
+                    <label>
+                        Nazwa *
+                        <input type="text" name="name" th:value="${attributeDef?.name}" required>
+                    </label>
+                    <label>
+                        Typ
+                        <select name="type" id="attr-type-edit" onchange="toggleOptionsField('edit')">
+                            <option value="BOOLEAN" th:selected="${attributeDef?.type == 'BOOLEAN'}">Tak/Nie</option>
+                            <option value="TEXT" th:selected="${attributeDef?.type == 'TEXT'}">Tekst</option>
+                            <option value="NUMBER" th:selected="${attributeDef?.type == 'NUMBER'}">Liczba</option>
+                            <option value="SELECT" th:selected="${attributeDef?.type == 'SELECT'}">Wybór (jedna opcja)</option>
+                            <option value="MULTI_SELECT" th:selected="${attributeDef?.type == 'MULTI_SELECT'}">Wybór (wiele opcji)</option>
+                            <option value="DATE" th:selected="${attributeDef?.type == 'DATE'}">Data</option>
+                        </select>
+                    </label>
+                </div>
+                <div class="grid">
+                    <label>
+                        Kolejność
+                        <input type="number" name="displayOrder" th:value="${attributeDef?.displayOrder}" min="0">
+                    </label>
+                    <label>
+                        <input type="checkbox" name="required" th:checked="${attributeDef?.required}">
+                        Wymagany
+                    </label>
+                </div>
+                <div id="options-field-edit" th:style="${attributeDef?.type == 'SELECT' or attributeDef?.type == 'MULTI_SELECT'} ? '' : 'display:none;'">
+                    <label>
+                        Opcje (oddzielone przecinkiem)
+                        <textarea name="options" rows="3" style="font-family:monospace; font-size:0.85rem;"
+                                  placeholder="Puzon, Trąbka, Waltornia, Flet"
+                                  th:text="${attributeDef?.options}"></textarea>
+                    </label>
+                </div>
+                <div style="display:flex; gap:0.5rem; margin-top:0.5rem;">
+                    <button type="submit" class="primary small">Zapisz zmiany</button>
+                    <a th:href="@{/band/inventory-attributes(type=${type})}" class="secondary small" style="padding:0.4rem 0.8rem; text-decoration:none; border-radius:4px; border:1px solid var(--pico-muted-color);">Anuluj</a>
+                </div>
+            </form>
+        </div>
+    </main>
+
+    <script>
+        function toggleOptionsField(prefix) {
+            var typeSelect = document.getElementById('attr-type-' + prefix);
+            var optionsField = document.getElementById('options-field-' + prefix);
+            var type = typeSelect.value;
+            if (type === 'SELECT' || type === 'MULTI_SELECT') {
+                optionsField.style.display = '';
+            } else {
+                optionsField.style.display = 'none';
+            }
+        }
+    </script>
+</body>
+</html>

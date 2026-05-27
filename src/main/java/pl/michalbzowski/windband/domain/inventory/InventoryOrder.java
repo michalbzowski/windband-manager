@@ -31,6 +31,8 @@ public class InventoryOrder {
     @Column(nullable = false)
     private String itemName;
 
+    private String orderNumber;
+
     private String description;
 
     @Enumerated(EnumType.STRING)
@@ -88,5 +90,13 @@ public class InventoryOrder {
 
     public void addNotes(String notes) {
         this.notes = notes;
+    }
+
+    public String getOrderNumber() {
+        return orderNumber;
+    }
+
+    public void generateOrderNumber() {
+        this.orderNumber = "ORD-" + id + "-" + createdAt.format(java.time.format.DateTimeFormatter.ofPattern("yyyyMMdd"));
     }
 }

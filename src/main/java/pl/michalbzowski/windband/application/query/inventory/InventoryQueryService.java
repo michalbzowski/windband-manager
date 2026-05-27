@@ -112,7 +112,8 @@ public class InventoryQueryService {
                         ? item.getAssignedMember().getFirstName() + " " + item.getAssignedMember().getLastName()
                         : null,
                 item.getOwnershipStatus().name(),
-                item.getLifecycleStatus().name()
+                item.getLifecycleStatus().name(),
+                item.getOrderNumber()
         );
     }
 
@@ -124,7 +125,8 @@ public class InventoryQueryService {
                         ? item.getAssignedMember().getFirstName() + " " + item.getAssignedMember().getLastName()
                         : null,
                 item.getOwnershipStatus().name(),
-                item.getLifecycleStatus().name()
+                item.getLifecycleStatus().name(),
+                item.getOrderNumber()
         );
     }
 
@@ -138,7 +140,8 @@ public class InventoryQueryService {
                 order.getStatus().name(),
                 order.getCreatedAt(),
                 order.getUpdatedAt(),
-                order.getNotes()
+                order.getNotes(),
+                order.getOrderNumber()
         );
     }
 

@@ -42,6 +42,9 @@ public class InstrumentItem {
     @JoinColumn(name = "band_id", nullable = false)
     private Band band;
 
+    @Column(name = "order_number")
+    private String orderNumber;
+
     private InstrumentItem(String name, OwnershipStatus ownershipStatus, Band band) {
         this.name = Objects.requireNonNull(name, "name required");
         this.ownershipStatus = Objects.requireNonNull(ownershipStatus, "ownershipStatus required");
@@ -76,6 +79,10 @@ public class InstrumentItem {
         this.brand = brand;
         this.serialNumber = serialNumber;
         this.description = description;
+    }
+
+    public void setOrderNumber(String orderNumber) {
+        this.orderNumber = orderNumber;
     }
 
     public void retireFromStock() {

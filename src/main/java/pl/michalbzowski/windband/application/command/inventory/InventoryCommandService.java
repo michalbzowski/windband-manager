@@ -64,6 +64,9 @@ public class InventoryCommandService {
     public void markOrderDelivered(Long orderId) {
         InventoryOrder order = getOrderOrThrow(orderId);
         order.markDelivered();
+        if (order.getOrderNumber() == null) {
+            order.generateOrderNumber();
+        }
         inventoryRepository.saveOrder(order);
     }
 
@@ -89,6 +92,9 @@ public class InventoryCommandService {
         if (order.getDescription() != null) {
             item.updateDescription(order.getDescription());
         }
+        if (order.getOrderNumber() != null) {
+            item.setOrderNumber(order.getOrderNumber());
+        }
         return inventoryRepository.saveUniformItem(item);
     }
 
@@ -105,6 +111,9 @@ public class InventoryCommandService {
             default -> InstrumentItem.createOwned(order.getItemName(), band);
         };
         item.updateDetails(brand, serialNumber, order.getDescription());
+        if (order.getOrderNumber() != null) {
+            item.setOrderNumber(order.getOrderNumber());
+        }
         return inventoryRepository.saveInstrumentItem(item);
     }
 

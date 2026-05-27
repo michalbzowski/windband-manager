@@ -40,6 +40,9 @@ public class UniformItem {
     @JoinColumn(name = "band_id", nullable = false)
     private Band band;
 
+    @Column(name = "order_number")
+    private String orderNumber;
+
     private UniformItem(String name, OwnershipStatus ownershipStatus, Band band) {
         this.name = Objects.requireNonNull(name, "name required");
         this.ownershipStatus = Objects.requireNonNull(ownershipStatus, "ownershipStatus required");
@@ -72,6 +75,10 @@ public class UniformItem {
 
     public void updateDescription(String description) {
         this.description = description;
+    }
+
+    public void setOrderNumber(String orderNumber) {
+        this.orderNumber = orderNumber;
     }
 
     public void retireFromStock() {

@@ -5,7 +5,10 @@ import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
 import pl.michalbzowski.windband.application.query.inventory.InventoryQueryService;
+import pl.michalbzowski.windband.application.query.inventory.InventoryAttributeQueryService;
 import pl.michalbzowski.windband.application.query.member.MemberQueryService;
+import pl.michalbzowski.windband.domain.band.Band;
+import pl.michalbzowski.windband.domain.band.BandRepository;
 import pl.michalbzowski.windband.domain.inventory.OrderStatus;
 
 @Controller
@@ -14,7 +17,14 @@ import pl.michalbzowski.windband.domain.inventory.OrderStatus;
 public class InventoryPageController {
 
     private final InventoryQueryService inventoryQueryService;
+    private final InventoryAttributeQueryService inventoryAttributeQueryService;
     private final MemberQueryService memberQueryService;
+    private final BandRepository bandRepository;
+
+    private Band getDefaultBand() {
+        return bandRepository.findById(1L)
+                .orElseThrow(() -> new IllegalStateException("Default band (id=1) not found"));
+    }
 
     @GetMapping
     public String listPage(Model model) {
@@ -23,6 +33,13 @@ public class InventoryPageController {
         model.addAttribute("orders", inventoryQueryService.getAllOrders());
         model.addAttribute("members", memberQueryService.getAllActiveMembers());
         model.addAttribute("orderStatuses", OrderStatus.values());
+        Band band = getDefaultBand();
+        model.addAttribute("uniformAttributeDefs", inventoryAttributeQueryService.getUniformAttributeDefs(band));
+        model.addAttribute("uniformAttributeValues", new java.util.HashMap<Long, java.util.Map<Long, String>>());
+        model.addAttribute("instrumentAttributeDefs", inventoryAttributeQueryService.getInstrumentAttributeDefs(band));
+        model.addAttribute("instrumentAttributeValues", new java.util.HashMap<Long, java.util.Map<Long, String>>());
+        model.addAttribute("orderAttributeDefs", inventoryAttributeQueryService.getOrderAttributeDefs(band));
+        model.addAttribute("orderAttributeValues", new java.util.HashMap<Long, java.util.Map<Long, String>>());
         return "inventory/list";
     }
 
