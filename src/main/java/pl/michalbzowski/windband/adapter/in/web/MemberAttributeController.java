@@ -60,6 +60,7 @@ public class MemberAttributeController {
 
     @PostMapping
     public ResponseEntity<Void> createAttribute(@ModelAttribute AttributeDefForm form) {
+        System.out.println("DEBUG createAttribute: name=" + form.getName() + " type=" + form.getType() + " options=" + form.getOptions() + " required=" + form.isRequired() + " displayOrder=" + form.getDisplayOrder());
         Band band = bandRepository.findById(1L)
                 .orElseThrow(() -> new IllegalArgumentException("Band not found: 1"));
         commandService.createAttributeDef(band, form.getName(), form.getType(), form.isRequired(), form.getDisplayOrder(), form.getOptions());
@@ -68,6 +69,7 @@ public class MemberAttributeController {
 
     @PutMapping("/{id}")
     public ResponseEntity<Void> updateAttribute(@PathVariable Long id, @ModelAttribute AttributeDefForm form) {
+        System.out.println("DEBUG updateAttribute: id=" + id + " name=" + form.getName() + " type=" + form.getType() + " options=" + form.getOptions() + " required=" + form.isRequired() + " displayOrder=" + form.getDisplayOrder());
         commandService.updateAttributeDef(id, form.getName(), form.getType(), form.isRequired(), form.getDisplayOrder(), form.getOptions());
         return ResponseEntity.ok().header("HX-Redirect", "/band/attributes").build();
     }
