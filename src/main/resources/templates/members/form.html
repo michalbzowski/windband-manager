@@ -103,7 +103,7 @@
                         <option th:each="opt : ${attrDef.options != null ? #strings.arraySplit(attrDef.options, ',') : #strings.arraySplit('', ',')}"
                                 th:value="${#strings.trim(opt)}"
                                 th:text="${#strings.trim(opt)}"
-                                th:selected="${attributeValues != null && #strings.equals(attributeValues.get(attrDef.id), #strings.trim(opt))}">
+                                th:selected="${attributeValues != null && attributeValues.get(attrDef.id) != null && #strings.equals(attributeValues.get(attrDef.id), #strings.trim(opt))}">
                         </option>
                     </select>
                 </label>
@@ -116,7 +116,7 @@
                             <input type="checkbox"
                                    th:name="'attr_' + ${attrDef.id}"
                                    th:value="${#strings.trim(opt)}"
-                                   th:checked="${attributeValues != null && #strings.contains(attributeValues.get(attrDef.id), #strings.trim(opt))}">
+                                   th:checked="${attributeValues != null && attributeValues.get(attrDef.id) != null && #strings.contains(attributeValues.get(attrDef.id), #strings.trim(opt))}">
                             <span th:text="${#strings.trim(opt)}" style="font-size:0.9rem;"></span>
                         </label>
                     </div>
