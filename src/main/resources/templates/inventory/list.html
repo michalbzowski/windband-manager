@@ -147,13 +147,6 @@
                                                 th:text="${m.firstName} + ' ' + ${m.lastName}">Jan</option>
                                     </select>
                                 </div>
-                                <div>
-                                    <label for="uni-ownership">Własność</label>
-                                    <select id="uni-ownership">
-                                        <option value="OWNED">Własny</option>
-                                        <option value="BORROWED">Wypożyczony</option>
-                                    </select>
-                                </div>
                             </div>
                             <!-- Dynamic attribute fields for uniforms -->
                             <div id="uniform-attributes" style="margin-top:1rem; display:flex; gap:0.5rem; flex-wrap:wrap; align-items:flex-end;" th:if="${!#lists.isEmpty(uniformAttributeDefs)}">
@@ -207,7 +200,6 @@
                             <tr>
                                 <th>Nazwa</th>
                                 <th>Przydzielony do</th>
-                                <th>Własność</th>
                                 <th>Akcje</th>
                             </tr>
                         </thead>
@@ -220,13 +212,6 @@
                                 <td>
                                     <span th:if="${u.assignedMemberName != null}" th:text="${u.assignedMemberName}">Jan</span>
                                     <span th:if="${u.assignedMemberName == null}" style="color:#999;">— Wolny —</span>
-                                </td>
-                                <td>
-                                    <span th:switch="${u.ownershipStatus}">
-                                        <span th:case="'OWNED'">✅ Własny</span>
-                                        <span th:case="'BORROWED'">🔄 Wypożyczony</span>
-                                        <span th:case="'MISSING'">❌ Brak</span>
-                                    </span>
                                 </td>
                                 <td>
                                     <div style="display:flex; gap:0.25rem; flex-wrap:wrap;">
@@ -294,13 +279,6 @@
                                                 th:text="${m.firstName} + ' ' + ${m.lastName}">Jan</option>
                                     </select>
                                 </div>
-                                <div>
-                                    <label for="inst-ownership">Własność</label>
-                                    <select id="inst-ownership">
-                                        <option value="OWNED">Własny</option>
-                                        <option value="BORROWED">Wypożyczony</option>
-                                    </select>
-                                </div>
                             </div>
                             <!-- Dynamic attribute fields for instruments -->
                             <div id="instrument-attributes" style="margin-top:1rem; display:flex; gap:0.5rem; flex-wrap:wrap; align-items:flex-end;" th:if="${!#lists.isEmpty(instrumentAttributeDefs)}">
@@ -353,10 +331,7 @@
                         <thead>
                             <tr>
                                 <th>Nazwa</th>
-                                <th>Marka</th>
-                                <th>Nr seryjny</th>
                                 <th>Przydzielony do</th>
-                                <th>Własność</th>
                                 <th>Akcje</th>
                             </tr>
                         </thead>
@@ -376,13 +351,6 @@
                                 <td>
                                     <span th:if="${i.assignedMemberName != null}" th:text="${i.assignedMemberName}">Jan</span>
                                     <span th:if="${i.assignedMemberName == null}" style="color:#999;">— Wolny —</span>
-                                </td>
-                                <td>
-                                    <span th:switch="${i.ownershipStatus}">
-                                        <span th:case="'OWNED'">✅ Własny</span>
-                                        <span th:case="'BORROWED'">🔄 Wypożyczony</span>
-                                        <span th:case="'MISSING'">❌ Brak</span>
-                                    </span>
                                 </td>
                                 <td>
                                     <div style="display:flex; gap:0.25rem; flex-wrap:wrap;">
@@ -546,7 +514,6 @@
         function hideUniformForm() { document.getElementById('uniform-form').style.display = 'none'; }
         function submitUniform() {
             var memberId = document.getElementById('uni-member').value;
-            var ownership = document.getElementById('uni-ownership').value;
             
             // Collect attribute values
             var attributes = {};
@@ -564,7 +531,7 @@
             if (!attributes['name']) { alert('Wypełnij Nazwa (atrybut)'); return; }
 
             fetch('/api/inventory/uniforms', { method:'POST', headers:{'Content-Type':'application/json'},
-                body: JSON.stringify({description:null, memberId:memberId?parseInt(memberId):null, ownershipStatus:ownership, attributes:attributes})
+                body: JSON.stringify({description:null, memberId:memberId?parseInt(memberId):null, ownershipStatus:'OWNED', attributes:attributes})
             }).then(function(r) { if(r.ok) { hideUniformForm(); refreshTab('uniforms'); } });
         }
 
@@ -573,7 +540,6 @@
         function hideInstrumentForm() { document.getElementById('instrument-form').style.display = 'none'; }
         function submitInstrument() {
             var memberId = document.getElementById('inst-member').value;
-            var ownership = document.getElementById('inst-ownership').value;
             
             // Collect attribute values
             var attributes = {};
@@ -591,7 +557,7 @@
             if (!attributes['name']) { alert('Wypełnij Nazwa (atrybut)'); return; }
 
             fetch('/api/inventory/instruments', { method:'POST', headers:{'Content-Type':'application/json'},
-                body: JSON.stringify({description:null, memberId:memberId?parseInt(memberId):null, ownershipStatus:ownership, attributes:attributes})
+                body: JSON.stringify({description:null, memberId:memberId?parseInt(memberId):null, ownershipStatus:'OWNED', attributes:attributes})
             }).then(function(r) { if(r.ok) { hideInstrumentForm(); refreshTab('instruments'); } });
         }
 
