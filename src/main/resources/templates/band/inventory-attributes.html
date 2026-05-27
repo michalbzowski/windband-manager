@@ -66,7 +66,7 @@
                                 hx-target="body"
                                 hx-swap="innerHTML">Edytuj</button>
                         <button class="outline small secondary"
-                                th:hx-delete="@{/band/inventory-attributes/{id}(id=${attrDef.id()})}?type=${type}"
+                                th:hx-delete="@{/band/inventory-attributes/{id}(id=${attrDef.id()},type=${type})}"
                                 hx-confirm="Czy na pewno chcesz usunąć ten atrybut?"
                                 hx-target="body"
                                 hx-swap="innerHTML">Usuń</button>
