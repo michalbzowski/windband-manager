@@ -61,8 +61,7 @@
                     </td>
                     <td style="padding:0.5rem; text-align:center;" th:text="${attrDef.required()} ? '✅' : '❌'">Wymagany</td>
                     <td style="padding:0.5rem; text-align:center;" th:text="${attrDef.displayOrder()}">0</td>
-                    <td style="padding:0.5rem; font-size:0.8rem; color:var(--pico-muted-color);"
-<td style="padding:0.5rem;" th:text="${attrDef.options() != null and !attrDef.options().isEmpty()} ? ${#strings.abbreviate(attrDef.options(), 40)} : '-'">Opcje</td>
+                    <td style="padding:0.5rem; font-size:0.8rem; color:var(--pico-muted-color);" th:text="${attrDef.options() != null and !attrDef.options().isEmpty()} ? ${#strings.abbreviate(attrDef.options(), 40)} : '-'">Opcje</td>
                     <td style="padding:0.5rem;">
                         <button class="outline small"
                                 th:hx-get="@{/band/attributes/{id}/edit(id=${attrDef.id()},type=${type})}"
