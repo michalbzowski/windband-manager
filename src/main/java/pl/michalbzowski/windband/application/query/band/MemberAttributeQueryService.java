@@ -3,6 +3,7 @@ package pl.michalbzowski.windband.application.query.band;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import pl.michalbzowski.windband.application.dto.MemberAttributeDefDto;
 import pl.michalbzowski.windband.domain.band.Band;
 import pl.michalbzowski.windband.domain.band.MemberAttributeDef;
 import pl.michalbzowski.windband.domain.band.MemberAttributeDefRepository;
@@ -23,8 +24,21 @@ public class MemberAttributeQueryService {
     private final MemberAttributeDefRepository attributeDefRepository;
     private final MemberAttributeValueRepository attributeValueRepository;
 
-    public List<MemberAttributeDef> getAttributeDefsForBand(Band band) {
-        return attributeDefRepository.findByBandOrderByDisplayOrderAsc(band);
+    public List<MemberAttributeDefDto> getAttributeDefsForBand(Band band) {
+        return attributeDefRepository.findByBandOrderByDisplayOrderAsc(band).stream()
+                .map(this::toDto)
+                .toList();
+    }
+
+    private MemberAttributeDefDto toDto(MemberAttributeDef def) {
+        return new MemberAttributeDefDto(
+                def.getId(),
+                def.getName(),
+                def.getType(),
+                def.isRequired(),
+                def.getDisplayOrder(),
+                def.getOptions()
+        );
     }
 
     public Map<Long, String> getAttributeValuesForMember(Member member) {

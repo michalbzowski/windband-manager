@@ -6,6 +6,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import pl.michalbzowski.windband.application.command.band.MemberAttributeCommandService;
+import pl.michalbzowski.windband.application.dto.MemberAttributeDefDto;
 import pl.michalbzowski.windband.application.query.band.MemberAttributeQueryService;
 import pl.michalbzowski.windband.domain.band.Band;
 import pl.michalbzowski.windband.domain.band.BandRepository;
@@ -23,7 +24,7 @@ public class MemberAttributeApiController {
     private final BandRepository bandRepository;
 
     @GetMapping
-    public List<MemberAttributeDef> getAttributeDefs(@PathVariable Long bandId) {
+    public List<MemberAttributeDefDto> getAttributeDefs(@PathVariable Long bandId) {
         Band band = bandRepository.findById(bandId)
                 .orElseThrow(() -> new IllegalArgumentException("Band not found: " + bandId));
         return queryService.getAttributeDefsForBand(band);
