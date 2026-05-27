@@ -8,6 +8,7 @@ import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
 import pl.michalbzowski.windband.application.command.band.MemberAttributeCommandService;
 import pl.michalbzowski.windband.application.query.band.MemberAttributeQueryService;
+import pl.michalbzowski.windband.application.query.inventory.InventoryAttributeQueryService;
 import pl.michalbzowski.windband.domain.band.Band;
 import pl.michalbzowski.windband.domain.band.BandRepository;
 import pl.michalbzowski.windband.domain.band.MemberAttributeDef;
@@ -20,62 +21,75 @@ import java.util.List;
 public class MemberAttributeController {
 
     private final MemberAttributeCommandService commandService;
-    private final MemberAttributeQueryService queryService;
+    private final MemberAttributeQueryService memberQueryService;
+    private final InventoryAttributeQueryService inventoryQueryService;
     private final BandRepository bandRepository;
 
     // --- Page endpoints (HTMX fragments) ---
 
     @GetMapping
-    public String attributesPage(Model model) {
+    public String attributesPage(@RequestParam(defaultValue = "MEMBER") String type, Model model) {
         Band band = bandRepository.findById(1L).orElse(null);
+        model.addAttribute("type", type);
         if (band != null) {
-            model.addAttribute("attributeDefs", queryService.getAttributeDefsForBand(band));
+            model.addAttribute("attributeDefs", switch (type) {
+                case "UNIFORM" -> inventoryQueryService.getUniformAttributeDefs(band);
+                case "INSTRUMENT" -> inventoryQueryService.getInstrumentAttributeDefs(band);
+                case "ORDER" -> inventoryQueryService.getOrderAttributeDefs(band);
+                case "MEMBER" -> memberQueryService.getAttributeDefsForBand(band);
+                default -> {
+                    // Dla null lub innych wartości użyj atrybutów członków
+                    yield memberQueryService.getAttributeDefsForBand(band);
+                }
+            });
         }
-        return "band/attribute-defs";
+        return "band/inventory-attributes";
     }
 
     @GetMapping("/list")
     public String attributeList(Model model) {
         Band band = bandRepository.findById(1L).orElse(null);
         if (band != null) {
-            model.addAttribute("attributeDefs", queryService.getAttributeDefsForBand(band));
+            model.addAttribute("attributeDefs", memberQueryService.getAttributeDefsForBand(band));
         }
         return "band/attribute-list";
     }
 
     @GetMapping("/new")
-    public String newAttributeForm(Model model) {
+    public String newAttributeForm(@RequestParam(defaultValue = "MEMBER") String type, Model model) {
+        model.addAttribute("type", type);
         model.addAttribute("attributeDef", new AttributeDefForm("", "BOOLEAN", false, 0, null));
         model.addAttribute("attributeDefId", null);
-        return "band/attribute-new";
+        return "band/inventory-attribute-form";
     }
 
     @GetMapping("/{id}/edit")
-    public String editAttributeForm(@PathVariable Long id, Model model) {
+    public String editAttributeForm(@PathVariable Long id, @RequestParam(defaultValue = "MEMBER") String type, Model model) {
+        model.addAttribute("type", type);
         MemberAttributeDef def = commandService.getAttributeDefById(id);
         model.addAttribute("attributeDef", new AttributeDefForm(def.getName(), def.getType(), def.isRequired(), def.getDisplayOrder(), def.getOptions()));
         model.addAttribute("attributeDefId", id);
-        return "band/attribute-edit";
+        return "band/inventory-attribute-form";
     }
 
     @PostMapping
-    public ResponseEntity<Void> createAttribute(@ModelAttribute AttributeDefForm form) {
+    public ResponseEntity<Void> createAttribute(@RequestParam(defaultValue = "MEMBER") String type, @ModelAttribute AttributeDefForm form) {
         Band band = bandRepository.findById(1L)
                 .orElseThrow(() -> new IllegalArgumentException("Band not found: 1"));
         commandService.createAttributeDef(band, form.getName(), form.getType(), form.isRequired(), form.getDisplayOrder(), form.getOptions());
-        return ResponseEntity.ok().header("HX-Redirect", "/band/attributes").build();
+        return ResponseEntity.ok().header("HX-Redirect", "/band/attributes?type=" + type).build();
     }
 
     @PutMapping("/{id}")
-    public ResponseEntity<Void> updateAttribute(@PathVariable Long id, @ModelAttribute AttributeDefForm form) {
+    public ResponseEntity<Void> updateAttribute(@PathVariable Long id, @RequestParam(defaultValue = "MEMBER") String type, @ModelAttribute AttributeDefForm form) {
         commandService.updateAttributeDef(id, form.getName(), form.getType(), form.isRequired(), form.getDisplayOrder(), form.getOptions());
-        return ResponseEntity.ok().header("HX-Redirect", "/band/attributes").build();
+        return ResponseEntity.ok().header("HX-Redirect", "/band/attributes?type=" + type).build();
     }
 
     @DeleteMapping("/{id}")
-    public ResponseEntity<Void> deleteAttribute(@PathVariable Long id) {
+    public ResponseEntity<Void> deleteAttribute(@PathVariable Long id, @RequestParam(defaultValue = "MEMBER") String type) {
         commandService.deleteAttributeDef(id);
-        return ResponseEntity.ok().header("HX-Redirect", "/band/attributes").build();
+        return ResponseEntity.ok().header("HX-Redirect", "/band/attributes?type=" + type).build();
     }
 
     @Data
