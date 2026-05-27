@@ -10,14 +10,11 @@
                 <h2>🏷️ Atrybuty muzyków</h2>
                 <button class="primary"
                         th:hx-get="@{/band/attributes/new}"
-                        hx-target="#content"
+                        hx-target="body"
                         hx-swap="innerHTML">+ Dodaj atrybut</button>
             </div>
 
-            <!-- Form container: new/edit forms loaded here via HTMX -->
-            <div id="attribute-form-container" hx-on:htmx:after-settle="htmx.process(this)"></div>
 
-            <!-- Attribute list rendered directly -->
             <div th:if="${attributeDefs == null or #lists.isEmpty(attributeDefs)}">
                 <p>Brak atrybutów w systemie. Dodaj pierwszy!</p>
             </div>
@@ -44,7 +41,7 @@
                         <td style="padding:0.5rem;">
                             <button class="outline small"
                                     th:hx-get="@{/band/attributes/{id}/edit(id=${attrDef.id})}"
-                                    hx-target="#content"
+                                    hx-target="body"
                                     hx-swap="innerHTML">Edytuj</button>
                             <button class="outline small secondary"
                                     th:hx-delete="@{/band/attributes/{id}(id=${attrDef.id})}"

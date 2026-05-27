@@ -47,7 +47,7 @@ public class MemberAttributeController {
     public String newAttributeForm(Model model) {
         model.addAttribute("attributeDef", new AttributeDefForm("", "BOOLEAN", false, 0, null));
         model.addAttribute("attributeDefId", null);
-        return "band/attribute-form";
+        return "band/attribute-new";
     }
 
     @GetMapping("/{id}/edit")

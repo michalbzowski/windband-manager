@@ -1,6 +1,6 @@
 <!DOCTYPE html>
 <html lang="pl" xmlns:th="http://www.thymeleaf.org">
-<head th:replace="~{fragments/layout :: head('Edycja atrybutu')}"></head>
+<head th:replace="~{fragments/layout :: head('Nowy atrybut')}"></head>
 <body>
     <nav th:replace="~{fragments/layout :: nav}"></nav>
 
@@ -9,47 +9,46 @@
             <a href="/band/attributes" style="font-size:0.9rem;">← Powrót do listy atrybutów</a>
         </div>
 
-        <h4>✏️ Edytuj atrybut</h4>
+        <h4>➕ Nowy atrybut</h4>
         <div style="margin-bottom:1rem; padding:1rem; border:1px solid var(--pico-muted-border-color); border-radius:8px;">
-            <form th:hx-put="@{/band/attributes/{id}(id=${attributeDefId})}"
+            <form th:hx-post="@{/band/attributes}"
                   hx-swap="none">
                 <div class="grid">
                     <label>
                         Nazwa *
-                        <input type="text" name="name" th:value="${attributeDef?.name}" required>
+                        <input type="text" name="name" required>
                     </label>
                     <label>
                         Typ
-                        <select name="type" id="attr-type-edit" onchange="toggleOptionsField()">
-                            <option value="BOOLEAN" th:selected="${attributeDef?.type == 'BOOLEAN'}">Tak/Nie</option>
-                            <option value="TEXT" th:selected="${attributeDef?.type == 'TEXT'}">Tekst</option>
-                            <option value="NUMBER" th:selected="${attributeDef?.type == 'NUMBER'}">Liczba</option>
-                            <option value="SELECT" th:selected="${attributeDef?.type == 'SELECT'}">Wybór (jedna opcja)</option>
-                            <option value="MULTI_SELECT" th:selected="${attributeDef?.type == 'MULTI_SELECT'}">Wybór (wiele opcji)</option>
-                            <option value="DATE" th:selected="${attributeDef?.type == 'DATE'}">Data</option>
+                        <select name="type" id="attr-type-new" onchange="toggleOptionsField()">
+                            <option value="BOOLEAN">Tak/Nie</option>
+                            <option value="TEXT">Tekst</option>
+                            <option value="NUMBER">Liczba</option>
+                            <option value="SELECT">Wybór (jedna opcja)</option>
+                            <option value="MULTI_SELECT">Wybór (wiele opcji)</option>
+                            <option value="DATE">Data</option>
                         </select>
                     </label>
                 </div>
                 <div class="grid">
                     <label>
                         Kolejność
-                        <input type="number" name="displayOrder" th:value="${attributeDef?.displayOrder}" min="0">
+                        <input type="number" name="displayOrder" value="0" min="0">
                     </label>
                     <label>
-                        <input type="checkbox" name="required" th:checked="${attributeDef?.required}">
+                        <input type="checkbox" name="required">
                         Wymagany
                     </label>
                 </div>
-                <div id="options-field-edit" th:style="${attributeDef?.type == 'SELECT' or attributeDef?.type == 'MULTI_SELECT'} ? '' : 'display:none;'">
+                <div id="options-field-new" style="display:none; margin-top:0.5rem;">
                     <label>
                         Opcje (oddzielone przecinkiem)
                         <textarea name="options" rows="3" style="font-family:monospace; font-size:0.85rem;"
-                                  placeholder="Puzon, Trąbka, Waltornia, Flet"
-                                  th:text="${attributeDef?.options}"></textarea>
+                                  placeholder="Puzon, Trąbka, Waltornia, Flet"></textarea>
                     </label>
                 </div>
                 <div style="display:flex; gap:0.5rem; margin-top:0.5rem;">
-                    <button type="submit" class="primary small">Zapisz zmiany</button>
+                    <button type="submit" class="primary small">Dodaj atrybut</button>
                     <a href="/band/attributes" class="secondary small" style="padding:0.4rem 0.8rem; text-decoration:none; border-radius:4px; border:1px solid var(--pico-muted-color);">Anuluj</a>
                 </div>
             </form>
@@ -58,8 +57,8 @@
 
     <script>
         function toggleOptionsField() {
-            var typeSelect = document.getElementById('attr-type-edit');
-            var optionsField = document.getElementById('options-field-edit');
+            var typeSelect = document.getElementById('attr-type-new');
+            var optionsField = document.getElementById('options-field-new');
             var type = typeSelect.value;
             if (type === 'SELECT' || type === 'MULTI_SELECT') {
                 optionsField.style.display = '';
