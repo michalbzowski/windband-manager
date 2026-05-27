@@ -35,7 +35,7 @@ public class MemberAttributeApiController {
         Band band = bandRepository.findById(bandId)
                 .orElseThrow(() -> new IllegalArgumentException("Band not found: " + bandId));
         var def = commandService.createAttributeDef(band, request.getName(), request.getType(),
-                request.isRequired(), request.getDisplayOrder());
+                request.isRequired(), request.getDisplayOrder(), request.getOptions());
         return ResponseEntity.status(HttpStatus.CREATED).body(def);
     }
 
@@ -43,7 +43,7 @@ public class MemberAttributeApiController {
     public MemberAttributeDef updateAttributeDef(@PathVariable Long id,
                                                   @RequestBody AttributeDefRequest request) {
         return commandService.updateAttributeDef(id, request.getName(), request.getType(),
-                request.isRequired(), request.getDisplayOrder());
+                request.isRequired(), request.getDisplayOrder(), request.getOptions());
     }
 
     @DeleteMapping("/{id}")
@@ -52,11 +52,27 @@ public class MemberAttributeApiController {
         return ResponseEntity.noContent().build();
     }
 
+    // --- Attribute values per member ---
+
+    @PostMapping("/{attrId}/members/{memberId}")
+    public ResponseEntity<Void> setAttributeValue(@PathVariable Long attrId,
+                                                   @PathVariable Long memberId,
+                                                   @RequestBody AttributeValueRequest request) {
+        commandService.setAttributeValue(memberId, attrId, request.getValue());
+        return ResponseEntity.ok().build();
+    }
+
+    @Data
+    public static class AttributeValueRequest {
+        private String value;
+    }
+
     @Data
     public static class AttributeDefRequest {
         private String name;
         private String type = "BOOLEAN";
         private boolean required;
         private int displayOrder;
+        private String options;
     }
 }

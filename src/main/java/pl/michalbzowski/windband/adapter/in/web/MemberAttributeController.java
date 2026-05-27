@@ -61,15 +61,14 @@ public class MemberAttributeController {
     public String createAttribute(@ModelAttribute AttributeDefForm form, Model model) {
         Band band = bandRepository.findById(1L)
                 .orElseThrow(() -> new IllegalArgumentException("Band not found: 1"));
-        commandService.createAttributeDef(band, form.getName(), form.getType(), form.isRequired(), form.getDisplayOrder());
-        // Return updated page with list
+        commandService.createAttributeDef(band, form.getName(), form.getType(), form.isRequired(), form.getDisplayOrder(), form.getOptions());
         model.addAttribute("attributeDefs", queryService.getAttributeDefsForBand(band));
         return "band/attribute-defs";
     }
 
     @PutMapping("/{id}")
     public String updateAttribute(@PathVariable Long id, @ModelAttribute AttributeDefForm form, Model model) {
-        commandService.updateAttributeDef(id, form.getName(), form.getType(), form.isRequired(), form.getDisplayOrder());
+        commandService.updateAttributeDef(id, form.getName(), form.getType(), form.isRequired(), form.getDisplayOrder(), form.getOptions());
         Band band = bandRepository.findById(1L).orElse(null);
         if (band != null) {
             model.addAttribute("attributeDefs", queryService.getAttributeDefsForBand(band));
@@ -93,6 +92,7 @@ public class MemberAttributeController {
         private String type;
         private boolean required;
         private int displayOrder;
+        private String options; // JSON array for SELECT/MULTI_SELECT
 
         public AttributeDefForm() {}
 

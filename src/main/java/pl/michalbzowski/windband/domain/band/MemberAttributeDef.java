@@ -41,7 +41,10 @@ public class MemberAttributeDef {
     @Column(nullable = false)
     private LocalDate createdAt;
 
-    private MemberAttributeDef(Band band, String name, String type, boolean required, int displayOrder) {
+    @Column(length = 2000)
+    private String options; // JSON array for SELECT/MULTI_SELECT types
+
+    private MemberAttributeDef(Band band, String name, String type, boolean required, int displayOrder, String options) {
         this.band = Objects.requireNonNull(band, "band required");
         this.name = Objects.requireNonNull(name, "name required");
         this.type = Objects.requireNonNull(type, "type required");
@@ -51,14 +54,15 @@ public class MemberAttributeDef {
         this.createdAt = LocalDate.now();
     }
 
-    public static MemberAttributeDef create(Band band, String name, String type, boolean required, int displayOrder) {
-        return new MemberAttributeDef(band, name, type, required, displayOrder);
+    public static MemberAttributeDef create(Band band, String name, String type, boolean required, int displayOrder, String options) {
+        return new MemberAttributeDef(band, name, type, required, displayOrder, options);
     }
 
-    public void update(String name, String type, boolean required, int displayOrder) {
+    public void update(String name, String type, boolean required, int displayOrder, String options) {
         this.name = Objects.requireNonNull(name, "name required");
         this.type = Objects.requireNonNull(type, "type required");
         this.required = required;
         this.displayOrder = displayOrder;
+        this.options = options;
     }
 }

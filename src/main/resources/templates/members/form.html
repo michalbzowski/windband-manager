@@ -69,17 +69,58 @@
         <div th:if="${attributeDefs != null && !attributeDefs.isEmpty()}" style="margin-top:1rem;">
             <h4>Dodatkowe atrybuty</h4>
             <div th:each="attrDef : ${attributeDefs}" class="grid">
+                <!-- BOOLEAN -->
                 <label th:if="${attrDef.type == 'BOOLEAN'}">
                     <input type="checkbox" th:name="'attr_' + ${attrDef.id}"
                            th:checked="${attributeValues != null && attributeValues.get(attrDef.id) == 'true'}"
                            th:value="${attrDef.name}">
                     <span th:text="${attrDef.name}">Atrybut</span>
                 </label>
+                <!-- TEXT -->
                 <label th:if="${attrDef.type == 'TEXT'}">
                     <span th:text="${attrDef.name}">Atrybut</span>
                     <input type="text" th:name="'attr_' + ${attrDef.id}"
                            th:value="${attributeValues != null ? attributeValues.get(attrDef.id) : ''}">
                 </label>
+                <!-- NUMBER -->
+                <label th:if="${attrDef.type == 'NUMBER'}">
+                    <span th:text="${attrDef.name}">Atrybut</span>
+                    <input type="number" th:name="'attr_' + ${attrDef.id}"
+                           th:value="${attributeValues != null ? attributeValues.get(attrDef.id) : ''}"
+                           step="any">
+                </label>
+                <!-- DATE -->
+                <label th:if="${attrDef.type == 'DATE'}">
+                    <span th:text="${attrDef.name}">Atrybut</span>
+                    <input type="date" th:name="'attr_' + ${attrDef.id}"
+                           th:value="${attributeValues != null ? attributeValues.get(attrDef.id) : ''}">
+                </label>
+                <!-- SELECT -->
+                <label th:if="${attrDef.type == 'SELECT'}">
+                    <span th:text="${attrDef.name}">Atrybut</span>
+                    <select th:name="'attr_' + ${attrDef.id}">
+                        <option value="">— wybierz —</option>
+                        <option th:each="opt : ${#strings.arraySplit(attrDef.options, '\n')}"
+                                th:value="${opt}"
+                                th:text="${opt}"
+                                th:selected="${attributeValues != null && attributeValues.get(attrDef.id) == opt}">
+                        </option>
+                    </select>
+                </label>
+                <!-- MULTI_SELECT -->
+                <div th:if="${attrDef.type == 'MULTI_SELECT'}">
+                    <span th:text="${attrDef.name}">Atrybut</span>
+                    <div th:each="opt : ${#strings.arraySplit(attrDef.options, '\n')}"
+                         style="display:inline-block; margin-right:0.5rem;">
+                        <label>
+                            <input type="checkbox"
+                                   th:name="'attr_' + ${attrDef.id}"
+                                   th:value="${opt}"
+                                   th:checked="${attributeValues != null && #strings.contains(attributeValues.get(attrDef.id), opt)}">
+                            <span th:text="${opt}" style="font-size:0.9rem;"></span>
+                        </label>
+                    </div>
+                </div>
             </div>
         </div>
 
@@ -113,13 +154,35 @@
                 headers: {'Content-Type': 'application/json'},
                 body: JSON.stringify(data)
             }).then(function(resp) {
-                // Save dynamic attributes only for existing members
+            // Save dynamic attributes only for existing members
                 if (memberId) {
                     var attrPromises = [];
-                    var inputs = form.querySelectorAll('[name^="attr_"]');
-                    inputs.forEach(function(input) {
+                    // Group attribute inputs by attr ID to handle multi-select checkboxes
+                    var attrGroups = {};
+                    var allAttrInputs = form.querySelectorAll('[name^="attr_"]');
+                    allAttrInputs.forEach(function(input) {
                         var attrId = input.name.replace('attr_', '');
-                        var value = input.type === 'checkbox' ? (input.checked ? 'true' : 'false') : input.value;
+                        if (!attrGroups[attrId]) attrGroups[attrId] = [];
+                        attrGroups[attrId].push(input);
+                    });
+                    Object.keys(attrGroups).forEach(function(attrId) {
+                        var inputs = attrGroups[attrId];
+                        var value;
+                        if (inputs.length === 1) {
+                            var input = inputs[0];
+                            if (input.type === 'checkbox') {
+                                value = input.checked ? 'true' : 'false';
+                            } else {
+                                value = input.value;
+                            }
+                        } else {
+                            // Multi-select: join checked values with semicolon
+                            var checked = [];
+                            inputs.forEach(function(input) {
+                                if (input.checked) checked.push(input.value);
+                            });
+                            value = checked.join(';');
+                        }
                         var attrUrl = '/api/bands/1/attribute-defs/' + attrId + '/members/' + memberId;
                         attrPromises.push(fetch(attrUrl, {
                             method: 'POST',

@@ -20,15 +20,15 @@ public class MemberAttributeCommandService {
     private final MemberAttributeValueRepository attributeValueRepository;
     private final MemberRepository memberRepository;
 
-    public MemberAttributeDef createAttributeDef(Band band, String name, String type, boolean required, int displayOrder) {
-        MemberAttributeDef def = MemberAttributeDef.create(band, name, type, required, displayOrder);
+    public MemberAttributeDef createAttributeDef(Band band, String name, String type, boolean required, int displayOrder, String options) {
+        MemberAttributeDef def = MemberAttributeDef.create(band, name, type, required, displayOrder, options);
         return attributeDefRepository.save(def);
     }
 
-    public MemberAttributeDef updateAttributeDef(Long id, String name, String type, boolean required, int displayOrder) {
+    public MemberAttributeDef updateAttributeDef(Long id, String name, String type, boolean required, int displayOrder, String options) {
         MemberAttributeDef def = attributeDefRepository.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("AttributeDef not found: " + id));
-        def.update(name, type, required, displayOrder);
+        def.update(name, type, required, displayOrder, options);
         return attributeDefRepository.save(def);
     }
 
