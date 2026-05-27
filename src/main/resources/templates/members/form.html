@@ -96,11 +96,11 @@
                            th:value="${attributeValues != null ? attributeValues.get(attrDef.id) : ''}">
                 </label>
                 <!-- SELECT -->
-                <label th:if="${attrDef.type == 'SELECT' and attrDef.options != null}">
+                <label th:if="${attrDef.type == 'SELECT'}">
                     <span th:text="${attrDef.name}">Atrybut</span>
                     <select th:name="'attr_' + ${attrDef.id}">
                         <option value="">— wybierz —</option>
-                        <option th:each="opt : ${#strings.arraySplit(attrDef.options, ',')}"
+                        <option th:each="opt : ${attrDef.options != null ? #strings.arraySplit(attrDef.options, ',') : #strings.arraySplit('', ',')}"
                                 th:value="${#strings.trim(opt)}"
                                 th:text="${#strings.trim(opt)}"
                                 th:selected="${attributeValues != null && #strings.equals(attributeValues.get(attrDef.id), #strings.trim(opt))}">
