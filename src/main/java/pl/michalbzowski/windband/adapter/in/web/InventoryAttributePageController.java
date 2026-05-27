@@ -86,8 +86,9 @@ public class InventoryAttributePageController {
     // === Create ===
 
     @PostMapping
-    public ResponseEntity<Void> create(@RequestParam String type, @ModelAttribute AttributeDefForm form) {
+    public ResponseEntity<Void> create(@ModelAttribute AttributeDefForm form) {
         Band band = getDefaultBand();
+        String type = form.getType();
         switch (type) {
             case "UNIFORM" -> uniformCommandService.createAttributeDef(band, form.getName(), form.getType(), form.isRequired(), form.getDisplayOrder(), form.getOptions());
             case "INSTRUMENT" -> instrumentCommandService.createAttributeDef(band, form.getName(), form.getType(), form.isRequired(), form.getDisplayOrder(), form.getOptions());
@@ -100,7 +101,8 @@ public class InventoryAttributePageController {
     // === Update ===
 
     @PutMapping("/{id}")
-    public ResponseEntity<Void> update(@PathVariable Long id, @RequestParam String type, @ModelAttribute AttributeDefForm form) {
+    public ResponseEntity<Void> update(@PathVariable Long id, @ModelAttribute AttributeDefForm form) {
+        String type = form.getType();
         switch (type) {
             case "UNIFORM" -> uniformCommandService.updateAttributeDef(id, form.getName(), form.getType(), form.isRequired(), form.getDisplayOrder(), form.getOptions());
             case "INSTRUMENT" -> instrumentCommandService.updateAttributeDef(id, form.getName(), form.getType(), form.isRequired(), form.getDisplayOrder(), form.getOptions());

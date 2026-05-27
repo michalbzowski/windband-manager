@@ -17,9 +17,10 @@
         <div style="margin-bottom:1rem; padding:1rem; border:1px solid var(--pico-muted-border-color); border-radius:8px;">
             <!-- New form -->
             <form th:if="${attributeDefId == null}"
-                  th:hx-post="@{/band/inventory-attributes(type=${type})}"
+                  th:hx-post="@{/band/inventory-attributes}"
                   hx-target="body"
                   hx-swap="none">
+                <input type="hidden" name="type" th:value="${type}">
                 <div class="grid">
                     <label>
                         Nazwa *
@@ -62,9 +63,10 @@
 
             <!-- Edit form -->
             <form th:if="${attributeDefId != null}"
-                  th:hx-put="@{/band/inventory-attributes/{id}(id=${attributeDefId},type=${type})}"
+                  th:hx-put="@{/band/inventory-attributes/{id}(id=${attributeDefId})}"
                   hx-target="body"
                   hx-swap="none">
+                <input type="hidden" name="type" th:value="${type}">
                 <div class="grid">
                     <label>
                         Nazwa *

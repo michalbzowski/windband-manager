@@ -46,7 +46,16 @@
             <tbody>
                 <tr th:each="attrDef : ${attributeDefs}" style="border-bottom:1px solid var(--pico-muted-border-color);">
                     <td style="padding:0.5rem;" th:text="${attrDef.name()}">Nazwa</td>
-                    <td style="padding:0.5rem;" th:text="${attrDef.type() == 'BOOLEAN'} ? 'Tak/Nie' : (${attrDef.type() == 'NUMBER'} ? 'Liczba' : (${attrDef.type() == 'SELECT'} ? 'Wybór' : (${attrDef.type() == 'MULTI_SELECT'} ? 'Wybór wielokrotny' : (${attrDef.type() == 'DATE'} ? 'Data' : 'Tekst'))))">Typ</td>
+                    <td style="padding:0.5rem;">
+                        <span th:switch="${attrDef.type()}">
+                            <span th:case="'BOOLEAN'">Tak/Nie</span>
+                            <span th:case="'NUMBER'">Liczba</span>
+                            <span th:case="'SELECT'">Wybór</span>
+                            <span th:case="'MULTI_SELECT'">Wybór wielokrotny</span>
+                            <span th:case="'DATE'">Data</span>
+                            <span th:case="*">Tekst</span>
+                        </span>
+                    </td>
                     <td style="padding:0.5rem; text-align:center;" th:text="${attrDef.required()} ? '✅' : '❌'">Wymagany</td>
                     <td style="padding:0.5rem; text-align:center;" th:text="${attrDef.displayOrder()}">0</td>
                     <td style="padding:0.5rem; font-size:0.8rem; color:var(--pico-muted-color);"
