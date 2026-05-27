@@ -140,14 +140,6 @@
                             <h4>Nowy element stroju</h4>
                             <div style="display:flex; gap:0.5rem; flex-wrap:wrap; align-items:flex-end;">
                                 <div>
-                                    <label for="uni-name">Nazwa</label>
-                                    <input id="uni-name" type="text" placeholder="np. Czapka">
-                                </div>
-                                <div>
-                                    <label for="uni-desc">Opis</label>
-                                    <input id="uni-desc" type="text" placeholder="Rozmiar, kolor...">
-                                </div>
-                                <div>
                                     <label for="uni-member">Przydziel do</label>
                                     <select id="uni-member">
                                         <option value="">— Wolny —</option>
@@ -156,7 +148,7 @@
                                     </select>
                                 </div>
                                 <div>
-                                    <label for="uni-ownership">Status</label>
+                                    <label for="uni-ownership">Własność</label>
                                     <select id="uni-ownership">
                                         <option value="OWNED">Własny</option>
                                         <option value="BORROWED">Wypożyczony</option>
@@ -214,18 +206,17 @@
                         <thead>
                             <tr>
                                 <th>Nazwa</th>
-                                <th>Opis</th>
                                 <th>Przydzielony do</th>
                                 <th>Własność</th>
-                                <th>Stan</th>
-                                <th>Nr zamówienia</th>
                                 <th>Akcje</th>
                             </tr>
                         </thead>
                         <tbody>
                             <tr th:each="u : ${uniformItems}">
-                                <td th:text="${u.name}">Czapka</td>
-                                <td th:text="${u.description}">Czarna, rozmiar L</td>
+                                <td>
+                                    <span th:if="${uniformAttributeValues[u.id]?.get('name')}" th:text="${uniformAttributeValues[u.id].get('name')}">Czapka</span>
+                                    <span th:unless="${uniformAttributeValues[u.id]?.get('name')}" style="color:#999;">—</span>
+                                </td>
                                 <td>
                                     <span th:if="${u.assignedMemberName != null}" th:text="${u.assignedMemberName}">Jan</span>
                                     <span th:if="${u.assignedMemberName == null}" style="color:#999;">— Wolny —</span>
@@ -237,14 +228,6 @@
                                         <span th:case="'MISSING'">❌ Brak</span>
                                     </span>
                                 </td>
-                                <td>
-                                    <span th:switch="${u.lifecycleStatus}">
-                                        <span th:case="'AVAILABLE'">🟢 Dostępny</span>
-                                        <span th:case="'RETIRED_FROM_STOCK'">🟡 Zlikwidowany ze stanu</span>
-                                        <span th:case="'DISPOSED'">🔴 Zlikwidowany</span>
-                                    </span>
-                                </td>
-                                <td th:text="${u.orderNumber != null} ? ${u.orderNumber} : '-'">—</td>
                                 <td>
                                     <div style="display:flex; gap:0.25rem; flex-wrap:wrap;">
                                         <button th:if="${u.assignedMemberName == null && u.lifecycleStatus != 'DISPOSED'}"
@@ -304,22 +287,6 @@
                             <h4>Nowy instrument</h4>
                             <div style="display:flex; gap:0.5rem; flex-wrap:wrap; align-items:flex-end;">
                                 <div>
-                                    <label for="inst-name">Nazwa</label>
-                                    <input id="inst-name" type="text" placeholder="np. Trąbka">
-                                </div>
-                                <div>
-                                    <label for="inst-brand">Marka</label>
-                                    <input id="inst-brand" type="text" placeholder="Yamaha">
-                                </div>
-                                <div>
-                                    <label for="inst-serial">Nr seryjny</label>
-                                    <input id="inst-serial" type="text">
-                                </div>
-                                <div>
-                                    <label for="inst-desc">Opis</label>
-                                    <input id="inst-desc" type="text">
-                                </div>
-                                <div>
                                     <label for="inst-member">Przydziel do</label>
                                     <select id="inst-member">
                                         <option value="">— Wolny —</option>
@@ -328,7 +295,7 @@
                                     </select>
                                 </div>
                                 <div>
-                                    <label for="inst-ownership">Status</label>
+                                    <label for="inst-ownership">Własność</label>
                                     <select id="inst-ownership">
                                         <option value="OWNED">Własny</option>
                                         <option value="BORROWED">Wypożyczony</option>
@@ -390,16 +357,22 @@
                                 <th>Nr seryjny</th>
                                 <th>Przydzielony do</th>
                                 <th>Własność</th>
-                                <th>Stan</th>
-                                <th>Nr zamówienia</th>
                                 <th>Akcje</th>
                             </tr>
                         </thead>
                         <tbody>
                             <tr th:each="i : ${instrumentItems}">
-                                <td th:text="${i.name}">Trąbka</td>
-                                <td th:text="${i.brand}">Yamaha</td>
-                                <td th:text="${i.serialNumber}">YTR-12345</td>
+                                <td>
+                                    <div style="display:flex; flex-direction:column; gap:0.25rem;">
+                                        <span th:if="${instrumentAttributeValues[i.id]?.get('name')}" th:text="${instrumentAttributeValues[i.id].get('name')}">Trąbka</span>
+                                        <span th:unless="${instrumentAttributeValues[i.id]?.get('name')}" style="color:#999;">—</span>
+                                        <small style="color:var(--pico-muted-color);" 
+                                              th:if="${instrumentAttributeValues[i.id]?.get('brand') or instrumentAttributeValues[i.id]?.get('serialNumber')}">
+                                            <span th:if="${instrumentAttributeValues[i.id]?.get('brand')}" th:text="${instrumentAttributeValues[i.id].get('brand')}">Yamaha</span>
+                                            <span th:if="${instrumentAttributeValues[i.id]?.get('serialNumber')}">, nr ser: <span th:text="${instrumentAttributeValues[i.id].get('serialNumber')}">YTR-12345</span></span>
+                                        </small>
+                                    </div>
+                                </td>
                                 <td>
                                     <span th:if="${i.assignedMemberName != null}" th:text="${i.assignedMemberName}">Jan</span>
                                     <span th:if="${i.assignedMemberName == null}" style="color:#999;">— Wolny —</span>
@@ -411,14 +384,6 @@
                                         <span th:case="'MISSING'">❌ Brak</span>
                                     </span>
                                 </td>
-                                <td>
-                                    <span th:switch="${i.lifecycleStatus}">
-                                        <span th:case="'AVAILABLE'">🟢 Dostępny</span>
-                                        <span th:case="'RETIRED_FROM_STOCK'">🟡 Zlikwidowany ze stanu</span>
-                                        <span th:case="'DISPOSED'">🔴 Zlikwidowany</span>
-                                    </span>
-                                </td>
-                                <td th:text="${i.orderNumber != null} ? ${i.orderNumber} : '-'">—</td>
                                 <td>
                                     <div style="display:flex; gap:0.25rem; flex-wrap:wrap;">
                                         <button th:if="${i.assignedMemberName == null && i.lifecycleStatus != 'DISPOSED'}"
@@ -580,11 +545,8 @@
         function showUniformForm() { document.getElementById('uniform-form').style.display = 'block'; }
         function hideUniformForm() { document.getElementById('uniform-form').style.display = 'none'; }
         function submitUniform() {
-            var name = document.getElementById('uni-name').value;
-            var desc = document.getElementById('uni-desc').value;
             var memberId = document.getElementById('uni-member').value;
             var ownership = document.getElementById('uni-ownership').value;
-            if (!name) { alert('Wypełnij nazwę'); return; }
             
             // Collect attribute values
             var attributes = {};
@@ -598,8 +560,11 @@
                 }
             });
             
+            // Name is now an attribute - check if it's filled
+            if (!attributes['name']) { alert('Wypełnij Nazwa (atrybut)'); return; }
+
             fetch('/api/inventory/uniforms', { method:'POST', headers:{'Content-Type':'application/json'},
-                body: JSON.stringify({name:name, description:desc, memberId:memberId?parseInt(memberId):null, ownershipStatus:ownership, attributes:attributes})
+                body: JSON.stringify({description:null, memberId:memberId?parseInt(memberId):null, ownershipStatus:ownership, attributes:attributes})
             }).then(function(r) { if(r.ok) { hideUniformForm(); refreshTab('uniforms'); } });
         }
 
@@ -607,13 +572,8 @@
         function showInstrumentForm() { document.getElementById('instrument-form').style.display = 'block'; }
         function hideInstrumentForm() { document.getElementById('instrument-form').style.display = 'none'; }
         function submitInstrument() {
-            var name = document.getElementById('inst-name').value;
-            var brand = document.getElementById('inst-brand').value;
-            var serial = document.getElementById('inst-serial').value;
-            var desc = document.getElementById('inst-desc').value;
             var memberId = document.getElementById('inst-member').value;
             var ownership = document.getElementById('inst-ownership').value;
-            if (!name) { alert('Wypełnij nazwę'); return; }
             
             // Collect attribute values
             var attributes = {};
@@ -627,9 +587,11 @@
                 }
             });
             
+            // Name is now an attribute - check if it's filled
+            if (!attributes['name']) { alert('Wypełnij Nazwa (atrybut)'); return; }
+
             fetch('/api/inventory/instruments', { method:'POST', headers:{'Content-Type':'application/json'},
-                body: JSON.stringify({name:name, brand:brand, serialNumber:serial, description:desc,
-                    memberId:memberId?parseInt(memberId):null, ownershipStatus:ownership, attributes:attributes})
+                body: JSON.stringify({description:null, memberId:memberId?parseInt(memberId):null, ownershipStatus:ownership, attributes:attributes})
             }).then(function(r) { if(r.ok) { hideInstrumentForm(); refreshTab('instruments'); } });
         }
 
