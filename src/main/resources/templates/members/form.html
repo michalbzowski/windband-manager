@@ -96,28 +96,28 @@
                            th:value="${attributeValues != null ? attributeValues.get(attrDef.id) : ''}">
                 </label>
                 <!-- SELECT -->
-                <label th:if="${attrDef.type == 'SELECT'}">
+                <label th:if="${attrDef.type == 'SELECT' and attrDef.options != null}">
                     <span th:text="${attrDef.name}">Atrybut</span>
                     <select th:name="'attr_' + ${attrDef.id}">
                         <option value="">— wybierz —</option>
-                        <option th:each="opt : ${#strings.arraySplit(attrDef.options, '\n')}"
-                                th:value="${opt}"
-                                th:text="${opt}"
-                                th:selected="${attributeValues != null && attributeValues.get(attrDef.id) == opt}">
+                        <option th:each="opt : ${#strings.arraySplit(attrDef.options, ',')}"
+                                th:value="${#strings.trim(opt)}"
+                                th:text="${#strings.trim(opt)}"
+                                th:selected="${attributeValues != null && #strings.equals(attributeValues.get(attrDef.id), #strings.trim(opt))}">
                         </option>
                     </select>
                 </label>
                 <!-- MULTI_SELECT -->
-                <div th:if="${attrDef.type == 'MULTI_SELECT'}">
+                <div th:if="${attrDef.type == 'MULTI_SELECT' and attrDef.options != null}">
                     <span th:text="${attrDef.name}">Atrybut</span>
-                    <div th:each="opt : ${#strings.arraySplit(attrDef.options, '\n')}"
+                    <div th:each="opt : ${#strings.arraySplit(attrDef.options, ',')}"
                          style="display:inline-block; margin-right:0.5rem;">
                         <label>
                             <input type="checkbox"
                                    th:name="'attr_' + ${attrDef.id}"
-                                   th:value="${opt}"
-                                   th:checked="${attributeValues != null && #strings.contains(attributeValues.get(attrDef.id), opt)}">
-                            <span th:text="${opt}" style="font-size:0.9rem;"></span>
+                                   th:value="${#strings.trim(opt)}"
+                                   th:checked="${attributeValues != null && #strings.contains(attributeValues.get(attrDef.id), #strings.trim(opt))}">
+                            <span th:text="${#strings.trim(opt)}" style="font-size:0.9rem;"></span>
                         </label>
                     </div>
                 </div>

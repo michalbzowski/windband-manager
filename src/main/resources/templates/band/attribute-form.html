@@ -38,9 +38,9 @@
         <!-- Options field: shown only for SELECT/MULTI_SELECT -->
         <div id="options-field-new" style="display:none; margin-top:0.5rem;">
             <label>
-                Opcje (każda w nowej linii)
-                <textarea name="options" rows="4" style="font-family:monospace; font-size:0.85rem;"
-                          placeholder="Wzrost&#10;Rozmiar kołnierzyka&#10;Inna opcja"></textarea>
+                Opcje (oddzielone przecinkiem)
+                <textarea name="options" rows="3" style="font-family:monospace; font-size:0.85rem;"
+                          placeholder="Puzon, Trąbka, Waltornia, Flet" th:text="${attributeDef?.options}"></textarea>
             </label>
         </div>
         <div style="display:flex; gap:0.5rem; margin-top:0.5rem;">
@@ -85,10 +85,10 @@
         <!-- Options field: shown only for SELECT/MULTI_SELECT -->
         <div id="options-field-edit" th:style="${attributeDef?.type == 'SELECT' or attributeDef?.type == 'MULTI_SELECT'} ? '' : 'display:none;'">
             <label>
-                Opcje (każda w nowej linii)
-                <textarea name="options" rows="4" style="font-family:monospace; font-size:0.85rem;"
-                          th:text="${attributeDef?.options}"
-                          placeholder="Wzrost&#10;Rozmiar kołnierzyka&#10;Inna opcja"></textarea>
+                Opcje (oddzielone przecinkiem)
+                <textarea name="options" rows="3" style="font-family:monospace; font-size:0.85rem;"
+                          placeholder="Puzon, Trąbka, Waltornia, Flet"
+                          th:text="${attributeDef?.options}"></textarea>
             </label>
         </div>
         <div style="display:flex; gap:0.5rem; margin-top:0.5rem;">

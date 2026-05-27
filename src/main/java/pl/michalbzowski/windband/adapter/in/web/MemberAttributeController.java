@@ -2,6 +2,7 @@ package pl.michalbzowski.windband.adapter.in.web;
 
 import lombok.Data;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
@@ -44,7 +45,7 @@ public class MemberAttributeController {
 
     @GetMapping("/new")
     public String newAttributeForm(Model model) {
-        model.addAttribute("attributeDef", new AttributeDefForm("", "BOOLEAN", false, 0));
+        model.addAttribute("attributeDef", new AttributeDefForm("", "BOOLEAN", false, 0, null));
         model.addAttribute("attributeDefId", null);
         return "band/attribute-form";
     }
@@ -52,38 +53,29 @@ public class MemberAttributeController {
     @GetMapping("/{id}/edit")
     public String editAttributeForm(@PathVariable Long id, Model model) {
         MemberAttributeDef def = commandService.getAttributeDefById(id);
-        model.addAttribute("attributeDef", new AttributeDefForm(def.getName(), def.getType(), def.isRequired(), def.getDisplayOrder()));
+        model.addAttribute("attributeDef", new AttributeDefForm(def.getName(), def.getType(), def.isRequired(), def.getDisplayOrder(), def.getOptions()));
         model.addAttribute("attributeDefId", id);
         return "band/attribute-form";
     }
 
     @PostMapping
-    public String createAttribute(@ModelAttribute AttributeDefForm form, Model model) {
+    public ResponseEntity<Void> createAttribute(@ModelAttribute AttributeDefForm form) {
         Band band = bandRepository.findById(1L)
                 .orElseThrow(() -> new IllegalArgumentException("Band not found: 1"));
         commandService.createAttributeDef(band, form.getName(), form.getType(), form.isRequired(), form.getDisplayOrder(), form.getOptions());
-        model.addAttribute("attributeDefs", queryService.getAttributeDefsForBand(band));
-        return "band/attribute-defs";
+        return ResponseEntity.ok().header("HX-Redirect", "/band/attributes").build();
     }
 
     @PutMapping("/{id}")
-    public String updateAttribute(@PathVariable Long id, @ModelAttribute AttributeDefForm form, Model model) {
+    public ResponseEntity<Void> updateAttribute(@PathVariable Long id, @ModelAttribute AttributeDefForm form) {
         commandService.updateAttributeDef(id, form.getName(), form.getType(), form.isRequired(), form.getDisplayOrder(), form.getOptions());
-        Band band = bandRepository.findById(1L).orElse(null);
-        if (band != null) {
-            model.addAttribute("attributeDefs", queryService.getAttributeDefsForBand(band));
-        }
-        return "band/attribute-defs";
+        return ResponseEntity.ok().header("HX-Redirect", "/band/attributes").build();
     }
 
     @DeleteMapping("/{id}")
-    public String deleteAttribute(@PathVariable Long id, Model model) {
+    public ResponseEntity<Void> deleteAttribute(@PathVariable Long id) {
         commandService.deleteAttributeDef(id);
-        Band band = bandRepository.findById(1L).orElse(null);
-        if (band != null) {
-            model.addAttribute("attributeDefs", queryService.getAttributeDefsForBand(band));
-        }
-        return "band/attribute-defs";
+        return ResponseEntity.ok().header("HX-Redirect", "/band/attributes").build();
     }
 
     @Data
@@ -96,11 +88,12 @@ public class MemberAttributeController {
 
         public AttributeDefForm() {}
 
-        public AttributeDefForm(String name, String type, boolean required, int displayOrder) {
+        public AttributeDefForm(String name, String type, boolean required, int displayOrder, String options) {
             this.name = name;
             this.type = type;
             this.required = required;
             this.displayOrder = displayOrder;
+            this.options = options;
         }
     }
 
