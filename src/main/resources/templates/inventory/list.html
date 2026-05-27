@@ -50,11 +50,17 @@
                                         <option value="INSTRUMENT">Instrument</option>
                                     </select>
                                 </div>
-                                <div>
+<div>
                                     <label for="order-desc">Opis</label>
-                                    <input id="order-desc" type="text" placeholder="Rozmiar, kolor...">
+                                    <input id="order-desc" type="text">
                                 </div>
-                                <button class="primary small" onclick="submitOrder()">Złóż</button>
+                            </div>
+                            <!-- Dynamic attribute fields for orders (updated by JS based on type) -->
+                            <div id="order-attributes" style="margin-top:1rem; display:flex; gap:0.5rem; flex-wrap:wrap; align-items:flex-end;">
+                                <span style="color:var(--pico-muted-color); font-size:0.8rem;">Wybierz typ, aby zobaczyć atrybuty...</span>
+                            </div>
+                            <div style="display:flex; gap:0.5rem; margin-top:1rem;">
+                                <button class="primary small" onclick="submitOrder()">Złóż zamówienie</button>
                                 <button class="secondary small" onclick="hideOrderForm()">Anuluj</button>
                             </div>
                         </article>
@@ -156,6 +162,44 @@
                                         <option value="BORROWED">Wypożyczony</option>
                                     </select>
                                 </div>
+                            </div>
+                            <!-- Dynamic attribute fields for uniforms -->
+                            <div id="uniform-attributes" style="margin-top:1rem; display:flex; gap:0.5rem; flex-wrap:wrap; align-items:flex-end;" th:if="${!#lists.isEmpty(uniformAttributeDefs)}">
+                                <th:block th:each="attrDef : ${uniformAttributeDefs}">
+                                    <div th:switch="${attrDef.type()}">
+                                        <label th:case="'BOOLEAN'" class="checkbox-label" style="display:flex; align-items:center; gap:0.25rem;">
+                                            <input type="checkbox" th:id="'uni-attr-' + ${attrDef.id()}" th:name="'attr_' + ${attrDef.id()}">
+                                            <span th:text="${attrDef.name()}">Atrybut</span>
+                                        </label>
+                                        <div th:case="'SELECT'" style="display:flex; flex-direction:column; gap:0.25rem;">
+                                            <label th:text="${attrDef.name()}">Atrybut</label>
+                                            <select th:id="'uni-attr-' + ${attrDef.id()}" th:name="'attr_' + ${attrDef.id()}">
+                                                <option value="">Wybierz...</option>
+                                                <option th:each="opt : ${#strings.arraySplit(#strings.replace(attrDef.options(), '[', '').replace(']', ''), ',')}" th:value="${opt.trim()}" th:text="${opt.trim()}">Opcja</option>
+                                            </select>
+                                        </div>
+                                        <div th:case="'MULTI_SELECT'" style="display:flex; flex-direction:column; gap:0.25rem;">
+                                            <label th:text="${attrDef.name()}">Atrybut</label>
+                                            <select th:id="'uni-attr-' + ${attrDef.id()}" th:name="'attr_' + ${attrDef.id()}" multiple style="min-width:150px;">
+                                                <option th:each="opt : ${#strings.arraySplit(#strings.replace(attrDef.options(), '[', '').replace(']', ''), ',')}" th:value="${opt.trim()}" th:text="${opt.trim()}">Opcja</option>
+                                            </select>
+                                        </div>
+                                        <div th:case="'DATE'" style="display:flex; flex-direction:column; gap:0.25rem;">
+                                            <label th:text="${attrDef.name()}">Atrybut</label>
+                                            <input type="date" th:id="'uni-attr-' + ${attrDef.id()}" th:name="'attr_' + ${attrDef.id()}">
+                                        </div>
+                                        <div th:case="'NUMBER'" style="display:flex; flex-direction:column; gap:0.25rem;">
+                                            <label th:text="${attrDef.name()}">Atrybut</label>
+                                            <input type="number" th:id="'uni-attr-' + ${attrDef.id()}" th:name="'attr_' + ${attrDef.id()}" step="any">
+                                        </div>
+                                        <div th:case="*" style="display:flex; flex-direction:column; gap:0.25rem;">
+                                            <label th:text="${attrDef.name()}">Atrybut</label>
+                                            <input type="text" th:id="'uni-attr-' + ${attrDef.id()}" th:name="'attr_' + ${attrDef.id()}">
+                                        </div>
+                                    </div>
+                                </th:block>
+                            </div>
+                            <div style="display:flex; gap:0.5rem; margin-top:1rem;">
                                 <button class="primary small" onclick="submitUniform()">Dodaj</button>
                                 <button class="secondary small" onclick="hideUniformForm()">Anuluj</button>
                             </div>
@@ -290,6 +334,44 @@
                                         <option value="BORROWED">Wypożyczony</option>
                                     </select>
                                 </div>
+                            </div>
+                            <!-- Dynamic attribute fields for instruments -->
+                            <div id="instrument-attributes" style="margin-top:1rem; display:flex; gap:0.5rem; flex-wrap:wrap; align-items:flex-end;" th:if="${!#lists.isEmpty(instrumentAttributeDefs)}">
+                                <th:block th:each="attrDef : ${instrumentAttributeDefs}">
+                                    <div th:switch="${attrDef.type()}">
+                                        <label th:case="'BOOLEAN'" class="checkbox-label" style="display:flex; align-items:center; gap:0.25rem;">
+                                            <input type="checkbox" th:id="'inst-attr-' + ${attrDef.id()}" th:name="'attr_' + ${attrDef.id()}">
+                                            <span th:text="${attrDef.name()}">Atrybut</span>
+                                        </label>
+                                        <div th:case="'SELECT'" style="display:flex; flex-direction:column; gap:0.25rem;">
+                                            <label th:text="${attrDef.name()}">Atrybut</label>
+                                            <select th:id="'inst-attr-' + ${attrDef.id()}" th:name="'attr_' + ${attrDef.id()}">
+                                                <option value="">Wybierz...</option>
+                                                <option th:each="opt : ${#strings.arraySplit(#strings.replace(attrDef.options(), '[', '').replace(']', ''), ',')}" th:value="${opt.trim()}" th:text="${opt.trim()}">Opcja</option>
+                                            </select>
+                                        </div>
+                                        <div th:case="'MULTI_SELECT'" style="display:flex; flex-direction:column; gap:0.25rem;">
+                                            <label th:text="${attrDef.name()}">Atrybut</label>
+                                            <select th:id="'inst-attr-' + ${attrDef.id()}" th:name="'attr_' + ${attrDef.id()}" multiple style="min-width:150px;">
+                                                <option th:each="opt : ${#strings.arraySplit(#strings.replace(attrDef.options(), '[', '').replace(']', ''), ',')}" th:value="${opt.trim()}" th:text="${opt.trim()}">Opcja</option>
+                                            </select>
+                                        </div>
+                                        <div th:case="'DATE'" style="display:flex; flex-direction:column; gap:0.25rem;">
+                                            <label th:text="${attrDef.name()}">Atrybut</label>
+                                            <input type="date" th:id="'inst-attr-' + ${attrDef.id()}" th:name="'attr_' + ${attrDef.id()}">
+                                        </div>
+                                        <div th:case="'NUMBER'" style="display:flex; flex-direction:column; gap:0.25rem;">
+                                            <label th:text="${attrDef.name()}">Atrybut</label>
+                                            <input type="number" th:id="'inst-attr-' + ${attrDef.id()}" th:name="'attr_' + ${attrDef.id()}" step="any">
+                                        </div>
+                                        <div th:case="*" style="display:flex; flex-direction:column; gap:0.25rem;">
+                                            <label th:text="${attrDef.name()}">Atrybut</label>
+                                            <input type="text" th:id="'inst-attr-' + ${attrDef.id()}" th:name="'attr_' + ${attrDef.id()}">
+                                        </div>
+                                    </div>
+                                </th:block>
+                            </div>
+                            <div style="display:flex; gap:0.5rem; margin-top:1rem;">
                                 <button class="primary small" onclick="submitInstrument()">Dodaj</button>
                                 <button class="secondary small" onclick="hideInstrumentForm()">Anuluj</button>
                             </div>
@@ -408,18 +490,85 @@
             document.querySelector('[data-tab="' + tab + '"]').classList.remove('secondary');
         }
 
+        // Expose attribute defs to global scope for order form
+        window.uniformOrderAttributeDefs = /*[(${uniformAttributeDefs})]*/ [];
+        window.instrumentOrderAttributeDefs = /*[(${instrumentAttributeDefs})]*/ [];
+        
+        // Listen for order type changes to update attributes
+        document.addEventListener('DOMContentLoaded', function() {
+            var orderTypeSelect = document.getElementById('order-type');
+            if (orderTypeSelect) {
+                orderTypeSelect.addEventListener('change', updateOrderAttributes);
+            }
+        });
+
         // === Order form ===
-        function showOrderForm() { document.getElementById('order-form').style.display = 'block'; }
+        function showOrderForm() { 
+            document.getElementById('order-form').style.display = 'block'; 
+            updateOrderAttributes();
+        }
         function hideOrderForm() { document.getElementById('order-form').style.display = 'none'; }
+        function updateOrderAttributes() {
+            var type = document.getElementById('order-type').value;
+            var container = document.getElementById('order-attributes');
+            var attrDefs = type === 'UNIFORM' ? window.uniformOrderAttributeDefs : window.instrumentOrderAttributeDefs;
+            if (!attrDefs || attrDefs.length === 0) {
+                container.innerHTML = '<span style="color:var(--pico-muted-color); font-size:0.8rem;">Brak atrybutów dla tego typu</span>';
+                return;
+            }
+            var html = '';
+            attrDefs.forEach(function(attrDef) {
+                var fieldId = 'order-attr-' + attrDef.id;
+                if (attrDef.type === 'BOOLEAN') {
+                    html += '<label class="checkbox-label" style="display:flex; align-items:center; gap:0.25rem;">';
+                    html += '<input type="checkbox" id="' + fieldId + '" name="attr_' + attrDef.id + '">';
+                    html += '<span>' + attrDef.name + '</span></label>';
+                } else if (attrDef.type === 'SELECT') {
+                    html += '<div style="display:flex; flex-direction:column; gap:0.25rem;">';
+                    html += '<label>' + attrDef.name + '</label>';
+                    html += '<select id="' + fieldId + '" name="attr_' + attrDef.id + '">';
+                    html += '<option value="">Wybierz...</option>';
+                    var opts = attrDef.options ? attrDef.options.replace('[','').replace(']','').split(',') : [];
+                    opts.forEach(function(opt) { html += '<option value="' + opt.trim() + '">' + opt.trim() + '</option>'; });
+                    html += '</select></div>';
+                } else if (attrDef.type === 'DATE') {
+                    html += '<div style="display:flex; flex-direction:column; gap:0.25rem;">';
+                    html += '<label>' + attrDef.name + '</label>';
+                    html += '<input type="date" id="' + fieldId + '" name="attr_' + attrDef.id + '"></div>';
+                } else if (attrDef.type === 'NUMBER') {
+                    html += '<div style="display:flex; flex-direction:column; gap:0.25rem;">';
+                    html += '<label>' + attrDef.name + '</label>';
+                    html += '<input type="number" id="' + fieldId + '" name="attr_' + attrDef.id + '" step="any"></div>';
+                } else {
+                    html += '<div style="display:flex; flex-direction:column; gap:0.25rem;">';
+                    html += '<label>' + attrDef.name + '</label>';
+                    html += '<input type="text" id="' + fieldId + '" name="attr_' + attrDef.id + '"></div>';
+                }
+            });
+            container.innerHTML = html;
+        }
         function submitOrder() {
             var memberId = document.getElementById('order-member').value;
             var itemName = document.getElementById('order-name').value;
             var type = document.getElementById('order-type').value;
             var desc = document.getElementById('order-desc').value;
             if (!memberId || !itemName) { alert('Wypełnij członka i nazwę'); return; }
+            
+            // Collect attribute values
+            var attributes = {};
+            var attrInputs = document.querySelectorAll('#order-attributes input[id^="order-attr-"], #order-attributes select[id^="order-attr-"]');
+            attrInputs.forEach(function(input) {
+                var attrId = input.id.replace('order-attr-', '');
+                if (input.type === 'checkbox') {
+                    attributes[attrId] = input.checked ? 'true' : 'false';
+                } else if (input.value) {
+                    attributes[attrId] = input.value;
+                }
+            });
+            
             var url = type === 'UNIFORM' ? '/api/inventory/orders/uniform' : '/api/inventory/orders/instrument';
             fetch(url, { method:'POST', headers:{'Content-Type':'application/json'},
-                body: JSON.stringify({memberId: parseInt(memberId), itemName: itemName, description: desc})
+                body: JSON.stringify({memberId: parseInt(memberId), itemName: itemName, description: desc, attributes: attributes})
             }).then(function(r) { if(r.ok) { hideOrderForm(); refreshTab('orders'); } });
         }
         function advanceOrder(id, action) {
@@ -436,8 +585,21 @@
             var memberId = document.getElementById('uni-member').value;
             var ownership = document.getElementById('uni-ownership').value;
             if (!name) { alert('Wypełnij nazwę'); return; }
+            
+            // Collect attribute values
+            var attributes = {};
+            var attrInputs = document.querySelectorAll('#uniform-attributes input[id^="uni-attr-"], #uniform-attributes select[id^="uni-attr-"]');
+            attrInputs.forEach(function(input) {
+                var attrId = input.id.replace('uni-attr-', '');
+                if (input.type === 'checkbox') {
+                    attributes[attrId] = input.checked ? 'true' : 'false';
+                } else if (input.value) {
+                    attributes[attrId] = input.value;
+                }
+            });
+            
             fetch('/api/inventory/uniforms', { method:'POST', headers:{'Content-Type':'application/json'},
-                body: JSON.stringify({name:name, description:desc, memberId:memberId?parseInt(memberId):null, ownershipStatus:ownership})
+                body: JSON.stringify({name:name, description:desc, memberId:memberId?parseInt(memberId):null, ownershipStatus:ownership, attributes:attributes})
             }).then(function(r) { if(r.ok) { hideUniformForm(); refreshTab('uniforms'); } });
         }
 
@@ -452,9 +614,22 @@
             var memberId = document.getElementById('inst-member').value;
             var ownership = document.getElementById('inst-ownership').value;
             if (!name) { alert('Wypełnij nazwę'); return; }
+            
+            // Collect attribute values
+            var attributes = {};
+            var attrInputs = document.querySelectorAll('#instrument-attributes input[id^="inst-attr-"], #instrument-attributes select[id^="inst-attr-"]');
+            attrInputs.forEach(function(input) {
+                var attrId = input.id.replace('inst-attr-', '');
+                if (input.type === 'checkbox') {
+                    attributes[attrId] = input.checked ? 'true' : 'false';
+                } else if (input.value) {
+                    attributes[attrId] = input.value;
+                }
+            });
+            
             fetch('/api/inventory/instruments', { method:'POST', headers:{'Content-Type':'application/json'},
                 body: JSON.stringify({name:name, brand:brand, serialNumber:serial, description:desc,
-                    memberId:memberId?parseInt(memberId):null, ownershipStatus:ownership})
+                    memberId:memberId?parseInt(memberId):null, ownershipStatus:ownership, attributes:attributes})
             }).then(function(r) { if(r.ok) { hideInstrumentForm(); refreshTab('instruments'); } });
         }
 

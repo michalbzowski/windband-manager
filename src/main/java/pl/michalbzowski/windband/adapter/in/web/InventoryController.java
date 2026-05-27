@@ -10,6 +10,8 @@ import pl.michalbzowski.windband.application.query.inventory.InventoryQueryServi
 import pl.michalbzowski.windband.domain.inventory.OrderStatus;
 import pl.michalbzowski.windband.domain.inventory.OwnershipStatus;
 
+import java.util.Map;
+
 @RestController
 @RequestMapping("/api/inventory")
 @RequiredArgsConstructor
@@ -28,14 +30,14 @@ public class InventoryController {
     @PostMapping("/orders/uniform")
     public ResponseEntity<?> placeUniformOrder(@RequestBody PlaceOrderRequest request) {
         var order = commandService.placeUniformOrder(
-                request.getMemberId(), request.getItemName(), request.getDescription());
+                request.getMemberId(), request.getItemName(), request.getDescription(), request.getAttributes());
         return ResponseEntity.status(HttpStatus.CREATED).body(order);
     }
 
     @PostMapping("/orders/instrument")
     public ResponseEntity<?> placeInstrumentOrder(@RequestBody PlaceOrderRequest request) {
         var order = commandService.placeInstrumentOrder(
-                request.getMemberId(), request.getItemName(), request.getDescription());
+                request.getMemberId(), request.getItemName(), request.getDescription(), request.getAttributes());
         return ResponseEntity.status(HttpStatus.CREATED).body(order);
     }
 
@@ -85,7 +87,8 @@ public class InventoryController {
     public ResponseEntity<?> addUniformItem(@RequestBody AddItemRequest request) {
         var item = commandService.addUniformItem(
                 request.getName(), request.getDescription(),
-                request.getMemberId(), OwnershipStatus.valueOf(request.getOwnershipStatus()));
+                request.getMemberId(), OwnershipStatus.valueOf(request.getOwnershipStatus()),
+                request.getAttributes());
         return ResponseEntity.status(HttpStatus.CREATED).body(item);
     }
 
@@ -94,7 +97,8 @@ public class InventoryController {
         var item = commandService.addInstrumentItem(
                 request.getName(), request.getBrand(), request.getSerialNumber(),
                 request.getDescription(), request.getMemberId(),
-                OwnershipStatus.valueOf(request.getOwnershipStatus()));
+                OwnershipStatus.valueOf(request.getOwnershipStatus()),
+                request.getAttributes());
         return ResponseEntity.status(HttpStatus.CREATED).body(item);
     }
 
@@ -189,6 +193,7 @@ public class InventoryController {
         private Long memberId;
         private String itemName;
         private String description;
+        private Map<String, String> attributes;
     }
 
     @Data
@@ -197,6 +202,7 @@ public class InventoryController {
         private String description;
         private Long memberId;
         private String ownershipStatus;
+        private Map<String, String> attributes;
     }
 
     @Data
@@ -207,6 +213,7 @@ public class InventoryController {
         private String description;
         private Long memberId;
         private String ownershipStatus;
+        private Map<String, String> attributes;
     }
 
     @Data

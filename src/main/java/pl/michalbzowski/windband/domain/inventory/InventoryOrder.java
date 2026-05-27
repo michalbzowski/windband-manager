@@ -50,6 +50,9 @@ public class InventoryOrder {
 
     private String notes;
 
+    @Column(columnDefinition = "TEXT")
+    private String attributesJson;
+
     private InventoryOrder(Member requester, String itemName, InventoryOrderType orderType, String description) {
         this.requester = Objects.requireNonNull(requester, "requester required");
         this.itemName = Objects.requireNonNull(itemName, "itemName required");
@@ -98,5 +101,9 @@ public class InventoryOrder {
 
     public void generateOrderNumber() {
         this.orderNumber = "ORD-" + id + "-" + createdAt.format(java.time.format.DateTimeFormatter.ofPattern("yyyyMMdd"));
+    }
+
+    public void setAttributesJson(String attributesJson) {
+        this.attributesJson = attributesJson;
     }
 }

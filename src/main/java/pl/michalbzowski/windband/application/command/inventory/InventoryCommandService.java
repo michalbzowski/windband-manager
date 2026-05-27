@@ -11,6 +11,8 @@ import pl.michalbzowski.windband.domain.inventory.*;
 import pl.michalbzowski.windband.domain.member.Member;
 import pl.michalbzowski.windband.domain.member.MemberRepository;
 
+import java.util.Map;
+
 @Service
 @RequiredArgsConstructor
 @Transactional
@@ -19,6 +21,8 @@ public class InventoryCommandService {
     private final InventoryRepository inventoryRepository;
     private final MemberRepository memberRepository;
     private final BandRepository bandRepository;
+    private final UniformAttributeCommandService uniformAttributeCommandService;
+    private final InstrumentAttributeCommandService instrumentAttributeCommandService;
 
     private pl.michalbzowski.windband.domain.band.Band getDefaultBand() {
         return bandRepository.findById(1L)
@@ -27,18 +31,42 @@ public class InventoryCommandService {
 
     // === Place a new order ===
 
-    public InventoryOrder placeUniformOrder(Long memberId, String itemName, String description) {
+    public InventoryOrder placeUniformOrder(Long memberId, String itemName, String description, Map<String, String> attributes) {
         Member member = memberRepository.findById(memberId)
                 .orElseThrow(() -> new MemberNotFoundException(memberId));
         InventoryOrder order = InventoryOrder.place(member, itemName, InventoryOrderType.UNIFORM, description);
+        order.setAttributesJson(mapToAttributesString(attributes));
         return inventoryRepository.saveOrder(order);
     }
 
-    public InventoryOrder placeInstrumentOrder(Long memberId, String itemName, String description) {
+    public InventoryOrder placeInstrumentOrder(Long memberId, String itemName, String description, Map<String, String> attributes) {
         Member member = memberRepository.findById(memberId)
                 .orElseThrow(() -> new MemberNotFoundException(memberId));
         InventoryOrder order = InventoryOrder.place(member, itemName, InventoryOrderType.INSTRUMENT, description);
+        order.setAttributesJson(mapToAttributesString(attributes));
         return inventoryRepository.saveOrder(order);
+    }
+
+    private String mapToAttributesString(Map<String, String> attributes) {
+        if (attributes == null || attributes.isEmpty()) return null;
+        StringBuilder sb = new StringBuilder();
+        for (Map.Entry<String, String> entry : attributes.entrySet()) {
+            if (sb.length() > 0) sb.append(";");
+            sb.append(entry.getKey()).append("=").append(entry.getValue());
+        }
+        return sb.toString();
+    }
+
+    private Map<String, String> attributesStringToMap(String attributesStr) {
+        if (attributesStr == null || attributesStr.isEmpty()) return java.util.Collections.emptyMap();
+        Map<String, String> result = new java.util.HashMap<>();
+        for (String pair : attributesStr.split(";")) {
+            String[] kv = pair.split("=", 2);
+            if (kv.length == 2) {
+                result.put(kv[0], kv[1]);
+            }
+        }
+        return result;
     }
 
     // === Advance order through workflow ===
@@ -68,6 +96,14 @@ public class InventoryCommandService {
             order.generateOrderNumber();
         }
         inventoryRepository.saveOrder(order);
+        
+        // Auto-copy to inventory with attributes
+        Map<String, String> attributes = attributesStringToMap(order.getAttributesJson());
+        if (order.getOrderType() == InventoryOrderType.UNIFORM) {
+            addUniformItem(order.getItemName(), order.getDescription(), order.getRequester().getId(), OwnershipStatus.OWNED, attributes);
+        } else if (order.getOrderType() == InventoryOrderType.INSTRUMENT) {
+            addInstrumentItem(order.getItemName(), null, null, order.getDescription(), order.getRequester().getId(), OwnershipStatus.OWNED, attributes);
+        }
     }
 
     public void cancelOrder(Long orderId) {
@@ -187,7 +223,7 @@ public class InventoryCommandService {
 
     // === Add existing items directly (without order) ===
 
-    public UniformItem addUniformItem(String name, String description, Long memberId, OwnershipStatus status) {
+    public UniformItem addUniformItem(String name, String description, Long memberId, OwnershipStatus status, Map<String, String> attributes) {
         var band = getDefaultBand();
         UniformItem item = switch (status) {
             case OWNED -> UniformItem.createOwned(name, band);
@@ -196,6 +232,19 @@ public class InventoryCommandService {
         };
         if (description != null) item.updateDescription(description);
         UniformItem saved = inventoryRepository.saveUniformItem(item);
+        
+        // Save attributes if provided
+        if (attributes != null && !attributes.isEmpty()) {
+            for (Map.Entry<String, String> entry : attributes.entrySet()) {
+                try {
+                    Long attrDefId = Long.parseLong(entry.getKey());
+                    uniformAttributeCommandService.setAttributeValue(saved.getId(), attrDefId, entry.getValue());
+                } catch (NumberFormatException e) {
+                    // Skip invalid attribute IDs
+                }
+            }
+        }
+        
         if (memberId != null) {
             assignUniformToMember(saved.getId(), memberId);
         }
@@ -203,7 +252,7 @@ public class InventoryCommandService {
     }
 
     public InstrumentItem addInstrumentItem(String name, String brand, String serialNumber,
-                                             String description, Long memberId, OwnershipStatus status) {
+                                             String description, Long memberId, OwnershipStatus status, Map<String, String> attributes) {
         var band = getDefaultBand();
         InstrumentItem item = switch (status) {
             case OWNED -> InstrumentItem.createOwned(name, band);
@@ -212,6 +261,19 @@ public class InventoryCommandService {
         };
         item.updateDetails(brand, serialNumber, description);
         InstrumentItem saved = inventoryRepository.saveInstrumentItem(item);
+        
+        // Save attributes if provided
+        if (attributes != null && !attributes.isEmpty()) {
+            for (Map.Entry<String, String> entry : attributes.entrySet()) {
+                try {
+                    Long attrDefId = Long.parseLong(entry.getKey());
+                    instrumentAttributeCommandService.setAttributeValue(saved.getId(), attrDefId, entry.getValue());
+                } catch (NumberFormatException e) {
+                    // Skip invalid attribute IDs
+                }
+            }
+        }
+        
         if (memberId != null) {
             assignInstrumentToMember(saved.getId(), memberId);
         }
