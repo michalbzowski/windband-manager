@@ -15,7 +15,7 @@
             </div>
 
             <!-- Form container: new/edit forms loaded here via HTMX -->
-            <div id="attribute-form-container"></div>
+            <div id="attribute-form-container" hx-on:htmx:after-settle="htmx.process(this)"></div>
 
             <!-- Attribute list rendered directly -->
             <div th:if="${attributeDefs == null or #lists.isEmpty(attributeDefs)}">
@@ -57,12 +57,5 @@
             </table>
         </div>
     </main>
-
-    <script>
-    // Re-process HTMX elements after any swap (fixes forms loaded via innerHTML)
-    document.body.addEventListener('htmx:afterSettle', function(evt) {
-        htmx.process(evt.detail.target);
-    });
-    </script>
 </body>
 </html>
