@@ -57,5 +57,12 @@
             </table>
         </div>
     </main>
+
+    <script>
+    // Re-process HTMX elements after any swap (fixes forms loaded via innerHTML)
+    document.body.addEventListener('htmx:afterSettle', function(evt) {
+        htmx.process(evt.detail.target);
+    });
+    </script>
 </body>
 </html>
