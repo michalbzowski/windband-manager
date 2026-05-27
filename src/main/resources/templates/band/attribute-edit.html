@@ -12,7 +12,9 @@
         <h4>✏️ Edytuj atrybut</h4>
         <div style="margin-bottom:1rem; padding:1rem; border:1px solid var(--pico-muted-border-color); border-radius:8px;">
             <form th:hx-put="@{/band/attributes/{id}(id=${attributeDefId})}"
-                  hx-swap="none">
+                  hx-target="body"
+                  hx-swap="none"
+                  hx-include="this">
                 <div class="grid">
                     <label>
                         Nazwa *
