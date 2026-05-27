@@ -1,0 +1,15 @@
+<!DOCTYPE html>
+<html lang="pl" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/layout :: head('Edycja atrybutu')}"></head>
+<body>
+    <nav th:replace="~{fragments/layout :: nav}"></nav>
+
+    <main class="container" id="content">
+        <div style="margin-bottom:1rem;">
+            <a href="/band/attributes" style="font-size:0.9rem;">← Powrót do listy atrybutów</a>
+        </div>
+
+        <div th:insert="~{band/attribute-form :: #edit-form}"></div>
+    </main>
+</body>
+</html>

@@ -55,7 +55,7 @@ public class MemberAttributeController {
         MemberAttributeDef def = commandService.getAttributeDefById(id);
         model.addAttribute("attributeDef", new AttributeDefForm(def.getName(), def.getType(), def.isRequired(), def.getDisplayOrder(), def.getOptions()));
         model.addAttribute("attributeDefId", id);
-        return "band/attribute-form";
+        return "band/attribute-edit";
     }
 
     @PostMapping
