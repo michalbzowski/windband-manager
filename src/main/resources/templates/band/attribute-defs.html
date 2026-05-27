@@ -9,7 +9,7 @@
             <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem;">
                 <h2>🏷️ Atrybuty muzyków</h2>
                 <button class="primary"
-                        hx-get="@{/band/attributes/new}"
+                        th:hx-get="@{/band/attributes/new}"
                         hx-target="#attribute-form-container"
                         hx-swap="innerHTML">+ Dodaj atrybut</button>
             </div>

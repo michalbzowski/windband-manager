@@ -5,7 +5,7 @@
 
     <!-- New attribute form -->
     <form th:unless="${isEdit}"
-          hx-post="@{/band/attributes}"
+          th:hx-post="@{/band/attributes}"
           hx-target="#attribute-defs-content"
           hx-swap="innerHTML">
         <div class="grid">
