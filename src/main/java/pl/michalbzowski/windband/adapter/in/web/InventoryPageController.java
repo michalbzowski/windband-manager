@@ -4,12 +4,22 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
+import pl.michalbzowski.windband.application.dto.InstrumentAttributeDefDto;
+import pl.michalbzowski.windband.application.dto.OrderAttributeDefDto;
+import pl.michalbzowski.windband.application.dto.UniformAttributeDefDto;
 import pl.michalbzowski.windband.application.query.inventory.InventoryQueryService;
 import pl.michalbzowski.windband.application.query.inventory.InventoryAttributeQueryService;
 import pl.michalbzowski.windband.application.query.member.MemberQueryService;
 import pl.michalbzowski.windband.domain.band.Band;
 import pl.michalbzowski.windband.domain.band.BandRepository;
+import pl.michalbzowski.windband.domain.inventory.InventoryOrder;
+import pl.michalbzowski.windband.domain.inventory.InstrumentItem;
 import pl.michalbzowski.windband.domain.inventory.OrderStatus;
+import pl.michalbzowski.windband.domain.inventory.UniformItem;
+
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 
 @Controller
 @RequestMapping("/inventory")
@@ -28,18 +38,46 @@ public class InventoryPageController {
 
     @GetMapping
     public String listPage(Model model) {
-        model.addAttribute("uniformItems", inventoryQueryService.getAllUniformItems());
-        model.addAttribute("instrumentItems", inventoryQueryService.getAllInstrumentItems());
-        model.addAttribute("orders", inventoryQueryService.getAllOrders());
+        Band band = getDefaultBand();
+
+        // Get attribute definitions
+        List<UniformAttributeDefDto> uniformDefs = inventoryAttributeQueryService.getUniformAttributeDefs(band);
+        List<InstrumentAttributeDefDto> instrumentDefs = inventoryAttributeQueryService.getInstrumentAttributeDefs(band);
+        List<OrderAttributeDefDto> orderDefs = inventoryAttributeQueryService.getOrderAttributeDefs(band);
+
+        // Get all items
+        List<UniformItem> uniformItems = inventoryQueryService.getAllUniformItemsEntities();
+        List<InstrumentItem> instrumentItems = inventoryQueryService.getAllInstrumentItemsEntities();
+
+        // Build attribute values map: itemId -> {attrId -> value}
+        Map<Long, Map<Long, String>> uniformAttrValues = new HashMap<>();
+        for (UniformItem item : uniformItems) {
+            uniformAttrValues.put(item.getId(), inventoryAttributeQueryService.getUniformAttributeValues(item));
+        }
+
+        Map<Long, Map<Long, String>> instrumentAttrValues = new HashMap<>();
+        for (InstrumentItem item : instrumentItems) {
+            instrumentAttrValues.put(item.getId(), inventoryAttributeQueryService.getInstrumentAttributeValues(item));
+        }
+
+        // Get orders with attribute values
+        List<InventoryOrder> orders = inventoryQueryService.getAllOrdersEntities();
+        Map<Long, Map<Long, String>> orderAttrValues = new HashMap<>();
+        for (InventoryOrder order : orders) {
+            orderAttrValues.put(order.getId(), inventoryAttributeQueryService.getOrderAttributeValues(order));
+        }
+
+        model.addAttribute("uniformItems", uniformItems);
+        model.addAttribute("instrumentItems", instrumentItems);
+        model.addAttribute("orders", orders);
         model.addAttribute("members", memberQueryService.getAllActiveMembers());
         model.addAttribute("orderStatuses", OrderStatus.values());
-        Band band = getDefaultBand();
-        model.addAttribute("uniformAttributeDefs", inventoryAttributeQueryService.getUniformAttributeDefs(band));
-        model.addAttribute("uniformAttributeValues", new java.util.HashMap<Long, java.util.Map<Long, String>>());
-        model.addAttribute("instrumentAttributeDefs", inventoryAttributeQueryService.getInstrumentAttributeDefs(band));
-        model.addAttribute("instrumentAttributeValues", new java.util.HashMap<Long, java.util.Map<Long, String>>());
-        model.addAttribute("orderAttributeDefs", inventoryAttributeQueryService.getOrderAttributeDefs(band));
-        model.addAttribute("orderAttributeValues", new java.util.HashMap<Long, java.util.Map<Long, String>>());
+        model.addAttribute("uniformAttributeDefs", uniformDefs);
+        model.addAttribute("uniformAttributeValues", uniformAttrValues);
+        model.addAttribute("instrumentAttributeDefs", instrumentDefs);
+        model.addAttribute("instrumentAttributeValues", instrumentAttrValues);
+        model.addAttribute("orderAttributeDefs", orderDefs);
+        model.addAttribute("orderAttributeValues", orderAttrValues);
         return "inventory/list";
     }
 
@@ -53,14 +91,38 @@ public class InventoryPageController {
 
     @GetMapping("/uniforms/fragment")
     public String uniformsFragment(Model model) {
-        model.addAttribute("uniformItems", inventoryQueryService.getAllUniformItems());
+        Band band = getDefaultBand();
+
+        List<UniformItem> uniformItems = inventoryQueryService.getAllUniformItemsEntities();
+        List<UniformAttributeDefDto> uniformDefs = inventoryAttributeQueryService.getUniformAttributeDefs(band);
+
+        Map<Long, Map<Long, String>> uniformAttrValues = new HashMap<>();
+        for (UniformItem item : uniformItems) {
+            uniformAttrValues.put(item.getId(), inventoryAttributeQueryService.getUniformAttributeValues(item));
+        }
+
+        model.addAttribute("uniformItems", uniformItems);
+        model.addAttribute("uniformAttributeDefs", uniformDefs);
+        model.addAttribute("uniformAttributeValues", uniformAttrValues);
         model.addAttribute("members", memberQueryService.getAllActiveMembers());
         return "inventory/list :: #uniforms-content";
     }
 
     @GetMapping("/instruments/fragment")
     public String instrumentsFragment(Model model) {
-        model.addAttribute("instrumentItems", inventoryQueryService.getAllInstrumentItems());
+        Band band = getDefaultBand();
+
+        List<InstrumentItem> instrumentItems = inventoryQueryService.getAllInstrumentItemsEntities();
+        List<InstrumentAttributeDefDto> instrumentDefs = inventoryAttributeQueryService.getInstrumentAttributeDefs(band);
+
+        Map<Long, Map<Long, String>> instrumentAttrValues = new HashMap<>();
+        for (InstrumentItem item : instrumentItems) {
+            instrumentAttrValues.put(item.getId(), inventoryAttributeQueryService.getInstrumentAttributeValues(item));
+        }
+
+        model.addAttribute("instrumentItems", instrumentItems);
+        model.addAttribute("instrumentAttributeDefs", instrumentDefs);
+        model.addAttribute("instrumentAttributeValues", instrumentAttrValues);
         model.addAttribute("members", memberQueryService.getAllActiveMembers());
         return "inventory/list :: #instruments-content";
     }

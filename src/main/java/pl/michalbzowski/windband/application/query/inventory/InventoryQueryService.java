@@ -30,10 +30,18 @@ public class InventoryQueryService {
                 .toList();
     }
 
+    public List<UniformItem> getAllUniformItemsEntities() {
+        return inventoryRepository.findAllUniformItems();
+    }
+
     public List<InventoryItemDto> getAllInstrumentItems() {
         return inventoryRepository.findAllInstrumentItems().stream()
                 .map(this::toItemDto)
                 .toList();
+    }
+
+    public List<InstrumentItem> getAllInstrumentItemsEntities() {
+        return inventoryRepository.findAllInstrumentItems();
     }
 
     public List<InventoryItemDto> getAllItems() {
@@ -59,6 +67,10 @@ public class InventoryQueryService {
         return inventoryRepository.findAllOrders().stream()
                 .map(this::toOrderDto)
                 .toList();
+    }
+
+    public List<InventoryOrder> getAllOrdersEntities() {
+        return inventoryRepository.findAllOrders();
     }
 
     public List<InventoryOrderDto> getOrdersByStatus(OrderStatus status) {

@@ -7,6 +7,27 @@
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.min.css">
     <link rel="stylesheet" th:href="@{/css/app.css}">
     <script src="https://unpkg.com/htmx.org@2.0.2"></script>
+    <script>
+        // Add JWT token to all HTMX requests
+        document.addEventListener('htmx:configRequest', function(evt) {
+            // Get JWT from cookie
+            const name = 'JWT=';
+            const decodedCookie = decodeURIComponent(document.cookie);
+            const ca = decodedCookie.split(';');
+            let token = null;
+            for(let i = 0; i < ca.length; i++) {
+                let c = ca[i];
+                while (c.charAt(0) === ' ') c = c.substring(1);
+                if (c.indexOf(name) === 0) {
+                    token = c.substring(name.length, c.length);
+                    break;
+                }
+            }
+            if (token) {
+                evt.detail.headers['Authorization'] = 'Bearer ' + token;
+            }
+        });
+    </script>
 </head>
 <body>
     <nav class="container-fluid" th:fragment="nav" sec:authorize="isAuthenticated()">
