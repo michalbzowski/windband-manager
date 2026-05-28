@@ -1,5 +1,8 @@
 package pl.michalbzowski.windband.adapter.in.web;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
@@ -32,6 +35,7 @@ public class InventoryPageController {
     private final InventoryAttributeQueryService inventoryAttributeQueryService;
     private final MemberQueryService memberQueryService;
     private final BandRepository bandRepository;
+    private final ObjectMapper objectMapper;
 
     private Band getDefaultBand() {
         return bandRepository.findById(1L)
@@ -39,7 +43,7 @@ public class InventoryPageController {
     }
 
     @GetMapping
-    public String listPage(Model model) {
+    public String listPage(Model model) throws JsonProcessingException {
         Band band = getDefaultBand();
 
         // Get attribute definitions
@@ -83,6 +87,10 @@ public class InventoryPageController {
         model.addAttribute("instrumentAttributeValues", instrumentAttrValues);
         model.addAttribute("orderAttributeDefs", orderDefs);
         model.addAttribute("orderAttributeValues", orderAttrValues);
+        
+        // JSON versions for JavaScript
+        model.addAttribute("uniformAttributeDefsJson", objectMapper.writeValueAsString(uniformDefs));
+        model.addAttribute("instrumentAttributeDefsJson", objectMapper.writeValueAsString(instrumentDefs));
         return "inventory/list";
     }
 
