@@ -92,7 +92,7 @@
                                             <span th:case="'CANCELLED'" class="badge error">Anulowano</span>
                                         </span>
                                     </td>
-                                    <td th:text="${o.orderNumber != null} ? ${o.orderNumber : '-'}">ORD-1-20250101</td>
+                                    <td th:text="${o.orderNumber != null ? o.orderNumber : '-'}">ORD-1-20250101</td>
                                     <!-- Dynamic attribute cells - show uniform attrs for UNIFORM orders, instrument attrs for INSTRUMENT orders -->
                                     <td th:each="attr : ${uniformAttributeDefs}" th:if="${attr.displayInList}" 
                                         th:text="${orderAttributeValues?.get(o.id)?.get(attr.id)}">-</td>
