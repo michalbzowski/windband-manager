@@ -418,9 +418,16 @@
             document.querySelector('[data-tab="' + tab + '"]').classList.remove('secondary');
         }
 
-        // Expose attribute defs to global scope for order form (as JSON)
-        window.uniformOrderAttributeDefs = /*[[${uniformAttributeDefsJson}]]*/ [];
-        window.instrumentOrderAttributeDefs = /*[[${instrumentAttributeDefsJson}]]*/ [];
+        // Expose attribute defs to global scope for order form
+        // Thymeleaf inline: parse the JSON string in JavaScript
+        try {
+            window.uniformOrderAttributeDefs = JSON.parse(/*[[${uniformAttributeDefsJson}]]*/ "[]");
+            window.instrumentOrderAttributeDefs = JSON.parse(/*[[${instrumentAttributeDefsJson}]]*/ "[]");
+        } catch(e) {
+            console.error("Failed to parse attribute JSON:", e);
+            window.uniformOrderAttributeDefs = [];
+            window.instrumentOrderAttributeDefs = [];
+        }
         
         // Listen for order type changes to update attributes
         document.addEventListener('DOMContentLoaded', function() {
