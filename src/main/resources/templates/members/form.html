@@ -2,8 +2,6 @@
     <h2 th:text="${member.id() != null ? '✏️ Edytuj muzyka' : '➕ Dodaj muzyka'}">Dodaj muzyka</h2>
 
     <form id="member-form"
-          hx-target="#members-content"
-          hx-swap="innerHTML transition:true"
           th:attr="data-member-id=${member.id()}">
 
         <div class="grid">
