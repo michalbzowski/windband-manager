@@ -68,10 +68,11 @@ public class UniformAttributeDef {
         return new UniformAttributeDef(band, name, type, required, displayOrder, options, displayInList);
     }
 
-    public void update(String name, String type, boolean required, int displayOrder, String options) {
+    public void update(String name, String type, boolean required, boolean displayInList, int displayOrder, String options) {
         this.name = Objects.requireNonNull(name);
         this.type = Objects.requireNonNull(type);
         this.required = required;
+        this.displayInList = displayInList;
         this.displayOrder = displayOrder;
         this.options = options;
     }

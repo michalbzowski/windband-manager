@@ -67,10 +67,11 @@ private MemberAttributeDef(Band band, String name, String type, boolean required
         this.createdAt = LocalDate.now();
     }
 
-    public void update(String name, String type, boolean required, int displayOrder, String options) {
+    public void update(String name, String type, boolean required, boolean displayInList, int displayOrder, String options) {
         this.name = Objects.requireNonNull(name, "name required");
         this.type = Objects.requireNonNull(type, "type required");
         this.required = required;
+        this.displayInList = displayInList;
         this.displayOrder = displayOrder;
         this.options = options;
     }

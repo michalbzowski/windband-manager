@@ -20,10 +20,10 @@ public class OrderAttributeCommandService {
         return defRepository.save(def);
     }
 
-    public OrderAttributeDef updateAttributeDef(Long id, String name, String type, boolean required, int displayOrder, String options) {
+    public OrderAttributeDef updateAttributeDef(Long id, String name, String type, boolean required, boolean displayInList, int displayOrder, String options) {
         OrderAttributeDef def = defRepository.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("OrderAttributeDef not found: " + id));
-        def.update(name, type, required, displayOrder, options);
+        def.update(name, type, required, displayInList, displayOrder, options);
         return defRepository.save(def);
     }
 

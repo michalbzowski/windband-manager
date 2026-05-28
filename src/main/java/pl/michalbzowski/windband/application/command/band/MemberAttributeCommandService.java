@@ -25,10 +25,10 @@ public class MemberAttributeCommandService {
         return attributeDefRepository.save(def);
     }
 
-    public MemberAttributeDef updateAttributeDef(Long id, String name, String type, boolean required, int displayOrder, String options) {
+    public MemberAttributeDef updateAttributeDef(Long id, String name, String type, boolean required, boolean displayInList, int displayOrder, String options) {
         MemberAttributeDef def = attributeDefRepository.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("AttributeDef not found: " + id));
-        def.update(name, type, required, displayOrder, options);
+        def.update(name, type, required, displayInList, displayOrder, options);
         return attributeDefRepository.save(def);
     }
 

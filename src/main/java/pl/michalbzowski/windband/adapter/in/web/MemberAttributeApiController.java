@@ -44,7 +44,7 @@ public class MemberAttributeApiController {
     public MemberAttributeDef updateAttributeDef(@PathVariable Long id,
                                                   @RequestBody AttributeDefRequest request) {
         return commandService.updateAttributeDef(id, request.getName(), request.getType(),
-                request.isRequired(), request.getDisplayOrder(), request.getOptions());
+                request.isRequired(), request.isDisplayInList(), request.getDisplayOrder(), request.getOptions());
     }
 
     @DeleteMapping("/{id}")

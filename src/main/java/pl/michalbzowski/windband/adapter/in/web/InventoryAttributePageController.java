@@ -102,9 +102,9 @@ public class InventoryAttributePageController {
     @PutMapping("/{id}")
     public ResponseEntity<Void> update(@PathVariable Long id, @RequestParam String inventoryType, @ModelAttribute AttributeDefForm form) {
         switch (inventoryType) {
-            case "UNIFORM" -> uniformCommandService.updateAttributeDef(id, form.getName(), form.getAttributeType(), form.isRequired(), form.getDisplayOrder(), form.getOptions());
-            case "INSTRUMENT" -> instrumentCommandService.updateAttributeDef(id, form.getName(), form.getAttributeType(), form.isRequired(), form.getDisplayOrder(), form.getOptions());
-            case "ORDER" -> orderCommandService.updateAttributeDef(id, form.getName(), form.getAttributeType(), form.isRequired(), form.getDisplayOrder(), form.getOptions());
+            case "UNIFORM" -> uniformCommandService.updateAttributeDef(id, form.getName(), form.getAttributeType(), form.isRequired(), form.isDisplayInList(), form.getDisplayOrder(), form.getOptions());
+            case "INSTRUMENT" -> instrumentCommandService.updateAttributeDef(id, form.getName(), form.getAttributeType(), form.isRequired(), form.isDisplayInList(), form.getDisplayOrder(), form.getOptions());
+            case "ORDER" -> orderCommandService.updateAttributeDef(id, form.getName(), form.getAttributeType(), form.isRequired(), form.isDisplayInList(), form.getDisplayOrder(), form.getOptions());
             default -> throw new IllegalArgumentException("Unknown inventoryType: " + inventoryType);
         }
         return ResponseEntity.ok().header("HX-Redirect", "/band/inventory-attributes?type=" + inventoryType).build();

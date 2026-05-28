@@ -29,7 +29,7 @@ public class InventoryAttributeQueryService {
 
     public List<UniformAttributeDefDto> getUniformAttributeDefs(Band band) {
         return uniformDefRepo.findByBand(band).stream()
-                .map(d -> new UniformAttributeDefDto(d.getId(), d.getName(), d.getType(), d.isRequired(), d.getDisplayOrder(), d.getOptions()))
+                .map(d -> new UniformAttributeDefDto(d.getId(), d.getName(), d.getType(), d.isRequired(), d.isDisplayInList(), d.getDisplayOrder(), d.getOptions()))
                 .toList();
     }
 
@@ -42,7 +42,7 @@ public class InventoryAttributeQueryService {
 
     public List<InstrumentAttributeDefDto> getInstrumentAttributeDefs(Band band) {
         return instrumentDefRepo.findByBand(band).stream()
-                .map(d -> new InstrumentAttributeDefDto(d.getId(), d.getName(), d.getType(), d.isRequired(), d.getDisplayOrder(), d.getOptions()))
+                .map(d -> new InstrumentAttributeDefDto(d.getId(), d.getName(), d.getType(), d.isRequired(), d.isDisplayInList(), d.getDisplayOrder(), d.getOptions()))
                 .toList();
     }
 

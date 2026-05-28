@@ -126,11 +126,11 @@ public class MemberAttributeController {
     public ResponseEntity<Void> updateAttribute(@PathVariable Long id, @RequestParam(defaultValue = "MEMBER") String type, @ModelAttribute AttributeDefForm form) {
         Object cmdService = getCommandService(type);
         if (cmdService instanceof UniformAttributeCommandService) {
-            ((UniformAttributeCommandService) cmdService).updateAttributeDef(id, form.getName(), form.getType(), form.isRequired(), form.getDisplayOrder(), form.getOptions());
+            ((UniformAttributeCommandService) cmdService).updateAttributeDef(id, form.getName(), form.getType(), form.isRequired(), form.isDisplayInList(), form.getDisplayOrder(), form.getOptions());
         } else if (cmdService instanceof InstrumentAttributeCommandService) {
-            ((InstrumentAttributeCommandService) cmdService).updateAttributeDef(id, form.getName(), form.getType(), form.isRequired(), form.getDisplayOrder(), form.getOptions());
+            ((InstrumentAttributeCommandService) cmdService).updateAttributeDef(id, form.getName(), form.getType(), form.isRequired(), form.isDisplayInList(), form.getDisplayOrder(), form.getOptions());
         } else {
-            memberCommandService.updateAttributeDef(id, form.getName(), form.getType(), form.isRequired(), form.getDisplayOrder(), form.getOptions());
+            memberCommandService.updateAttributeDef(id, form.getName(), form.getType(), form.isRequired(), form.isDisplayInList(), form.getDisplayOrder(), form.getOptions());
         }
         return ResponseEntity.ok().header("HX-Redirect", "/band/attributes?type=" + type).build();
     }

@@ -20,10 +20,10 @@ public class InstrumentAttributeCommandService {
         return defRepository.save(def);
     }
 
-    public InstrumentAttributeDef updateAttributeDef(Long id, String name, String type, boolean required, int displayOrder, String options) {
+    public InstrumentAttributeDef updateAttributeDef(Long id, String name, String type, boolean required, boolean displayInList, int displayOrder, String options) {
         InstrumentAttributeDef def = defRepository.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("InstrumentAttributeDef not found: " + id));
-        def.update(name, type, required, displayOrder, options);
+        def.update(name, type, required, displayInList, displayOrder, options);
         return defRepository.save(def);
     }
 
