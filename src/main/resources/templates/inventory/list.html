@@ -714,8 +714,13 @@
             .then(function(r) { return r.text(); })
             .then(function(html) {
                 var targetId = tab === 'orders' ? 'orders-content' : (tab === 'uniforms' ? 'uniforms-content' : 'instruments-content');
-                document.getElementById(targetId).outerHTML = html;
-            });
+                var target = document.getElementById(targetId);
+                var wrapper = document.createElement('div');
+                wrapper.innerHTML = html;
+                var newContent = wrapper.firstElementChild;
+                target.replaceWith(newContent);
+            })
+            .catch(function(err) { console.error('Refresh error:', err); });
         }
     </script>
 </body>
