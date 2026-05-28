@@ -406,7 +406,7 @@
         .attr-field.conditional { display: none; }
     </style>
 
-    <script>
+    <script th:inline="javascript">
         // === Tab switching ===
         function switchTab(tab) {
             document.querySelectorAll('[id^="tab-"]').forEach(function(el) { el.style.display = 'none'; });
