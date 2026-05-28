@@ -8,8 +8,6 @@ import java.time.LocalDateTime;
 public record InventoryOrderDto(
         Long id,
         String requesterName,
-        String itemName,
-        String description,
         String orderType,
         String status,
         LocalDateTime createdAt,

@@ -40,19 +40,11 @@
                                     </select>
                                 </div>
                                 <div>
-                                    <label for="order-name">Nazwa elementu</label>
-                                    <input id="order-name" type="text" placeholder="np. Czapka koncertowa">
-                                </div>
-                                <div>
                                     <label for="order-type">Typ</label>
                                     <select id="order-type">
                                         <option value="UNIFORM">Stroj</option>
                                         <option value="INSTRUMENT">Instrument</option>
                                     </select>
-                                </div>
-<div>
-                                    <label for="order-desc">Opis</label>
-                                    <input id="order-desc" type="text">
                                 </div>
                             </div>
                             <!-- Dynamic attribute fields for orders (updated by JS based on type) -->
@@ -76,7 +68,6 @@
                                 <tr>
                                     <th>Data</th>
                                     <th>Składający</th>
-                                    <th>Element</th>
                                     <th>Typ</th>
                                     <th>Status</th>
                                     <th>Nr zamówienia</th>
@@ -87,7 +78,6 @@
                                 <tr th:each="o : ${orders}">
                                     <td th:text="${#temporals.format(o.createdAt, 'dd.MM.yyyy HH:mm')}">01.01.2025</td>
                                     <td th:text="${o.requesterName}">Jan Kowalski</td>
-                                    <td th:text="${o.itemName}">Czapka</td>
                                     <td th:text="${o.orderType}">UNIFORM</td>
                                     <td>
                                         <span th:switch="${o.status}">
@@ -473,10 +463,8 @@
         }
         function submitOrder() {
             var memberId = document.getElementById('order-member').value;
-            var itemName = document.getElementById('order-name').value;
             var type = document.getElementById('order-type').value;
-            var desc = document.getElementById('order-desc').value;
-            if (!memberId || !itemName) { alert('Wypełnij członka i nazwę'); return; }
+            if (!memberId) { alert('Wybierz członka'); return; }
             
             // Collect attribute values
             var attributes = {};
@@ -492,7 +480,7 @@
             
             var url = type === 'UNIFORM' ? '/api/inventory/orders/uniform' : '/api/inventory/orders/instrument';
             fetch(url, { method:'POST', headers:{'Content-Type':'application/json'},
-                body: JSON.stringify({memberId: parseInt(memberId), itemName: itemName, description: desc, attributes: attributes})
+                body: JSON.stringify({memberId: parseInt(memberId), attributes: attributes})
             }).then(function(r) { if(r.ok) { hideOrderForm(); refreshTab('orders'); } });
         }
         function advanceOrder(id, action) {

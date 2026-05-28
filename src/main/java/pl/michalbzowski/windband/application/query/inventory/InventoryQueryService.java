@@ -146,8 +146,6 @@ public class InventoryQueryService {
         return new InventoryOrderDto(
                 order.getId(),
                 order.getRequester().getFirstName() + " " + order.getRequester().getLastName(),
-                order.getItemName(),
-                order.getDescription(),
                 order.getOrderType().name(),
                 order.getStatus().name(),
                 order.getCreatedAt(),

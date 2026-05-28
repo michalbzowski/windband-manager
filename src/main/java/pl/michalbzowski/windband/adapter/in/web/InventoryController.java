@@ -30,14 +30,14 @@ public class InventoryController {
     @PostMapping("/orders/uniform")
     public ResponseEntity<?> placeUniformOrder(@RequestBody PlaceOrderRequest request) {
         var order = commandService.placeUniformOrder(
-                request.getMemberId(), request.getItemName(), request.getDescription(), request.getAttributes());
+                request.getMemberId(), request.getAttributes());
         return ResponseEntity.status(HttpStatus.CREATED).body(order);
     }
 
     @PostMapping("/orders/instrument")
     public ResponseEntity<?> placeInstrumentOrder(@RequestBody PlaceOrderRequest request) {
         var order = commandService.placeInstrumentOrder(
-                request.getMemberId(), request.getItemName(), request.getDescription(), request.getAttributes());
+                request.getMemberId(), request.getAttributes());
         return ResponseEntity.status(HttpStatus.CREATED).body(order);
     }
 
@@ -184,8 +184,6 @@ public class InventoryController {
     @Data
     public static class PlaceOrderRequest {
         private Long memberId;
-        private String itemName;
-        private String description;
         private Map<String, String> attributes;
     }
 

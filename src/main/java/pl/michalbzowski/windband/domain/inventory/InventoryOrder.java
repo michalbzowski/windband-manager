@@ -28,12 +28,7 @@ public class InventoryOrder {
     @JoinColumn(name = "member_id", nullable = false)
     private Member requester;
 
-    @Column(nullable = false)
-    private String itemName;
-
     private String orderNumber;
-
-    private String description;
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
@@ -53,17 +48,15 @@ public class InventoryOrder {
     @Column(columnDefinition = "TEXT")
     private String attributesJson;
 
-    private InventoryOrder(Member requester, String itemName, InventoryOrderType orderType, String description) {
+    private InventoryOrder(Member requester, InventoryOrderType orderType) {
         this.requester = Objects.requireNonNull(requester, "requester required");
-        this.itemName = Objects.requireNonNull(itemName, "itemName required");
         this.orderType = Objects.requireNonNull(orderType, "orderType required");
-        this.description = description;
         this.status = OrderStatus.SUBMITTED;
         this.createdAt = LocalDateTime.now();
     }
 
-    public static InventoryOrder place(Member requester, String itemName, InventoryOrderType orderType, String description) {
-        return new InventoryOrder(requester, itemName, orderType, description);
+    public static InventoryOrder place(Member requester, InventoryOrderType orderType) {
+        return new InventoryOrder(requester, orderType);
     }
 
     public void advanceToApproval() {

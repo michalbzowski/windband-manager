@@ -32,18 +32,18 @@ public class InventoryCommandService {
 
     // === Place a new order ===
 
-    public InventoryOrder placeUniformOrder(Long memberId, String itemName, String description, Map<String, String> attributes) {
+    public InventoryOrder placeUniformOrder(Long memberId, Map<String, String> attributes) {
         Member member = memberRepository.findById(memberId)
                 .orElseThrow(() -> new MemberNotFoundException(memberId));
-        InventoryOrder order = InventoryOrder.place(member, itemName, InventoryOrderType.UNIFORM, description);
+        InventoryOrder order = InventoryOrder.place(member, InventoryOrderType.UNIFORM);
         order.setAttributesJson(mapToAttributesString(attributes));
         return inventoryRepository.saveOrder(order);
     }
 
-    public InventoryOrder placeInstrumentOrder(Long memberId, String itemName, String description, Map<String, String> attributes) {
+    public InventoryOrder placeInstrumentOrder(Long memberId, Map<String, String> attributes) {
         Member member = memberRepository.findById(memberId)
                 .orElseThrow(() -> new MemberNotFoundException(memberId));
-        InventoryOrder order = InventoryOrder.place(member, itemName, InventoryOrderType.INSTRUMENT, description);
+        InventoryOrder order = InventoryOrder.place(member, InventoryOrderType.INSTRUMENT);
         order.setAttributesJson(mapToAttributesString(attributes));
         return inventoryRepository.saveOrder(order);
     }
@@ -121,14 +121,13 @@ public class InventoryCommandService {
             throw new IllegalStateException("Cannot register item from order with status: " + order.getStatus());
         }
         var band = order.getRequester().getBand();
+        // Item name is derived from order type since itemName was removed
+        String itemName = order.getOrderType() == InventoryOrderType.UNIFORM ? "Stroj" : "Instrument";
         UniformItem item = switch (ownershipStatus) {
-            case OWNED -> UniformItem.createOwned(order.getItemName(), band);
-            case BORROWED -> UniformItem.createBorrowed(order.getItemName(), band);
-            default -> UniformItem.createOwned(order.getItemName(), band);
+            case OWNED -> UniformItem.createOwned(itemName, band);
+            case BORROWED -> UniformItem.createBorrowed(itemName, band);
+            default -> UniformItem.createOwned(itemName, band);
         };
-        if (order.getDescription() != null) {
-            item.updateDescription(order.getDescription());
-        }
         if (order.getOrderNumber() != null) {
             item.setOrderNumber(order.getOrderNumber());
         }
@@ -142,12 +141,14 @@ public class InventoryCommandService {
             throw new IllegalStateException("Cannot register item from order with status: " + order.getStatus());
         }
         var band = order.getRequester().getBand();
+        // Item name is derived from order type since itemName was removed
+        String itemName = order.getOrderType() == InventoryOrderType.UNIFORM ? "Stroj" : "Instrument";
         InstrumentItem item = switch (ownershipStatus) {
-            case OWNED -> InstrumentItem.createOwned(order.getItemName(), band);
-            case BORROWED -> InstrumentItem.createBorrowed(order.getItemName(), band);
-            default -> InstrumentItem.createOwned(order.getItemName(), band);
+            case OWNED -> InstrumentItem.createOwned(itemName, band);
+            case BORROWED -> InstrumentItem.createBorrowed(itemName, band);
+            default -> InstrumentItem.createOwned(itemName, band);
         };
-        item.updateDetails(brand, serialNumber, order.getDescription());
+        item.updateDetails(brand, serialNumber, null);
         if (order.getOrderNumber() != null) {
             item.setOrderNumber(order.getOrderNumber());
         }
