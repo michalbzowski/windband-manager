@@ -115,4 +115,9 @@ public class InstrumentItem {
     public boolean isAssigned() {
         return assignedMember != null;
     }
+
+    @Transient
+    public String getAssignedMemberName() {
+        return assignedMember != null ? assignedMember.getFirstName() + " " + assignedMember.getLastName() : null;
+    }
 }

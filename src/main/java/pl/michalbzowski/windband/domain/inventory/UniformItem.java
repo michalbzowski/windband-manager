@@ -111,4 +111,9 @@ public class UniformItem {
     public boolean isAssigned() {
         return assignedMember != null;
     }
+
+    @Transient
+    public String getAssignedMemberName() {
+        return assignedMember != null ? assignedMember.getFirstName() + " " + assignedMember.getLastName() : null;
+    }
 }
