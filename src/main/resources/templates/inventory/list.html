@@ -527,9 +527,6 @@
                 }
             });
             
-            // Name is now an attribute - check if it's filled
-            if (!attributes['name']) { alert('Wypełnij Nazwa (atrybut)'); return; }
-
             fetch('/api/inventory/uniforms', { method:'POST', headers:{'Content-Type':'application/json'},
                 body: JSON.stringify({description:null, memberId:memberId?parseInt(memberId):null, ownershipStatus:'OWNED', attributes:attributes})
             }).then(function(r) { if(r.ok) { hideUniformForm(); refreshTab('uniforms'); } });
@@ -553,9 +550,6 @@
                 }
             });
             
-            // Name is now an attribute - check if it's filled
-            if (!attributes['name']) { alert('Wypełnij Nazwa (atrybut)'); return; }
-
             fetch('/api/inventory/instruments', { method:'POST', headers:{'Content-Type':'application/json'},
                 body: JSON.stringify({description:null, memberId:memberId?parseInt(memberId):null, ownershipStatus:'OWNED', attributes:attributes})
             }).then(function(r) { if(r.ok) { hideInstrumentForm(); refreshTab('instruments'); } });
