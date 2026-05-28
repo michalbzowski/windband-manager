@@ -85,20 +85,13 @@ public class InventoryController {
 
     @PostMapping("/uniforms")
     public ResponseEntity<?> addUniformItem(@RequestBody AddItemRequest request) {
-        var item = commandService.addUniformItem(
-                request.getName(), request.getDescription(),
-                request.getMemberId(), OwnershipStatus.valueOf(request.getOwnershipStatus()),
-                request.getAttributes());
+        var item = commandService.addUniformItem(request.getMemberId(), request.getAttributes());
         return ResponseEntity.status(HttpStatus.CREATED).body(item);
     }
 
     @PostMapping("/instruments")
     public ResponseEntity<?> addInstrumentItem(@RequestBody AddInstrumentRequest request) {
-        var item = commandService.addInstrumentItem(
-                request.getName(), request.getBrand(), request.getSerialNumber(),
-                request.getDescription(), request.getMemberId(),
-                OwnershipStatus.valueOf(request.getOwnershipStatus()),
-                request.getAttributes());
+        var item = commandService.addInstrumentItem(request.getMemberId(), request.getAttributes());
         return ResponseEntity.status(HttpStatus.CREATED).body(item);
     }
 
@@ -198,21 +191,13 @@ public class InventoryController {
 
     @Data
     public static class AddItemRequest {
-        private String name;
-        private String description;
         private Long memberId;
-        private String ownershipStatus;
         private Map<String, String> attributes;
     }
 
     @Data
     public static class AddInstrumentRequest {
-        private String name;
-        private String brand;
-        private String serialNumber;
-        private String description;
         private Long memberId;
-        private String ownershipStatus;
         private Map<String, String> attributes;
     }
 

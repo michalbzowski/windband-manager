@@ -7,6 +7,7 @@ import lombok.NoArgsConstructor;
 import pl.michalbzowski.windband.domain.band.Band;
 import pl.michalbzowski.windband.domain.member.Member;
 
+import java.time.LocalDate;
 import java.util.Objects;
 
 @Entity
@@ -54,11 +55,22 @@ public class UniformItem {
         return new UniformItem(name, OwnershipStatus.OWNED, band);
     }
 
+    public static UniformItem createOwned(Band band) {
+        return new UniformItem("Element stroju", OwnershipStatus.OWNED, band);
+    }
+
     public static UniformItem createBorrowed(String name, Band band) {
         return new UniformItem(name, OwnershipStatus.BORROWED, band);
     }
 
     public void assignTo(Member member) {
+        if (lifecycleStatus == ItemLifecycleStatus.DISPOSED) {
+            throw new IllegalStateException("Cannot assign disposed uniform item: " + id);
+        }
+        this.assignedMember = member;
+    }
+
+    public void assignTo(Member member, LocalDate assignedDate) {
         if (lifecycleStatus == ItemLifecycleStatus.DISPOSED) {
             throw new IllegalStateException("Cannot assign disposed uniform item: " + id);
         }

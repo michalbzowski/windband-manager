@@ -11,6 +11,7 @@ import pl.michalbzowski.windband.domain.inventory.*;
 import pl.michalbzowski.windband.domain.member.Member;
 import pl.michalbzowski.windband.domain.member.MemberRepository;
 
+import java.time.LocalDate;
 import java.util.Map;
 
 @Service
@@ -100,9 +101,9 @@ public class InventoryCommandService {
         // Auto-copy to inventory with attributes
         Map<String, String> attributes = attributesStringToMap(order.getAttributesJson());
         if (order.getOrderType() == InventoryOrderType.UNIFORM) {
-            addUniformItem(order.getItemName(), order.getDescription(), order.getRequester().getId(), OwnershipStatus.OWNED, attributes);
+            addUniformItem(order.getRequester().getId(), attributes);
         } else if (order.getOrderType() == InventoryOrderType.INSTRUMENT) {
-            addInstrumentItem(order.getItemName(), null, null, order.getDescription(), order.getRequester().getId(), OwnershipStatus.OWNED, attributes);
+            addInstrumentItem(order.getRequester().getId(), attributes);
         }
     }
 
@@ -223,16 +224,20 @@ public class InventoryCommandService {
 
     // === Add existing items directly (without order) ===
 
-    public UniformItem addUniformItem(String name, String description, Long memberId, OwnershipStatus status, Map<String, String> attributes) {
+    public UniformItem addUniformItem(Long memberId, Map<String, String> attributes) {
         var band = getDefaultBand();
-        UniformItem item = switch (status) {
-            case OWNED -> UniformItem.createOwned(name, band);
-            case BORROWED -> UniformItem.createBorrowed(name, band);
-            default -> UniformItem.createOwned(name, band);
-        };
-        if (description != null) item.updateDescription(description);
+        UniformItem item = UniformItem.createOwned(band); // domyślnie własny
         UniformItem saved = inventoryRepository.saveUniformItem(item);
-        
+
+        // Assign to member if provided
+        if (memberId != null) {
+            var member = memberRepository.findById(memberId).orElse(null);
+            if (member != null) {
+                item.assignTo(member, LocalDate.now());
+                saved = inventoryRepository.saveUniformItem(item);
+            }
+        }
+
         // Save attributes if provided
         if (attributes != null && !attributes.isEmpty()) {
             for (Map.Entry<String, String> entry : attributes.entrySet()) {
@@ -244,24 +249,23 @@ public class InventoryCommandService {
                 }
             }
         }
-        
-        if (memberId != null) {
-            assignUniformToMember(saved.getId(), memberId);
-        }
         return saved;
     }
 
-    public InstrumentItem addInstrumentItem(String name, String brand, String serialNumber,
-                                             String description, Long memberId, OwnershipStatus status, Map<String, String> attributes) {
+    public InstrumentItem addInstrumentItem(Long memberId, Map<String, String> attributes) {
         var band = getDefaultBand();
-        InstrumentItem item = switch (status) {
-            case OWNED -> InstrumentItem.createOwned(name, band);
-            case BORROWED -> InstrumentItem.createBorrowed(name, band);
-            default -> InstrumentItem.createOwned(name, band);
-        };
-        item.updateDetails(brand, serialNumber, description);
+        InstrumentItem item = InstrumentItem.createOwned(band);
         InstrumentItem saved = inventoryRepository.saveInstrumentItem(item);
-        
+
+        // Assign to member if provided
+        if (memberId != null) {
+            var member = memberRepository.findById(memberId).orElse(null);
+            if (member != null) {
+                item.assignTo(member, LocalDate.now());
+                saved = inventoryRepository.saveInstrumentItem(item);
+            }
+        }
+
         // Save attributes if provided
         if (attributes != null && !attributes.isEmpty()) {
             for (Map.Entry<String, String> entry : attributes.entrySet()) {
@@ -272,10 +276,6 @@ public class InventoryCommandService {
                     // Skip invalid attribute IDs
                 }
             }
-        }
-        
-        if (memberId != null) {
-            assignInstrumentToMember(saved.getId(), memberId);
         }
         return saved;
     }

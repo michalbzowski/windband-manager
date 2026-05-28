@@ -528,7 +528,7 @@
             });
             
             fetch('/api/inventory/uniforms', { method:'POST', headers:{'Content-Type':'application/json'},
-                body: JSON.stringify({description:null, memberId:memberId?parseInt(memberId):null, ownershipStatus:'OWNED', attributes:attributes})
+                body: JSON.stringify({memberId:memberId?parseInt(memberId):null, attributes:attributes})
             }).then(function(r) { if(r.ok) { hideUniformForm(); refreshTab('uniforms'); } });
         }
 
@@ -551,7 +551,7 @@
             });
             
             fetch('/api/inventory/instruments', { method:'POST', headers:{'Content-Type':'application/json'},
-                body: JSON.stringify({description:null, memberId:memberId?parseInt(memberId):null, ownershipStatus:'OWNED', attributes:attributes})
+                body: JSON.stringify({memberId:memberId?parseInt(memberId):null, attributes:attributes})
             }).then(function(r) { if(r.ok) { hideInstrumentForm(); refreshTab('instruments'); } });
         }
 
