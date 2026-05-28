@@ -4,6 +4,7 @@ import jakarta.persistence.*;
 import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
+import lombok.Setter;
 import pl.michalbzowski.windband.domain.band.Band;
 
 import java.time.LocalDate;
@@ -13,6 +14,7 @@ import java.util.Objects;
 @Table(name = "uniform_attribute_defs",
         uniqueConstraints = @UniqueConstraint(columnNames = {"band_id", "name"}))
 @Getter
+@Setter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class UniformAttributeDef {
 

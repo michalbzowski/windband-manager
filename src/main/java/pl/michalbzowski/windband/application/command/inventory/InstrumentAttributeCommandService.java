@@ -15,15 +15,19 @@ public class InstrumentAttributeCommandService {
     private final InstrumentAttributeValueRepository valueRepository;
     private final InventoryRepository inventoryRepository;
 
-    public InstrumentAttributeDef createAttributeDef(Band band, String name, String type, boolean required, boolean displayInList, int displayOrder, String options) {
+    public InstrumentAttributeDef createAttributeDef(Band band, String name, String type, boolean required, boolean displayInList, int displayOrder, String options, Long dependsOnAttributeId, String dependsOnValue) {
         InstrumentAttributeDef def = InstrumentAttributeDef.create(band, name, type, required, displayInList, displayOrder, options);
+        def.setDependsOnAttributeId(dependsOnAttributeId);
+        def.setDependsOnValue(dependsOnValue);
         return defRepository.save(def);
     }
 
-    public InstrumentAttributeDef updateAttributeDef(Long id, String name, String type, boolean required, boolean displayInList, int displayOrder, String options) {
+    public InstrumentAttributeDef updateAttributeDef(Long id, String name, String type, boolean required, boolean displayInList, int displayOrder, String options, Long dependsOnAttributeId, String dependsOnValue) {
         InstrumentAttributeDef def = defRepository.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("InstrumentAttributeDef not found: " + id));
         def.update(name, type, required, displayInList, displayOrder, options);
+        def.setDependsOnAttributeId(dependsOnAttributeId);
+        def.setDependsOnValue(dependsOnValue);
         return defRepository.save(def);
     }
 

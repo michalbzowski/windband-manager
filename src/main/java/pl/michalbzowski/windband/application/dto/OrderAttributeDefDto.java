@@ -6,5 +6,7 @@ public record OrderAttributeDefDto(
         String type,
         boolean required,
         int displayOrder,
-        String options
+        String options,
+        Long dependsOnAttributeId,
+        String dependsOnValue
 ) {}

@@ -55,7 +55,7 @@ public class InventoryAttributeQueryService {
 
     public List<OrderAttributeDefDto> getOrderAttributeDefs(Band band) {
         return orderDefRepo.findByBand(band).stream()
-                .map(d -> new OrderAttributeDefDto(d.getId(), d.getName(), d.getType(), d.isRequired(), d.getDisplayOrder(), d.getOptions()))
+                .map(d -> new OrderAttributeDefDto(d.getId(), d.getName(), d.getType(), d.isRequired(), d.getDisplayOrder(), d.getOptions(), d.getDependsOnAttributeId(), d.getDependsOnValue()))
                 .toList();
     }
 

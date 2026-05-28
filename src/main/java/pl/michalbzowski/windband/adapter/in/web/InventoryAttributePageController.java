@@ -52,9 +52,11 @@ public class InventoryAttributePageController {
 
     @GetMapping("/new")
     public String newForm(@RequestParam String type, Model model) {
+        Band band = getDefaultBand();
         model.addAttribute("type", type);
-        model.addAttribute("attributeDef", new AttributeDefForm("", "BOOLEAN", false, false, 0, null));
+        model.addAttribute("attributeDef", new AttributeDefForm("", "BOOLEAN", false, false, 0, null, null, null));
         model.addAttribute("attributeDefId", null);
+        model.addAttribute("availableAttributes", getAttributeDefsList(type, band));
         return "band/inventory-attribute-form";
     }
 
@@ -62,19 +64,21 @@ public class InventoryAttributePageController {
 
     @GetMapping("/{id}/edit")
     public String editForm(@PathVariable Long id, @RequestParam String type, Model model) {
+        Band band = getDefaultBand();
         model.addAttribute("type", type);
+        model.addAttribute("availableAttributes", getAttributeDefsList(type, band));
         AttributeDefForm form = switch (type) {
             case "UNIFORM" -> {
                 var def = uniformCommandService.getAttributeDefById(id);
-                yield new AttributeDefForm(def.getName(), def.getType(), def.isRequired(), def.isDisplayInList(), def.getDisplayOrder(), def.getOptions());
+                yield new AttributeDefForm(def.getName(), def.getType(), def.isRequired(), def.isDisplayInList(), def.getDisplayOrder(), def.getOptions(), def.getDependsOnAttributeId(), def.getDependsOnValue());
             }
             case "INSTRUMENT" -> {
                 var def = instrumentCommandService.getAttributeDefById(id);
-                yield new AttributeDefForm(def.getName(), def.getType(), def.isRequired(), def.isDisplayInList(), def.getDisplayOrder(), def.getOptions());
+                yield new AttributeDefForm(def.getName(), def.getType(), def.isRequired(), def.isDisplayInList(), def.getDisplayOrder(), def.getOptions(), def.getDependsOnAttributeId(), def.getDependsOnValue());
             }
             case "ORDER" -> {
                 var def = orderCommandService.getAttributeDefById(id);
-                yield new AttributeDefForm(def.getName(), def.getType(), def.isRequired(), def.isDisplayInList(), def.getDisplayOrder(), def.getOptions());
+                yield new AttributeDefForm(def.getName(), def.getType(), def.isRequired(), def.isDisplayInList(), def.getDisplayOrder(), def.getOptions(), def.getDependsOnAttributeId(), def.getDependsOnValue());
             }
             default -> throw new IllegalArgumentException("Unknown type: " + type);
         };
@@ -83,15 +87,24 @@ public class InventoryAttributePageController {
         return "band/inventory-attribute-form";
     }
 
+    private List<?> getAttributeDefsList(String type, Band band) {
+        return switch (type) {
+            case "UNIFORM" -> queryService.getUniformAttributeDefs(band);
+            case "INSTRUMENT" -> queryService.getInstrumentAttributeDefs(band);
+            case "ORDER" -> queryService.getOrderAttributeDefs(band);
+            default -> List.of();
+        };
+    }
+
     // === Create ===
 
     @PostMapping
     public ResponseEntity<Void> create(@RequestParam String inventoryType, @ModelAttribute AttributeDefForm form) {
         Band band = getDefaultBand();
         switch (inventoryType) {
-            case "UNIFORM" -> uniformCommandService.createAttributeDef(band, form.getName(), form.getAttributeType(), form.isRequired(), form.isDisplayInList(), form.getDisplayOrder(), form.getOptions());
-            case "INSTRUMENT" -> instrumentCommandService.createAttributeDef(band, form.getName(), form.getAttributeType(), form.isRequired(), form.isDisplayInList(), form.getDisplayOrder(), form.getOptions());
-            case "ORDER" -> orderCommandService.createAttributeDef(band, form.getName(), form.getAttributeType(), form.isRequired(), form.isDisplayInList(), form.getDisplayOrder(), form.getOptions());
+            case "UNIFORM" -> uniformCommandService.createAttributeDef(band, form.getName(), form.getAttributeType(), form.isRequired(), form.isDisplayInList(), form.getDisplayOrder(), form.getOptions(), form.getDependsOnAttributeId(), form.getDependsOnValue());
+            case "INSTRUMENT" -> instrumentCommandService.createAttributeDef(band, form.getName(), form.getAttributeType(), form.isRequired(), form.isDisplayInList(), form.getDisplayOrder(), form.getOptions(), form.getDependsOnAttributeId(), form.getDependsOnValue());
+            case "ORDER" -> orderCommandService.createAttributeDef(band, form.getName(), form.getAttributeType(), form.isRequired(), form.isDisplayInList(), form.getDisplayOrder(), form.getOptions(), form.getDependsOnAttributeId(), form.getDependsOnValue());
             default -> throw new IllegalArgumentException("Unknown inventoryType: " + inventoryType);
         }
         return ResponseEntity.ok().header("HX-Redirect", "/band/inventory-attributes?type=" + inventoryType).build();
@@ -102,9 +115,9 @@ public class InventoryAttributePageController {
     @PutMapping("/{id}")
     public ResponseEntity<Void> update(@PathVariable Long id, @RequestParam String inventoryType, @ModelAttribute AttributeDefForm form) {
         switch (inventoryType) {
-            case "UNIFORM" -> uniformCommandService.updateAttributeDef(id, form.getName(), form.getAttributeType(), form.isRequired(), form.isDisplayInList(), form.getDisplayOrder(), form.getOptions());
-            case "INSTRUMENT" -> instrumentCommandService.updateAttributeDef(id, form.getName(), form.getAttributeType(), form.isRequired(), form.isDisplayInList(), form.getDisplayOrder(), form.getOptions());
-            case "ORDER" -> orderCommandService.updateAttributeDef(id, form.getName(), form.getAttributeType(), form.isRequired(), form.isDisplayInList(), form.getDisplayOrder(), form.getOptions());
+            case "UNIFORM" -> uniformCommandService.updateAttributeDef(id, form.getName(), form.getAttributeType(), form.isRequired(), form.isDisplayInList(), form.getDisplayOrder(), form.getOptions(), form.getDependsOnAttributeId(), form.getDependsOnValue());
+            case "INSTRUMENT" -> instrumentCommandService.updateAttributeDef(id, form.getName(), form.getAttributeType(), form.isRequired(), form.isDisplayInList(), form.getDisplayOrder(), form.getOptions(), form.getDependsOnAttributeId(), form.getDependsOnValue());
+            case "ORDER" -> orderCommandService.updateAttributeDef(id, form.getName(), form.getAttributeType(), form.isRequired(), form.isDisplayInList(), form.getDisplayOrder(), form.getOptions(), form.getDependsOnAttributeId(), form.getDependsOnValue());
             default -> throw new IllegalArgumentException("Unknown inventoryType: " + inventoryType);
         }
         return ResponseEntity.ok().header("HX-Redirect", "/band/inventory-attributes?type=" + inventoryType).build();
@@ -151,16 +164,20 @@ public class InventoryAttributePageController {
         private boolean displayInList;
         private int displayOrder;
         private String options;
+        private Long dependsOnAttributeId;
+        private String dependsOnValue;
 
         public AttributeDefForm() {}
 
-        public AttributeDefForm(String name, String attributeType, boolean required, boolean displayInList, int displayOrder, String options) {
+        public AttributeDefForm(String name, String attributeType, boolean required, boolean displayInList, int displayOrder, String options, Long dependsOnAttributeId, String dependsOnValue) {
             this.name = name;
             this.attributeType = attributeType;
             this.required = required;
             this.displayInList = displayInList;
             this.displayOrder = displayOrder;
             this.options = options;
+            this.dependsOnAttributeId = dependsOnAttributeId;
+            this.dependsOnValue = dependsOnValue;
         }
     }
 

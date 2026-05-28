@@ -15,15 +15,19 @@ public class OrderAttributeCommandService {
     private final OrderAttributeValueRepository valueRepository;
     private final InventoryRepository inventoryRepository;
 
-    public OrderAttributeDef createAttributeDef(Band band, String name, String type, boolean required, boolean displayInList, int displayOrder, String options) {
+    public OrderAttributeDef createAttributeDef(Band band, String name, String type, boolean required, boolean displayInList, int displayOrder, String options, Long dependsOnAttributeId, String dependsOnValue) {
         OrderAttributeDef def = OrderAttributeDef.create(band, name, type, required, displayInList, displayOrder, options);
+        def.setDependsOnAttributeId(dependsOnAttributeId);
+        def.setDependsOnValue(dependsOnValue);
         return defRepository.save(def);
     }
 
-    public OrderAttributeDef updateAttributeDef(Long id, String name, String type, boolean required, boolean displayInList, int displayOrder, String options) {
+    public OrderAttributeDef updateAttributeDef(Long id, String name, String type, boolean required, boolean displayInList, int displayOrder, String options, Long dependsOnAttributeId, String dependsOnValue) {
         OrderAttributeDef def = defRepository.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("OrderAttributeDef not found: " + id));
         def.update(name, type, required, displayInList, displayOrder, options);
+        def.setDependsOnAttributeId(dependsOnAttributeId);
+        def.setDependsOnValue(dependsOnValue);
         return defRepository.save(def);
     }
 

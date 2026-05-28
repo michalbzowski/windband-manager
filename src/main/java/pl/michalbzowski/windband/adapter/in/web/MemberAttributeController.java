@@ -62,7 +62,7 @@ public class MemberAttributeController {
     @GetMapping("/new")
     public String newAttributeForm(@RequestParam(defaultValue = "MEMBER") String type, Model model) {
         model.addAttribute("type", type);
-        model.addAttribute("attributeDef", new AttributeDefForm("", "BOOLEAN", false, false, 0, null));
+        model.addAttribute("attributeDef", new AttributeDefForm("", "BOOLEAN", false, false, 0, null, null, null));
         model.addAttribute("attributeDefId", null);
         return "band/inventory-attribute-form";
     }
@@ -73,9 +73,11 @@ public class MemberAttributeController {
         
         String name, attrType;
         boolean required;
-        boolean displayInList;
-        int displayOrder;
-        String options;
+        boolean displayInList = false;
+        int displayOrder = 0;
+        String options = null;
+        Long dependsOnAttributeId = null;
+        String dependsOnValue = null;
         
         Object cmdService = getCommandService(type);
         if (cmdService instanceof UniformAttributeCommandService svc) {
@@ -86,6 +88,8 @@ public class MemberAttributeController {
             displayInList = def.isDisplayInList();
             displayOrder = def.getDisplayOrder();
             options = def.getOptions();
+            dependsOnAttributeId = def.getDependsOnAttributeId();
+            dependsOnValue = def.getDependsOnValue();
         } else if (cmdService instanceof InstrumentAttributeCommandService svc) {
             var def = svc.getAttributeDefById(id);
             name = def.getName();
@@ -94,6 +98,8 @@ public class MemberAttributeController {
             displayInList = def.isDisplayInList();
             displayOrder = def.getDisplayOrder();
             options = def.getOptions();
+            dependsOnAttributeId = def.getDependsOnAttributeId();
+            dependsOnValue = def.getDependsOnValue();
         } else {
             var def = memberCommandService.getAttributeDefById(id);
             name = def.getName();
@@ -104,7 +110,7 @@ public class MemberAttributeController {
             options = def.getOptions();
         }
         
-        model.addAttribute("attributeDef", new AttributeDefForm(name, attrType, required, displayInList, displayOrder, options));
+        model.addAttribute("attributeDef", new AttributeDefForm(name, attrType, required, displayInList, displayOrder, options, dependsOnAttributeId, dependsOnValue));
         model.addAttribute("attributeDefId", id);
         return "band/inventory-attribute-form";
     }
@@ -115,8 +121,8 @@ public class MemberAttributeController {
                 .orElseThrow(() -> new IllegalArgumentException("Band not found: 1"));
         
         switch (type) {
-            case "UNIFORM" -> uniformCommandService.createAttributeDef(band, form.getName(), form.getType(), form.isRequired(), form.isDisplayInList(), form.getDisplayOrder(), form.getOptions());
-            case "INSTRUMENT" -> instrumentCommandService.createAttributeDef(band, form.getName(), form.getType(), form.isRequired(), form.isDisplayInList(), form.getDisplayOrder(), form.getOptions());
+            case "UNIFORM" -> uniformCommandService.createAttributeDef(band, form.getName(), form.getType(), form.isRequired(), form.isDisplayInList(), form.getDisplayOrder(), form.getOptions(), form.getDependsOnAttributeId(), form.getDependsOnValue());
+            case "INSTRUMENT" -> instrumentCommandService.createAttributeDef(band, form.getName(), form.getType(), form.isRequired(), form.isDisplayInList(), form.getDisplayOrder(), form.getOptions(), form.getDependsOnAttributeId(), form.getDependsOnValue());
             default -> memberCommandService.createAttributeDef(band, form.getName(), form.getType(), form.isRequired(), form.isDisplayInList(), form.getDisplayOrder(), form.getOptions());
         }
         return ResponseEntity.ok().header("HX-Redirect", "/band/attributes?type=" + type).build();
@@ -126,9 +132,9 @@ public class MemberAttributeController {
     public ResponseEntity<Void> updateAttribute(@PathVariable Long id, @RequestParam(defaultValue = "MEMBER") String type, @ModelAttribute AttributeDefForm form) {
         Object cmdService = getCommandService(type);
         if (cmdService instanceof UniformAttributeCommandService) {
-            ((UniformAttributeCommandService) cmdService).updateAttributeDef(id, form.getName(), form.getType(), form.isRequired(), form.isDisplayInList(), form.getDisplayOrder(), form.getOptions());
+            ((UniformAttributeCommandService) cmdService).updateAttributeDef(id, form.getName(), form.getType(), form.isRequired(), form.isDisplayInList(), form.getDisplayOrder(), form.getOptions(), form.getDependsOnAttributeId(), form.getDependsOnValue());
         } else if (cmdService instanceof InstrumentAttributeCommandService) {
-            ((InstrumentAttributeCommandService) cmdService).updateAttributeDef(id, form.getName(), form.getType(), form.isRequired(), form.isDisplayInList(), form.getDisplayOrder(), form.getOptions());
+            ((InstrumentAttributeCommandService) cmdService).updateAttributeDef(id, form.getName(), form.getType(), form.isRequired(), form.isDisplayInList(), form.getDisplayOrder(), form.getOptions(), form.getDependsOnAttributeId(), form.getDependsOnValue());
         } else {
             memberCommandService.updateAttributeDef(id, form.getName(), form.getType(), form.isRequired(), form.isDisplayInList(), form.getDisplayOrder(), form.getOptions());
         }
@@ -156,16 +162,20 @@ public class MemberAttributeController {
         private boolean displayInList;
         private int displayOrder;
         private String options; // JSON array for SELECT/MULTI_SELECT
+        private Long dependsOnAttributeId;
+        private String dependsOnValue;
 
         public AttributeDefForm() {}
 
-        public AttributeDefForm(String name, String type, boolean required, boolean displayInList, int displayOrder, String options) {
+        public AttributeDefForm(String name, String type, boolean required, boolean displayInList, int displayOrder, String options, Long dependsOnAttributeId, String dependsOnValue) {
             this.name = name;
             this.type = type;
             this.required = required;
             this.displayInList = displayInList;
             this.displayOrder = displayOrder;
             this.options = options;
+            this.dependsOnAttributeId = dependsOnAttributeId;
+            this.dependsOnValue = dependsOnValue;
         }
     }
 

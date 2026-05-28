@@ -59,6 +59,23 @@
                                   placeholder="Puzon, Trąbka, Waltornia, Flet"></textarea>
                     </label>
                 </div>
+                <fieldset style="margin-top:1rem;">
+                    <legend style="font-size:0.9rem;">Zależny od atrybutu (opcjonalne)</legend>
+                    <div class="grid">
+                        <label>
+                            Atrybut nadrzędny
+                            <select name="dependsOnAttributeId" style="font-size:0.85rem;">
+                                <option value="">— brak —</option>
+                                <option th:each="attr : ${availableAttributes}" th:value="${attr.id()}" th:text="${attr.name()}">Atrybut</option>
+                            </select>
+                        </label>
+                        <label>
+                            Wartość warunkowa (oddzielone przecinkiem)
+                            <input type="text" name="dependsOnValue" placeholder="Mundur,Koszula" style="font-size:0.85rem;">
+                            <small style="color:var(--pico-muted-color);">Atrybut wyświetli się gdy rodzic ma jedną z tych wartości</small>
+                        </label>
+                    </div>
+                </fieldset>
                 <div style="display:flex; gap:0.5rem; margin-top:0.5rem;">
                     <button type="submit" class="primary small">Dodaj atrybut</button>
                     <a th:href="@{/band/inventory-attributes(type=${type})}" class="secondary small" style="padding:0.4rem 0.8rem; text-decoration:none; border-radius:4px; border:1px solid var(--pico-muted-color);">Anuluj</a>
@@ -110,6 +127,23 @@
                                   th:text="${attributeDef?.options}"></textarea>
                     </label>
                 </div>
+                <fieldset style="margin-top:1rem;">
+                    <legend style="font-size:0.9rem;">Zależny od atrybutu (opcjonalne)</legend>
+                    <div class="grid">
+                        <label>
+                            Atrybut nadrzędny
+                            <select name="dependsOnAttributeId" style="font-size:0.85rem;">
+                                <option value="">— brak —</option>
+                                <option th:each="attr : ${availableAttributes}" th:value="${attr.id()}" th:text="${attr.name()}" th:selected="${attr.id() == attributeDef?.dependsOnAttributeId}">Atrybut</option>
+                            </select>
+                        </label>
+                        <label>
+                            Wartość warunkowa (oddzielone przecinkiem)
+                            <input type="text" name="dependsOnValue" th:value="${attributeDef?.dependsOnValue}" placeholder="Mundur,Koszula" style="font-size:0.85rem;">
+                            <small style="color:var(--pico-muted-color);">Atrybut wyświetli się gdy rodzic ma jedną z tych wartości</small>
+                        </label>
+                    </div>
+                </fieldset>
                 <div style="display:flex; gap:0.5rem; margin-top:0.5rem;">
                     <button type="submit" class="primary small">Zapisz zmiany</button>
                     <a th:href="@{/band/inventory-attributes(type=${type})}" class="secondary small" style="padding:0.4rem 0.8rem; text-decoration:none; border-radius:4px; border:1px solid var(--pico-muted-color);">Anuluj</a>

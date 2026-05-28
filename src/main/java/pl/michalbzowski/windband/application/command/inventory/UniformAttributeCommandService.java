@@ -15,15 +15,19 @@ public class UniformAttributeCommandService {
     private final UniformAttributeValueRepository valueRepository;
     private final InventoryRepository inventoryRepository;
 
-    public UniformAttributeDef createAttributeDef(Band band, String name, String type, boolean required, boolean displayInList, int displayOrder, String options) {
+    public UniformAttributeDef createAttributeDef(Band band, String name, String type, boolean required, boolean displayInList, int displayOrder, String options, Long dependsOnAttributeId, String dependsOnValue) {
         UniformAttributeDef def = UniformAttributeDef.create(band, name, type, required, displayInList, displayOrder, options);
+        def.setDependsOnAttributeId(dependsOnAttributeId);
+        def.setDependsOnValue(dependsOnValue);
         return defRepository.save(def);
     }
 
-    public UniformAttributeDef updateAttributeDef(Long id, String name, String type, boolean required, boolean displayInList, int displayOrder, String options) {
+    public UniformAttributeDef updateAttributeDef(Long id, String name, String type, boolean required, boolean displayInList, int displayOrder, String options, Long dependsOnAttributeId, String dependsOnValue) {
         UniformAttributeDef def = defRepository.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("UniformAttributeDef not found: " + id));
         def.update(name, type, required, displayInList, displayOrder, options);
+        def.setDependsOnAttributeId(dependsOnAttributeId);
+        def.setDependsOnValue(dependsOnValue);
         return defRepository.save(def);
     }
 
