@@ -89,8 +89,12 @@ public class InventoryPageController {
         model.addAttribute("orderAttributeValues", orderAttrValues);
         
         // JSON versions for JavaScript
-        model.addAttribute("uniformAttributeDefsJson", objectMapper.writeValueAsString(uniformDefs));
-        model.addAttribute("instrumentAttributeDefsJson", objectMapper.writeValueAsString(instrumentDefs));
+        String uniformJson = objectMapper.writeValueAsString(uniformDefs);
+        String instrumentJson = objectMapper.writeValueAsString(instrumentDefs);
+        System.out.println("Uniform attrs JSON: " + uniformJson);
+        System.out.println("Instrument attrs JSON: " + instrumentJson);
+        model.addAttribute("uniformAttributeDefsJson", uniformJson);
+        model.addAttribute("instrumentAttributeDefsJson", instrumentJson);
         return "inventory/list";
     }
 
