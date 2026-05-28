@@ -64,12 +64,24 @@ public class MemberAttributeController {
         model.addAttribute("type", type);
         model.addAttribute("attributeDef", new AttributeDefForm("", "BOOLEAN", false, false, 0, null, null, null));
         model.addAttribute("attributeDefId", null);
+        model.addAttribute("availableAttributes", getAvailableAttributes(type));
         return "band/inventory-attribute-form";
+    }
+
+    private List<?> getAvailableAttributes(String type) {
+        Band band = bandRepository.findById(1L).orElse(null);
+        if (band == null) return List.of();
+        return switch (type) {
+            case "UNIFORM" -> inventoryQueryService.getUniformAttributeDefs(band);
+            case "INSTRUMENT" -> inventoryQueryService.getInstrumentAttributeDefs(band);
+            default -> memberQueryService.getAttributeDefsForBand(band);
+        };
     }
 
     @GetMapping("/{id}/edit")
     public String editAttributeForm(@PathVariable Long id, @RequestParam(defaultValue = "MEMBER") String type, Model model) {
         model.addAttribute("type", type);
+        model.addAttribute("availableAttributes", getAvailableAttributes(type));
         
         String name, attrType;
         boolean required;
