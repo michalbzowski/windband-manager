@@ -24,7 +24,7 @@ public class InventoryRepositoryAdapter implements InventoryRepository {
 
     @Override
     public List<UniformItem> findAllUniformItems() {
-        return uniformRepo.findAll();
+        return uniformRepo.findAllWithMember();
     }
 
     @Override
@@ -49,7 +49,7 @@ public class InventoryRepositoryAdapter implements InventoryRepository {
 
     @Override
     public List<InstrumentItem> findAllInstrumentItems() {
-        return instrumentRepo.findAll();
+        return instrumentRepo.findAllWithMember();
     }
 
     @Override
