@@ -419,15 +419,21 @@
         }
 
         // Expose attribute defs to global scope for order form
-        // Thymeleaf inline: parse the JSON string in JavaScript
+        // Debug: log what Thymeleaf outputs
+        var uniformRaw = /*[[${uniformAttributeDefsJson}]]*/ "[]";
+        var instrumentRaw = /*[[${instrumentAttributeDefsJson}]]*/ "[]";
+        console.log("uniformRaw:", uniformRaw);
+        console.log("instrumentRaw:", instrumentRaw);
+        
         try {
-            window.uniformOrderAttributeDefs = JSON.parse(/*[[${uniformAttributeDefsJson}]]*/ "[]");
-            window.instrumentOrderAttributeDefs = JSON.parse(/*[[${instrumentAttributeDefsJson}]]*/ "[]");
+            window.uniformOrderAttributeDefs = JSON.parse(uniformRaw);
+            window.instrumentOrderAttributeDefs = JSON.parse(instrumentRaw);
         } catch(e) {
             console.error("Failed to parse attribute JSON:", e);
             window.uniformOrderAttributeDefs = [];
             window.instrumentOrderAttributeDefs = [];
         }
+        console.log("Parsed uniforms:", window.uniformOrderAttributeDefs);
         
         // Listen for order type changes to update attributes
         document.addEventListener('DOMContentLoaded', function() {
