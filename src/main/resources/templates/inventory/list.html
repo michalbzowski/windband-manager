@@ -411,8 +411,8 @@
         }
 
         // Expose attribute defs to global scope for order form
-        window.uniformOrderAttributeDefs = /*[(${orderAttributeDefs})]*/ [];
-        window.instrumentOrderAttributeDefs = /*[(${orderAttributeDefs})]*/ [];
+        window.uniformOrderAttributeDefs = /*[(${uniformAttributeDefs})]*/ [];
+        window.instrumentOrderAttributeDefs = /*[(${instrumentAttributeDefs})]*/ [];
         
         // Listen for order type changes to update attributes
         document.addEventListener('DOMContentLoaded', function() {
@@ -545,8 +545,7 @@
         function updateOrderAttributes() {
             var type = document.getElementById('order-type').value;
             var container = document.getElementById('order-attributes');
-            var allOrderDefs = window.uniformOrderAttributeDefs;
-            var attrDefs = allOrderDefs.filter(function(def) { return def.type === type; });
+            var attrDefs = type === 'UNIFORM' ? window.uniformOrderAttributeDefs : window.instrumentOrderAttributeDefs;
             if (!attrDefs || attrDefs.length === 0) {
                 container.innerHTML = '<span style="color:var(--pico-muted-color); font-size:0.8rem;">Brak atrybutów dla tego typu</span>';
                 return;
