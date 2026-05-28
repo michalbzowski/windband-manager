@@ -430,12 +430,56 @@
             // Find all parent attribute selects and add listeners
             document.querySelectorAll('.parent-attr-select').forEach(function(select) {
                 select.addEventListener('change', function() {
-                    updateAllConditionalFields(this.closest('#uniform-attributes, #instrument-attributes'));
+                    updateAllConditionalFields(this.closest('#uniform-attributes, #instrument-attributes, #order-attributes'));
                 });
                 // Initial check - run after DOM is fully loaded
                 setTimeout(function() {
-                    updateAllConditionalFields(select.closest('#uniform-attributes, #instrument-attributes'));
+                    updateAllConditionalFields(select.closest('#uniform-attributes, #instrument-attributes, #order-attributes'));
                 }, 100);
+            });
+        }
+        
+        function updateOrderConditionalFields() {
+            var container = document.getElementById('order-attributes');
+            if (!container) return;
+            
+            // Add listeners to parent selects
+            container.querySelectorAll('.parent-attr-select').forEach(function(select) {
+                select.addEventListener('change', function() {
+                    updateOrderConditionalFields();
+                });
+            });
+            
+            var parentSelects = container.querySelectorAll('.parent-attr-select');
+            var parentValues = {};
+            parentSelects.forEach(function(select) {
+                parentValues[select.id] = select.value ? select.value.toLowerCase().trim() : '';
+            });
+            
+            var conditionalFields = container.querySelectorAll('.conditional');
+            conditionalFields.forEach(function(field) {
+                var dependsOnAttrId = field.getAttribute('data-depends-on');
+                var dependsOnValue = field.getAttribute('data-depends-value');
+                
+                if (!dependsOnAttrId) {
+                    field.style.display = '';
+                    return;
+                }
+                
+                var parentInputId = 'order-attr-' + dependsOnAttrId;
+                var parentValue = parentValues[parentInputId] || '';
+                
+                var allowedValues = dependsOnValue ? dependsOnValue.toLowerCase().split(',').map(function(v) { return v.trim(); }) : [];
+                
+                var shouldShow = allowedValues.length === 0 || allowedValues.some(function(allowed) {
+                    return parentValue === allowed;
+                });
+                
+                if (!shouldShow) {
+                    field.style.display = 'none';
+                } else {
+                    field.style.display = 'flex';
+                }
             });
         }
         
@@ -509,33 +553,45 @@
             var html = '';
             attrDefs.forEach(function(attrDef) {
                 var fieldId = 'order-attr-' + attrDef.id;
+                var isParent = attrDef.type === 'SELECT';
+                var wrapperClass = attrDef.dependsOnAttributeId ? 'conditional' : '';
+                var dependsOnAttr = attrDef.dependsOnAttributeId ? 'data-depends-on="' + attrDef.dependsOnAttributeId + '"' : '';
+                var dependsOnValue = attrDef.dependsOnValue ? 'data-depends-value="' + attrDef.dependsOnValue + '"' : '';
+                
                 if (attrDef.type === 'BOOLEAN') {
+                    html += '<div class="' + wrapperClass + '" ' + dependsOnAttr + ' ' + dependsOnValue + ' style="display:flex; flex-direction:column; gap:0.25rem;">';
                     html += '<label class="checkbox-label" style="display:flex; align-items:center; gap:0.25rem;">';
                     html += '<input type="checkbox" id="' + fieldId + '" name="attr_' + attrDef.id + '">';
-                    html += '<span>' + attrDef.name + '</span></label>';
+                    html += '<span>' + attrDef.name + '</span></label></div>';
                 } else if (attrDef.type === 'SELECT') {
-                    html += '<div style="display:flex; flex-direction:column; gap:0.25rem;">';
+                    html += '<div class="' + wrapperClass + '" ' + dependsOnAttr + ' ' + dependsOnValue + ' style="display:flex; flex-direction:column; gap:0.25rem;">';
                     html += '<label>' + attrDef.name + '</label>';
-                    html += '<select id="' + fieldId + '" name="attr_' + attrDef.id + '">';
+                    var selectClass = isParent ? 'class="parent-attr-select"' : '';
+                    html += '<select id="' + fieldId + '" name="attr_' + attrDef.id + '" ' + selectClass + '>';
                     html += '<option value="">Wybierz...</option>';
                     var opts = attrDef.options ? attrDef.options.replace('[','').replace(']','').split(',') : [];
                     opts.forEach(function(opt) { html += '<option value="' + opt.trim() + '">' + opt.trim() + '</option>'; });
                     html += '</select></div>';
                 } else if (attrDef.type === 'DATE') {
-                    html += '<div style="display:flex; flex-direction:column; gap:0.25rem;">';
+                    html += '<div class="' + wrapperClass + '" ' + dependsOnAttr + ' ' + dependsOnValue + ' style="display:flex; flex-direction:column; gap:0.25rem;">';
                     html += '<label>' + attrDef.name + '</label>';
                     html += '<input type="date" id="' + fieldId + '" name="attr_' + attrDef.id + '"></div>';
                 } else if (attrDef.type === 'NUMBER') {
-                    html += '<div style="display:flex; flex-direction:column; gap:0.25rem;">';
+                    html += '<div class="' + wrapperClass + '" ' + dependsOnAttr + ' ' + dependsOnValue + ' style="display:flex; flex-direction:column; gap:0.25rem;">';
                     html += '<label>' + attrDef.name + '</label>';
                     html += '<input type="number" id="' + fieldId + '" name="attr_' + attrDef.id + '" step="any"></div>';
                 } else {
-                    html += '<div style="display:flex; flex-direction:column; gap:0.25rem;">';
+                    html += '<div class="' + wrapperClass + '" ' + dependsOnAttr + ' ' + dependsOnValue + ' style="display:flex; flex-direction:column; gap:0.25rem;">';
                     html += '<label>' + attrDef.name + '</label>';
                     html += '<input type="text" id="' + fieldId + '" name="attr_' + attrDef.id + '"></div>';
                 }
             });
             container.innerHTML = html;
+            
+            // Initialize conditional attributes for order form
+            setTimeout(function() {
+                updateOrderConditionalFields();
+            }, 100);
         }
         function submitOrder() {
             var memberId = document.getElementById('order-member').value;
