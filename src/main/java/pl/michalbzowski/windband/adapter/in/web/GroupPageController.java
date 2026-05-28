@@ -56,9 +56,12 @@ public class GroupPageController {
     }
 
     @PostMapping("/{groupId}/members/{memberId}/remove")
-    public String removeMember(@PathVariable Long groupId, @PathVariable Long memberId) {
+    public String removeMember(@PathVariable Long groupId, @PathVariable Long memberId, Model model) {
         groupCommandService.removeMemberFromGroup(groupId, memberId);
-        return "redirect:/groups/" + groupId;
+        // Render full page instead of redirect so HTMX has CSS
+        model.addAttribute("group", groupQueryService.getGroupDetailById(groupId));
+        model.addAttribute("members", memberQueryService.getAllActiveMembers());
+        return "groups/detail";
     }
 
     @PostMapping("/{id}/delete")

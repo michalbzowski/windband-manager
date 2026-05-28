@@ -44,7 +44,7 @@
                     <td>
                         <form th:action="@{'/groups/' + ${group.id} + '/members/' + ${gm.memberId} + '/remove'}"
                               th:method="post"
-                              hx-target="#groups-content" hx-swap="innerHTML transition:true"
+                              hx-target="#content" hx-swap="innerHTML transition:true"
                               style="display:inline;">
                             <button class="outline small secondary" type="submit">Usuń</button>
                         </form>
