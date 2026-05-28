@@ -71,6 +71,9 @@
                                     <th>Typ</th>
                                     <th>Status</th>
                                     <th>Nr zamówienia</th>
+                                    <!-- Dynamic attribute columns for orders with displayInList=true -->
+                                    <th th:each="attr : ${uniformAttributeDefs}" th:if="${attr.displayInList}" th:text="${attr.name}">Attr</th>
+                                    <th th:each="attr : ${instrumentAttributeDefs}" th:if="${attr.displayInList}" th:text="${attr.name}">Attr</th>
                                     <th>Akcje</th>
                                 </tr>
                             </thead>
@@ -89,7 +92,12 @@
                                             <span th:case="'CANCELLED'" class="badge error">Anulowano</span>
                                         </span>
                                     </td>
-                                    <td th:text="${o.orderNumber != null} ? ${o.orderNumber} : '-'">ORD-1-20250101</td>
+                                    <td th:text="${o.orderNumber != null} ? ${o.orderNumber : '-'}">ORD-1-20250101</td>
+                                    <!-- Dynamic attribute cells - show uniform attrs for UNIFORM orders, instrument attrs for INSTRUMENT orders -->
+                                    <td th:each="attr : ${uniformAttributeDefs}" th:if="${attr.displayInList}" 
+                                        th:text="${orderAttributeValues?.get(o.id)?.get(attr.id)}">-</td>
+                                    <td th:each="attr : ${instrumentAttributeDefs}" th:if="${attr.displayInList}" 
+                                        th:text="${orderAttributeValues?.get(o.id)?.get(attr.id)}">-</td>
                                     <td>
                                         <div style="display:flex; gap:0.25rem; flex-wrap:wrap;">
                                             <button th:if="${o.status == 'SUBMITTED'}"
@@ -546,6 +554,9 @@
             var type = document.getElementById('order-type').value;
             var container = document.getElementById('order-attributes');
             var attrDefs = type === 'UNIFORM' ? window.uniformOrderAttributeDefs : window.instrumentOrderAttributeDefs;
+            
+            console.log('Order type:', type, 'attrDefs:', attrDefs);
+            
             if (!attrDefs || attrDefs.length === 0) {
                 container.innerHTML = '<span style="color:var(--pico-muted-color); font-size:0.8rem;">Brak atrybutów dla tego typu</span>';
                 return;

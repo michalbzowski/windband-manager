@@ -60,7 +60,28 @@ public class InventoryAttributeQueryService {
     }
 
     public Map<Long, String> getOrderAttributeValues(InventoryOrder order) {
-        return orderValueRepo.findByOrder(order).stream()
-                .collect(Collectors.toMap(v -> v.getAttributeDef().getId(), OrderAttributeValue::getValue));
+        // First try to get from OrderAttributeValue table (legacy)
+        if (orderValueRepo.findByOrder(order).size() > 0) {
+            return orderValueRepo.findByOrder(order).stream()
+                    .collect(Collectors.toMap(v -> v.getAttributeDef().getId(), OrderAttributeValue::getValue));
+        }
+        // If not found, parse from JSON string in order
+        String attrsJson = order.getAttributesJson();
+        if (attrsJson == null || attrsJson.isEmpty()) {
+            return Map.of();
+        }
+        Map<Long, String> result = new java.util.HashMap<>();
+        for (String pair : attrsJson.split(";")) {
+            String[] kv = pair.split("=", 2);
+            if (kv.length == 2) {
+                try {
+                    Long attrId = Long.parseLong(kv[0]);
+                    result.put(attrId, kv[1]);
+                } catch (NumberFormatException e) {
+                    // Skip invalid attribute IDs
+                }
+            }
+        }
+        return result;
     }
 }
