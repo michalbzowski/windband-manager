@@ -48,6 +48,13 @@ public class UniformAttributeDef {
     @Column(length = 2000)
     private String options; // comma-separated for SELECT/MULTI_SELECT
 
+    // Conditional display: this attribute is shown only when dependsOnAttribute has dependsOnValue
+    @Column(name = "depends_on_attribute_id")
+    private Long dependsOnAttributeId;
+
+    @Column(name = "depends_on_value")
+    private String dependsOnValue; // comma-separated values when this attribute is visible
+
     private UniformAttributeDef(Band band, String name, String type, boolean required, int displayOrder, String options, boolean displayInList) {
         this.band = Objects.requireNonNull(band);
         this.name = Objects.requireNonNull(name);
@@ -75,5 +82,29 @@ public class UniformAttributeDef {
         this.displayInList = displayInList;
         this.displayOrder = displayOrder;
         this.options = options;
+    }
+
+    /**
+     * Check if this attribute should be displayed based on current form values.
+     * @param parentAttributeValue the value of the parent attribute (from dependsOnAttributeId)
+     * @return true if this attribute should be shown
+     */
+    public boolean isVisible(String parentAttributeValue) {
+        // If no dependency, always visible
+        if (dependsOnAttributeId == null || dependsOnValue == null || dependsOnValue.isBlank()) {
+            return true;
+        }
+        // If parent has no value, hide this attribute
+        if (parentAttributeValue == null || parentAttributeValue.isBlank()) {
+            return false;
+        }
+        // Check if parent value matches any of the allowed values
+        String[] allowedValues = dependsOnValue.split(",");
+        for (String allowed : allowedValues) {
+            if (parentAttributeValue.equalsIgnoreCase(allowed.trim())) {
+                return true;
+            }
+        }
+        return false;
     }
 }

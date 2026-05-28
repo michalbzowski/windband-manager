@@ -141,14 +141,16 @@
                             <!-- Dynamic attribute fields for uniforms -->
                             <div id="uniform-attributes" style="margin-top:1rem; display:flex; gap:0.5rem; flex-wrap:wrap; align-items:flex-end;" th:if="${!#lists.isEmpty(uniformAttributeDefs)}">
                                 <th:block th:each="attrDef : ${uniformAttributeDefs}">
-                                    <div th:switch="${attrDef.type()}">
+                                    <div th:switch="${attrDef.type()}"
+                                         th:attr="data-depends-on=${attrDef.dependsOnAttributeId()}, data-depends-value=${attrDef.dependsOnValue()}"
+                                         class="attr-field" th:classappend="${attrDef.dependsOnAttributeId() != null} ? 'conditional'">
                                         <label th:case="'BOOLEAN'" class="checkbox-label" style="display:flex; align-items:center; gap:0.25rem;">
                                             <input type="checkbox" th:id="'uni-attr-' + ${attrDef.id()}" th:name="'attr_' + ${attrDef.id()}">
                                             <span th:text="${attrDef.name()}">Atrybut</span>
                                         </label>
                                         <div th:case="'SELECT'" style="display:flex; flex-direction:column; gap:0.25rem;">
                                             <label th:text="${attrDef.name()}">Atrybut</label>
-                                            <select th:id="'uni-attr-' + ${attrDef.id()}" th:name="'attr_' + ${attrDef.id()}">
+                                            <select th:id="'uni-attr-' + ${attrDef.id()}" th:name="'attr_' + ${attrDef.id()}" class="parent-attr-select">
                                                 <option value="">Wybierz...</option>
                                                 <option th:each="opt : ${#strings.arraySplit(#strings.replace(attrDef.options(), '[', '').replace(']', ''), ',')}" th:value="${opt.trim()}" th:text="${opt.trim()}">Opcja</option>
                                             </select>
@@ -272,14 +274,16 @@
                             <!-- Dynamic attribute fields for instruments -->
                             <div id="instrument-attributes" style="margin-top:1rem; display:flex; gap:0.5rem; flex-wrap:wrap; align-items:flex-end;" th:if="${!#lists.isEmpty(instrumentAttributeDefs)}">
                                 <th:block th:each="attrDef : ${instrumentAttributeDefs}">
-                                    <div th:switch="${attrDef.type()}">
+                                    <div th:switch="${attrDef.type()}"
+                                         th:attr="data-depends-on=${attrDef.dependsOnAttributeId()}, data-depends-value=${attrDef.dependsOnValue()}"
+                                         class="attr-field" th:classappend="${attrDef.dependsOnAttributeId() != null} ? 'conditional'">
                                         <label th:case="'BOOLEAN'" class="checkbox-label" style="display:flex; align-items:center; gap:0.25rem;">
                                             <input type="checkbox" th:id="'inst-attr-' + ${attrDef.id()}" th:name="'attr_' + ${attrDef.id()}">
                                             <span th:text="${attrDef.name()}">Atrybut</span>
                                         </label>
                                         <div th:case="'SELECT'" style="display:flex; flex-direction:column; gap:0.25rem;">
                                             <label th:text="${attrDef.name()}">Atrybut</label>
-                                            <select th:id="'inst-attr-' + ${attrDef.id()}" th:name="'attr_' + ${attrDef.id()}">
+                                            <select th:id="'inst-attr-' + ${attrDef.id()}" th:name="'attr_' + ${attrDef.id()}" class="parent-attr-select">
                                                 <option value="">Wybierz...</option>
                                                 <option th:each="opt : ${#strings.arraySplit(#strings.replace(attrDef.options(), '[', '').replace(']', ''), ',')}" th:value="${opt.trim()}" th:text="${opt.trim()}">Opcja</option>
                                             </select>
@@ -390,6 +394,8 @@
         .badge.success { background:#e8f5e9; color:#2e7d32; }
         .badge.error { background:#ffebee; color:#c62828; }
         .tab-btn { padding:0.5rem 1rem; border:none; cursor:pointer; border-radius:0.25rem 0.25rem 0 0; }
+        /* Conditional attributes - hidden by default */
+        .attr-field.conditional { display: none; }
     </style>
 
     <script>
@@ -414,7 +420,65 @@
             if (orderTypeSelect) {
                 orderTypeSelect.addEventListener('change', updateOrderAttributes);
             }
+            
+            // Initialize conditional attribute visibility
+            initConditionalAttributes();
         });
+
+        // === Conditional attributes logic ===
+        function initConditionalAttributes() {
+            // Find all parent attribute selects and add listeners
+            document.querySelectorAll('.parent-attr-select').forEach(function(select) {
+                select.addEventListener('change', function() {
+                    updateConditionalFields(this);
+                });
+                // Initial check
+                updateConditionalFields(select);
+            });
+        }
+        
+        function updateConditionalFields(triggerSelect) {
+            var container = triggerSelect.closest('#uniform-attributes, #instrument-attributes');
+            if (!container) return;
+            
+            var parentId = triggerSelect.id.replace('uni-attr-', 'uni-attr-').replace('inst-attr-', 'inst-attr-');
+            var parentValue = triggerSelect.value;
+            var containerId = container.id;
+            
+            // Find all conditional fields in this container
+            var conditionalFields = container.querySelectorAll('.conditional');
+            conditionalFields.forEach(function(field) {
+                var dependsOnAttrId = field.getAttribute('data-depends-on');
+                var dependsOnValue = field.getAttribute('data-depends-value');
+                
+                // Match by ID (convert to same format)
+                var parentInputId = (containerId === 'uniform-attributes' ? 'uni-attr-' : 'inst-attr-') + dependsOnAttrId;
+                
+                if (parentInputId === triggerSelect.id) {
+                    // Check if current value matches allowed values
+                    var allowedValues = dependsOnValue ? dependsOnValue.toLowerCase().split(',') : [];
+                    var currentValue = parentValue ? parentValue.toLowerCase().trim() : '';
+                    
+                    var shouldShow = allowedValues.some(function(allowed) {
+                        return currentValue === allowed.trim();
+                    });
+                    
+                    field.style.display = shouldShow ? (triggerSelect.closest('div[th:switch]') ? '' : '') : 'none';
+                    // Use flex/block based on original display
+                    if (!shouldShow) {
+                        field.style.display = 'none';
+                    } else {
+                        // Restore to original display type
+                        var typeDiv = field.querySelector('input, select, label');
+                        if (typeDiv && typeDiv.tagName === 'LABEL' && typeDiv.classList.contains('checkbox-label')) {
+                            field.style.display = 'flex';
+                        } else {
+                            field.style.display = 'flex';
+                        }
+                    }
+                }
+            });
+        }
 
         // === Order form ===
         function showOrderForm() { 

@@ -7,5 +7,7 @@ public record InstrumentAttributeDefDto(
         boolean required,
         boolean displayInList,
         int displayOrder,
-        String options
+        String options,
+        Long dependsOnAttributeId,
+        String dependsOnValue
 ) {}
