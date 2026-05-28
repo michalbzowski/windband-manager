@@ -430,51 +430,63 @@
             // Find all parent attribute selects and add listeners
             document.querySelectorAll('.parent-attr-select').forEach(function(select) {
                 select.addEventListener('change', function() {
-                    updateConditionalFields(this);
+                    updateAllConditionalFields(this.closest('#uniform-attributes, #instrument-attributes'));
                 });
-                // Initial check
-                updateConditionalFields(select);
+                // Initial check - run after DOM is fully loaded
+                setTimeout(function() {
+                    updateAllConditionalFields(select.closest('#uniform-attributes, #instrument-attributes'));
+                }, 100);
             });
         }
         
-        function updateConditionalFields(triggerSelect) {
-            var container = triggerSelect.closest('#uniform-attributes, #instrument-attributes');
+        function updateAllConditionalFields(container) {
             if (!container) return;
-            
-            var parentId = triggerSelect.id.replace('uni-attr-', 'uni-attr-').replace('inst-attr-', 'inst-attr-');
-            var parentValue = triggerSelect.value;
             var containerId = container.id;
+            var prefix = containerId === 'uniform-attributes' ? 'uni-attr-' : 'inst-attr-';
             
-            // Find all conditional fields in this container
+            // Get current values of all parent selects
+            var parentSelects = container.querySelectorAll('.parent-attr-select');
+            var parentValues = {};
+            parentSelects.forEach(function(select) {
+                parentValues[select.id] = select.value ? select.value.toLowerCase().trim() : '';
+            });
+            
+            // Update all conditional fields
             var conditionalFields = container.querySelectorAll('.conditional');
             conditionalFields.forEach(function(field) {
                 var dependsOnAttrId = field.getAttribute('data-depends-on');
                 var dependsOnValue = field.getAttribute('data-depends-value');
                 
-                // Match by ID (convert to same format)
-                var parentInputId = (containerId === 'uniform-attributes' ? 'uni-attr-' : 'inst-attr-') + dependsOnAttrId;
+                if (!dependsOnAttrId) {
+                    // No dependency - always show
+                    field.style.display = '';
+                    return;
+                }
                 
-                if (parentInputId === triggerSelect.id) {
-                    // Check if current value matches allowed values
-                    var allowedValues = dependsOnValue ? dependsOnValue.toLowerCase().split(',') : [];
-                    var currentValue = parentValue ? parentValue.toLowerCase().trim() : '';
-                    
-                    var shouldShow = allowedValues.some(function(allowed) {
-                        return currentValue === allowed.trim();
-                    });
-                    
-                    field.style.display = shouldShow ? (triggerSelect.closest('div[th:switch]') ? '' : '') : 'none';
-                    // Use flex/block based on original display
-                    if (!shouldShow) {
-                        field.style.display = 'none';
+                // Build parent input ID
+                var parentInputId = prefix + dependsOnAttrId;
+                
+                // Get parent value
+                var parentValue = parentValues[parentInputId] || '';
+                
+                // Parse allowed values (comma-separated)
+                var allowedValues = dependsOnValue ? dependsOnValue.toLowerCase().split(',').map(function(v) { return v.trim(); }) : [];
+                
+                // Check if current parent value matches any allowed value
+                var shouldShow = allowedValues.length === 0 || allowedValues.some(function(allowed) {
+                    return parentValue === allowed;
+                });
+                
+                // Show/hide field
+                if (!shouldShow) {
+                    field.style.display = 'none';
+                } else {
+                    // Determine proper display type
+                    var checkboxLabel = field.querySelector('.checkbox-label');
+                    if (checkboxLabel) {
+                        field.style.display = 'flex';
                     } else {
-                        // Restore to original display type
-                        var typeDiv = field.querySelector('input, select, label');
-                        if (typeDiv && typeDiv.tagName === 'LABEL' && typeDiv.classList.contains('checkbox-label')) {
-                            field.style.display = 'flex';
-                        } else {
-                            field.style.display = 'flex';
-                        }
+                        field.style.display = 'flex';
                     }
                 }
             });
