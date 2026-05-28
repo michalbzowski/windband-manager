@@ -47,6 +47,10 @@
                         <input type="checkbox" name="required">
                         Wymagany
                     </label>
+                    <label>
+                        <input type="checkbox" name="displayInList">
+                        Wyświetlaj w listach
+                    </label>
                 </div>
                 <div id="options-field-new" style="display:none; margin-top:0.5rem;">
                     <label>
@@ -92,6 +96,10 @@
                     <label>
                         <input type="checkbox" name="required" th:checked="${attributeDef?.required}">
                         Wymagany
+                    </label>
+                    <label>
+                        <input type="checkbox" name="displayInList" th:checked="${attributeDef?.displayInList}">
+                        Wyświetlaj w listach
                     </label>
                 </div>
                 <div id="options-field-edit" th:style="${attributeDef?.type == 'SELECT' or attributeDef?.type == 'MULTI_SELECT'} ? '' : 'display:none;'">

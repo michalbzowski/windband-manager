@@ -15,8 +15,8 @@ public class OrderAttributeCommandService {
     private final OrderAttributeValueRepository valueRepository;
     private final InventoryRepository inventoryRepository;
 
-    public OrderAttributeDef createAttributeDef(Band band, String name, String type, boolean required, int displayOrder, String options) {
-        OrderAttributeDef def = OrderAttributeDef.create(band, name, type, required, displayOrder, options);
+    public OrderAttributeDef createAttributeDef(Band band, String name, String type, boolean required, boolean displayInList, int displayOrder, String options) {
+        OrderAttributeDef def = OrderAttributeDef.create(band, name, type, required, displayInList, displayOrder, options);
         return defRepository.save(def);
     }
 

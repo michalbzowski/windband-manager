@@ -38,24 +38,33 @@ public class MemberAttributeDef {
     @Column(nullable = false)
     private boolean active;
 
+    @Column(name = "display_in_list", nullable = false)
+    private boolean displayInList = false;
+
     @Column(nullable = false)
     private LocalDate createdAt;
 
     @Column(length = 2000)
     private String options; // JSON array for SELECT/MULTI_SELECT types
 
-    private MemberAttributeDef(Band band, String name, String type, boolean required, int displayOrder, String options) {
+    public static MemberAttributeDef create(Band band, String name, String type, boolean required, int displayOrder, String options) {
+        return new MemberAttributeDef(band, name, type, required, displayOrder, options, true, false);
+    }
+
+    public static MemberAttributeDef create(Band band, String name, String type, boolean required, boolean displayInList, int displayOrder, String options) {
+        return new MemberAttributeDef(band, name, type, required, displayOrder, options, true, displayInList);
+    }
+
+private MemberAttributeDef(Band band, String name, String type, boolean required, int displayOrder, String options, boolean active, boolean displayInList) {
         this.band = Objects.requireNonNull(band, "band required");
         this.name = Objects.requireNonNull(name, "name required");
         this.type = Objects.requireNonNull(type, "type required");
         this.required = required;
         this.displayOrder = displayOrder;
-        this.active = true;
+        this.active = active;
+        this.displayInList = displayInList;
+        this.options = options;
         this.createdAt = LocalDate.now();
-    }
-
-    public static MemberAttributeDef create(Band band, String name, String type, boolean required, int displayOrder, String options) {
-        return new MemberAttributeDef(band, name, type, required, displayOrder, options);
     }
 
     public void update(String name, String type, boolean required, int displayOrder, String options) {

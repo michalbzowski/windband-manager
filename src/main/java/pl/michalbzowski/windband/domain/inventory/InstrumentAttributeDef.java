@@ -39,13 +39,16 @@ public class InstrumentAttributeDef {
     @Column(nullable = false)
     private boolean active;
 
+    @Column(name = "display_in_list", nullable = false)
+    private boolean displayInList = false;
+
     @Column(nullable = false)
     private LocalDate createdAt;
 
     @Column(length = 2000)
     private String options;
 
-    private InstrumentAttributeDef(Band band, String name, String type, boolean required, int displayOrder, String options) {
+    private InstrumentAttributeDef(Band band, String name, String type, boolean required, int displayOrder, String options, boolean displayInList) {
         this.band = Objects.requireNonNull(band);
         this.name = Objects.requireNonNull(name);
         this.type = Objects.requireNonNull(type);
@@ -53,11 +56,16 @@ public class InstrumentAttributeDef {
         this.displayOrder = displayOrder;
         this.options = options;
         this.active = true;
+        this.displayInList = displayInList;
         this.createdAt = LocalDate.now();
     }
 
     public static InstrumentAttributeDef create(Band band, String name, String type, boolean required, int displayOrder, String options) {
-        return new InstrumentAttributeDef(band, name, type, required, displayOrder, options);
+        return new InstrumentAttributeDef(band, name, type, required, displayOrder, options, false);
+    }
+
+    public static InstrumentAttributeDef create(Band band, String name, String type, boolean required, boolean displayInList, int displayOrder, String options) {
+        return new InstrumentAttributeDef(band, name, type, required, displayOrder, options, displayInList);
     }
 
     public void update(String name, String type, boolean required, int displayOrder, String options) {

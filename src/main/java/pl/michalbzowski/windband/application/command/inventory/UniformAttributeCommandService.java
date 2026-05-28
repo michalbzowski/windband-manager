@@ -15,8 +15,8 @@ public class UniformAttributeCommandService {
     private final UniformAttributeValueRepository valueRepository;
     private final InventoryRepository inventoryRepository;
 
-    public UniformAttributeDef createAttributeDef(Band band, String name, String type, boolean required, int displayOrder, String options) {
-        UniformAttributeDef def = UniformAttributeDef.create(band, name, type, required, displayOrder, options);
+    public UniformAttributeDef createAttributeDef(Band band, String name, String type, boolean required, boolean displayInList, int displayOrder, String options) {
+        UniformAttributeDef def = UniformAttributeDef.create(band, name, type, required, displayInList, displayOrder, options);
         return defRepository.save(def);
     }
 

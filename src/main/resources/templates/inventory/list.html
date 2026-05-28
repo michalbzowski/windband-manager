@@ -198,16 +198,15 @@
                     <table th:unless="${#lists.isEmpty(uniformItems)}" role="grid">
                         <thead>
                             <tr>
-                                <th>Nazwa</th>
+                                <th th:each="attr : ${uniformAttributeDefs}" th:if="${attr.displayInList}" th:text="${attr.name}">Nazwa</th>
                                 <th>Przydzielony do</th>
                                 <th>Akcje</th>
                             </tr>
                         </thead>
                         <tbody>
                             <tr th:each="u : ${uniformItems}">
-                                <td>
-                                    <span th:if="${uniformAttributeValues[u.id]?.get('name')}" th:text="${uniformAttributeValues[u.id].get('name')}">Czapka</span>
-                                    <span th:unless="${uniformAttributeValues[u.id]?.get('name')}" style="color:#999;">—</span>
+                                <td th:each="attr : ${uniformAttributeDefs}" th:if="${attr.displayInList}" th:with="val=${uniformAttributeValues?.get(u.id)?.get(attr.id)}">
+                                    <span th:text="${val != null ? val : '—'}" style="color:#999;">—</span>
                                 </td>
                                 <td>
                                     <span th:if="${u.assignedMemberName != null}" th:text="${u.assignedMemberName}">Jan</span>
@@ -330,23 +329,15 @@
                     <table th:unless="${#lists.isEmpty(instrumentItems)}" role="grid">
                         <thead>
                             <tr>
-                                <th>Nazwa</th>
+                                <th th:each="attr : ${instrumentAttributeDefs}" th:if="${attr.displayInList}" th:text="${attr.name}">Nazwa</th>
                                 <th>Przydzielony do</th>
                                 <th>Akcje</th>
                             </tr>
                         </thead>
                         <tbody>
                             <tr th:each="i : ${instrumentItems}">
-                                <td>
-                                    <div style="display:flex; flex-direction:column; gap:0.25rem;">
-                                        <span th:if="${instrumentAttributeValues[i.id]?.get('name')}" th:text="${instrumentAttributeValues[i.id].get('name')}">Trąbka</span>
-                                        <span th:unless="${instrumentAttributeValues[i.id]?.get('name')}" style="color:#999;">—</span>
-                                        <small style="color:var(--pico-muted-color);" 
-                                              th:if="${instrumentAttributeValues[i.id]?.get('brand') or instrumentAttributeValues[i.id]?.get('serialNumber')}">
-                                            <span th:if="${instrumentAttributeValues[i.id]?.get('brand')}" th:text="${instrumentAttributeValues[i.id].get('brand')}">Yamaha</span>
-                                            <span th:if="${instrumentAttributeValues[i.id]?.get('serialNumber')}">, nr ser: <span th:text="${instrumentAttributeValues[i.id].get('serialNumber')}">YTR-12345</span></span>
-                                        </small>
-                                    </div>
+                                <td th:each="attr : ${instrumentAttributeDefs}" th:if="${attr.displayInList}" th:with="val=${instrumentAttributeValues?.get(i.id)?.get(attr.id)}">
+                                    <span th:text="${val != null ? val : '—'}" style="color:#999;">—</span>
                                 </td>
                                 <td>
                                     <span th:if="${i.assignedMemberName != null}" th:text="${i.assignedMemberName}">Jan</span>

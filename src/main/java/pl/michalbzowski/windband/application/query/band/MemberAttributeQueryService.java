@@ -36,6 +36,7 @@ public class MemberAttributeQueryService {
                 def.getName(),
                 def.getType(),
                 def.isRequired(),
+                def.isDisplayInList(),
                 def.getDisplayOrder(),
                 def.getOptions()
         );

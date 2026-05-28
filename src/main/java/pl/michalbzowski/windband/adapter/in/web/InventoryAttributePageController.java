@@ -53,7 +53,7 @@ public class InventoryAttributePageController {
     @GetMapping("/new")
     public String newForm(@RequestParam String type, Model model) {
         model.addAttribute("type", type);
-        model.addAttribute("attributeDef", new AttributeDefForm("", "BOOLEAN", false, 0, null));
+        model.addAttribute("attributeDef", new AttributeDefForm("", "BOOLEAN", false, false, 0, null));
         model.addAttribute("attributeDefId", null);
         return "band/inventory-attribute-form";
     }
@@ -66,15 +66,15 @@ public class InventoryAttributePageController {
         AttributeDefForm form = switch (type) {
             case "UNIFORM" -> {
                 var def = uniformCommandService.getAttributeDefById(id);
-                yield new AttributeDefForm(def.getName(), def.getType(), def.isRequired(), def.getDisplayOrder(), def.getOptions());
+                yield new AttributeDefForm(def.getName(), def.getType(), def.isRequired(), def.isDisplayInList(), def.getDisplayOrder(), def.getOptions());
             }
             case "INSTRUMENT" -> {
                 var def = instrumentCommandService.getAttributeDefById(id);
-                yield new AttributeDefForm(def.getName(), def.getType(), def.isRequired(), def.getDisplayOrder(), def.getOptions());
+                yield new AttributeDefForm(def.getName(), def.getType(), def.isRequired(), def.isDisplayInList(), def.getDisplayOrder(), def.getOptions());
             }
             case "ORDER" -> {
                 var def = orderCommandService.getAttributeDefById(id);
-                yield new AttributeDefForm(def.getName(), def.getType(), def.isRequired(), def.getDisplayOrder(), def.getOptions());
+                yield new AttributeDefForm(def.getName(), def.getType(), def.isRequired(), def.isDisplayInList(), def.getDisplayOrder(), def.getOptions());
             }
             default -> throw new IllegalArgumentException("Unknown type: " + type);
         };
@@ -89,9 +89,9 @@ public class InventoryAttributePageController {
     public ResponseEntity<Void> create(@RequestParam String inventoryType, @ModelAttribute AttributeDefForm form) {
         Band band = getDefaultBand();
         switch (inventoryType) {
-            case "UNIFORM" -> uniformCommandService.createAttributeDef(band, form.getName(), form.getAttributeType(), form.isRequired(), form.getDisplayOrder(), form.getOptions());
-            case "INSTRUMENT" -> instrumentCommandService.createAttributeDef(band, form.getName(), form.getAttributeType(), form.isRequired(), form.getDisplayOrder(), form.getOptions());
-            case "ORDER" -> orderCommandService.createAttributeDef(band, form.getName(), form.getAttributeType(), form.isRequired(), form.getDisplayOrder(), form.getOptions());
+            case "UNIFORM" -> uniformCommandService.createAttributeDef(band, form.getName(), form.getAttributeType(), form.isRequired(), form.isDisplayInList(), form.getDisplayOrder(), form.getOptions());
+            case "INSTRUMENT" -> instrumentCommandService.createAttributeDef(band, form.getName(), form.getAttributeType(), form.isRequired(), form.isDisplayInList(), form.getDisplayOrder(), form.getOptions());
+            case "ORDER" -> orderCommandService.createAttributeDef(band, form.getName(), form.getAttributeType(), form.isRequired(), form.isDisplayInList(), form.getDisplayOrder(), form.getOptions());
             default -> throw new IllegalArgumentException("Unknown inventoryType: " + inventoryType);
         }
         return ResponseEntity.ok().header("HX-Redirect", "/band/inventory-attributes?type=" + inventoryType).build();
@@ -143,20 +143,22 @@ public class InventoryAttributePageController {
         return ResponseEntity.ok().build();
     }
 
-    @Data
+@Data
     public static class AttributeDefForm {
         private String name;
         private String attributeType;
         private boolean required;
+        private boolean displayInList;
         private int displayOrder;
         private String options;
 
         public AttributeDefForm() {}
 
-        public AttributeDefForm(String name, String attributeType, boolean required, int displayOrder, String options) {
+        public AttributeDefForm(String name, String attributeType, boolean required, boolean displayInList, int displayOrder, String options) {
             this.name = name;
             this.attributeType = attributeType;
             this.required = required;
+            this.displayInList = displayInList;
             this.displayOrder = displayOrder;
             this.options = options;
         }

@@ -36,7 +36,7 @@ public class MemberAttributeApiController {
         Band band = bandRepository.findById(bandId)
                 .orElseThrow(() -> new IllegalArgumentException("Band not found: " + bandId));
         var def = commandService.createAttributeDef(band, request.getName(), request.getType(),
-                request.isRequired(), request.getDisplayOrder(), request.getOptions());
+                request.isRequired(), request.isDisplayInList(), request.getDisplayOrder(), request.getOptions());
         return ResponseEntity.status(HttpStatus.CREATED).body(def);
     }
 
@@ -73,6 +73,7 @@ public class MemberAttributeApiController {
         private String name;
         private String type = "BOOLEAN";
         private boolean required;
+        private boolean displayInList;
         private int displayOrder;
         private String options;
     }

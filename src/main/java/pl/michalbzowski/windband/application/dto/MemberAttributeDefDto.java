@@ -5,6 +5,7 @@ public record MemberAttributeDefDto(
         String name,
         String type,
         boolean required,
+        boolean displayInList,
         int displayOrder,
         String options
 ) {}

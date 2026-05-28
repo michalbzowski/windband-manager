@@ -62,7 +62,7 @@ public class MemberAttributeController {
     @GetMapping("/new")
     public String newAttributeForm(@RequestParam(defaultValue = "MEMBER") String type, Model model) {
         model.addAttribute("type", type);
-        model.addAttribute("attributeDef", new AttributeDefForm("", "BOOLEAN", false, 0, null));
+        model.addAttribute("attributeDef", new AttributeDefForm("", "BOOLEAN", false, false, 0, null));
         model.addAttribute("attributeDefId", null);
         return "band/inventory-attribute-form";
     }
@@ -73,6 +73,7 @@ public class MemberAttributeController {
         
         String name, attrType;
         boolean required;
+        boolean displayInList;
         int displayOrder;
         String options;
         
@@ -82,6 +83,7 @@ public class MemberAttributeController {
             name = def.getName();
             attrType = def.getType();
             required = def.isRequired();
+            displayInList = def.isDisplayInList();
             displayOrder = def.getDisplayOrder();
             options = def.getOptions();
         } else if (cmdService instanceof InstrumentAttributeCommandService svc) {
@@ -89,6 +91,7 @@ public class MemberAttributeController {
             name = def.getName();
             attrType = def.getType();
             required = def.isRequired();
+            displayInList = def.isDisplayInList();
             displayOrder = def.getDisplayOrder();
             options = def.getOptions();
         } else {
@@ -96,11 +99,12 @@ public class MemberAttributeController {
             name = def.getName();
             attrType = def.getType();
             required = def.isRequired();
+            displayInList = def.isDisplayInList();
             displayOrder = def.getDisplayOrder();
             options = def.getOptions();
         }
         
-        model.addAttribute("attributeDef", new AttributeDefForm(name, attrType, required, displayOrder, options));
+        model.addAttribute("attributeDef", new AttributeDefForm(name, attrType, required, displayInList, displayOrder, options));
         model.addAttribute("attributeDefId", id);
         return "band/inventory-attribute-form";
     }
@@ -111,9 +115,9 @@ public class MemberAttributeController {
                 .orElseThrow(() -> new IllegalArgumentException("Band not found: 1"));
         
         switch (type) {
-            case "UNIFORM" -> uniformCommandService.createAttributeDef(band, form.getName(), form.getType(), form.isRequired(), form.getDisplayOrder(), form.getOptions());
-            case "INSTRUMENT" -> instrumentCommandService.createAttributeDef(band, form.getName(), form.getType(), form.isRequired(), form.getDisplayOrder(), form.getOptions());
-            default -> memberCommandService.createAttributeDef(band, form.getName(), form.getType(), form.isRequired(), form.getDisplayOrder(), form.getOptions());
+            case "UNIFORM" -> uniformCommandService.createAttributeDef(band, form.getName(), form.getType(), form.isRequired(), form.isDisplayInList(), form.getDisplayOrder(), form.getOptions());
+            case "INSTRUMENT" -> instrumentCommandService.createAttributeDef(band, form.getName(), form.getType(), form.isRequired(), form.isDisplayInList(), form.getDisplayOrder(), form.getOptions());
+            default -> memberCommandService.createAttributeDef(band, form.getName(), form.getType(), form.isRequired(), form.isDisplayInList(), form.getDisplayOrder(), form.getOptions());
         }
         return ResponseEntity.ok().header("HX-Redirect", "/band/attributes?type=" + type).build();
     }
@@ -149,15 +153,17 @@ public class MemberAttributeController {
         private String name;
         private String type;
         private boolean required;
+        private boolean displayInList;
         private int displayOrder;
         private String options; // JSON array for SELECT/MULTI_SELECT
 
         public AttributeDefForm() {}
 
-        public AttributeDefForm(String name, String type, boolean required, int displayOrder, String options) {
+        public AttributeDefForm(String name, String type, boolean required, boolean displayInList, int displayOrder, String options) {
             this.name = name;
             this.type = type;
             this.required = required;
+            this.displayInList = displayInList;
             this.displayOrder = displayOrder;
             this.options = options;
         }

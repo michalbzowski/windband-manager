@@ -20,8 +20,8 @@ public class MemberAttributeCommandService {
     private final MemberAttributeValueRepository attributeValueRepository;
     private final MemberRepository memberRepository;
 
-    public MemberAttributeDef createAttributeDef(Band band, String name, String type, boolean required, int displayOrder, String options) {
-        MemberAttributeDef def = MemberAttributeDef.create(band, name, type, required, displayOrder, options);
+    public MemberAttributeDef createAttributeDef(Band band, String name, String type, boolean required, boolean displayInList, int displayOrder, String options) {
+        MemberAttributeDef def = MemberAttributeDef.create(band, name, type, required, displayInList, displayOrder, options);
         return attributeDefRepository.save(def);
     }
 
