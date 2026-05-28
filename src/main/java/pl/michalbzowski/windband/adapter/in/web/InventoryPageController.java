@@ -5,6 +5,8 @@ import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
 import pl.michalbzowski.windband.application.dto.InstrumentAttributeDefDto;
+import pl.michalbzowski.windband.application.dto.InventoryItemDto;
+import pl.michalbzowski.windband.application.dto.InventoryOrderDto;
 import pl.michalbzowski.windband.application.dto.OrderAttributeDefDto;
 import pl.michalbzowski.windband.application.dto.UniformAttributeDefDto;
 import pl.michalbzowski.windband.application.query.inventory.InventoryQueryService;
@@ -45,25 +47,28 @@ public class InventoryPageController {
         List<InstrumentAttributeDefDto> instrumentDefs = inventoryAttributeQueryService.getInstrumentAttributeDefs(band);
         List<OrderAttributeDefDto> orderDefs = inventoryAttributeQueryService.getOrderAttributeDefs(band);
 
-        // Get all items
-        List<UniformItem> uniformItems = inventoryQueryService.getAllUniformItemsEntities();
-        List<InstrumentItem> instrumentItems = inventoryQueryService.getAllInstrumentItemsEntities();
+        // Get all items - entities for attribute values, DTOs for view
+        List<UniformItem> uniformItemsEntities = inventoryQueryService.getAllUniformItemsEntities();
+        List<InstrumentItem> instrumentItemsEntities = inventoryQueryService.getAllInstrumentItemsEntities();
+        List<InventoryItemDto> uniformItems = inventoryQueryService.getAllUniformItems();
+        List<InventoryItemDto> instrumentItems = inventoryQueryService.getAllInstrumentItems();
 
         // Build attribute values map: itemId -> {attrId -> value}
         Map<Long, Map<Long, String>> uniformAttrValues = new HashMap<>();
-        for (UniformItem item : uniformItems) {
+        for (UniformItem item : uniformItemsEntities) {
             uniformAttrValues.put(item.getId(), inventoryAttributeQueryService.getUniformAttributeValues(item));
         }
 
         Map<Long, Map<Long, String>> instrumentAttrValues = new HashMap<>();
-        for (InstrumentItem item : instrumentItems) {
+        for (InstrumentItem item : instrumentItemsEntities) {
             instrumentAttrValues.put(item.getId(), inventoryAttributeQueryService.getInstrumentAttributeValues(item));
         }
 
-        // Get orders with attribute values
-        List<InventoryOrder> orders = inventoryQueryService.getAllOrdersEntities();
+        // Get orders with attribute values - entities for attributes, DTOs for view
+        List<InventoryOrder> ordersEntities = inventoryQueryService.getAllOrdersEntities();
+        List<InventoryOrderDto> orders = inventoryQueryService.getAllOrders();
         Map<Long, Map<Long, String>> orderAttrValues = new HashMap<>();
-        for (InventoryOrder order : orders) {
+        for (InventoryOrder order : ordersEntities) {
             orderAttrValues.put(order.getId(), inventoryAttributeQueryService.getOrderAttributeValues(order));
         }
 
