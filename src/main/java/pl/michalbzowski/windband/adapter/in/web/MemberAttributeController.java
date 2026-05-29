@@ -9,10 +9,10 @@ import org.springframework.web.bind.annotation.*;
 import pl.michalbzowski.windband.application.command.band.MemberAttributeCommandService;
 import pl.michalbzowski.windband.application.command.inventory.InstrumentAttributeCommandService;
 import pl.michalbzowski.windband.application.command.inventory.UniformAttributeCommandService;
+import pl.michalbzowski.windband.application.query.band.BandQueryService;
 import pl.michalbzowski.windband.application.query.band.MemberAttributeQueryService;
 import pl.michalbzowski.windband.application.query.inventory.InventoryAttributeQueryService;
 import pl.michalbzowski.windband.domain.band.Band;
-import pl.michalbzowski.windband.domain.band.BandRepository;
 import pl.michalbzowski.windband.domain.band.MemberAttributeDef;
 
 import java.util.List;
@@ -27,35 +27,28 @@ public class MemberAttributeController {
     private final InstrumentAttributeCommandService instrumentCommandService;
     private final MemberAttributeQueryService memberQueryService;
     private final InventoryAttributeQueryService inventoryQueryService;
-    private final BandRepository bandRepository;
+    private final BandQueryService bandQueryService;
 
     // --- Page endpoints (HTMX fragments) ---
 
     @GetMapping
     public String attributesPage(@RequestParam(defaultValue = "MEMBER") String type, Model model) {
-        Band band = bandRepository.findById(1L).orElse(null);
+        Band band = bandQueryService.getDefaultBand();
         model.addAttribute("type", type);
-        if (band != null) {
-            model.addAttribute("attributeDefs", switch (type) {
-                case "UNIFORM" -> inventoryQueryService.getUniformAttributeDefs(band);
-                case "INSTRUMENT" -> inventoryQueryService.getInstrumentAttributeDefs(band);
-                case "ORDER" -> inventoryQueryService.getOrderAttributeDefs(band);
-                case "MEMBER" -> memberQueryService.getAttributeDefsForBand(band);
-                default -> {
-                    // Dla null lub innych wartości użyj atrybutów członków
-                    yield memberQueryService.getAttributeDefsForBand(band);
-                }
-            });
-        }
+        model.addAttribute("attributeDefs", switch (type) {
+            case "UNIFORM" -> inventoryQueryService.getUniformAttributeDefs(band);
+            case "INSTRUMENT" -> inventoryQueryService.getInstrumentAttributeDefs(band);
+            case "ORDER" -> inventoryQueryService.getOrderAttributeDefs(band);
+            case "MEMBER" -> memberQueryService.getAttributeDefsForBand(band);
+            default -> memberQueryService.getAttributeDefsForBand(band);
+        });
         return "band/inventory-attributes";
     }
 
     @GetMapping("/list")
     public String attributeList(Model model) {
-        Band band = bandRepository.findById(1L).orElse(null);
-        if (band != null) {
-            model.addAttribute("attributeDefs", memberQueryService.getAttributeDefsForBand(band));
-        }
+        Band band = bandQueryService.getDefaultBand();
+        model.addAttribute("attributeDefs", memberQueryService.getAttributeDefsForBand(band));
         return "band/attribute-list";
     }
 
@@ -69,8 +62,7 @@ public class MemberAttributeController {
     }
 
     private List<?> getAvailableAttributes(String type) {
-        Band band = bandRepository.findById(1L).orElse(null);
-        if (band == null) return List.of();
+        Band band = bandQueryService.getDefaultBand();
         return switch (type) {
             case "UNIFORM" -> inventoryQueryService.getUniformAttributeDefs(band);
             case "INSTRUMENT" -> inventoryQueryService.getInstrumentAttributeDefs(band);
@@ -129,8 +121,7 @@ public class MemberAttributeController {
 
     @PostMapping
     public ResponseEntity<Void> createAttribute(@RequestParam(defaultValue = "MEMBER") String type, @ModelAttribute AttributeDefForm form) {
-        Band band = bandRepository.findById(1L)
-                .orElseThrow(() -> new IllegalArgumentException("Band not found: 1"));
+        Band band = bandQueryService.getDefaultBand();
         
         switch (type) {
             case "UNIFORM" -> uniformCommandService.createAttributeDef(band, form.getName(), form.getType(), form.isRequired(), form.isDisplayInList(), form.getDisplayOrder(), form.getOptions(), form.getDependsOnAttributeId(), form.getDependsOnValue());
@@ -173,7 +164,7 @@ public class MemberAttributeController {
         private boolean required;
         private boolean displayInList;
         private int displayOrder;
-        private String options; // JSON array for SELECT/MULTI_SELECT
+        private String options;
         private Long dependsOnAttributeId;
         private String dependsOnValue;
 

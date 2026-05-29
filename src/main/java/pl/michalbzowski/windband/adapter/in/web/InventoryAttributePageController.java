@@ -7,9 +7,9 @@ import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
 import pl.michalbzowski.windband.application.command.inventory.*;
+import pl.michalbzowski.windband.application.query.band.BandQueryService;
 import pl.michalbzowski.windband.application.query.inventory.InventoryAttributeQueryService;
 import pl.michalbzowski.windband.domain.band.Band;
-import pl.michalbzowski.windband.domain.band.BandRepository;
 
 import java.util.List;
 
@@ -26,11 +26,10 @@ public class InventoryAttributePageController {
     private final InstrumentAttributeCommandService instrumentCommandService;
     private final OrderAttributeCommandService orderCommandService;
     private final InventoryAttributeQueryService queryService;
-    private final BandRepository bandRepository;
+    private final BandQueryService bandQueryService;
 
     private Band getDefaultBand() {
-        return bandRepository.findById(1L)
-                .orElseThrow(() -> new IllegalStateException("Default band (id=1) not found"));
+        return bandQueryService.getDefaultBand();
     }
 
     // === List all attribute defs by type ===
@@ -156,7 +155,7 @@ public class InventoryAttributePageController {
         return ResponseEntity.ok().build();
     }
 
-@Data
+    @Data
     public static class AttributeDefForm {
         private String name;
         private String attributeType;

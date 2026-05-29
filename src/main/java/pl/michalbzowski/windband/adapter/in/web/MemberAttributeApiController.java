@@ -7,9 +7,9 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import pl.michalbzowski.windband.application.command.band.MemberAttributeCommandService;
 import pl.michalbzowski.windband.application.dto.MemberAttributeDefDto;
+import pl.michalbzowski.windband.application.query.band.BandQueryService;
 import pl.michalbzowski.windband.application.query.band.MemberAttributeQueryService;
 import pl.michalbzowski.windband.domain.band.Band;
-import pl.michalbzowski.windband.domain.band.BandRepository;
 import pl.michalbzowski.windband.domain.band.MemberAttributeDef;
 
 import java.util.List;
@@ -21,20 +21,18 @@ public class MemberAttributeApiController {
 
     private final MemberAttributeCommandService commandService;
     private final MemberAttributeQueryService queryService;
-    private final BandRepository bandRepository;
+    private final BandQueryService bandQueryService;
 
     @GetMapping
     public List<MemberAttributeDefDto> getAttributeDefs(@PathVariable Long bandId) {
-        Band band = bandRepository.findById(bandId)
-                .orElseThrow(() -> new IllegalArgumentException("Band not found: " + bandId));
+        Band band = bandQueryService.getBandById(bandId);
         return queryService.getAttributeDefsForBand(band);
     }
 
     @PostMapping
     public ResponseEntity<MemberAttributeDef> createAttributeDef(@PathVariable Long bandId,
                                                                   @RequestBody AttributeDefRequest request) {
-        Band band = bandRepository.findById(bandId)
-                .orElseThrow(() -> new IllegalArgumentException("Band not found: " + bandId));
+        Band band = bandQueryService.getBandById(bandId);
         var def = commandService.createAttributeDef(band, request.getName(), request.getType(),
                 request.isRequired(), request.isDisplayInList(), request.getDisplayOrder(), request.getOptions());
         return ResponseEntity.status(HttpStatus.CREATED).body(def);

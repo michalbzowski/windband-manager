@@ -12,11 +12,11 @@ import pl.michalbzowski.windband.application.dto.InventoryItemDto;
 import pl.michalbzowski.windband.application.dto.InventoryOrderDto;
 import pl.michalbzowski.windband.application.dto.OrderAttributeDefDto;
 import pl.michalbzowski.windband.application.dto.UniformAttributeDefDto;
+import pl.michalbzowski.windband.application.query.band.BandQueryService;
 import pl.michalbzowski.windband.application.query.inventory.InventoryQueryService;
 import pl.michalbzowski.windband.application.query.inventory.InventoryAttributeQueryService;
 import pl.michalbzowski.windband.application.query.member.MemberQueryService;
 import pl.michalbzowski.windband.domain.band.Band;
-import pl.michalbzowski.windband.domain.band.BandRepository;
 import pl.michalbzowski.windband.domain.inventory.InventoryOrder;
 import pl.michalbzowski.windband.domain.inventory.InstrumentItem;
 import pl.michalbzowski.windband.domain.inventory.OrderStatus;
@@ -34,12 +34,11 @@ public class InventoryPageController {
     private final InventoryQueryService inventoryQueryService;
     private final InventoryAttributeQueryService inventoryAttributeQueryService;
     private final MemberQueryService memberQueryService;
-    private final BandRepository bandRepository;
+    private final BandQueryService bandQueryService;
     private final ObjectMapper objectMapper;
 
     private Band getDefaultBand() {
-        return bandRepository.findById(1L)
-                .orElseThrow(() -> new IllegalStateException("Default band (id=1) not found"));
+        return bandQueryService.getDefaultBand();
     }
 
     @GetMapping

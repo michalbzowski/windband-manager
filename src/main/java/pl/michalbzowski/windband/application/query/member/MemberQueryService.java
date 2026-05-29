@@ -29,8 +29,17 @@ public class MemberQueryService {
                 .orElseThrow(() -> new MemberNotFoundException(id));
     }
 
+    public Member getMemberEntityById(Long id) {
+        return memberRepository.findById(id)
+                .orElseThrow(() -> new MemberNotFoundException(id));
+    }
+
     public long getActiveMemberCount() {
         return memberRepository.findAllActive().size();
+    }
+
+    public List<Member> findAllActiveMembers() {
+        return memberRepository.findAllActive();
     }
 
     public long getMinorCount() {
