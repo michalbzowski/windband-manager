@@ -26,24 +26,28 @@
 </div>
 
 <script th:inline="javascript">
-    document.body.addEventListener('submit', function(e) {
-        if (e.target.id === 'instrument-form') {
-            e.preventDefault();
-            var form = e.target;
-            var instrumentId = form.getAttribute('data-instrument-id');
-            var url = instrumentId ? '/api/instruments/' + instrumentId : '/api/instruments';
-            var method = instrumentId ? 'PUT' : 'POST';
-            var formData = new FormData(form);
-            var data = {};
-            formData.forEach(function(value, key) { data[key] = value; });
+    // Guard: prevent duplicate event listeners when form is reloaded via htmx
+    if (!window._instrumentFormHandlerAttached) {
+        window._instrumentFormHandlerAttached = true;
+        document.body.addEventListener('submit', function(e) {
+            if (e.target.id === 'instrument-form') {
+                e.preventDefault();
+                var form = e.target;
+                var instrumentId = form.getAttribute('data-instrument-id');
+                var url = instrumentId ? '/api/instruments/' + instrumentId : '/api/instruments';
+                var method = instrumentId ? 'PUT' : 'POST';
+                var formData = new FormData(form);
+                var data = {};
+                formData.forEach(function(value, key) { data[key] = value; });
 
-            fetch(url, {
-                method: method,
-                headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify(data)
-            }).then(function() {
-                htmx.ajax('GET', '/instruments/list', {target: '#instruments-content', swap: 'innerHTML transition:true'});
-            });
-        }
-    });
+                fetch(url, {
+                    method: method,
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify(data)
+                }).then(function() {
+                    htmx.ajax('GET', '/instruments/list', {target: '#instruments-content', swap: 'innerHTML transition:true'});
+                });
+            }
+        });
+    }
 </script>

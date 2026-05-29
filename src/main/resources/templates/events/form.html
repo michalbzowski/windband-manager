@@ -54,21 +54,25 @@
 </div>
 
 <script th:inline="javascript">
-    document.body.addEventListener('submit', function(e) {
-        if (e.target.id === 'event-form') {
-            e.preventDefault();
-            var form = e.target;
-            var formData = new FormData(form);
-            var data = {};
-            formData.forEach(function(value, key) { data[key] = value; });
+    // Guard: prevent duplicate event listeners when form is reloaded via htmx
+    if (!window._eventFormHandlerAttached) {
+        window._eventFormHandlerAttached = true;
+        document.body.addEventListener('submit', function(e) {
+            if (e.target.id === 'event-form') {
+                e.preventDefault();
+                var form = e.target;
+                var formData = new FormData(form);
+                var data = {};
+                formData.forEach(function(value, key) { data[key] = value; });
 
-            fetch('/api/events', {
-                method: 'POST',
-                headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify(data)
-            }).then(function() {
-                htmx.ajax('GET', '/events/list', {target: '#events-content', swap: 'innerHTML transition:true'});
-            });
-        }
-    });
+                fetch('/api/events', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify(data)
+                }).then(function() {
+                    htmx.ajax('GET', '/events/list', {target: '#events-content', swap: 'innerHTML transition:true'});
+                });
+            }
+        });
+    }
 </script>

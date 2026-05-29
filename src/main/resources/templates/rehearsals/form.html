@@ -42,21 +42,25 @@
 </div>
 
 <script th:inline="javascript">
-    document.body.addEventListener('submit', function(e) {
-        if (e.target.id === 'rehearsal-form') {
-            e.preventDefault();
-            var form = e.target;
-            var formData = new FormData(form);
-            var data = {};
-            formData.forEach(function(value, key) { data[key] = value; });
+    // Guard: prevent duplicate event listeners when form is reloaded via htmx
+    if (!window._rehearsalFormHandlerAttached) {
+        window._rehearsalFormHandlerAttached = true;
+        document.body.addEventListener('submit', function(e) {
+            if (e.target.id === 'rehearsal-form') {
+                e.preventDefault();
+                var form = e.target;
+                var formData = new FormData(form);
+                var data = {};
+                formData.forEach(function(value, key) { data[key] = value; });
 
-            fetch('/api/rehearsals', {
-                method: 'POST',
-                headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify(data)
-            }).then(function() {
-                htmx.ajax('GET', '/rehearsals/list', {target: '#rehearsals-content', swap: 'innerHTML transition:true'});
-            });
-        }
-    });
+                fetch('/api/rehearsals', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify(data)
+                }).then(function() {
+                    htmx.ajax('GET', '/rehearsals/list', {target: '#rehearsals-content', swap: 'innerHTML transition:true'});
+                });
+            }
+        });
+    }
 </script>
