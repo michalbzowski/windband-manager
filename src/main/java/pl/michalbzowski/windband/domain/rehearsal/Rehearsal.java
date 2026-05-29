@@ -48,9 +48,6 @@ public class Rehearsal {
     }
 
     public static Rehearsal schedule(LocalDate date, LocalTime startTime, String location, Band band) {
-        if (date.isBefore(LocalDate.now())) {
-            throw new IllegalArgumentException("Cannot schedule rehearsal in the past");
-        }
         return new Rehearsal(date, startTime, location, band);
     }
 
