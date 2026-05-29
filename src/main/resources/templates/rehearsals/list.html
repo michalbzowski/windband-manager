@@ -42,6 +42,10 @@
                                         th:hx-get="@{/rehearsals/{id}(id=${r.id})}"
                                         hx-target="#rehearsals-content"
                                         hx-swap="innerHTML transition:true">Szczegóły</button>
+                                <button class="outline small secondary"
+                                        th:attr="data-id=${r.id}"
+                                        onclick="if(confirm('Czy na pewno chcesz usunąć tę próbę?')) deleteRehearsal(this.getAttribute('data-id'))"
+                                        style="margin-left:0.25rem;">Usuń</button>
                             </td>
                         </tr>
                     </tbody>
@@ -51,5 +55,21 @@
     </main>
 
     <footer th:replace="~{fragments/layout :: footer}"></footer>
+
+    <script>
+        function deleteRehearsal(id) {
+            fetch('/api/rehearsals/' + id, { method: 'DELETE' })
+                .then(function(response) {
+                    if (response.ok) {
+                        htmx.ajax('GET', '/rehearsals/list', {target: '#rehearsals-content', swap: 'innerHTML transition:true'});
+                    } else {
+                        alert('Nie udało się usunąć próby');
+                    }
+                })
+                .catch(function() {
+                    alert('Błąd sieci przy usuwaniu próby');
+                });
+        }
+    </script>
 </body>
 </html>

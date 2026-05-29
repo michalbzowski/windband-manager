@@ -6,9 +6,16 @@ import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
 import pl.michalbzowski.windband.application.command.member.CreateGroupCommand;
 import pl.michalbzowski.windband.application.command.member.GroupCommandService;
+import pl.michalbzowski.windband.application.dto.GroupDetailDto.GroupMemberDto;
+import pl.michalbzowski.windband.application.dto.GroupDetailDto;
+import pl.michalbzowski.windband.application.dto.MemberDto;
 import pl.michalbzowski.windband.application.query.member.GroupQueryService;
 import pl.michalbzowski.windband.application.query.member.MemberQueryService;
 import pl.michalbzowski.windband.domain.member.Group;
+
+import java.util.List;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 @Controller
 @RequestMapping("/groups")
@@ -38,8 +45,15 @@ public class GroupPageController {
 
     @GetMapping("/{id}")
     public String groupDetail(@PathVariable Long id, Model model) {
-        model.addAttribute("group", groupQueryService.getGroupDetailById(id));
-        model.addAttribute("members", memberQueryService.getAllActiveMembers());
+        var groupDetail = groupQueryService.getGroupDetailById(id);
+        model.addAttribute("group", groupDetail);
+        Set<Long> memberIdsInGroup = groupDetail.members().stream()
+                .map(GroupMemberDto::memberId)
+                .collect(Collectors.toSet());
+        List<MemberDto> availableMembers = memberQueryService.getAllActiveMembers().stream()
+                .filter(m -> !memberIdsInGroup.contains(m.id()))
+                .toList();
+        model.addAttribute("members", availableMembers);
         return "groups/detail";
     }
 
