@@ -32,6 +32,11 @@ public class PageController {
         return "login";
     }
 
+    @GetMapping("/register")
+    public String register() {
+        return "register";
+    }
+
     @GetMapping("/")
     public String dashboard(Model model) {
         var band = getDefaultBand();

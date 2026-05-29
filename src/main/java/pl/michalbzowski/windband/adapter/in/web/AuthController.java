@@ -16,6 +16,7 @@ import org.springframework.web.bind.annotation.*;
 import pl.michalbzowski.windband.adapter.in.security.TeamAwareUserDetails;
 import pl.michalbzowski.windband.application.command.team.RegisterTeamCommand;
 import pl.michalbzowski.windband.application.command.team.TeamRegistrationService;
+import pl.michalbzowski.windband.application.query.team.TeamQueryService;
 import pl.michalbzowski.windband.config.JwtConfig;
 
 import java.util.HashMap;
@@ -29,6 +30,7 @@ public class AuthController {
     private final AuthenticationManager authenticationManager;
     private final JwtConfig jwtConfig;
     private final TeamRegistrationService teamRegistrationService;
+    private final TeamQueryService teamQueryService;
 
     @PostMapping("/login")
     public ResponseEntity<Void> login(@RequestBody LoginRequest request, HttpServletResponse response) {
@@ -88,12 +90,11 @@ public class AuthController {
     }
 
     /**
-     * Check if a username is available (for registration form).
+     * Check if a username is available (real-time validation).
      */
     @GetMapping("/check-username")
     public ResponseEntity<Map<String, Boolean>> checkUsername(@RequestParam String username) {
-        // This is handled by the service layer - simplified here
-        return ResponseEntity.ok(Map.of("available", username != null && username.length() >= 3));
+        return ResponseEntity.ok(Map.of("available", teamQueryService.isUsernameAvailable(username)));
     }
 
     /**
@@ -101,7 +102,15 @@ public class AuthController {
      */
     @GetMapping("/check-email")
     public ResponseEntity<Map<String, Boolean>> checkEmail(@RequestParam String email) {
-        return ResponseEntity.ok(Map.of("available", email != null && email.contains("@")));
+        return ResponseEntity.ok(Map.of("available", teamQueryService.isEmailAvailable(email)));
+    }
+
+    /**
+     * Check if a team slug is available.
+     */
+    @GetMapping("/check-slug")
+    public ResponseEntity<Map<String, Boolean>> checkSlug(@RequestParam String slug) {
+        return ResponseEntity.ok(Map.of("available", teamQueryService.isSlugAvailable(slug)));
     }
 
     /**
