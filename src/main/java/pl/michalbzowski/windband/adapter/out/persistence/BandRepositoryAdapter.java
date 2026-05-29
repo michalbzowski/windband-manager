@@ -20,6 +20,11 @@ public class BandRepositoryAdapter implements BandRepository {
     }
 
     @Override
+    public Band saveAndFlush(Band band) {
+        return springDataRepo.saveAndFlush(band);
+    }
+
+    @Override
     public Optional<Band> findById(Long id) {
         return springDataRepo.findById(id);
     }
@@ -27,6 +32,16 @@ public class BandRepositoryAdapter implements BandRepository {
     @Override
     public Optional<Band> findByName(String name) {
         return springDataRepo.findByName(name);
+    }
+
+    @Override
+    public Optional<Band> findBySlug(String slug) {
+        return springDataRepo.findBySlug(slug);
+    }
+
+    @Override
+    public boolean existsBySlug(String slug) {
+        return springDataRepo.existsBySlug(slug);
     }
 
     @Override

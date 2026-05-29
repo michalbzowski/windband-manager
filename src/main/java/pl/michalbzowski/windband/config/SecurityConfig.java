@@ -29,8 +29,27 @@ public class SecurityConfig {
                 .csrf(AbstractHttpConfigurer::disable)
                 .sessionManagement(s -> s.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers("/api/auth/**", "/login", "/css/**", "/js/**", "/images/**").permitAll()
+                        // Public endpoints - no auth required
+                        .requestMatchers(
+                                "/api/auth/login",
+                                "/api/auth/register-team",
+                                "/api/auth/accept-invitation/**",
+                                "/api/auth/check-username",
+                                "/api/auth/check-email",
+                                "/login",
+                                "/register",
+                                "/css/**",
+                                "/js/**",
+                                "/images/**",
+                                "/webjars/**",
+                                "/favicon.ico",
+                                "/error"
+                        ).permitAll()
+                        // Team admin endpoints
+                        .requestMatchers("/api/teams/*/admin/**").hasRole("ADMIN")
+                        // All API endpoints require auth
                         .requestMatchers("/api/**").authenticated()
+                        // All page endpoints require auth
                         .requestMatchers("/**").authenticated()
                 )
                 .exceptionHandling(ex -> ex
@@ -45,13 +64,13 @@ public class SecurityConfig {
                             if (request.getRequestURI().startsWith("/api/")) {
                                 response.sendError(403, "Forbidden");
                             } else {
-                                response.sendRedirect("/login");
+                                response.sendRedirect("/");
                             }
                         })
                 )
                 .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class)
                 .logout(logout -> logout
-                        .logoutUrl("/logout")
+                        .logoutUrl("/api/auth/logout")
                         .logoutSuccessUrl("/login")
                         .permitAll()
                 )

@@ -8,4 +8,8 @@ import java.util.Optional;
 public interface SpringDataBandRepository extends JpaRepository<Band, Long> {
 
     Optional<Band> findByName(String name);
+
+    Optional<Band> findBySlug(String slug);
+
+    boolean existsBySlug(String slug);
 }

@@ -10,7 +10,7 @@ import static org.assertj.core.api.Assertions.*;
 
 class RehearsalTest {
 
-    private static final Band DEFAULT_BAND = Band.create("Test Band");
+    private static final Band DEFAULT_BAND = Band.create("Test Band", "test-band");
 
     @Test
     void shouldScheduleRehearsalForToday() {

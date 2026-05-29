@@ -21,22 +21,27 @@ public class Band {
     @Column(nullable = false, unique = true)
     private String name;
 
+    @Column(nullable = false, unique = true, length = 64)
+    private String slug;
+
     private String description;
 
     @Column(nullable = false)
     private LocalDate createdAt;
 
-    private Band(String name) {
+    private Band(String name, String slug) {
         this.name = Objects.requireNonNull(name, "band name required");
+        this.slug = Objects.requireNonNull(slug, "band slug required");
         this.createdAt = LocalDate.now();
     }
 
-    public static Band create(String name) {
-        return new Band(name);
+    public static Band create(String name, String slug) {
+        return new Band(name, slug);
     }
 
-    public void update(String name, String description) {
+    public void update(String name, String slug, String description) {
         this.name = Objects.requireNonNull(name, "band name required");
+        this.slug = Objects.requireNonNull(slug, "band slug required");
         this.description = description;
     }
 }
