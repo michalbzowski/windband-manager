@@ -17,8 +17,11 @@ import java.time.LocalDate;
 
 import static org.assertj.core.api.Assertions.*;
 
+import org.springframework.transaction.annotation.Transactional;
+
 @SpringBootTest
 @Testcontainers
+@Transactional
 class MemberCommandServiceTest {
 
     @Container
@@ -91,6 +94,7 @@ class MemberCommandServiceTest {
 
         // When - aktualizujemy muzyka z nowym instrumentem
         UpdateMemberCommand updateCmd = new UpdateMemberCommand();
+        updateCmd.setMemberId(member.getId());
         updateCmd.setFirstName("Jan");
         updateCmd.setLastName("Kowalski");
         updateCmd.setDateOfBirth(LocalDate.of(1990, 5, 15));

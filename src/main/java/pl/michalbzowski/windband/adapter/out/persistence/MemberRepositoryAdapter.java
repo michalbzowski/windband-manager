@@ -21,6 +21,11 @@ public class MemberRepositoryAdapter implements MemberRepository {
     }
 
     @Override
+    public Member saveAndFlush(Member member) {
+        return springDataRepo.saveAndFlush(member);
+    }
+
+    @Override
     public Optional<Member> findById(Long id) {
         return springDataRepo.findById(id);
     }

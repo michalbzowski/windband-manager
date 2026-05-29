@@ -7,6 +7,8 @@ public interface MemberRepository {
 
     Member save(Member member);
 
+    Member saveAndFlush(Member member);
+
     Optional<Member> findById(Long id);
 
     List<Member> findAllActive();

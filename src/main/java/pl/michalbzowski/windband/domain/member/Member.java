@@ -85,7 +85,11 @@ public class Member {
     }
 
     public void changeInstrument(Instrument newInstrument) {
-        instruments.clear();
+        // Remove all existing instrument assignments (orphanRemoval handles DB delete)
+        List<MemberInstrument> toRemove = new ArrayList<>(instruments);
+        for (MemberInstrument mi : toRemove) {
+            instruments.remove(mi);
+        }
         instruments.add(new MemberInstrument(this, newInstrument, true));
     }
 
