@@ -51,4 +51,11 @@ public class RehearsalPageController {
         model.addAttribute("attendanceMap", attendanceMap);
         return "rehearsals/detail";
     }
+
+    @GetMapping("/{id}/edit")
+    public String editRehearsalForm(@PathVariable Long id, Model model) {
+        var rehearsal = rehearsalQueryService.getRehearsalById(id);
+        model.addAttribute("rehearsal", rehearsal);
+        return "rehearsals/edit";
+    }
 }

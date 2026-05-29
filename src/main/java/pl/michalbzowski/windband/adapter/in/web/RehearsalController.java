@@ -36,6 +36,13 @@ public class RehearsalController {
         return ResponseEntity.status(HttpStatus.CREATED).body(rehearsal);
     }
 
+    @PutMapping("/{id}")
+    public ResponseEntity<Rehearsal> updateRehearsal(@PathVariable Long id,
+                                                     @RequestBody ScheduleRehearsalCommand cmd) {
+        var rehearsal = commandService.updateRehearsal(id, cmd);
+        return ResponseEntity.ok(rehearsal);
+    }
+
     @PostMapping("/{id}/attendance")
     public ResponseEntity<Void> recordAttendance(@PathVariable Long id,
                                                   @RequestBody RecordAttendanceCommand cmd) {

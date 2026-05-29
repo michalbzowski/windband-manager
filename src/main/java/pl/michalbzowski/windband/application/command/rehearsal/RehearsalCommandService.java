@@ -37,6 +37,15 @@ public class RehearsalCommandService {
         return rehearsalRepository.save(rehearsal);
     }
 
+    public Rehearsal updateRehearsal(Long id, ScheduleRehearsalCommand cmd) {
+        Rehearsal rehearsal = rehearsalRepository.findById(id)
+                .orElseThrow(() -> new RehearsalNotFoundException(id));
+        rehearsal.updateTime(cmd.getStartTime(), cmd.getEndTime());
+        rehearsal.updateLocation(cmd.getLocation());
+        rehearsal.updateNotes(cmd.getNotes());
+        return rehearsalRepository.save(rehearsal);
+    }
+
     public void recordAttendance(RecordAttendanceCommand cmd) {
         Rehearsal rehearsal = rehearsalRepository.findById(cmd.getRehearsalId())
                 .orElseThrow(() -> new RehearsalNotFoundException(cmd.getRehearsalId()));

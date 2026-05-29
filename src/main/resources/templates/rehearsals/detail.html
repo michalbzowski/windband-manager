@@ -81,6 +81,10 @@
     <div style="display:flex; gap:0.5rem; margin-top:1rem;">
         <button type="button" class="primary" id="save-attendance-btn">Zapisz obecność</button>
         <button type="button" class="secondary"
+                th:hx-get="@{/rehearsals/{id}/edit(id=${rehearsal.id})}"
+                hx-target="#rehearsals-content"
+                hx-swap="innerHTML transition:true">Edytuj</button>
+        <button type="button" class="secondary"
                 hx-get="/rehearsals/list" hx-target="#rehearsals-content"
                 hx-swap="innerHTML transition:true">Powrót</button>
     </div>
