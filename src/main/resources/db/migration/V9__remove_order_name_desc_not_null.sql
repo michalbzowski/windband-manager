@@ -1,4 +1,3 @@
--- V9: Make item_name and description nullable in inventory_orders
--- These columns are no longer required since order type determines the item category
-ALTER TABLE inventory_orders ALTER COLUMN item_name DROP NOT NULL;
-ALTER TABLE inventory_orders ALTER COLUMN description DROP NOT NULL;
+-- V9: Previously removed order_name/desc not null from inventory_orders.
+-- No longer needed - item_name and description columns were removed from InventoryOrder entity.
+-- This migration is intentionally empty (placeholder for Flyway versioning).

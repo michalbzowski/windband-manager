@@ -1,5 +1,18 @@
--- V5: Create attribute tables for Uniform, Instrument, and Order entities
+-- V6: Create attribute tables for Uniform, Instrument, and Order entities
 -- Member attribute types already extended in previous migration
+
+-- Inventory orders table (custom orders for uniforms/instruments)
+CREATE TABLE IF NOT EXISTS inventory_orders (
+    id BIGSERIAL PRIMARY KEY,
+    member_id BIGINT NOT NULL REFERENCES members(id),
+    order_number VARCHAR(100),
+    order_type VARCHAR(30) NOT NULL,
+    status VARCHAR(30) NOT NULL DEFAULT 'SUBMITTED',
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP,
+    notes TEXT,
+    attributes_json TEXT
+);
 
 -- Uniform attribute definitions
 CREATE TABLE IF NOT EXISTS uniform_attribute_defs (
@@ -69,9 +82,6 @@ CREATE TABLE IF NOT EXISTS order_attribute_values (
     value TEXT,
     UNIQUE (order_id, attribute_def_id)
 );
-
--- Add order_number to inventory_orders
-ALTER TABLE inventory_orders ADD COLUMN IF NOT EXISTS order_number VARCHAR(100);
 
 -- Add order_number to uniform_items
 ALTER TABLE uniform_items ADD COLUMN IF NOT EXISTS order_number VARCHAR(100);

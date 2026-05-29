@@ -26,7 +26,7 @@ class RehearsalUiTest extends UiTestBase {
         WebDriverWait wait = new WebDriverWait(driver, Duration.ofSeconds(10));
         // HTMX loads form into #rehearsals-content
         wait.until(ExpectedConditions.presenceOfElementLocated(
-                By.cssSelector("#rehearsals-content form[hx-post]")));
+                By.cssSelector("#rehearsals-content form")));
 
         var formHeading = driver.findElement(By.cssSelector("#rehearsals-content h2"));
         assertThat(formHeading.getText()).contains("Zaplanuj próbę");

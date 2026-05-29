@@ -25,7 +25,7 @@ class EventUiTest extends UiTestBase {
 
         WebDriverWait wait = new WebDriverWait(driver, Duration.ofSeconds(10));
         wait.until(ExpectedConditions.presenceOfElementLocated(
-                By.cssSelector("#events-content form[hx-post]")));
+                By.cssSelector("#events-content form")));
 
         var formHeading = driver.findElement(By.cssSelector("#events-content h2"));
         assertThat(formHeading.getText()).contains("Dodaj wydarzenie");

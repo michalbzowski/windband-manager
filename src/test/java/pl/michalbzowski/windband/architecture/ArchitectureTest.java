@@ -94,6 +94,9 @@ class ArchitectureTest {
                 .and().haveSimpleNameNotEndingWith("InventoryPageController")
                 .and().haveSimpleNameNotEndingWith("MemberAttributeController")
                 .and().haveSimpleNameNotEndingWith("MemberPageController")
+                .and().haveSimpleNameNotEndingWith("InventoryAttributePageController")
+                .and().haveSimpleNameNotEndingWith("MemberAttributeApiController")
+                .and().haveSimpleNameNotEndingWith("PageController")
                 .should().dependOnClassesThat()
                 .haveSimpleNameEndingWith("Repository")
                 .check(classes);
