@@ -32,10 +32,13 @@ public class SecurityConfig {
                         // Public endpoints - no auth required
                         .requestMatchers(
                                 "/api/auth/login",
+                                "/api/auth/logout",
                                 "/api/auth/register-team",
                                 "/api/auth/accept-invitation/**",
                                 "/api/auth/check-username",
                                 "/api/auth/check-email",
+                                "/api/auth/check-slug",
+                                "/api/auth/me",
                                 "/login",
                                 "/register",
                                 "/css/**",
@@ -69,11 +72,6 @@ public class SecurityConfig {
                         })
                 )
                 .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class)
-                .logout(logout -> logout
-                        .logoutUrl("/api/auth/logout")
-                        .logoutSuccessUrl("/login")
-                        .permitAll()
-                )
                 .build();
     }
 

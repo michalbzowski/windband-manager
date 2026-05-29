@@ -96,3 +96,42 @@ button.small, a.small {
     max-width: 400px;
     margin: 4rem auto;
 }
+
+/* Registration page - wider for desktop */
+.register-container {
+    max-width: 720px;
+    margin: 2rem auto;
+    padding: 0 1rem;
+}
+
+@media (max-width: 768px) {
+    .register-container {
+        max-width: 100%;
+        margin: 1rem auto;
+        padding: 0 0.75rem;
+    }
+    .login-container {
+        max-width: 100%;
+        margin: 2rem auto;
+        padding: 0 0.75rem;
+    }
+}
+
+/* User info in navbar */
+.nav-user-info {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.25rem 0.5rem;
+    font-size: 0.8rem;
+    color: var(--pico-muted-color);
+}
+
+.nav-user-info .team-name {
+    font-weight: 600;
+    color: var(--pico-color);
+}
+
+.nav-user-info .separator {
+    color: var(--pico-muted-border-color);
+}

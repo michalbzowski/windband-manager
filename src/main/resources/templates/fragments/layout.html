@@ -10,7 +10,6 @@
     <script>
         // Add JWT token to all HTMX requests
         document.addEventListener('htmx:configRequest', function(evt) {
-            // Get JWT from cookie
             const name = 'JWT=';
             const decodedCookie = decodeURIComponent(document.cookie);
             const ca = decodedCookie.split(';');
@@ -43,10 +42,22 @@
             <li><a th:href="@{/instruments}" hx-target="#content" hx-swap="innerHTML transition:true">Instrumenty</a></li>
             <li><a th:href="@{/reports}" hx-target="#content" hx-swap="innerHTML transition:true">Raporty</a></li>
             <li><a th:href="@{/band/attributes(type='MEMBER')}" hx-target="#content" hx-swap="innerHTML transition:true">Atrybuty</a></li>
+        </ul>
+        <ul>
+            <!-- User info populated by JavaScript from /api/auth/me -->
+            <li class="nav-user-info" id="nav-user-info" style="display:none;">
+                <span class="team-icon">👤</span>
+                <span id="nav-username"></span>
+                <span class="separator">|</span>
+                <span class="team-icon">🎺</span>
+                <span class="team-name" id="nav-team"></span>
+                <span class="team-role" id="nav-role"></span>
+            </li>
+            <li class="nav-user-info" id="nav-user-loading">
+                <span style="color:var(--pico-muted-color); font-size:0.75rem;">Ładowanie...</span>
+            </li>
             <li>
-                <form th:action="@{/logout}" method="post" style="display:inline;">
-                    <button class="outline secondary small" type="submit">Wyloguj</button>
-                </form>
+                <button class="outline secondary small" onclick="doLogout()">Wyloguj</button>
             </li>
         </ul>
     </nav>
@@ -59,5 +70,37 @@
         <hr>
         <small>Wind Band Manager &copy; 2025 Michał Bzowski</small>
     </footer>
+
+    <script>
+        // Load user info on page load
+        (function() {
+            fetch('/api/auth/me', { credentials: 'same-origin' })
+                .then(function(resp) {
+                    if (!resp.ok) throw new Error('Not authenticated');
+                    return resp.json();
+                })
+                .then(function(data) {
+                    document.getElementById('nav-user-loading').style.display = 'none';
+                    var info = document.getElementById('nav-user-info');
+                    info.style.display = 'flex';
+                    document.getElementById('nav-username').textContent = data.username || '?';
+                    document.getElementById('nav-team').textContent = data.activeTeamSlug || 'brak zespołu';
+                    document.getElementById('nav-role').textContent = data.activeTeamRole
+                        ? '(' + data.activeTeamRole.toLowerCase() + ')' : '';
+                })
+                .catch(function() {
+                    document.getElementById('nav-user-loading').style.display = 'none';
+                });
+        })();
+
+        function doLogout() {
+            fetch('/api/auth/logout', {
+                method: 'POST',
+                credentials: 'same-origin'
+            }).then(function() {
+                window.location.href = '/login';
+            });
+        }
+    </script>
 </body>
 </html>
