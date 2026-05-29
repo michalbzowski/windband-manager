@@ -5,6 +5,7 @@ import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import pl.michalbzowski.windband.domain.user.AppUser;
 import pl.michalbzowski.windband.domain.user.AppUserRepository;
 import pl.michalbzowski.windband.domain.user.UserTeamRoleRepository;
@@ -19,15 +20,19 @@ public class TeamAwareUserDetailsService implements UserDetailsService {
     private final UserTeamRoleRepository userTeamRoleRepository;
 
     @Override
+    @Transactional(readOnly = true)
     public UserDetails loadUserByUsername(String username) throws UsernameNotFoundException {
         AppUser user = appUserRepository.findByUsername(username)
                 .orElseThrow(() -> new UsernameNotFoundException("User not found: " + username));
 
-        Long activeTeamId = user.getTeamRoles().stream()
+        // Load team roles through repository (avoids LazyInitializationException)
+        var teamRoles = userTeamRoleRepository.findByUserId(user.getId());
+
+        Long activeTeamId = teamRoles.stream()
                 .filter(r -> r.isAdmin())
                 .map(r -> r.getTeam().getId())
                 .findFirst()
-                .orElseGet(() -> user.getTeamRoles().stream()
+                .orElseGet(() -> teamRoles.stream()
                         .map(r -> r.getTeam().getId())
                         .findFirst()
                         .orElse(null));
@@ -36,7 +41,7 @@ public class TeamAwareUserDetailsService implements UserDetailsService {
         String activeTeamRole = null;
 
         if (activeTeamId != null) {
-            var role = user.getTeamRoles().stream()
+            var role = teamRoles.stream()
                     .filter(r -> r.getTeam().getId().equals(activeTeamId))
                     .findFirst();
             if (role.isPresent()) {
@@ -45,7 +50,7 @@ public class TeamAwareUserDetailsService implements UserDetailsService {
             }
         }
 
-        List<Long> teamIds = user.getTeamRoles().stream()
+        List<Long> teamIds = teamRoles.stream()
                 .map(r -> r.getTeam().getId())
                 .toList();
 
