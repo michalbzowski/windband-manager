@@ -84,6 +84,11 @@ public class Member {
         instruments.removeIf(mi -> mi.getInstrument() == instrument);
     }
 
+    public void changeInstrument(Instrument newInstrument) {
+        instruments.clear();
+        instruments.add(new MemberInstrument(this, newInstrument, true));
+    }
+
     public Optional<Instrument> getPrimaryInstrument() {
         return instruments.stream()
                 .filter(MemberInstrument::isPrimary)

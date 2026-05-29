@@ -15,4 +15,5 @@ public class UpdateMemberCommand {
     private boolean active;
     private String email;
     private String phone;
+    private Long instrumentId;
 }

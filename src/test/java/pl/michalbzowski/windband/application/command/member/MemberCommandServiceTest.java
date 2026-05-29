@@ -8,6 +8,8 @@ import org.springframework.test.context.DynamicPropertySource;
 import org.testcontainers.containers.PostgreSQLContainer;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
+import pl.michalbzowski.windband.domain.member.Instrument;
+import pl.michalbzowski.windband.domain.member.InstrumentRepository;
 import pl.michalbzowski.windband.domain.member.Member;
 import pl.michalbzowski.windband.domain.member.MemberRepository;
 
@@ -38,6 +40,9 @@ class MemberCommandServiceTest {
     @Autowired
     private MemberRepository memberRepository;
 
+    @Autowired
+    private InstrumentRepository instrumentRepository;
+
     @Test
     void shouldCreateMember() {
         CreateMemberCommand cmd = new CreateMemberCommand();
@@ -66,5 +71,36 @@ class MemberCommandServiceTest {
 
         Member deactivated = memberRepository.findById(member.getId()).orElseThrow();
         assertThat(deactivated.isActive()).isFalse();
+    }
+
+    @Test
+    void shouldUpdateMemberInstrument() {
+        // Given - tworzymy dwa instrumenty i muzyka z pierwszym
+        Instrument trumpet = instrumentRepository.save(Instrument.create("Trabka"));
+        Instrument clarinet = instrumentRepository.save(Instrument.create("Klarnet"));
+
+        CreateMemberCommand createCmd = new CreateMemberCommand();
+        createCmd.setFirstName("Jan");
+        createCmd.setLastName("Kowalski");
+        createCmd.setDateOfBirth(LocalDate.of(1990, 5, 15));
+        createCmd.setInstrumentId(trumpet.getId());
+        Member member = commandService.createMember(createCmd);
+
+        assertThat(member.getPrimaryInstrument()).isPresent();
+        assertThat(member.getPrimaryInstrument().get().getName()).isEqualTo("Trabka");
+
+        // When - aktualizujemy muzyka z nowym instrumentem
+        UpdateMemberCommand updateCmd = new UpdateMemberCommand();
+        updateCmd.setFirstName("Jan");
+        updateCmd.setLastName("Kowalski");
+        updateCmd.setDateOfBirth(LocalDate.of(1990, 5, 15));
+        updateCmd.setActive(true);
+        updateCmd.setInstrumentId(clarinet.getId());
+        commandService.updateMember(updateCmd);
+
+        // Then - muzyk powinien miec nowy instrument
+        Member updated = memberRepository.findById(member.getId()).orElseThrow();
+        assertThat(updated.getPrimaryInstrument()).isPresent();
+        assertThat(updated.getPrimaryInstrument().get().getName()).isEqualTo("Klarnet");
     }
 }

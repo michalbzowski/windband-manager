@@ -58,6 +58,11 @@ public class MemberCommandService {
         } else if (!cmd.isActive()) {
             member.setResignedDate(LocalDate.now());
         }
+        if (cmd.getInstrumentId() != null) {
+            Instrument instrument = instrumentRepository.findById(cmd.getInstrumentId())
+                    .orElseThrow(() -> new IllegalArgumentException("Instrument not found: " + cmd.getInstrumentId()));
+            member.changeInstrument(instrument);
+        }
         return memberRepository.save(member);
     }
 
