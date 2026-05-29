@@ -132,69 +132,73 @@
 </div>
 
 <script th:inline="javascript">
-    document.body.addEventListener('submit', function(e) {
-        if (e.target.id === 'member-form') {
-            e.preventDefault();
-            var form = e.target;
-            var memberId = form.getAttribute('data-member-id');
-            var url = memberId ? '/api/members/' + memberId : '/api/members';
-            var method = memberId ? 'PUT' : 'POST';
-            var formData = new FormData(form);
-            var data = {};
-            formData.forEach(function(value, key) { data[key] = value; });
-            data.active = formData.has('active');
-            if (data.instrumentId === '') delete data.instrumentId;
-            if (data.joinedDate === '') delete data.joinedDate;
-            if (data.resignedDate === '') delete data.resignedDate;
+    // Guard: prevent duplicate event listeners when form is reloaded via htmx
+    if (!window._memberFormHandlerAttached) {
+        window._memberFormHandlerAttached = true;
+        document.body.addEventListener('submit', function(e) {
+            if (e.target.id === 'member-form') {
+                e.preventDefault();
+                var form = e.target;
+                var memberId = form.getAttribute('data-member-id');
+                var url = memberId ? '/api/members/' + memberId : '/api/members';
+                var method = memberId ? 'PUT' : 'POST';
+                var formData = new FormData(form);
+                var data = {};
+                formData.forEach(function(value, key) { data[key] = value; });
+                data.active = formData.has('active');
+                if (data.instrumentId === '') delete data.instrumentId;
+                if (data.joinedDate === '') delete data.joinedDate;
+                if (data.resignedDate === '') delete data.resignedDate;
 
-            fetch(url, {
-                method: method,
-                headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify(data)
-            }).then(function(resp) {
-            // Save dynamic attributes only for existing members
-                if (memberId) {
-                    var attrPromises = [];
-                    // Group attribute inputs by attr ID to handle multi-select checkboxes
-                    var attrGroups = {};
-                    var allAttrInputs = form.querySelectorAll('[name^="attr_"]');
-                    allAttrInputs.forEach(function(input) {
-                        var attrId = input.name.replace('attr_', '');
-                        if (!attrGroups[attrId]) attrGroups[attrId] = [];
-                        attrGroups[attrId].push(input);
-                    });
-                    Object.keys(attrGroups).forEach(function(attrId) {
-                        var inputs = attrGroups[attrId];
-                        var value;
-                        if (inputs.length === 1) {
-                            var input = inputs[0];
-                            if (input.type === 'checkbox') {
-                                value = input.checked ? 'true' : 'false';
+                fetch(url, {
+                    method: method,
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify(data)
+                }).then(function(resp) {
+                // Save dynamic attributes only for existing members
+                    if (memberId) {
+                        var attrPromises = [];
+                        // Group attribute inputs by attr ID to handle multi-select checkboxes
+                        var attrGroups = {};
+                        var allAttrInputs = form.querySelectorAll('[name^="attr_"]');
+                        allAttrInputs.forEach(function(input) {
+                            var attrId = input.name.replace('attr_', '');
+                            if (!attrGroups[attrId]) attrGroups[attrId] = [];
+                            attrGroups[attrId].push(input);
+                        });
+                        Object.keys(attrGroups).forEach(function(attrId) {
+                            var inputs = attrGroups[attrId];
+                            var value;
+                            if (inputs.length === 1) {
+                                var input = inputs[0];
+                                if (input.type === 'checkbox') {
+                                    value = input.checked ? 'true' : 'false';
+                                } else {
+                                    value = input.value;
+                                }
                             } else {
-                                value = input.value;
+                                // Multi-select: join checked values with semicolon
+                                var checked = [];
+                                inputs.forEach(function(input) {
+                                    if (input.checked) checked.push(input.value);
+                                });
+                                value = checked.join(';');
                             }
-                        } else {
-                            // Multi-select: join checked values with semicolon
-                            var checked = [];
-                            inputs.forEach(function(input) {
-                                if (input.checked) checked.push(input.value);
-                            });
-                            value = checked.join(';');
-                        }
-                        var attrUrl = '/api/bands/1/attribute-defs/' + attrId + '/members/' + memberId;
-                        attrPromises.push(fetch(attrUrl, {
-                            method: 'POST',
-                            headers: {'Content-Type': 'application/json'},
-                            body: JSON.stringify({value: value})
-                        }));
-                    });
-                    Promise.all(attrPromises).then(function() {
+                            var attrUrl = '/api/bands/1/attribute-defs/' + attrId + '/members/' + memberId;
+                            attrPromises.push(fetch(attrUrl, {
+                                method: 'POST',
+                                headers: {'Content-Type': 'application/json'},
+                                body: JSON.stringify({value: value})
+                            }));
+                        });
+                        Promise.all(attrPromises).then(function() {
+                            htmx.ajax('GET', '/members/list', {target: '#members-content', swap: 'innerHTML transition:true'});
+                        });
+                    } else {
                         htmx.ajax('GET', '/members/list', {target: '#members-content', swap: 'innerHTML transition:true'});
-                    });
-                } else {
-                    htmx.ajax('GET', '/members/list', {target: '#members-content', swap: 'innerHTML transition:true'});
-                }
-            });
-        }
-    });
+                    }
+                });
+            }
+        });
+    }
 </script>

@@ -1,0 +1,121 @@
+package pl.michalbzowski.windband.application.command.member;
+
+import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.test.context.DynamicPropertyRegistry;
+import org.springframework.test.context.DynamicPropertySource;
+import org.testcontainers.containers.PostgreSQLContainer;
+import org.testcontainers.junit.jupiter.Container;
+import org.testcontainers.junit.jupiter.Testcontainers;
+import pl.michalbzowski.windband.domain.member.Member;
+import pl.michalbzowski.windband.domain.member.MemberRepository;
+
+import java.time.LocalDate;
+
+import static org.assertj.core.api.Assertions.*;
+
+import org.springframework.transaction.annotation.Transactional;
+
+/**
+ * Regression test for GitHub Issue #3:
+ * "Dodanie muzyka dodaje go wielokrotnie"
+ *
+ * Verifies that each call to createMember creates exactly one member,
+ * not duplicates. The frontend bug caused duplicate event listeners,
+ * but the backend must also be verified to ensure each API call
+ * results in exactly one new member record.
+ */
+@SpringBootTest
+@Testcontainers
+@Transactional
+class MemberCreationRegressionTest {
+
+    @Container
+    static final PostgreSQLContainer<?> postgres = new PostgreSQLContainer<>("postgres:16-alpine")
+            .withDatabaseName("windband_test")
+            .withUsername("test")
+            .withPassword("test");
+
+    @DynamicPropertySource
+    static void configure(DynamicPropertyRegistry registry) {
+        registry.add("spring.datasource.url", postgres::getJdbcUrl);
+        registry.add("spring.datasource.username", postgres::getUsername);
+        registry.add("spring.datasource.password", postgres::getPassword);
+    }
+
+    @Autowired
+    private MemberCommandService commandService;
+
+    @Autowired
+    private MemberRepository memberRepository;
+
+    @Test
+    void shouldCreateExactlyOneMemberPerCall() {
+        // Verify no members exist initially
+        int initialCount = memberRepository.findAllActive().size();
+        assertThat(initialCount).isEqualTo(0);
+
+        // Create first musician
+        CreateMemberCommand cmd1 = new CreateMemberCommand();
+        cmd1.setFirstName("Jan");
+        cmd1.setLastName("Kowalski");
+        cmd1.setDateOfBirth(LocalDate.of(1990, 1, 15));
+        cmd1.setEmail("jan@email.pl");
+        cmd1.setPhone("123456789");
+
+        Member member1 = commandService.createMember(cmd1);
+
+        assertThat(member1.getId()).isNotNull();
+        assertThat(memberRepository.findAllActive()).hasSize(initialCount + 1);
+
+        // Create second musician
+        CreateMemberCommand cmd2 = new CreateMemberCommand();
+        cmd2.setFirstName("Piotr");
+        cmd2.setLastName("Nowak");
+        cmd2.setDateOfBirth(LocalDate.of(1985, 6, 20));
+        cmd2.setEmail("piotr@email.pl");
+        cmd2.setPhone("987654321");
+
+        Member member2 = commandService.createMember(cmd2);
+
+        assertThat(member2.getId()).isNotNull();
+        assertThat(member2.getId()).isNotEqualTo(member1.getId());
+        assertThat(memberRepository.findAllActive()).hasSize(initialCount + 2);
+
+        // Create third musician
+        CreateMemberCommand cmd3 = new CreateMemberCommand();
+        cmd3.setFirstName("Anna");
+        cmd3.setLastName("Wiśniewska");
+        cmd3.setDateOfBirth(LocalDate.of(1995, 3, 10));
+
+        Member member3 = commandService.createMember(cmd3);
+
+        assertThat(member3.getId()).isNotNull();
+        assertThat(memberRepository.findAllActive()).hasSize(initialCount + 3);
+
+        // Verify all three are distinct
+        assertThat(member1.getId()).isNotEqualTo(member2.getId());
+        assertThat(member2.getId()).isNotEqualTo(member3.getId());
+        assertThat(member1.getId()).isNotEqualTo(member3.getId());
+    }
+
+    @Test
+    void shouldNotCreateDuplicatesOnSameData() {
+        // Even with identical data, each call should create a separate member
+        // (no deduplication at the service level — each is a distinct person)
+        int initialCount = memberRepository.findAllActive().size();
+
+        for (int i = 0; i < 3; i++) {
+            CreateMemberCommand cmd = new CreateMemberCommand();
+            cmd.setFirstName("TestUser");
+            cmd.setLastName("SameName");
+            cmd.setDateOfBirth(LocalDate.of(2000, 1, 1));
+            cmd.setEmail("same@email.pl");
+
+            commandService.createMember(cmd);
+        }
+
+        assertThat(memberRepository.findAllActive()).hasSize(initialCount + 3);
+    }
+}
