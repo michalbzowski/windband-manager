@@ -40,6 +40,21 @@
         </div>
 
         <label>
+            Opłata za wydarzenie
+            <select name="paymentType" id="payment-type-select" required>
+                <option value="FREE">Granie bezpłatne</option>
+                <option value="PAID_SPLIT">Granie płatne – pieniądze do podziału między grających</option>
+                <option value="PAID_TEAM_ACCOUNT">Granie płatne – pieniądze na konto zespołu</option>
+            </select>
+        </label>
+
+        <label id="payment-amount-label" style="display:none;">
+            Kwota (PLN)
+            <input type="number" name="paymentAmount" id="payment-amount-input"
+                   step="0.01" min="0" placeholder="0.00">
+        </label>
+
+        <label>
             Notatki
             <textarea name="notes" rows="2" placeholder="Dodatkowe informacje..."></textarea>
         </label>
@@ -54,6 +69,21 @@
 </div>
 
 <script th:inline="javascript">
+    // Show/hide payment amount field based on payment type
+    (function() {
+        var paymentSelect = document.getElementById('payment-type-select');
+        var amountLabel = document.getElementById('payment-amount-label');
+        function toggleAmount() {
+            var isPaid = paymentSelect.value === 'PAID_SPLIT' || paymentSelect.value === 'PAID_TEAM_ACCOUNT';
+            amountLabel.style.display = isPaid ? '' : 'none';
+            if (!isPaid) {
+                document.getElementById('payment-amount-input').value = '';
+            }
+        }
+        paymentSelect.addEventListener('change', toggleAmount);
+        toggleAmount();
+    })();
+
     // Guard: prevent duplicate event listeners when form is reloaded via htmx
     if (!window._eventFormHandlerAttached) {
         window._eventFormHandlerAttached = true;

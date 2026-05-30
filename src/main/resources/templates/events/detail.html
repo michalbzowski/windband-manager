@@ -9,6 +9,12 @@
         <p th:if="${event.location}" th:text="'Miejsce: ' + ${event.location}">Miejsce: Rynek</p>
         <p th:if="${event.startTime}" th:text="'Godzina: ' + ${event.startTime}">Godzina: 18:00</p>
         <p th:text="'Typ: ' + ${event.eventType}">Typ: CONCERT</p>
+        <p th:text="${event.paymentType == 'FREE' ? 'Opłata: Granie bezpłatne' : (event.paymentType == 'PAID_SPLIT' ? 'Opłata: Płatne (podział)' : 'Opłata: Płatne (konto zespołu)')}"
+           data-payment-type="${event.paymentType}">
+            Opłata: Granie bezpłatne
+        </p>
+        <p th:if="${event.paymentAmount != null and event.paymentType != 'FREE'}"
+           th:text="'Kwota: ' + ${event.paymentAmount} + ' PLN'">Kwota: 500 PLN</p>
         <p th:if="${event.notes}" th:text="${event.notes}">Notatki</p>
     </article>
 
@@ -41,17 +47,17 @@
     </div>
 
     <h3>Uczestnicy</h3>
-    <table role="grid">
+    <table role="grid" id="participants-table">
         <thead>
             <tr>
                 <th>Muzyk</th>
                 <th>Odpowiedź</th>
-                <th>Wypłata</th>
+                <th class="payout-col" style="display:none;">Wypłata</th>
                 <th>Status wypłaty</th>
             </tr>
         </thead>
         <tbody>
-            <tr th:each="p : ${event.participations}">
+            <tr th:each="p : ${event.participations}" th:data-response="${p.response}">
                 <td th:text="${p.memberName}">Jan Kowalski</td>
                 <td>
                     <select class="response-select"
@@ -63,8 +69,23 @@
                         <option value="NO_RESPONSE" th:selected="${p.response == 'NO_RESPONSE'}">❓ Brak odpowiedzi</option>
                     </select>
                 </td>
-                <td th:text="${p.paymentAmount}">0.00</td>
-                <td th:text="${p.paymentStatus}">NOT_APPLICABLE</td>
+                <td class="payout-col payout-amount" style="display:none;"
+                    th:data-member-id="${p.memberId}"
+                    th:text="${p.paymentAmount != null ? p.paymentAmount : '-'}">
+                    -
+                </td>
+                <td>
+                    <span class="payment-status-display"
+                          th:if="${p.response != 'CONFIRMED'}"
+                          th:text="nie dotyczy">nie dotyczy</span>
+                    <select class="payment-status-select"
+                            th:if="${p.response == 'CONFIRMED'}"
+                            th:data-event-id="${event.id}"
+                            th:data-member-id="${p.memberId}">
+                        <option value="PAID" th:selected="${p.paymentStatus == 'PAID'}">✅ Zapłacono</option>
+                        <option value="PENDING" th:selected="${p.paymentStatus == 'PENDING'}">⏳ Nie zapłacono</option>
+                    </select>
+                </td>
             </tr>
         </tbody>
     </table>
@@ -77,6 +98,49 @@
 </div>
 
 <script th:inline="javascript">
+    var eventId = [[${event.id}]];
+    var paymentType = [[${event.paymentType}]];
+    var paymentAmount = [[${event.paymentAmount}]];
+    var isPaidSplit = (paymentType === 'PAID_SPLIT');
+    var confirmedCount = [[${event.confirmedCount}]];
+
+    // Show/hide payout column based on payment type
+    function updatePayoutColumns() {
+        var cols = document.querySelectorAll('.payout-col');
+        cols.forEach(function(col) {
+            col.style.display = isPaidSplit ? '' : 'none';
+        });
+    }
+
+    // Calculate and display per-member payout
+    function updatePayoutAmounts() {
+        if (!isPaidSplit || !paymentAmount || confirmedCount === 0) {
+            document.querySelectorAll('.payout-amount').forEach(function(td) {
+                td.textContent = '-';
+            });
+            return;
+        }
+        var perPerson = (parseFloat(paymentAmount) / confirmedCount).toFixed(2);
+        document.querySelectorAll('.payout-amount').forEach(function(td) {
+            td.textContent = perPerson + ' PLN';
+        });
+    }
+
+    // Update table when confirmed count changes
+    function handleResponseChange() {
+        // Recalculate confirmed count
+        var selects = document.querySelectorAll('.response-select');
+        var newConfirmed = 0;
+        selects.forEach(function(s) {
+            if (s.value === 'CONFIRMED') newConfirmed++;
+        });
+        confirmedCount = newConfirmed;
+        updatePayoutAmounts();
+    }
+
+    updatePayoutColumns();
+    updatePayoutAmounts();
+
     var invitedMemberIds = new Set(
         [[${event.participations}]].map(function(p) { return p.memberId; })
     );
@@ -85,7 +149,6 @@
     document.getElementById('invite-btn').addEventListener('click', function() {
         var select = document.getElementById('invite-member-select');
         var memberId = parseInt(select.value);
-        var eventId = [[${event.id}]];
         if (memberId) {
             fetch('/api/events/' + eventId + '/invite', {
                 method: 'POST',
@@ -101,7 +164,6 @@
     document.getElementById('invite-group-btn').addEventListener('click', function() {
         var select = document.getElementById('invite-group-select');
         var groupId = select.value;
-        var eventId = [[${event.id}]];
         if (groupId) {
             fetch('/api/events/' + eventId + '/invite-group', {
                 method: 'POST',
@@ -116,15 +178,21 @@
     // Record response
     document.querySelectorAll('.response-select').forEach(function(select) {
         select.addEventListener('change', function() {
-            var eventId = this.dataset.eventId;
-            var memberId = this.dataset.memberId;
+            var eid = this.dataset.eventId;
+            var mid = this.dataset.memberId;
             var response = this.value;
-            fetch('/api/events/' + eventId + '/response', {
+            fetch('/api/events/' + eid + '/response', {
                 method: 'POST',
                 headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({eventId: parseInt(eventId), memberId: parseInt(memberId), response: response})
+                body: JSON.stringify({eventId: parseInt(eid), memberId: parseInt(mid), response: response})
             }).then(function(res) {
-                if (!res.ok) console.error('Failed to update response');
+                if (res.ok) {
+                    handleResponseChange();
+                    // Reload the page to reflect payment status column changes
+                    htmx.ajax('GET', '/events/' + eid, {target: '#events-content', swap: 'innerHTML transition:true'});
+                } else {
+                    console.error('Failed to update response');
+                }
             });
         });
     });

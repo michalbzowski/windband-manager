@@ -36,6 +36,12 @@ public class BandEvent {
     @Column(nullable = false)
     private EventType eventType;
 
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false)
+    private PaymentType paymentType = PaymentType.FREE;
+
+    private BigDecimal paymentAmount;
+
     private String notes;
 
     @OneToMany(mappedBy = "bandEvent", cascade = CascadeType.ALL, orphanRemoval = true)
@@ -46,18 +52,22 @@ public class BandEvent {
     private Band band;
 
     private BandEvent(String name, LocalDate date, LocalTime startTime,
-                      String location, EventType eventType, Band band) {
+                      String location, EventType eventType, PaymentType paymentType,
+                      BigDecimal paymentAmount, Band band) {
         this.name = Objects.requireNonNull(name, "name required");
         this.date = Objects.requireNonNull(date, "date required");
         this.startTime = startTime;
         this.location = location;
         this.eventType = Objects.requireNonNull(eventType, "eventType required");
+        this.paymentType = paymentType != null ? paymentType : PaymentType.FREE;
+        this.paymentAmount = paymentAmount;
         this.band = Objects.requireNonNull(band, "band required");
     }
 
     public static BandEvent create(String name, LocalDate date, LocalTime startTime,
-                                   String location, EventType eventType, Band band) {
-        return new BandEvent(name, date, startTime, location, eventType, band);
+                                   String location, EventType eventType, PaymentType paymentType,
+                                   BigDecimal paymentAmount, Band band) {
+        return new BandEvent(name, date, startTime, location, eventType, paymentType, paymentAmount, band);
     }
 
     public void updateDetails(String name, LocalDate date, LocalTime startTime, String location) {

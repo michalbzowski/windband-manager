@@ -50,6 +50,8 @@ public class EventQueryService {
                 event.getStartTime(),
                 event.getLocation(),
                 event.getEventType().name(),
+                event.getPaymentType().name(),
+                event.getPaymentAmount(),
                 event.getNotes(),
                 event.getConfirmedCount(),
                 event.getDeclinedCount(),

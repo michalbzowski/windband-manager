@@ -12,6 +12,8 @@ public record EventDetailDto(
         LocalTime startTime,
         String location,
         String eventType,
+        String paymentType,
+        BigDecimal paymentAmount,
         String notes,
         long confirmedCount,
         long declinedCount,
