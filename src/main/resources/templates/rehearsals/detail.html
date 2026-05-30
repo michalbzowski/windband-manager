@@ -48,7 +48,7 @@
                 const selectedStatus = event.target.value;
 
                 fetch('/api/rehearsals/' + rehearsalId + '/attendance', {
-                    method: 'PATCH',
+                    method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
                     },
