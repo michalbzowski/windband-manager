@@ -45,6 +45,7 @@
         <thead>
             <tr>
                 <th>Muzyk</th>
+                <th>Instrument</th>
                 <th>Odpowiedź</th>
                 <th>Wypłata</th>
                 <th>Status wypłaty</th>
@@ -53,6 +54,16 @@
         <tbody>
             <tr th:each="p : ${event.participations}">
                 <td th:text="${p.memberName}">Jan Kowalski</td>
+                <td>
+                    <select class="instrument-select"
+                            th:data-event-id="${event.id}"
+                            th:data-member-id="${p.memberId}">
+                        <option value="">Wybierz instrument...</option>
+                        <option th:each="inst : ${instruments}" th:value="${inst.id}"
+                                th:selected="${inst.name == p.instrumentName}"
+                                th:text="${inst.name}">Trąbka</option>
+                    </select>
+                </td>
                 <td>
                     <select class="response-select"
                             th:data-event-id="${event.id}"
@@ -126,6 +137,23 @@
             }).then(function(res) {
                 if (!res.ok) console.error('Failed to update response');
             });
+        });
+    });
+
+    // Change instrument
+    document.querySelectorAll('.instrument-select').forEach(function(select) {
+        select.addEventListener('change', function() {
+            var memberId = this.dataset.memberId;
+            var instrumentId = this.value;
+            if (instrumentId) {
+                fetch('/api/members/' + memberId + '/instrument', {
+                    method: 'PUT',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({memberId: parseInt(memberId), instrumentId: parseInt(instrumentId)})
+                }).then(function(res) {
+                    if (!res.ok) console.error('Failed to update instrument');
+                });
+            }
         });
     });
 </script>

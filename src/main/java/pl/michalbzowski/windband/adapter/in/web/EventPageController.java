@@ -6,6 +6,7 @@ import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
 import pl.michalbzowski.windband.application.query.event.EventQueryService;
 import pl.michalbzowski.windband.application.query.member.MemberQueryService;
+import pl.michalbzowski.windband.application.query.instrument.InstrumentQueryService;
 
 import java.time.LocalDate;
 
@@ -16,6 +17,7 @@ public class EventPageController {
 
     private final EventQueryService eventQueryService;
     private final MemberQueryService memberQueryService;
+    private final InstrumentQueryService instrumentQueryService;
 
     @GetMapping
     public String listPage(Model model) {
@@ -39,6 +41,7 @@ public class EventPageController {
     public String eventDetail(@PathVariable Long id, Model model) {
         model.addAttribute("event", eventQueryService.getEventDetailById(id));
         model.addAttribute("members", memberQueryService.getAllActiveMembers());
+        model.addAttribute("instruments", instrumentQueryService.findAll());
         return "events/detail";
     }
 }
