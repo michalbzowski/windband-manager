@@ -26,13 +26,18 @@ public class EventCommandService {
         Band band = bandRepository.findById(1L)
                 .orElseThrow(() -> new IllegalStateException("Default band not found"));
         EventType type = EventType.valueOf(cmd.getEventType().toUpperCase());
+        PaymentType paymentType = cmd.getPaymentType() != null
+                ? PaymentType.valueOf(cmd.getPaymentType().toUpperCase())
+                : PaymentType.FREE;
         BandEvent event = BandEvent.create(
                 cmd.getName(),
                 cmd.getDate(),
                 cmd.getStartTime(),
                 cmd.getLocation(),
                 type,
-                band
+                band,
+                paymentType,
+                cmd.getPaymentAmount()
         );
         if (cmd.getNotes() != null) {
             event.updateDetails(cmd.getName(), cmd.getDate(), cmd.getStartTime(), cmd.getLocation());
@@ -74,6 +79,27 @@ public class EventCommandService {
         Member member = memberRepository.findById(memberId)
                 .orElseThrow(() -> new MemberNotFoundException(memberId));
         event.markPaymentPaid(member);
+        eventRepository.save(event);
+    }
+
+    public void updatePaymentStatus(Long eventId, Long memberId, String status) {
+        BandEvent event = eventRepository.findById(eventId)
+                .orElseThrow(() -> new EventNotFoundException(eventId));
+        Member member = memberRepository.findById(memberId)
+                .orElseThrow(() -> new MemberNotFoundException(memberId));
+        if (event.getPaymentType() != PaymentType.PAID_SPLIT) {
+            throw new IllegalStateException("Payment status only applicable for PAID_SPLIT events");
+        }
+        if ("PAID".equals(status)) {
+            event.markPaymentPaid(member);
+        } else {
+            // Reset to pending
+            var participation = event.getParticipations().stream()
+                    .filter(p -> p.getMember().getId().equals(memberId))
+                    .findFirst()
+                    .orElseThrow(() -> new IllegalStateException("Member not found in event"));
+            participation.recordPayment(event.getPayoutPerMember());
+        }
         eventRepository.save(event);
     }
 

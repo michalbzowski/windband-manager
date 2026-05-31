@@ -9,6 +9,17 @@
         <p th:if="${event.location}" th:text="'Miejsce: ' + ${event.location}">Miejsce: Rynek</p>
         <p th:if="${event.startTime}" th:text="'Godzina: ' + ${event.startTime}">Godzina: 18:00</p>
         <p th:text="'Typ: ' + ${event.eventType}">Typ: CONCERT</p>
+        <p th:text="${event.paymentType == 'FREE' ? '💰 Granie bezpłatne' : (event.paymentType == 'PAID_SPLIT' ? '💰 Płatne — podział między grających' : '💰 Płatne — na konto zespołu')}">
+            💰 Granie bezpłatne
+        </p>
+        <p th:if="${event.paymentAmount != null and event.paymentType != 'FREE'}"
+           th:text="'Kwota: ' + ${#numbers.formatDecimal(event.paymentAmount, 1, 2)} + ' PLN'">
+            Kwota: 500.00 PLN
+        </p>
+        <p th:if="${event.payoutPerMember != null and event.paymentType == 'PAID_SPLIT'}"
+           th:text="'Wypłata/osoba: ' + ${#numbers.formatDecimal(event.payoutPerMember, 1, 2)} + ' PLN'">
+            Wypłata/osoba: 100.00 PLN
+        </p>
         <p th:if="${event.notes}" th:text="${event.notes}">Notatki</p>
     </article>
 
@@ -41,18 +52,18 @@
     </div>
 
     <h3>Uczestnicy</h3>
-    <table role="grid">
+    <table role="grid" id="participants-table">
         <thead>
             <tr>
                 <th>Muzyk</th>
                 <th>Instrument</th>
                 <th>Odpowiedź</th>
-                <th>Wypłata</th>
-                <th>Status wypłaty</th>
+                <th th:if="${event.paymentType == 'PAID_SPLIT'}">Wypłata</th>
+                <th th:if="${event.paymentType == 'PAID_SPLIT'}">Status wypłaty</th>
             </tr>
         </thead>
         <tbody>
-            <tr th:each="p : ${event.participations}">
+            <tr th:each="p : ${event.participations}" th:data-response="${p.response}">
                 <td th:text="${p.memberName}">Jan Kowalski</td>
                 <td>
                     <select class="instrument-select"
@@ -74,8 +85,21 @@
                         <option value="NO_RESPONSE" th:selected="${p.response == 'NO_RESPONSE'}">❓ Brak odpowiedzi</option>
                     </select>
                 </td>
-                <td th:text="${p.paymentAmount}">0.00</td>
-                <td th:text="${p.paymentStatus}">NOT_APPLICABLE</td>
+                <td th:if="${event.paymentType == 'PAID_SPLIT'}"
+                    class="payout-amount"
+                    th:text="${event.payoutPerMember != null ? #numbers.formatDecimal(event.payoutPerMember, 1, 2) : '-'}">
+                    100.00
+                </td>
+                <td th:if="${event.paymentType == 'PAID_SPLIT'}">
+                    <select class="payment-status-select"
+                            th:if="${p.response == 'CONFIRMED'}"
+                            th:data-event-id="${event.id}"
+                            th:data-member-id="${p.memberId}">
+                        <option value="PAID" th:selected="${p.paymentStatus == 'PAID'}">✅ Zapłacono</option>
+                        <option value="PENDING" th:selected="${p.paymentStatus == 'PENDING'}">⏳ Nie zapłacono</option>
+                    </select>
+                    <span th:if="${p.response != 'CONFIRMED'}" class="text-muted">nie dotyczy</span>
+                </td>
             </tr>
         </tbody>
     </table>
@@ -154,6 +178,22 @@
                     if (!res.ok) console.error('Failed to update instrument');
                 });
             }
+        });
+    });
+
+    // Payment status change
+    document.querySelectorAll('.payment-status-select').forEach(function(select) {
+        select.addEventListener('change', function() {
+            var eventId = this.dataset.eventId;
+            var memberId = this.dataset.memberId;
+            var status = this.value;
+            fetch('/api/events/' + eventId + '/payment-status', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({eventId: parseInt(eventId), memberId: parseInt(memberId), status: status})
+            }).then(function(res) {
+                if (!res.ok) console.error('Failed to update payment status');
+            });
         });
     });
 </script>
