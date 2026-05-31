@@ -41,18 +41,20 @@
     </div>
 
     <h3>Uczestnicy</h3>
-    <table role="grid">
+<table role="grid" id="participants-table">
         <thead>
             <tr>
                 <th>Muzyk</th>
+                <th>Instrument</th>
                 <th>Odpowiedź</th>
-                <th>Wypłata</th>
+                <th class="payout-col" style="display:none;">Wypłata</th>
                 <th>Status wypłaty</th>
             </tr>
         </thead>
         <tbody>
-            <tr th:each="p : ${event.participations}">
+            <tr th:each="p : ${event.participations}" th:data-response="${p.response}">
                 <td th:text="${p.memberName}">Jan Kowalski</td>
+                <td th:text="${p.memberInstrument}">Trąbka</td>
                 <td>
                     <select class="response-select"
                             th:data-event-id="${event.id}"

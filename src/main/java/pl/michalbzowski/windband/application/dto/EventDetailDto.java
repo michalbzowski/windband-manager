@@ -23,6 +23,7 @@ public record EventDetailDto(
             Long id,
             Long memberId,
             String memberName,
+            String memberInstrument,
             String response,
             BigDecimal paymentAmount,
             String paymentStatus
