@@ -5,6 +5,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import pl.michalbzowski.windband.application.command.member.AssignInstrumentCommand;
+import pl.michalbzowski.windband.application.command.member.ChangeInstrumentCommand;
 import pl.michalbzowski.windband.application.command.member.CreateMemberCommand;
 import pl.michalbzowski.windband.application.command.member.MemberCommandService;
 import pl.michalbzowski.windband.application.command.member.UpdateMemberCommand;
@@ -50,6 +51,14 @@ public class MemberController {
                                                   @RequestBody AssignInstrumentCommand cmd) {
         cmd.setMemberId(id);
         commandService.assignInstrument(cmd);
+        return ResponseEntity.ok().build();
+    }
+
+    @PutMapping("/{id}/instrument")
+    public ResponseEntity<Void> changeInstrument(@PathVariable Long id,
+                                                   @RequestBody ChangeInstrumentCommand cmd) {
+        cmd.setMemberId(id);
+        commandService.changeInstrument(cmd);
         return ResponseEntity.ok().build();
     }
 

@@ -81,6 +81,17 @@ public class MemberCommandService {
         memberRepository.save(member);
     }
 
+    public void changeInstrument(ChangeInstrumentCommand cmd) {
+        Member member = memberRepository.findById(cmd.getMemberId())
+                .orElseThrow(() -> new MemberNotFoundException(cmd.getMemberId()));
+
+        Instrument instrument = instrumentRepository.findById(cmd.getInstrumentId())
+                .orElseThrow(() -> new IllegalArgumentException("Instrument not found: " + cmd.getInstrumentId()));
+
+        member.changeInstrument(instrument);
+        memberRepository.save(member);
+    }
+
     public void deactivateMember(Long memberId) {
         Member member = memberRepository.findById(memberId)
                 .orElseThrow(() -> new MemberNotFoundException(memberId));
