@@ -70,9 +70,19 @@ public class GroupPageController {
     }
 
     @PostMapping("/{groupId}/members/{memberId}/remove")
-    public String removeMember(@PathVariable Long groupId, @PathVariable Long memberId) {
+    public String removeMember(@PathVariable Long groupId, @PathVariable Long memberId, Model model) {
         groupCommandService.removeMemberFromGroup(groupId, memberId);
-        return "redirect:/groups/" + groupId;
+        // Return the group detail fragment for HTMX, avoiding redirect issues
+        var groupDetail = groupQueryService.getGroupDetailById(groupId);
+        model.addAttribute("group", groupDetail);
+        Set<Long> memberIdsInGroup = groupDetail.members().stream()
+                .map(GroupMemberDto::memberId)
+                .collect(Collectors.toSet());
+        List<MemberDto> availableMembers = memberQueryService.getAllActiveMembers().stream()
+                .filter(m -> !memberIdsInGroup.contains(m.id()))
+                .toList();
+        model.addAttribute("members", availableMembers);
+        return "groups/detail :: #groups-content";
     }
 
     @PostMapping("/{id}/delete")
