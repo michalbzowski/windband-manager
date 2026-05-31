@@ -49,7 +49,7 @@ public class EventParticipation {
         this.response = response;
     }
 
-    void recordPayment(BigDecimal amount) {
+    public void recordPayment(BigDecimal amount) {
         this.paymentAmount = amount;
         this.paymentStatus = PaymentStatus.PENDING;
     }
