@@ -2,6 +2,7 @@ package pl.michalbzowski.windband.application.command.event;
 
 import lombok.Data;
 
+import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalTime;
 
@@ -12,5 +13,7 @@ public class CreateEventCommand {
     private LocalTime startTime;
     private String location;
     private String eventType;
+    private String paymentType;
+    private BigDecimal paymentAmount;
     private String notes;
 }

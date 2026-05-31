@@ -9,6 +9,8 @@
         <p th:if="${event.location}" th:text="'Miejsce: ' + ${event.location}">Miejsce: Rynek</p>
         <p th:if="${event.startTime}" th:text="'Godzina: ' + ${event.startTime}">Godzina: 18:00</p>
         <p th:text="'Typ: ' + ${event.eventType}">Typ: CONCERT</p>
+        <p th:text="'Płatność: ' + ${event.paymentType}">Płatność: FREE</p>
+        <p th:if="${event.paymentAmount}" th:text="'Kwota: ' + ${event.paymentAmount}">Kwota: 100.00</p>
         <p th:if="${event.notes}" th:text="${event.notes}">Notatki</p>
     </article>
 
@@ -47,7 +49,7 @@
                 <th>Muzyk</th>
                 <th>Instrument</th>
                 <th>Odpowiedź</th>
-                <th class="payout-col" style="display:none;">Wypłata</th>
+                <th class="payout-col" th:classappend="${event.paymentType == 'PAID_TO_MEMBERS' ? '' : 'hidden'}">Wypłata</th>
                 <th>Status wypłaty</th>
             </tr>
         </thead>
@@ -65,7 +67,8 @@
                         <option value="NO_RESPONSE" th:selected="${p.response == 'NO_RESPONSE'}">❓ Brak odpowiedzi</option>
                     </select>
                 </td>
-                <td th:text="${p.paymentAmount}">0.00</td>
+                <td class="payout-col" th:classappend="${event.paymentType == 'PAID_TO_MEMBERS' ? '' : 'hidden'}" 
+                    th:text="${event.paymentType == 'PAID_TO_MEMBERS' ? event.payoutPerMember : ''}">0.00</td>
                 <td th:text="${p.paymentStatus}">NOT_APPLICABLE</td>
             </tr>
         </tbody>

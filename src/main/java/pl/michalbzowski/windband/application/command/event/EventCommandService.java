@@ -26,13 +26,18 @@ public class EventCommandService {
         Band band = bandRepository.findById(1L)
                 .orElseThrow(() -> new IllegalStateException("Default band not found"));
         EventType type = EventType.valueOf(cmd.getEventType().toUpperCase());
+        PaymentType paymentType = cmd.getPaymentType() != null 
+                ? PaymentType.valueOf(cmd.getPaymentType().toUpperCase()) 
+                : PaymentType.FREE;
         BandEvent event = BandEvent.create(
                 cmd.getName(),
                 cmd.getDate(),
                 cmd.getStartTime(),
                 cmd.getLocation(),
                 type,
-                band
+                band,
+                paymentType,
+                cmd.getPaymentAmount()
         );
         if (cmd.getNotes() != null) {
             event.updateDetails(cmd.getName(), cmd.getDate(), cmd.getStartTime(), cmd.getLocation());

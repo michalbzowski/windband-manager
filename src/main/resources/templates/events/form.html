@@ -26,18 +26,32 @@
                 Miejsce
                 <input type="text" name="location" placeholder="Rynek, DK Psary...">
             </label>
-            <label>
-                Typ wydarzenia
-                <select name="eventType" required>
-                    <option value="CONCERT">Koncert</option>
-                    <option value="CEREMONY">Uroczystość</option>
-                    <option value="PARADE">Parada</option>
-                    <option value="COMPETITION">Konkurs</option>
-                    <option value="FESTIVAL">Festiwal</option>
-                    <option value="OTHER">Inne</option>
-                </select>
-            </label>
+<label>
+            Typ wydarzenia
+            <select name="eventType" required>
+                <option value="CONCERT">Koncert</option>
+                <option value="CEREMONY">Uroczystość</option>
+                <option value="PARADE">Parada</option>
+                <option value="COMPETITION">Konkurs</option>
+                <option value="FESTIVAL">Festiwal</option>
+                <option value="OTHER">Inne</option>
+            </select>
+        </label>
         </div>
+
+        <label>
+            Rodzaj płatności
+            <select name="paymentType" id="paymentType" required onchange="toggleAmountField()">
+                <option value="FREE">Bezpłatne</option>
+                <option value="PAID_TO_MEMBERS">Płatne - podział między członków</option>
+                <option value="PAID_TO_TEAM">Płatne - na konto zespołu</option>
+            </select>
+        </label>
+
+        <label id="amountLabel" style="display:none;">
+            Kwota
+            <input type="number" name="paymentAmount" step="0.01" min="0" placeholder="0.00">
+        </label>
 
         <label>
             Notatki
@@ -74,5 +88,15 @@
                 });
             }
         });
+    }
+
+    function toggleAmountField() {
+        var paymentType = document.getElementById('paymentType').value;
+        var amountLabel = document.getElementById('amountLabel');
+        if (paymentType === 'PAID_TO_MEMBERS' || paymentType === 'PAID_TO_TEAM') {
+            amountLabel.style.display = 'block';
+        } else {
+            amountLabel.style.display = 'none';
+        }
     }
 </script>

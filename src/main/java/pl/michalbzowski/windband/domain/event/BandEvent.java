@@ -36,6 +36,12 @@ public class BandEvent {
     @Column(nullable = false)
     private EventType eventType;
 
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false)
+    private PaymentType paymentType;
+
+    private BigDecimal paymentAmount;
+
     private String notes;
 
     @OneToMany(mappedBy = "bandEvent", cascade = CascadeType.ALL, orphanRemoval = true)
@@ -46,18 +52,22 @@ public class BandEvent {
     private Band band;
 
     private BandEvent(String name, LocalDate date, LocalTime startTime,
-                      String location, EventType eventType, Band band) {
+                      String location, EventType eventType, Band band,
+                      PaymentType paymentType, BigDecimal paymentAmount) {
         this.name = Objects.requireNonNull(name, "name required");
         this.date = Objects.requireNonNull(date, "date required");
         this.startTime = startTime;
         this.location = location;
         this.eventType = Objects.requireNonNull(eventType, "eventType required");
         this.band = Objects.requireNonNull(band, "band required");
+        this.paymentType = Objects.requireNonNull(paymentType, "paymentType required");
+        this.paymentAmount = paymentAmount;
     }
 
     public static BandEvent create(String name, LocalDate date, LocalTime startTime,
-                                   String location, EventType eventType, Band band) {
-        return new BandEvent(name, date, startTime, location, eventType, band);
+                                   String location, EventType eventType, Band band,
+                                   PaymentType paymentType, BigDecimal paymentAmount) {
+        return new BandEvent(name, date, startTime, location, eventType, band, paymentType, paymentAmount);
     }
 
     public void updateDetails(String name, LocalDate date, LocalTime startTime, String location) {
@@ -65,6 +75,26 @@ public class BandEvent {
         this.date = Objects.requireNonNull(date);
         this.startTime = startTime;
         this.location = location;
+    }
+
+    public void updatePaymentDetails(PaymentType paymentType, BigDecimal paymentAmount) {
+        this.paymentType = paymentType;
+        this.paymentAmount = paymentAmount;
+    }
+
+    public BigDecimal getPayoutPerMember() {
+        if (paymentType != PaymentType.PAID_TO_MEMBERS || paymentAmount == null) {
+            return BigDecimal.ZERO;
+        }
+        long confirmedCount = getConfirmedCount();
+        if (confirmedCount == 0) {
+            return BigDecimal.ZERO;
+        }
+        return paymentAmount.divide(BigDecimal.valueOf(confirmedCount), 2, java.math.RoundingMode.HALF_UP);
+    }
+
+    public boolean isPaidToMembers() {
+        return paymentType == PaymentType.PAID_TO_MEMBERS;
     }
 
     public void inviteMember(Member member) {

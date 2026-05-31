@@ -1,5 +1,10 @@
 /* Wind Band Manager — custom styles on top of PicoCSS */
 
+/* Utility classes */
+.hidden {
+    display: none !important;
+}
+
 /* Mobile-first adjustments */
 body {
     min-height: 100vh;
