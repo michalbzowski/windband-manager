@@ -32,6 +32,11 @@ public class InstrumentController {
         return instrumentCommandService.updateInstrument(id, request.name(), request.description());
     }
 
+    @PutMapping("/{id}/priority")
+    public Instrument updateSortPriority(@PathVariable Long id, @RequestBody PriorityRequest request) {
+        return instrumentCommandService.updateSortPriority(id, request.priority());
+    }
+
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> deleteInstrument(@PathVariable Long id) {
         instrumentCommandService.deleteInstrument(id);
@@ -39,4 +44,5 @@ public class InstrumentController {
     }
 
     public record InstrumentRequest(String name, String description) {}
+    public record PriorityRequest(Integer priority) {}
 }
