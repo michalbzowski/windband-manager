@@ -107,8 +107,8 @@
                             th:if="${p.response == 'CONFIRMED'}"
                             th:data-event-id="${event.id}"
                             th:data-member-id="${p.memberId}">
-                        <option value="PAID" th:selected="${p.paymentStatus == 'PAID'}">✅ Zapłacono</option>
                         <option value="PENDING" th:selected="${p.paymentStatus == 'PENDING'}">⏳ Nie zapłacono</option>
+                        <option value="PAID" th:selected="${p.paymentStatus == 'PAID'}">✅ Zapłacono</option>
                     </select>
                     <span th:if="${p.response != 'CONFIRMED'}" class="text-muted">nie dotyczy</span>
                 </td>
