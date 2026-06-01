@@ -89,8 +89,8 @@ public class EventCommandService {
                 .orElseThrow(() -> new EventNotFoundException(eventId));
         Member member = memberRepository.findById(memberId)
                 .orElseThrow(() -> new MemberNotFoundException(memberId));
-        if (event.getPaymentType() != PaymentType.PAID_SPLIT) {
-            throw new IllegalStateException("Payment status only applicable for PAID_SPLIT events");
+        if (event.getPaymentType() != PaymentType.PAID_SPLIT && event.getPaymentType() != PaymentType.PAID_TO_TEAM) {
+            throw new IllegalStateException("Payment status only applicable for PAID_SPLIT or PAID_TO_TEAM events");
         }
         if ("PAID".equals(status)) {
             event.markPaymentPaid(member);
