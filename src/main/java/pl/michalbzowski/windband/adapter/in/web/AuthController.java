@@ -53,7 +53,7 @@ public class AuthController {
 
             String token = jwtConfig.generateToken(request.getUsername(), claims);
             Cookie cookie = new Cookie("JWT", token);
-            cookie.setHttpOnly(true);
+            cookie.setHttpOnly(false);
             cookie.setPath("/");
             cookie.setMaxAge(86400);
             cookie.setAttribute("SameSite", "Lax");
@@ -68,7 +68,7 @@ public class AuthController {
     @PostMapping("/logout")
     public ResponseEntity<Void> logout(HttpServletResponse response) {
         Cookie cookie = new Cookie("JWT", null);
-        cookie.setHttpOnly(true);
+        cookie.setHttpOnly(false);
         cookie.setPath("/");
         cookie.setMaxAge(0);
         response.addCookie(cookie);
