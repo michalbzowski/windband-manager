@@ -1,0 +1,124 @@
+<div id="events-content">
+    <h2>🎪 Edytuj wydarzenie</h2>
+
+    <form id="event-edit-form"
+          hx-target="#events-content"
+          hx-swap="innerHTML transition:true">
+
+        <input type="hidden" name="id" th:value="${event.id}">
+
+        <label>
+            Nazwa wydarzenia *
+            <input type="text" name="name" th:value="${event.name}" required>
+        </label>
+
+        <div class="grid">
+            <label>
+                Data *
+                <input type="date" name="date" th:value="${event.date}" required>
+            </label>
+            <label>
+                Godzina
+                <input type="time" name="startTime" th:value="${event.startTime}">
+            </label>
+        </div>
+
+        <div class="grid">
+            <label>
+                Miejsce
+                <input type="text" name="location" th:value="${event.location}">
+            </label>
+            <label>
+                Typ wydarzenia
+                <select name="eventType" required>
+                    <option value="CONCERT" th:selected="${event.eventType == 'CONCERT'}">Koncert</option>
+                    <option value="CEREMONY" th:selected="${event.eventType == 'CEREMONY'}">Uroczystość</option>
+                    <option value="PARADE" th:selected="${event.eventType == 'PARADE'}">Parada</option>
+                    <option value="COMPETITION" th:selected="${event.eventType == 'COMPETITION'}">Konkurs</option>
+                    <option value="FESTIVAL" th:selected="${event.eventType == 'FESTIVAL'}">Festiwal</option>
+                    <option value="OTHER" th:selected="${event.eventType == 'OTHER'}">Inne</option>
+                </select>
+            </label>
+        </div>
+
+        <label>
+            Typ płatności
+            <select name="paymentType" id="payment-type-select" onchange="togglePaymentAmount()">
+                <option value="FREE" th:selected="${event.paymentType == 'FREE'}">Granie bezpłatne</option>
+                <option value="PAID_SPLIT" th:selected="${event.paymentType == 'PAID_SPLIT'}">Płatne — podział między grających</option>
+                <option value="PAID_TO_TEAM" th:selected="${event.paymentType == 'PAID_TO_TEAM'}">Płatne — na konto zespołu</option>
+            </select>
+        </label>
+
+        <label id="payment-amount-label" th:style="${event.paymentType != 'FREE'} ? 'display:block' : 'display:none'">
+            Kwota (PLN)
+            <input type="number" name="paymentAmount" id="payment-amount-input" step="0.01" min="0"
+                   th:value="${event.paymentAmount}">
+        </label>
+
+        <script th:inline="javascript">
+        function togglePaymentAmount() {
+            var select = document.getElementById('payment-type-select');
+            var label = document.getElementById('payment-amount-label');
+            var input = document.getElementById('payment-amount-input');
+            if (select.value === 'PAID_SPLIT' || select.value === 'PAID_TO_TEAM') {
+                label.style.display = '';
+                input.required = true;
+            } else {
+                label.style.display = 'none';
+                input.required = false;
+                input.value = '';
+            }
+        }
+        </script>
+
+        <label>
+            Notatki
+            <textarea name="notes" rows="2" th:text="${event.notes}"></textarea>
+        </label>
+
+        <div style="display:flex; gap:0.5rem; margin-top:1rem;">
+            <button type="submit" class="primary">Zapisz zmiany</button>
+            <button type="button" class="secondary"
+                    th:attr="hx-get='/events/' + ${event.id}"
+                    hx-target="#events-content"
+                    hx-swap="innerHTML transition:true">Anuluj</button>
+        </div>
+    </form>
+</div>
+
+<script th:inline="javascript">
+    // Guard: prevent duplicate event listeners when form is reloaded via htmx
+    if (!window._eventEditFormHandlerAttached) {
+        window._eventEditFormHandlerAttached = true;
+        document.body.addEventListener('submit', function(e) {
+            if (e.target.id === 'event-edit-form') {
+                e.preventDefault();
+                var form = e.target;
+                var formData = new FormData(form);
+                var data = {};
+                formData.forEach(function(value, key) { data[key] = value; });
+
+                // Convert id to number
+                data.id = parseInt(data.id);
+                if (data.paymentAmount) {
+                    data.paymentAmount = parseFloat(data.paymentAmount);
+                } else {
+                    data.paymentAmount = null;
+                }
+
+                fetch('/api/events/' + data.id, {
+                    method: 'PUT',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify(data)
+                }).then(function(res) {
+                    if (res.ok) {
+                        htmx.ajax('GET', '/events/' + data.id, {target: '#events-content', swap: 'innerHTML transition:true'});
+                    } else {
+                        alert('Nie udało się zapisać zmian');
+                    }
+                });
+            }
+        });
+    }
+</script>

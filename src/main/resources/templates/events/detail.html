@@ -108,6 +108,10 @@
         <button type="button" class="secondary"
                 hx-get="/events/list" hx-target="#events-content"
                 hx-swap="innerHTML transition:true">Powrót</button>
+        <button type="button" class="outline"
+                th:attr="hx-get='/events/' + ${event.id} + '/edit'"
+                hx-target="#events-content"
+                hx-swap="innerHTML transition:true">✏️ Edytuj</button>
         <button type="button" class="outline danger" id="delete-event-btn">🗑️ Usuń wydarzenie</button>
     </div>
 </div>
