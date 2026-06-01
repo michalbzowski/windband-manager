@@ -57,7 +57,9 @@
                 <span style="color:var(--pico-muted-color); font-size:0.75rem;">Ładowanie...</span>
             </li>
             <li>
-                <button class="outline secondary small" onclick="doLogout()">Wyloguj</button>
+                <form th:action="@{/api/auth/logout}" method="POST" style="display:inline;">
+                    <button type="submit" class="outline secondary small">Wyloguj</button>
+                </form>
             </li>
         </ul>
     </nav>
@@ -97,7 +99,14 @@
             fetch('/api/auth/logout', {
                 method: 'POST',
                 credentials: 'same-origin'
-            }).then(function() {
+            })
+            .then(function(response) {
+                // Redirect to login page regardless of response status
+                window.location.href = '/login';
+            })
+            .catch(function(error) {
+                console.error('Logout error:', error);
+                // Still redirect to login even on error
                 window.location.href = '/login';
             });
         }
