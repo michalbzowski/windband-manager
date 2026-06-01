@@ -51,7 +51,19 @@
         <button class="outline" id="invite-btn">Zaproś</button>
     </div>
 
-    <h3>Uczestnicy</h3>
+    <h3>Podsumowanie - ile osób gra na każdym instrumencie</h3>
+<div style="display: flex; flex-wrap: wrap; gap: 1rem; margin-bottom: 1rem;">
+    <div th:each="inst : ${event.instrumentSummary}" 
+         style="background: var(--pico-background-color); border: 1px solid var(--pico-muted-border-color); padding: 0.5rem 1rem; border-radius: 4px;">
+        <strong th:text="${inst.instrumentName}">Flet</strong>: 
+        <span th:text="${inst.count}">3</span> osób
+    </div>
+    <div th:if="${#lists.isEmpty(event.instrumentSummary)}" style="color: var(--pico-muted-color);">
+        Brak potwierdzonych uczestników
+    </div>
+</div>
+
+<h3>Uczestnicy</h3>
     <table role="grid" id="participants-table">
         <thead>
             <tr>

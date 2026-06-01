@@ -5,6 +5,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import pl.michalbzowski.windband.application.command.event.EventNotFoundException;
 import pl.michalbzowski.windband.application.dto.EventDetailDto;
+import pl.michalbzowski.windband.application.dto.EventDetailDto.InstrumentCountDto;
 import pl.michalbzowski.windband.application.dto.EventDetailDto.ParticipationDto;
 import pl.michalbzowski.windband.application.dto.GroupSummaryDto;
 import pl.michalbzowski.windband.application.query.member.GroupQueryService;
@@ -12,7 +13,9 @@ import pl.michalbzowski.windband.domain.event.BandEvent;
 import pl.michalbzowski.windband.domain.event.EventRepository;
 
 import java.time.LocalDate;
+import java.util.Comparator;
 import java.util.List;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -44,6 +47,17 @@ public class EventQueryService {
         List<GroupSummaryDto> groups = groupQueryService.getAllGroups().stream()
                 .map(g -> new GroupSummaryDto(g.id(), g.name(), g.description(), g.memberCount()))
                 .toList();
+
+        // Calculate instrument summary from confirmed participants
+        List<InstrumentCountDto> instrumentSummary = participationDtos.stream()
+                .filter(p -> "CONFIRMED".equals(p.response()))
+                .collect(Collectors.groupingBy(ParticipationDto::instrumentName, Collectors.counting()))
+                .entrySet().stream()
+                .filter(e -> e.getKey() != null)
+                .map(e -> new InstrumentCountDto(e.getKey(), e.getValue()))
+                .sorted(Comparator.comparing(InstrumentCountDto::count).reversed())
+                .toList();
+
         return new EventDetailDto(
                 event.getId(),
                 event.getName(),
@@ -59,7 +73,8 @@ public class EventQueryService {
                 event.getDeclinedCount(),
                 event.getNoResponseCount(),
                 participationDtos,
-                groups
+                groups,
+                instrumentSummary
         );
     }
 
