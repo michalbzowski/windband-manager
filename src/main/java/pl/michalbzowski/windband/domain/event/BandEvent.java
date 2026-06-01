@@ -86,6 +86,10 @@ public class BandEvent {
         this.notes = notes;
     }
 
+    public void setEventType(EventType eventType) {
+        this.eventType = eventType;
+    }
+
     public BigDecimal getPayoutPerMember() {
         if (paymentType != PaymentType.PAID_SPLIT || paymentAmount == null) {
             return null;
