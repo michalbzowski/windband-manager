@@ -55,9 +55,6 @@ public class EventParticipation {
     }
 
     void markPaymentPaid() {
-        if (paymentStatus != PaymentStatus.PENDING) {
-            throw new IllegalStateException("No pending payment to mark as paid");
-        }
         this.paymentStatus = PaymentStatus.PAID;
     }
 }
