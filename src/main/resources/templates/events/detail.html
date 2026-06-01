@@ -154,12 +154,21 @@
             var eventId = this.dataset.eventId;
             var memberId = this.dataset.memberId;
             var response = this.value;
+            var row = this.closest('tr');
+            var payoutCell = row.querySelector('.payout-amount');
+            var paymentStatusCell = row.querySelector('.payment-status-select')?.closest('td');
+            
             fetch('/api/events/' + eventId + '/response', {
                 method: 'POST',
                 headers: {'Content-Type': 'application/json'},
                 body: JSON.stringify({eventId: parseInt(eventId), memberId: parseInt(memberId), response: response})
             }).then(function(res) {
-                if (!res.ok) console.error('Failed to update response');
+                if (!res.ok) {
+                    console.error('Failed to update response');
+                    return;
+                }
+                // Reload event details to update payment columns dynamically
+                htmx.ajax('GET', '/events/' + eventId, {target: '#events-content', swap: 'innerHTML transition:true'});
             });
         });
     });
