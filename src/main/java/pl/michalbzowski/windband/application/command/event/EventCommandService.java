@@ -117,6 +117,12 @@ public class EventCommandService {
         
         event.updateDetails(cmd.getName(), cmd.getDate(), cmd.getStartTime(), cmd.getLocation());
         
+        // Update event type if provided
+        if (cmd.getEventType() != null) {
+            EventType eventType = EventType.valueOf(cmd.getEventType().toUpperCase());
+            event.setEventType(eventType);
+        }
+        
         // Update payment details - handle all cases including switching to/from FREE
         if (cmd.getPaymentType() != null) {
             PaymentType paymentType = PaymentType.valueOf(cmd.getPaymentType().toUpperCase());
