@@ -39,8 +39,8 @@ public class EventCommandService {
                 paymentType,
                 cmd.getPaymentAmount()
         );
-        if (cmd.getNotes() != null) {
-            event.updateDetails(cmd.getName(), cmd.getDate(), cmd.getStartTime(), cmd.getLocation());
+        if (cmd.getNotes() != null && !cmd.getNotes().isBlank()) {
+            event.setNotes(cmd.getNotes());
         }
         return eventRepository.save(event);
     }
@@ -120,8 +120,13 @@ public class EventCommandService {
             event.updatePaymentDetails(paymentType, cmd.getPaymentAmount());
         }
         
+        // Handle notes: set to notes value, or clear if empty/blank
         if (cmd.getNotes() != null) {
-            event.setNotes(cmd.getNotes());
+            if (cmd.getNotes().isBlank()) {
+                event.setNotes(null);
+            } else {
+                event.setNotes(cmd.getNotes());
+            }
         }
         
         eventRepository.save(event);
