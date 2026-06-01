@@ -44,4 +44,10 @@ public class EventPageController {
         model.addAttribute("instruments", instrumentQueryService.findAll());
         return "events/detail";
     }
+
+    @GetMapping("/{id}/edit")
+    public String editEventForm(@PathVariable Long id, Model model) {
+        model.addAttribute("event", eventQueryService.getEventDetailById(id));
+        return "events/edit";
+    }
 }

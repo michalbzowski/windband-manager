@@ -109,6 +109,24 @@ public class EventCommandService {
         eventRepository.delete(event);
     }
 
+    public void updateEvent(UpdateEventCommand cmd) {
+        BandEvent event = eventRepository.findById(cmd.getId())
+                .orElseThrow(() -> new EventNotFoundException(cmd.getId()));
+        
+        event.updateDetails(cmd.getName(), cmd.getDate(), cmd.getStartTime(), cmd.getLocation());
+        
+        if (cmd.getPaymentType() != null) {
+            PaymentType paymentType = PaymentType.valueOf(cmd.getPaymentType().toUpperCase());
+            event.updatePaymentDetails(paymentType, cmd.getPaymentAmount());
+        }
+        
+        if (cmd.getNotes() != null) {
+            event.setNotes(cmd.getNotes());
+        }
+        
+        eventRepository.save(event);
+    }
+
     public void inviteGroup(InviteGroupCommand cmd) {
         BandEvent event = eventRepository.findById(cmd.getEventId())
                 .orElseThrow(() -> new EventNotFoundException(cmd.getEventId()));

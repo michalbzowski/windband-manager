@@ -86,4 +86,11 @@ public class EventController {
         commandService.deleteEvent(id);
         return ResponseEntity.noContent().build();
     }
+
+    @PutMapping("/{id}")
+    public ResponseEntity<Void> updateEvent(@PathVariable Long id, @RequestBody UpdateEventCommand cmd) {
+        cmd.setId(id);
+        commandService.updateEvent(cmd);
+        return ResponseEntity.ok().build();
+    }
 }
