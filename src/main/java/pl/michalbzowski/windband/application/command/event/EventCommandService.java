@@ -12,6 +12,8 @@ import pl.michalbzowski.windband.domain.member.GroupRepository;
 import pl.michalbzowski.windband.domain.member.Member;
 import pl.michalbzowski.windband.domain.member.MemberRepository;
 
+import java.math.BigDecimal;
+
 @Service
 @RequiredArgsConstructor
 @Transactional
@@ -115,9 +117,17 @@ public class EventCommandService {
         
         event.updateDetails(cmd.getName(), cmd.getDate(), cmd.getStartTime(), cmd.getLocation());
         
+        // Update payment details - handle all cases including switching to/from FREE
         if (cmd.getPaymentType() != null) {
             PaymentType paymentType = PaymentType.valueOf(cmd.getPaymentType().toUpperCase());
-            event.updatePaymentDetails(paymentType, cmd.getPaymentAmount());
+            BigDecimal paymentAmount = cmd.getPaymentAmount();
+            
+            // If switching to FREE, clear payment amount
+            if (paymentType == PaymentType.FREE) {
+                paymentAmount = null;
+            }
+            
+            event.updatePaymentDetails(paymentType, paymentAmount);
         }
         
         // Handle notes: set to notes value, or clear if empty/blank
