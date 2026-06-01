@@ -20,7 +20,8 @@ public record EventDetailDto(
         long declinedCount,
         long noResponseCount,
         List<ParticipationDto> participations,
-        List<GroupSummaryDto> allGroups
+        List<GroupSummaryDto> allGroups,
+        List<InstrumentCountDto> instrumentSummary
 ) {
     public record ParticipationDto(
             Long id,
@@ -30,5 +31,10 @@ public record EventDetailDto(
             String response,
             BigDecimal paymentAmount,
             String paymentStatus
+    ) {}
+
+    public record InstrumentCountDto(
+            String instrumentName,
+            long count
     ) {}
 }
