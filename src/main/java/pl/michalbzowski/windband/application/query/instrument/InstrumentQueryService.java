@@ -16,6 +16,6 @@ public class InstrumentQueryService {
     private final InstrumentRepository instrumentRepository;
 
     public List<Instrument> findAll() {
-        return instrumentRepository.findAll();
+        return instrumentRepository.findAllOrderBySortPriority();
     }
 }

@@ -31,6 +31,13 @@ public class InstrumentCommandService {
         return instrumentRepository.save(instrument);
     }
 
+    public Instrument updateSortPriority(Long id, Integer sortPriority) {
+        Instrument instrument = instrumentRepository.findById(id)
+                .orElseThrow(() -> new IllegalArgumentException("Instrument not found: " + id));
+        instrument.updateSortPriority(sortPriority);
+        return instrumentRepository.save(instrument);
+    }
+
     public void deleteInstrument(Long id) {
         Instrument instrument = instrumentRepository.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("Instrument not found: " + id));

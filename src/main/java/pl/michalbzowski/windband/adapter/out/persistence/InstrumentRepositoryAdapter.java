@@ -30,6 +30,11 @@ public class InstrumentRepositoryAdapter implements InstrumentRepository {
     }
 
     @Override
+    public List<Instrument> findAllOrderBySortPriority() {
+        return springDataRepo.findAllByOrderBySortPriorityAsc();
+    }
+
+    @Override
     public Optional<Instrument> findByName(String name) {
         return springDataRepo.findByName(name);
     }

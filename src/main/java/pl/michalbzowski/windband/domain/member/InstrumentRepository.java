@@ -11,5 +11,7 @@ public interface InstrumentRepository {
 
     List<Instrument> findAll();
 
+    List<Instrument> findAllOrderBySortPriority();
+
     Optional<Instrument> findByName(String name);
 }
