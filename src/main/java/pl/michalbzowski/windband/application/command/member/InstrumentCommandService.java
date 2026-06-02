@@ -15,19 +15,27 @@ public class InstrumentCommandService {
 
     private final InstrumentRepository instrumentRepository;
 
-    public Instrument createInstrument(String name, String description) {
+    public Instrument createInstrument(String name, String description, Integer sortPriority) {
         Instrument instrument = Instrument.create(name);
         if (description != null) {
             instrument.updateDescription(description);
         }
+        if (sortPriority != null) {
+            instrument.updateSortPriority(sortPriority);
+        }
         return instrumentRepository.save(instrument);
     }
 
-    public Instrument updateInstrument(Long id, String name, String description) {
+    public Instrument updateInstrument(Long id, String name, String description, Integer sortPriority) {
         Instrument instrument = instrumentRepository.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("Instrument not found: " + id));
         instrument.updateName(name);
-        instrument.updateDescription(description);
+        if (description != null) {
+            instrument.updateDescription(description);
+        }
+        if (sortPriority != null) {
+            instrument.updateSortPriority(sortPriority);
+        }
         return instrumentRepository.save(instrument);
     }
 

@@ -23,13 +23,13 @@ public class InstrumentController {
 
     @PostMapping
     public ResponseEntity<Instrument> createInstrument(@RequestBody InstrumentRequest request) {
-        var instrument = instrumentCommandService.createInstrument(request.name(), request.description());
+        var instrument = instrumentCommandService.createInstrument(request.name(), request.description(), request.sortPriority());
         return ResponseEntity.status(HttpStatus.CREATED).body(instrument);
     }
 
     @PutMapping("/{id}")
     public Instrument updateInstrument(@PathVariable Long id, @RequestBody InstrumentRequest request) {
-        return instrumentCommandService.updateInstrument(id, request.name(), request.description());
+        return instrumentCommandService.updateInstrument(id, request.name(), request.description(), request.sortPriority());
     }
 
     @PutMapping("/{id}/priority")
@@ -43,6 +43,6 @@ public class InstrumentController {
         return ResponseEntity.noContent().build();
     }
 
-    public record InstrumentRequest(String name, String description) {}
+    public record InstrumentRequest(String name, String description, Integer sortPriority) {}
     public record PriorityRequest(Integer priority) {}
 }
