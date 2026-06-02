@@ -129,7 +129,10 @@ public class AuthController {
                     "teamIds", tud.getTeamIds()
             ));
         }
-        return ResponseEntity.ok(Map.of("username", userDetails.getUsername()));
+        if (userDetails != null) {
+            return ResponseEntity.ok(Map.of("username", userDetails.getUsername()));
+        }
+        return ResponseEntity.status(401).body(Map.of("error", "Not authenticated"));
     }
 
     @Data

@@ -38,7 +38,6 @@ public class SecurityConfig {
                                 "/api/auth/check-username",
                                 "/api/auth/check-email",
                                 "/api/auth/check-slug",
-                                "/api/auth/me",
                                 "/login",
                                 "/register",
                                 "/css/**",
