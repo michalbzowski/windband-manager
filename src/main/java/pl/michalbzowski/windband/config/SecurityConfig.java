@@ -1,17 +1,21 @@
 package pl.michalbzowski.windband.config;
 
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.context.annotation.Lazy;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
 import org.springframework.security.config.http.SessionCreationPolicy;
+import org.springframework.security.oauth2.jwt.JwtDecoder;
+import org.springframework.security.oauth2.jwt.NimbusJwtDecoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 import pl.michalbzowski.windband.adapter.in.security.JwtAuthFilter;
+
+import javax.crypto.spec.SecretKeySpec;
 
 @Configuration
 @EnableWebSecurity
@@ -19,8 +23,22 @@ public class SecurityConfig {
 
     private final JwtAuthFilter jwtAuthFilter;
 
-    public SecurityConfig(@Lazy JwtAuthFilter jwtAuthFilter) {
+    @Value("${app.jwt.secret}")
+    private String jwtSecret;
+
+    public SecurityConfig(JwtAuthFilter jwtAuthFilter) {
         this.jwtAuthFilter = jwtAuthFilter;
+    }
+
+    @Bean
+    public JwtDecoder jwtDecoder() {
+        // Use the same JWT secret for decoding Keycloak tokens
+        // In production, this should use Keycloak's public key
+        SecretKeySpec secretKey = new SecretKeySpec(
+            jwtSecret.getBytes(),
+            "HmacSHA256"
+        );
+        return NimbusJwtDecoder.withSecretKey(secretKey).build();
     }
 
     @Bean
@@ -45,7 +63,16 @@ public class SecurityConfig {
                                 "/images/**",
                                 "/webjars/**",
                                 "/favicon.ico",
-                                "/error"
+                                "/error",
+                                "/swagger-ui/**",
+                                "/swagger-ui.html",
+                                "/v3/api-docs/**"
+                        ).permitAll()
+                        // OAuth2/OIDC discovery endpoints
+                        .requestMatchers(
+                                "/.well-known/**",
+                                "/protocol/**",
+                                "/realms/**"
                         ).permitAll()
                         // Team admin endpoints
                         .requestMatchers("/api/teams/*/admin/**").hasRole("ADMIN")
@@ -69,6 +96,9 @@ public class SecurityConfig {
                                 response.sendRedirect("/");
                             }
                         })
+                )
+                .oauth2ResourceServer(oauth2 -> oauth2
+                        .jwt(jwt -> jwt.decoder(jwtDecoder()))
                 )
                 .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class)
                 .build();

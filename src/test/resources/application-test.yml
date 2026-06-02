@@ -27,6 +27,13 @@ spring:
   thymeleaf:
     cache: false
 
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          # Use jwk-set-uri for testing to avoid issuer validation issues
+          jwk-set-uri: http://localhost:8180/realms/windband/protocol/openid-connect/certs
+
 server:
   port: 8080
 
@@ -35,3 +42,6 @@ app:
     secret: testSecretKeyForLocalDevelopmentThatIsLongEnough256Bits12345678901234567890
     expiration-ms: 86400000
   base-url: http://localhost:8080
+  keycloak:
+    url: http://localhost:8180
+    realm: windband
