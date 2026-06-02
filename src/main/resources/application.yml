@@ -36,6 +36,12 @@ spring:
           starttls:
             enable: true
 
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          issuer-uri: ${KEYCLOAK_URL:http://localhost:8180}/realms/${KEYCLOAK_REALM:windband}
+
 server:
   port: ${SERVER_PORT:8080}
 
@@ -44,3 +50,6 @@ app:
     secret: ${JWT_SECRET:changeMeToASecureRandomStringOfAtLeast256BitsForProductionUse}
     expiration-ms: 86400000  # 24h
   base-url: ${BASE_URL:http://localhost:8080}
+  keycloak:
+    url: ${KEYCLOAK_URL:http://localhost:8180}
+    realm: ${KEYCLOAK_REALM:windband}
