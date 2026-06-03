@@ -53,37 +53,11 @@ public class KeycloakOAuth2UserService extends OidcUserService {
     @Transactional
     public OidcUser loadUser(OidcUserRequest userRequest) throws OAuth2AuthenticationException {
         log.info("KeycloakOAuth2UserService.loadUser called for client: {}", clientId);
-        log.info("DEBUG token-uri: {}", userRequest.getClientRegistration().getProviderDetails().getAuthorizationUri());
-        log.info("DEBUG user-info-uri from @Value: {}", userInfoUri);
-        log.info("DEBUG registration id: {}", userRequest.getClientRegistration().getRegistrationId());
 
-        // Manually fetch user-info from Keycloak to avoid OidcUserService using
-        // the discovery document's userinfo_endpoint (keycloak.michalbzowski.pl)
-        // which is unreachable from the container. We use the configured
-        // user-info-uri (localhost:8180) instead.
-        String accessToken = userRequest.getAccessToken() != null ? userRequest.getAccessToken().getTokenValue() : "null";
-        log.info("Fetching user-info from: {}, token present: {}", userInfoUri, accessToken != null && !"null".equals(accessToken));
-
-        Map<String, Object> claims;
-        try {
-            claims = RestClient.create()
-                    .get()
-                    .uri(userInfoUri)
-                    .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken)
-                    .accept(MediaType.APPLICATION_JSON)
-                    .retrieve()
-                    .body(Map.class);
-            log.info("User-info claims: {}", claims);
-        } catch (Exception e) {
-            log.error("Failed to fetch user-info from {}", userInfoUri, e);
-            throw new OAuth2AuthenticationException(
-                    new org.springframework.security.oauth2.core.OAuth2Error("user_info_error", "Failed to fetch user-info: " + e.getMessage(), null),
-                    e);
-        }
-
-        var userInfo = new OidcUserInfo(claims);
-        var oidcUser = new DefaultOidcUser(Set.of(), userRequest.getIdToken(), userInfo);
-        log.info("OIDC user built: subject={}, email={}", oidcUser.getSubject(), oidcUser.getEmail());
+        // Use super.loadUser() — now that KC_HOSTNAME=localhost, the token issuer
+        // should match the internal URL and user-info should work.
+        OidcUser oidcUser = super.loadUser(userRequest);
+        log.info("OIDC user loaded: subject={}, email={}", oidcUser.getSubject(), oidcUser.getEmail());
         String subjectId = oidcUser.getSubject();
         String email = oidcUser.getEmail();
         String username = oidcUser.getPreferredUsername();
