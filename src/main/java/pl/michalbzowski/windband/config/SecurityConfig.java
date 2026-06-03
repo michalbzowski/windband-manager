@@ -13,7 +13,12 @@ import org.springframework.security.web.authentication.AuthenticationSuccessHand
 import org.springframework.security.web.authentication.logout.LogoutSuccessHandler;
 import pl.michalbzowski.windband.adapter.in.security.KeycloakOAuth2UserService;
 
+import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.context.annotation.Profile;
+import org.springframework.security.oauth2.client.registration.ClientRegistrationRepository;
+import org.springframework.security.oauth2.client.web.DefaultOAuth2AuthorizationRequestResolver;
+import org.springframework.security.oauth2.client.web.OAuth2AuthorizationRequestResolver;
+import org.springframework.security.oauth2.core.endpoint.OAuth2AuthorizationRequest;
 
 @Configuration
 @EnableWebSecurity
@@ -33,9 +38,43 @@ public class SecurityConfig {
     private String keycloakRealm;
 
     private final KeycloakOAuth2UserService keycloakOAuth2UserService;
+    private final ClientRegistrationRepository clientRegistrationRepository;
 
-    public SecurityConfig(KeycloakOAuth2UserService keycloakOAuth2UserService) {
+    public SecurityConfig(KeycloakOAuth2UserService keycloakOAuth2UserService,
+                          ClientRegistrationRepository clientRegistrationRepository) {
         this.keycloakOAuth2UserService = keycloakOAuth2UserService;
+        this.clientRegistrationRepository = clientRegistrationRepository;
+    }
+
+    /**
+     * Custom authorization request resolver that overrides redirect_uri with the
+     * public BASE_URL. Without this, Spring Security generates redirect_uri
+     * from the incoming request (http://localhost:8080 behind Cloudflare Tunnel),
+     * which the browser cannot follow.
+     */
+    @Bean
+    public OAuth2AuthorizationRequestResolver authorizationRequestResolver() {
+        var defaultResolver = new DefaultOAuth2AuthorizationRequestResolver(
+                clientRegistrationRepository, "/oauth2/authorization");
+        return new OAuth2AuthorizationRequestResolver() {
+            @Override
+            public OAuth2AuthorizationRequest resolve(HttpServletRequest request) {
+                OAuth2AuthorizationRequest original = defaultResolver.resolve(request);
+                if (original == null) return null;
+                return OAuth2AuthorizationRequest.from(original)
+                        .redirectUri(baseUrl + "/login/oauth2/code/keycloak")
+                        .build();
+            }
+
+            @Override
+            public OAuth2AuthorizationRequest resolve(HttpServletRequest request, String clientRegistrationId) {
+                OAuth2AuthorizationRequest original = defaultResolver.resolve(request, clientRegistrationId);
+                if (original == null) return null;
+                return OAuth2AuthorizationRequest.from(original)
+                        .redirectUri(baseUrl + "/login/oauth2/code/keycloak")
+                        .build();
+            }
+        };
     }
 
     @Bean
@@ -73,6 +112,9 @@ public class SecurityConfig {
 
                 // OIDC Authorization Code Flow
                 .oauth2Login(oauth2 -> oauth2
+                        .authorizationEndpoint(auth -> auth
+                                .authorizationRequestResolver(authorizationRequestResolver())
+                        )
                         .successHandler(oidcSuccessHandler())
                         .failureHandler(oidcFailureHandler())
                         .userInfoEndpoint(userInfo -> userInfo
