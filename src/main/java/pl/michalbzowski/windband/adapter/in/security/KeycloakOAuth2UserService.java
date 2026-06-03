@@ -53,6 +53,9 @@ public class KeycloakOAuth2UserService extends OidcUserService {
     @Transactional
     public OidcUser loadUser(OidcUserRequest userRequest) throws OAuth2AuthenticationException {
         log.info("KeycloakOAuth2UserService.loadUser called for client: {}", clientId);
+        log.info("DEBUG token-uri: {}", userRequest.getClientRegistration().getProviderDetails().getAuthorizationUri());
+        log.info("DEBUG user-info-uri from @Value: {}", userInfoUri);
+        log.info("DEBUG registration id: {}", userRequest.getClientRegistration().getRegistrationId());
 
         // Manually fetch user-info from Keycloak to avoid OidcUserService using
         // the discovery document's userinfo_endpoint (keycloak.michalbzowski.pl)
