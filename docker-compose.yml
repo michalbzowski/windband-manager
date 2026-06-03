@@ -86,7 +86,7 @@ services:
       MAIL_PORT: ${MAIL_PORT:-587}
       MAIL_USER: ${MAIL_USER:-}
       MAIL_PASS: ${MAIL_PASS:-}
-      BASE_URL: ${BASE_URL:-http://localhost:8080}
+      BASE_URL: ${BASE_URL:-https://windband.michalbzowski.pl}
       KEYCLOAK_URL: http://keycloak:8180
       KEYCLOAK_PUBLIC_URL: http://keycloak.michalbzowski.pl
       KEYCLOAK_REALM: ${KEYCLOAK_REALM:-windband}

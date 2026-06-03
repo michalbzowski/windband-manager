@@ -13,7 +13,6 @@ import org.springframework.security.web.authentication.AuthenticationSuccessHand
 import org.springframework.security.web.authentication.logout.LogoutSuccessHandler;
 import pl.michalbzowski.windband.adapter.in.security.KeycloakOAuth2UserService;
 
-
 import org.springframework.context.annotation.Profile;
 
 @Configuration
