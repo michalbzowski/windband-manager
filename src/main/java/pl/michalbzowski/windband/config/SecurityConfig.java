@@ -27,6 +27,9 @@ public class SecurityConfig {
     @Value("${KEYCLOAK_URL:http://localhost:8180}")
     private String keycloakUrl;
 
+    @Value("${KEYCLOAK_PUBLIC_URL:http://localhost:8180}")
+    private String keycloakPublicUrl;
+
     @Value("${KEYCLOAK_REALM:windband}")
     private String keycloakRealm;
 
@@ -124,7 +127,7 @@ public class SecurityConfig {
         return (request, response, authentication) -> {
             String keycloakLogoutUrl = String.format(
                     "%s/realms/%s/protocol/openid-connect/logout?redirect_uri=%s/login",
-                    keycloakUrl, keycloakRealm, baseUrl
+                    keycloakPublicUrl, keycloakRealm, baseUrl
             );
             response.sendRedirect(keycloakLogoutUrl);
         };

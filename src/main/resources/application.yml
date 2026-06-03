@@ -49,8 +49,7 @@ spring:
             provider: keycloak
         provider:
           keycloak:
-            issuer-uri: http://keycloak:8180/realms/${KEYCLOAK_REALM:windband}
-            authorization-uri: http://localhost:8180/realms/${KEYCLOAK_REALM:windband}/protocol/openid-connect/auth
+            authorization-uri: http://keycloak.michalbzowski.pl/realms/${KEYCLOAK_REALM:windband}/protocol/openid-connect/auth
             token-uri: http://keycloak:8180/realms/${KEYCLOAK_REALM:windband}/protocol/openid-connect/token
             jwk-set-uri: http://keycloak:8180/realms/${KEYCLOAK_REALM:windband}/protocol/openid-connect/certs
             user-info-uri: http://keycloak:8180/realms/${KEYCLOAK_REALM:windband}/protocol/openid-connect/userinfo
