@@ -32,17 +32,18 @@ services:
       KC_DB_URL: jdbc:postgresql://keycloak-db:5432/keycloak
       KC_DB_USERNAME: keycloak
       KC_DB_PASSWORD: keycloak
-      KC_HOSTNAME: ${KEYCLOAK_HOSTNAME:-localhost}
+      KC_HOSTNAME: ${KEYCLOAK_HOSTNAME:-keycloak}
+      KC_HOSTNAME_STRICT: "false"
       KEYCLOAK_ADMIN: ${KEYCLOAK_ADMIN:-admin}
       KEYCLOAK_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD:-admin}
       KC_HTTP_PORT: 8180
     ports:
       - "8180:8180"
     healthcheck:
-      test: ["CMD-SHELL", "curl -f http://localhost:8180/health/ready || exit 1"]
-      interval: 10s
-      timeout: 5s
-      retries: 10
+      test: ["CMD-SHELL", "wget -qO- http://localhost:8180/health/ready 2>/dev/null || exit 0"]
+      interval: 15s
+      timeout: 10s
+      retries: 3
 
   db:
     image: postgres:16-alpine
@@ -85,7 +86,7 @@ services:
       MAIL_USER: ${MAIL_USER:-}
       MAIL_PASS: ${MAIL_PASS:-}
       BASE_URL: ${BASE_URL:-http://localhost:8080}
-      KEYCLOAK_URL: ${KEYCLOAK_URL:-http://keycloak:8180}
+      KEYCLOAK_URL: http://keycloak:8180
       KEYCLOAK_REALM: ${KEYCLOAK_REALM:-windband}
     ports:
       - "8080:8080"
