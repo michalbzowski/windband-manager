@@ -50,13 +50,13 @@ spring:
         provider:
           keycloak:
             authorization-uri: http://keycloak.michalbzowski.pl/realms/${KEYCLOAK_REALM:windband}/protocol/openid-connect/auth
-            token-uri: http://keycloak:8180/realms/${KEYCLOAK_REALM:windband}/protocol/openid-connect/token
-            jwk-set-uri: http://keycloak:8180/realms/${KEYCLOAK_REALM:windband}/protocol/openid-connect/certs
-            user-info-uri: http://keycloak:8180/realms/${KEYCLOAK_REALM:windband}/protocol/openid-connect/userinfo
+            token-uri: http://localhost:8180/realms/${KEYCLOAK_REALM:windband}/protocol/openid-connect/token
+            jwk-set-uri: http://localhost:8180/realms/${KEYCLOAK_REALM:windband}/protocol/openid-connect/certs
+            user-info-uri: http://localhost:8180/realms/${KEYCLOAK_REALM:windband}/protocol/openid-connect/userinfo
             user-name-attribute: preferred_username
       resourceserver:
         jwt:
-          jwk-set-uri: http://keycloak:8180/realms/${KEYCLOAK_REALM:windband}/protocol/openid-connect/certs
+          jwk-set-uri: http://localhost:8180/realms/${KEYCLOAK_REALM:windband}/protocol/openid-connect/certs
 
 
 server:
