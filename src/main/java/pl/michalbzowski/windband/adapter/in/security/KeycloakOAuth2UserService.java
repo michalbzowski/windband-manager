@@ -2,6 +2,7 @@ package pl.michalbzowski.windband.adapter.in.security;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.security.oauth2.client.oidc.userinfo.OidcUserRequest;
@@ -42,16 +43,21 @@ public class KeycloakOAuth2UserService extends OidcUserService {
     private final AppUserRepository appUserRepository;
     private final UserTeamRoleRepository userTeamRoleRepository;
 
+    @Value("${spring.security.oauth2.client.provider.keycloak.user-info-uri}")
+    private String userInfoUri;
+
+    @Value("${spring.security.oauth2.client.registration.keycloak.client-id}")
+    private String clientId;
+
     @Override
     @Transactional
     public OidcUser loadUser(OidcUserRequest userRequest) throws OAuth2AuthenticationException {
-        log.info("KeycloakOAuth2UserService.loadUser called for client: {}", userRequest.getClientRegistration().getRegistrationId());
+        log.info("KeycloakOAuth2UserService.loadUser called for client: {}", clientId);
 
         // Manually fetch user-info from Keycloak to avoid OidcUserService using
         // the discovery document's userinfo_endpoint (keycloak.michalbzowski.pl)
         // which is unreachable from the container. We use the configured
         // user-info-uri (localhost:8180) instead.
-        String userInfoUri = userRequest.getClientRegistration().getProviderDetails().getUserInfoEndpoint().getUri();
         String accessToken = userRequest.getAccessToken() != null ? userRequest.getAccessToken().getTokenValue() : "null";
         log.info("Fetching user-info from: {}, token present: {}", userInfoUri, accessToken != null && !"null".equals(accessToken));
 
