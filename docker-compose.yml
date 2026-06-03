@@ -75,8 +75,9 @@ services:
         condition: service_healthy
       keycloak:
         condition: service_healthy
+    network_mode: host
     environment:
-      DB_HOST: db
+      DB_HOST: localhost
       DB_PORT: 5432
       DB_NAME: windband
       DB_USER: windband
@@ -87,11 +88,9 @@ services:
       MAIL_USER: ${MAIL_USER:-}
       MAIL_PASS: ${MAIL_PASS:-}
       BASE_URL: ${BASE_URL:-https://windband.michalbzowski.pl}
-      KEYCLOAK_URL: http://keycloak:8180
+      KEYCLOAK_URL: http://localhost:8180
       KEYCLOAK_PUBLIC_URL: http://keycloak.michalbzowski.pl
       KEYCLOAK_REALM: ${KEYCLOAK_REALM:-windband}
-    ports:
-      - "8080:8080"
 
 volumes:
   pgdata:
