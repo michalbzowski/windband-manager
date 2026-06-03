@@ -52,14 +52,15 @@ public class KeycloakOAuth2UserService extends OidcUserService {
         // which is unreachable from the container. We use the configured
         // user-info-uri (localhost:8180) instead.
         String userInfoUri = userRequest.getClientRegistration().getProviderDetails().getUserInfoEndpoint().getUri();
-        log.info("Fetching user-info from: {}", userInfoUri);
+        String accessToken = userRequest.getAccessToken() != null ? userRequest.getAccessToken().getTokenValue() : "null";
+        log.info("Fetching user-info from: {}, token present: {}", userInfoUri, accessToken != null && !"null".equals(accessToken));
 
         Map<String, Object> claims;
         try {
             claims = RestClient.create()
                     .get()
                     .uri(userInfoUri)
-                    .header(HttpHeaders.AUTHORIZATION, "Bearer " + userRequest.getAccessToken().getTokenValue())
+                    .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken)
                     .accept(MediaType.APPLICATION_JSON)
                     .retrieve()
                     .body(Map.class);
