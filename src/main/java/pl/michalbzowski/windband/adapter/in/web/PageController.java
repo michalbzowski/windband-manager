@@ -1,9 +1,13 @@
 package pl.michalbzowski.windband.adapter.in.web;
 
-import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.security.oauth2.core.oidc.user.OidcUser;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
+import lombok.RequiredArgsConstructor;
+import pl.michalbzowski.windband.adapter.in.security.WindbandOidcUser;
 import pl.michalbzowski.windband.application.query.band.BandQueryService;
 import pl.michalbzowski.windband.application.query.event.EventQueryService;
 import pl.michalbzowski.windband.application.query.inventory.InventoryQueryService;
@@ -27,14 +31,31 @@ public class PageController {
         return bandQueryService.getDefaultBand();
     }
 
-    @GetMapping("/login")
-    public String login() {
-        return "login";
-    }
+    @Value("${app.keycloak.registration-redirect-url:}")
+    private String keycloakRegistrationUrl;
 
+    /**
+     * Registration page. In OIDC mode, unauthenticated users are redirected
+     * to Keycloak registration. Authenticated users without a team see the
+     * team creation form.
+     */
     @GetMapping("/register")
-    public String register() {
-        return "register";
+    public String register(@AuthenticationPrincipal OidcUser oidcUser, Model model) {
+        if (oidcUser == null) {
+            // Not authenticated — redirect to Keycloak registration page
+            if (keycloakRegistrationUrl != null && !keycloakRegistrationUrl.isBlank()) {
+                return "redirect:" + keycloakRegistrationUrl;
+            }
+            return "redirect:/";
+        }
+
+        if (oidcUser instanceof WindbandOidcUser wu && wu.getActiveTeamId() == null) {
+            model.addAttribute("email", wu.getWbEmail());
+            model.addAttribute("username", wu.getWbUsername());
+            return "register";
+        }
+
+        return "redirect:/";
     }
 
     @GetMapping("/")

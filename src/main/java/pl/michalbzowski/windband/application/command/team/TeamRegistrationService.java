@@ -41,7 +41,14 @@ public class TeamRegistrationService {
         band = bandRepository.save(band);
 
         // Create admin user
-        String passwordHash = passwordEncoder.encode(cmd.getAdminPassword());
+        String passwordHash;
+        boolean keycloakAuth = "KEYCLOAK_AUTH".equals(cmd.getAdminPassword());
+        if (keycloakAuth) {
+            // User is authenticated via Keycloak — no local password needed
+            passwordHash = "";
+        } else {
+            passwordHash = passwordEncoder.encode(cmd.getAdminPassword());
+        }
         AppUser admin = AppUser.create(cmd.getAdminUsername(), cmd.getAdminEmail(), passwordHash);
         admin = appUserRepository.save(admin);
 

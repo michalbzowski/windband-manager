@@ -3,56 +3,51 @@ package pl.michalbzowski.windband.config;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.security.authentication.AuthenticationManager;
-import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
 import org.springframework.security.config.http.SessionCreationPolicy;
-import org.springframework.security.oauth2.jwt.JwtDecoder;
-import org.springframework.security.oauth2.jwt.NimbusJwtDecoder;
 import org.springframework.security.web.SecurityFilterChain;
-import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
-import pl.michalbzowski.windband.adapter.in.security.JwtAuthFilter;
+import org.springframework.security.web.authentication.AuthenticationFailureHandler;
+import org.springframework.security.web.authentication.AuthenticationSuccessHandler;
+import org.springframework.security.web.authentication.logout.LogoutSuccessHandler;
+import pl.michalbzowski.windband.adapter.in.security.KeycloakOAuth2UserService;
 
-import javax.crypto.spec.SecretKeySpec;
+
+import org.springframework.context.annotation.Profile;
 
 @Configuration
 @EnableWebSecurity
+@Profile("!test")
 public class SecurityConfig {
 
-    private final JwtAuthFilter jwtAuthFilter;
+    @Value("${app.base-url:http://localhost:8080}")
+    private String baseUrl;
 
-    @Value("${app.jwt.secret}")
-    private String jwtSecret;
+    @Value("${KEYCLOAK_URL:http://localhost:8180}")
+    private String keycloakUrl;
 
-    public SecurityConfig(JwtAuthFilter jwtAuthFilter) {
-        this.jwtAuthFilter = jwtAuthFilter;
-    }
+    @Value("${KEYCLOAK_REALM:windband}")
+    private String keycloakRealm;
 
-    @Bean
-    public JwtDecoder jwtDecoder() {
-        // Use the same JWT secret for decoding Keycloak tokens
-        // In production, this should use Keycloak's public key
-        SecretKeySpec secretKey = new SecretKeySpec(
-            jwtSecret.getBytes(),
-            "HmacSHA256"
-        );
-        return NimbusJwtDecoder.withSecretKey(secretKey).build();
+    private final KeycloakOAuth2UserService keycloakOAuth2UserService;
+
+    public SecurityConfig(KeycloakOAuth2UserService keycloakOAuth2UserService) {
+        this.keycloakOAuth2UserService = keycloakOAuth2UserService;
     }
 
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         return http
                 .csrf(AbstractHttpConfigurer::disable)
-                .sessionManagement(s -> s.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+
+                // Session-based auth (OIDC login creates a session)
+                .sessionManagement(s -> s.sessionCreationPolicy(SessionCreationPolicy.IF_REQUIRED))
+
                 .authorizeHttpRequests(auth -> auth
-                        // Public endpoints - no auth required
+                        // Public endpoints — no auth required
                         .requestMatchers(
-                                "/api/auth/login",
-                                "/api/auth/logout",
                                 "/api/auth/register-team",
-                                "/api/auth/accept-invitation/**",
                                 "/api/auth/check-username",
                                 "/api/auth/check-email",
                                 "/api/auth/check-slug",
@@ -68,25 +63,41 @@ public class SecurityConfig {
                                 "/swagger-ui.html",
                                 "/v3/api-docs/**"
                         ).permitAll()
-                        // OAuth2/OIDC discovery endpoints
-                        .requestMatchers(
-                                "/.well-known/**",
-                                "/protocol/**",
-                                "/realms/**"
-                        ).permitAll()
                         // Team admin endpoints
                         .requestMatchers("/api/teams/*/admin/**").hasRole("ADMIN")
-                        // All API endpoints require auth
-                        .requestMatchers("/api/**").authenticated()
-                        // All page endpoints require auth
-                        .requestMatchers("/**").authenticated()
+                        // All other endpoints require authentication
+                        .anyRequest().authenticated()
                 )
+
+                // OIDC Authorization Code Flow
+                .oauth2Login(oauth2 -> oauth2
+                        .successHandler(oidcSuccessHandler())
+                        .failureHandler(oidcFailureHandler())
+                        .userInfoEndpoint(userInfo -> userInfo
+                                .oidcUserService(keycloakOAuth2UserService)
+                        )
+                )
+
+                // Also accept JWT Bearer tokens for API calls (resource server)
+                .oauth2ResourceServer(oauth2 -> oauth2
+                        .jwt(jwt -> {})
+                )
+
+                // Logout — clear session + redirect to Keycloak logout
+                .logout(logout -> logout
+                        .logoutUrl("/logout")
+                        .logoutSuccessHandler(oidcLogoutSuccessHandler())
+                        .invalidateHttpSession(true)
+                        .deleteCookies("JSESSIONID")
+                        .permitAll()
+                )
+
                 .exceptionHandling(ex -> ex
                         .authenticationEntryPoint((request, response, authException) -> {
                             if (request.getRequestURI().startsWith("/api/")) {
                                 response.sendError(401, "Unauthorized");
                             } else {
-                                response.sendRedirect("/login");
+                                response.sendRedirect("/oauth2/authorization/keycloak");
                             }
                         })
                         .accessDeniedHandler((request, response, accessDeniedException) -> {
@@ -97,15 +108,25 @@ public class SecurityConfig {
                             }
                         })
                 )
-                .oauth2ResourceServer(oauth2 -> oauth2
-                        .jwt(jwt -> jwt.decoder(jwtDecoder()))
-                )
-                .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class)
+
                 .build();
     }
 
-    @Bean
-    public AuthenticationManager authenticationManager(AuthenticationConfiguration config) throws Exception {
-        return config.getAuthenticationManager();
+    private AuthenticationSuccessHandler oidcSuccessHandler() {
+        return (request, response, authentication) -> response.sendRedirect("/");
+    }
+
+    private AuthenticationFailureHandler oidcFailureHandler() {
+        return (request, response, exception) -> response.sendRedirect("/login?error");
+    }
+
+    private LogoutSuccessHandler oidcLogoutSuccessHandler() {
+        return (request, response, authentication) -> {
+            String keycloakLogoutUrl = String.format(
+                    "%s/realms/%s/protocol/openid-connect/logout?redirect_uri=%s/login",
+                    keycloakUrl, keycloakRealm, baseUrl
+            );
+            response.sendRedirect(keycloakLogoutUrl);
+        };
     }
 }

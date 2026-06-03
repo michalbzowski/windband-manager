@@ -4,28 +4,38 @@
 <body>
     <main class="container register-container">
 
-        <!-- ==================== KROK 1: FORMULARZ REJESTRACJI ==================== -->
+        <!-- ==================== FORMULARZ TWORZENIA ZESPOŁU ==================== -->
         <div id="register-step-1">
             <hgroup>
                 <h1>🎺 Wind Band Manager</h1>
-                <h2>Zarejestruj swój zespół</h2>
-                <p style="color:var(--pico-muted-color);">Utwórz zespół orkiestry dętej i zacznij zarządzać muzykami, próbami i instrumentami.</p>
+                <h2>Utwórz swój zespół</h2>
+                <p style="color:var(--pico-muted-color);">
+                    Jesteś zalogowany przez Keycloak. Teraz utwórz zespół orkiestry dętej,
+                    aby zacząć zarządzać muzykami, próbami i instrumentami.
+                </p>
             </hgroup>
+
+            <!-- Info o zalogowanym użytkowniku -->
+            <article style="background:#e7f3ff; border:1px solid #b8daff; border-radius:8px; padding:1rem; margin-bottom:1rem;">
+                <p style="margin:0;">
+                    🔐 Zalogowano jako: <strong id="logged-in-user">użytkownik</strong>
+                </p>
+            </article>
 
             <!-- Globalne błędy -->
             <div id="register-error" class="error-message" style="display:none;"></div>
 
-            <!-- Sukces po rejestracji -->
+            <!-- Sukces -->
             <div id="register-success" style="display:none;">
                 <article style="background:#d4edda; border:1px solid #c3e6cb; border-radius:8px; padding:1.5rem;">
-                    <h3 style="color:#155724; margin-top:0;">✅ Zespół zarejestrowany pomyślnie!</h3>
+                    <h3 style="color:#155724; margin-top:0;">✅ Zespół utworzony pomyślnie!</h3>
                     <p>Twój zespół <strong id="success-team-name"></strong> został utworzony.</p>
-                    <p>Możesz się teraz zalogować jako administrator.</p>
-                    <a href="/login" role="button" class="primary" style="margin-top:1rem;">Przejdź do logowania</a>
+                    <p>Możesz teraz zacząć zarządzać orkestrą.</p>
+                    <a href="/" role="button" class="primary" style="margin-top:1rem;">Przejdź do panelu</a>
                 </article>
             </div>
 
-            <form id="register-form" onsubmit="return doRegister(event)">
+            <form id="register-form" onsubmit="return doCreateTeam(event)">
 
                 <!-- ===== SEKCJA: DANE ZESPOŁU ===== -->
                 <fieldset>
@@ -56,87 +66,18 @@
                     </div>
                 </fieldset>
 
-                <!-- ===== SEKCJA: DANE ADMINISTRATORA ===== -->
-                <fieldset>
-                    <legend>👤 Dane administratora</legend>
-
-                    <div class="grid">
-                        <label>
-                            Nazwa użytkownika *
-                            <input type="text" id="adminUsername" name="adminUsername"
-                                   placeholder="np. dyrygent"
-                                   required minlength="3" maxlength="64"
-                                   pattern="[a-zA-Z0-9_.-]+"
-                                   oninput="validateUsername(this); checkUsernameAvailability();">
-                            <small>Do logowania (3-64 znaki: litery, cyfry, _.-)</small>
-                            <small id="adminUsername-error" class="field-error" style="display:none;color:#dc3545;"></small>
-                            <small id="adminUsername-status" style="display:none;"></small>
-                        </label>
-
-                        <label>
-                            Email administratora *
-                            <input type="email" id="adminEmail" name="adminEmail"
-                                   placeholder="np. jan@wojkowice.pl"
-                                   required
-                                   oninput="validateEmail(this); checkEmailAvailability();">
-                            <small>Adres email do kontaktu i odzyskiwania hasła</small>
-                            <small id="adminEmail-error" class="field-error" style="display:none;color:#dc3545;"></small>
-                            <small id="adminEmail-status" style="display:none;"></small>
-                        </label>
-                    </div>
-
-                    <div class="grid">
-                        <label>
-                            Hasło *
-                            <input type="password" id="adminPassword" name="adminPassword"
-                                   placeholder="Minimum 8 znaków"
-                                   required minlength="8" maxlength="128"
-                                   oninput="validatePassword(this)">
-                            <small>Minimum 8 znaków</small>
-                            <div id="password-strength" style="margin-top:0.25rem;">
-                                <div style="height:4px; border-radius:2px; background:#e9ecef; overflow:hidden;">
-                                    <div id="password-strength-bar" style="height:100%; width:0%; transition:width 300ms, background 300ms;"></div>
-                                </div>
-                                <small id="password-strength-text" style="font-size:0.75rem;"></small>
-                            </div>
-                            <small id="adminPassword-error" class="field-error" style="display:none;color:#dc3545;"></small>
-                        </label>
-
-                        <label>
-                            Potwierdź hasło *
-                            <input type="password" id="adminPasswordConfirm" name="adminPasswordConfirm"
-                                   placeholder="Wpisz hasło ponownie"
-                                   required minlength="8" maxlength="128"
-                                   oninput="validatePasswordConfirm(this)">
-                            <small>Powtórz hasło dla potwierdzenia</small>
-                            <small id="adminPasswordConfirm-error" class="field-error" style="display:none;color:#dc3545;"></small>
-                        </label>
-                    </div>
-                </fieldset>
-
-                <!-- ===== SEKCJA: ZGODA ===== -->
-                <fieldset>
-                    <label style="display:flex; align-items:flex-start; gap:0.5rem; cursor:pointer;">
-                        <input type="checkbox" id="acceptTerms" name="acceptTerms" required style="margin-top:0.25rem;">
-                        <span>
-                            Akceptuję warunki korzystania z systemu. Dane zespołu będą przechowywane
-                            w bezpieczny sposób i nie będą udostępniane osobom trzecim.
-                        </span>
-                    </label>
-                </fieldset>
-
                 <!-- ===== PRZYCISKI ===== -->
                 <div style="display:flex; gap:0.5rem; align-items:center; margin-top:1rem;">
                     <button type="submit" id="register-btn" class="primary">
-                        Zarejestruj zespół
+                        Utwórz zespół
                     </button>
                     <span id="register-spinner" class="htmx-indicator" style="margin-left:0.5rem;">
-                        Rejestrowanie...
+                        Tworzenie...
                     </span>
                 </div>
 
                 <p style="margin-top:1rem; color:var(--pico-muted-color);">
-                    Masz już konto? <a href="/login">Zaloguj się</a>
+                    <a href="/logout">Wyloguj się</a> — jeśli to nie Twoje konto
                 </p>
             </form>
         </div>
@@ -146,18 +87,20 @@
     <footer th:replace="~{fragments/layout :: footer}"></footer>
 
     <script>
-    // ==================== WALIDACJA I REJESTRACJA ====================
+    // ==================== POBIERANIE DANYCH ZALOGOWANEGO UŻYTKOWNIKA ====================
+    (function() {
+        fetch('/api/auth/me')
+            .then(function(r) { return r.json(); })
+            .then(function(data) {
+                if (data.username) {
+                    document.getElementById('logged-in-user').textContent = data.username;
+                }
+            })
+            .catch(function() {});
+    })();
 
-    // Debounce helper
-    function debounce(fn, delay) {
-        let timer;
-        return function(...args) {
-            clearTimeout(timer);
-            timer = setTimeout(() => fn.apply(this, args), delay);
-        };
-    }
+    // ==================== WALIDACJA ====================
 
-    // Generowanie slug z nazwy zespołu
     function generateSlug(name) {
         const slug = name.toLowerCase()
             .replace(/ą/g, 'a').replace(/ć/g, 'c').replace(/ę/g, 'e')
@@ -169,7 +112,6 @@
             .substring(0, 64);
 
         const slugInput = document.getElementById('teamSlug');
-        // Only auto-fill if user hasn't manually edited
         if (!slugInput.dataset.userEdited) {
             slugInput.value = slug;
             validateSlug(slugInput);
@@ -180,13 +122,11 @@
         this.dataset.userEdited = 'true';
     });
 
-    // Walidacja slug
     function validateSlug(input) {
         const error = document.getElementById('teamSlug-error');
         const status = document.getElementById('teamSlug-status');
         const value = input.value;
 
-        // Auto-lowercase
         if (value !== value.toLowerCase()) {
             input.value = value.toLowerCase();
         }
@@ -210,232 +150,15 @@
         return true;
     }
 
-    // Walidacja username
-    function validateUsername(input) {
-        const error = document.getElementById('adminUsername-error');
-        const status = document.getElementById('adminUsername-status');
-        const value = input.value;
-
-        if (!value) {
-            error.style.display = 'none';
-            status.style.display = 'none';
-            return false;
-        }
-
-        const pattern = /^[a-zA-Z0-9_.-]+$/;
-        if (value.length < 3) {
-            error.textContent = 'Minimum 3 znaki';
-            error.style.display = 'block';
-            status.style.display = 'none';
-            return false;
-        }
-        if (!pattern.test(value)) {
-            error.textContent = 'Dozwolone: litery, cyfry, podkreślnik, kropka, myślnik';
-            error.style.display = 'block';
-            status.style.display = 'none';
-            return false;
-        }
-
-        error.style.display = 'none';
-        status.style.display = 'none';
-        return true;
-    }
-
-    // Walidacja email
-    function validateEmail(input) {
-        const error = document.getElementById('adminEmail-error');
-        const status = document.getElementById('adminEmail-status');
-        const value = input.value;
-
-        if (!value) {
-            error.style.display = 'none';
-            status.style.display = 'none';
-            return false;
-        }
-
-        const pattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-        if (!pattern.test(value)) {
-            error.textContent = 'Podaj prawidłowy adres email';
-            error.style.display = 'block';
-            status.style.display = 'none';
-            return false;
-        }
-
-        error.style.display = 'none';
-        status.style.display = 'none';
-        return true;
-    }
-
-    // Siła hasła
-    function validatePassword(input) {
-        const error = document.getElementById('adminPassword-error');
-        const bar = document.getElementById('password-strength-bar');
-        const text = document.getElementById('password-strength-text');
-        const value = input.value;
-
-        if (!value) {
-            error.style.display = 'none';
-            bar.style.width = '0%';
-            text.textContent = '';
-            return false;
-        }
-
-        if (value.length < 8) {
-            error.textContent = 'Hasło musi mieć minimum 8 znaków';
-            error.style.display = 'block';
-        } else {
-            error.style.display = 'none';
-        }
-
-        // Strength meter
-        let score = 0;
-        if (value.length >= 8) score++;
-        if (value.length >= 12) score++;
-        if (/[a-z]/.test(value) && /[A-Z]/.test(value)) score++;
-        if (/[0-9]/.test(value)) score++;
-        if (/[^a-zA-Z0-9]/.test(value)) score++;
-
-        const levels = [
-            { pct: 20, color: '#dc3545', text: 'Bardzo słabe' },
-            { pct: 40, color: '#fd7e14', text: 'Słabe' },
-            { pct: 60, color: '#ffc107', text: 'Średnie' },
-            { pct: 80, color: '#28a745', text: 'Silne' },
-            { pct: 100, color: '#20c997', text: 'Bardzo silne' }
-        ];
-
-        const level = levels[Math.min(score, 4)];
-        bar.style.width = level.pct + '%';
-        bar.style.background = level.color;
-        text.textContent = level.text;
-        text.style.color = level.color;
-
-        // Re-validate confirm
-        const confirmInput = document.getElementById('adminPasswordConfirm');
-        if (confirmInput.value) validatePasswordConfirm(confirmInput);
-
-        return value.length >= 8;
-    }
-
-    // Potwierdzenie hasła
-    function validatePasswordConfirm(input) {
-        const error = document.getElementById('adminPasswordConfirm-error');
-        const password = document.getElementById('adminPassword').value;
-        const value = input.value;
-
-        if (!value) {
-            error.style.display = 'none';
-            return false;
-        }
-
-        if (value !== password) {
-            error.textContent = 'Hasła nie są identyczne';
-            error.style.display = 'block';
-            return false;
-        }
-
-        error.style.display = 'none';
-        return true;
-    }
-
-    // ==================== SPRAWDZANIE DOSTĘPNOŚCI (API) ====================
-
-    var usernameCheckTimer;
-    function checkUsernameAvailability() {
-        var input = document.getElementById('adminUsername');
-        var status = document.getElementById('adminUsername-status');
-        var value = input.value;
-        clearTimeout(usernameCheckTimer);
-        status.style.display = 'none';
-        if (!value || value.length < 3 || !/^[a-zA-Z0-9_.-]+$/.test(value)) return;
-        status.textContent = 'Sprawdzanie...';
-        status.style.display = 'block';
-        status.style.color = '#6c757d';
-        usernameCheckTimer = setTimeout(function() {
-            fetch('/api/auth/check-username?username=' + encodeURIComponent(value))
-                .then(function(r) { return r.json(); })
-                .then(function(data) {
-                    if (data.available) {
-                        status.textContent = '\u2705 Nazwa dost\u0119pna';
-                        status.style.color = '#28a745';
-                    } else {
-                        status.textContent = '\u274C Nazwa zaj\u0119ta';
-                        status.style.color = '#dc3545';
-                    }
-                }).catch(function() { status.style.display = 'none'; });
-        }, 300);
-    }
-
-    var emailCheckTimer;
-    function checkEmailAvailability() {
-        var input = document.getElementById('adminEmail');
-        var status = document.getElementById('adminEmail-status');
-        var value = input.value;
-        clearTimeout(emailCheckTimer);
-        status.style.display = 'none';
-        if (!value || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)) return;
-        status.textContent = 'Sprawdzanie...';
-        status.style.display = 'block';
-        status.style.color = '#6c757d';
-        emailCheckTimer = setTimeout(function() {
-            fetch('/api/auth/check-email?email=' + encodeURIComponent(value))
-                .then(function(r) { return r.json(); })
-                .then(function(data) {
-                    if (data.available) {
-                        status.textContent = '\u2705 Email dost\u0119pny';
-                        status.style.color = '#28a745';
-                    } else {
-                        status.textContent = '\u274C Email zaj\u0119ty';
-                        status.style.color = '#dc3545';
-                    }
-                }).catch(function() { status.style.display = 'none'; });
-        }, 300);
-    }
-
-    var slugCheckTimer;
-    function checkSlugAvailability() {
-        var input = document.getElementById('teamSlug');
-        var status = document.getElementById('teamSlug-status');
-        var value = input.value;
-        clearTimeout(slugCheckTimer);
-        status.style.display = 'none';
-        if (!value || value.length < 3 || !/^[a-z0-9][a-z0-9-]{1,62}[a-z0-9]$/.test(value)) return;
-        status.textContent = 'Sprawdzanie...';
-        status.style.display = 'block';
-        status.style.color = '#6c757d';
-        slugCheckTimer = setTimeout(function() {
-            fetch('/api/auth/check-slug?slug=' + encodeURIComponent(value))
-                .then(function(r) { return r.json(); })
-                .then(function(data) {
-                    if (data.available) {
-                        status.textContent = '\u2705 Identyfikator dost\u0119pny';
-                        status.style.color = '#28a745';
-                    } else {
-                        status.textContent = '\u274C Identyfikator zaj\u0119ty';
-                        status.style.color = '#dc3545';
-                    }
-                }).catch(function() { status.style.display = 'none'; });
-        }, 300);
-    }
-
-    // Attach debounced availability checks (also triggered from HTML oninput)
-    // Additional listeners for programmatic changes if needed
-
-    // ==================== REJESTRACJA ====================
-    function doRegister(event) {
+    // ==================== TWORZENIE ZESPOŁU ====================
+    function doCreateTeam(event) {
         event.preventDefault();
 
-        // Clear previous errors
         document.querySelectorAll('.field-error').forEach(e => e.style.display = 'none');
         document.getElementById('register-error').style.display = 'none';
 
-        // Validate all fields
         const teamName = document.getElementById('teamName');
         const teamSlug = document.getElementById('teamSlug');
-        const adminUsername = document.getElementById('adminUsername');
-        const adminEmail = document.getElementById('adminEmail');
-        const adminPassword = document.getElementById('adminPassword');
-        const adminPasswordConfirm = document.getElementById('adminPasswordConfirm');
-        const acceptTerms = document.getElementById('acceptTerms');
 
         let valid = true;
 
@@ -446,63 +169,57 @@
         }
 
         if (!validateSlug(teamSlug)) valid = false;
-        if (!validateUsername(adminUsername)) valid = false;
-        if (!validateEmail(adminEmail)) valid = false;
-        if (!validatePassword(adminPassword)) valid = false;
-        if (!validatePasswordConfirm(adminPasswordConfirm)) valid = false;
-
-        if (!acceptTerms.checked) {
-            showError('Musisz zaakceptować warunki korzystania z systemu.');
-            return false;
-        }
 
         if (!valid) return false;
 
-        // Submit
         const btn = document.getElementById('register-btn');
         const spinner = document.getElementById('register-spinner');
         btn.disabled = true;
         spinner.style.display = 'inline';
 
-        const data = {
-            teamName: teamName.value.trim(),
-            teamSlug: teamSlug.value.trim(),
-            adminUsername: adminUsername.value.trim(),
-            adminEmail: adminEmail.value.trim(),
-            adminPassword: adminPassword.value
-        };
+        // Get current user info to pre-fill username/email
+        fetch('/api/auth/me')
+            .then(function(r) { return r.json(); })
+            .then(function(userData) {
+                const data = {
+                    teamName: teamName.value.trim(),
+                    teamSlug: teamSlug.value.trim(),
+                    adminUsername: userData.username || '',
+                    adminEmail: userData.email || '',
+                    adminPassword: 'KEYCLOAK_AUTH'  // marker — auth is via Keycloak
+                };
 
-        fetch('/api/auth/register-team', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(data)
-        })
-        .then(function(resp) {
-            if (resp.status === 201) {
-                return resp.json().then(function(result) {
-                    // Show success
-                    document.getElementById('register-form').style.display = 'none';
-                    document.getElementById('register-success').style.display = 'block';
-                    document.getElementById('success-team-name').textContent = result.teamSlug;
+                return fetch('/api/auth/register-team', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(data)
                 });
-            }
-            if (resp.status === 400) {
-                return resp.json().then(function(err) {
-                    showError(err.error || 'Błąd walidacji. Sprawdź wprowadzone dane.');
+            })
+            .then(function(resp) {
+                if (resp.status === 201) {
+                    return resp.json().then(function(result) {
+                        document.getElementById('register-form').style.display = 'none';
+                        document.getElementById('register-success').style.display = 'block';
+                        document.getElementById('success-team-name').textContent = result.teamSlug;
+                    });
+                }
+                if (resp.status === 400) {
+                    return resp.json().then(function(err) {
+                        showError(err.error || 'Błąd walidacji. Sprawdź wprowadzone dane.');
+                    });
+                }
+                return resp.text().then(function(text) {
+                    showError('Błąd serwera (' + resp.status + '): ' + text);
                 });
-            }
-            return resp.text().then(function(text) {
-                showError('Błąd serwera (' + resp.status + '): ' + text);
+            })
+            .catch(function(err) {
+                showError('Błąd połączenia z serwerem.');
+                console.error(err);
+            })
+            .finally(function() {
+                btn.disabled = false;
+                spinner.style.display = 'none';
             });
-        })
-        .catch(function(err) {
-            showError('Błąd połączenia z serwerem. Sprawdź czy serwer działa.');
-            console.error(err);
-        })
-        .finally(function() {
-            btn.disabled = false;
-            spinner.style.display = 'none';
-        });
 
         return false;
     }

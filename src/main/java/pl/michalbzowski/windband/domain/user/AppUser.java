@@ -38,6 +38,15 @@ public class AppUser {
     @Column(nullable = false)
     private boolean emailVerified = false;
 
+    @Column(length = 128)
+    private String externalId;  // Keycloak subject ID
+
+    @Column(length = 64)
+    private String firstName;
+
+    @Column(length = 64)
+    private String lastName;
+
     @Column(nullable = false)
     private LocalDateTime createdAt = LocalDateTime.now();
 
@@ -101,6 +110,34 @@ public class AppUser {
     }
 
     public String getDisplayName() {
+        if (firstName != null && lastName != null) {
+            return firstName + " " + lastName;
+        }
+        if (firstName != null) return firstName;
         return username;
+    }
+
+    // === External identity (Keycloak) ===
+
+    public String getExternalId() { return externalId; }
+
+    public void setExternalId(String externalId) { this.externalId = externalId; }
+
+    public String getFirstName() { return firstName; }
+
+    public String getLastName() { return lastName; }
+
+    /**
+     * Create a user that authenticated via external identity provider (Keycloak).
+     * No local password — authentication happens entirely through Keycloak.
+     */
+    public static AppUser createExternalUser(String username, String email, String externalId,
+                                              String firstName, String lastName) {
+        AppUser user = new AppUser(username, email, "");
+        user.externalId = externalId;
+        user.firstName = firstName;
+        user.lastName = lastName;
+        user.emailVerified = true;  // Keycloak verified
+        return user;
     }
 }

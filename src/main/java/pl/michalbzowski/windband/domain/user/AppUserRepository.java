@@ -16,4 +16,6 @@ public interface AppUserRepository {
     boolean existsByUsername(String username);
 
     boolean existsByEmail(String email);
+
+    Optional<AppUser> findByExternalId(String externalId);
 }

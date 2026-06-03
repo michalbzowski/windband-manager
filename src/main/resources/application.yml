@@ -38,18 +38,31 @@ spring:
 
   security:
     oauth2:
+      client:
+        registration:
+          keycloak:
+            client-id: ${KEYCLOAK_CLIENT_ID:windband-manager}
+            client-secret: ${KEYCLOAK_CLIENT_SECRET:windband-secret-key-change-in-production-2026}
+            scope: openid,profile,email
+            authorization-grant-type: authorization_code
+            redirect-uri: "{baseUrl}/login/oauth2/code/{registrationId}"
+        provider:
+          keycloak:
+            issuer-uri: ${KEYCLOAK_URL:http://localhost:8180}/realms/${KEYCLOAK_REALM:windband}
+            user-name-attribute: preferred_username
       resourceserver:
         jwt:
           issuer-uri: ${KEYCLOAK_URL:http://localhost:8180}/realms/${KEYCLOAK_REALM:windband}
+
 
 server:
   port: ${SERVER_PORT:8080}
 
 app:
-  jwt:
-    secret: ${JWT_SECRET:changeMeToASecureRandomStringOfAtLeast256BitsForProductionUse}
-    expiration-ms: 86400000  # 24h
   base-url: ${BASE_URL:http://localhost:8080}
   keycloak:
     url: ${KEYCLOAK_URL:http://localhost:8180}
     realm: ${KEYCLOAK_REALM:windband}
+    client-id: ${KEYCLOAK_CLIENT_ID:windband-manager}
+    client-secret: ${KEYCLOAK_CLIENT_SECRET:windband-secret-key-change-in-production-2026}
+    registration-redirect-url: ${app.keycloak.url}/realms/${app.keycloak.realm}/protocol/openid-connect/registrations?client_id=${app.keycloak.client-id}&redirect_uri=${app.base-url}/register&response_type=code&scope=openid profile email}

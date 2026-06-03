@@ -80,7 +80,6 @@ services:
       DB_USER: windband
       DB_PASS: windband
       SERVER_PORT: 8080
-      JWT_SECRET: ${JWT_SECRET:-changeMeToASecureRandomStringOfAtLeast256BitsForProduction}
       MAIL_HOST: ${MAIL_HOST:-smtp.gmail.com}
       MAIL_PORT: ${MAIL_PORT:-587}
       MAIL_USER: ${MAIL_USER:-}
