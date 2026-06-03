@@ -80,11 +80,6 @@ public class SecurityConfig {
                         )
                 )
 
-                // Also accept JWT Bearer tokens for API calls (resource server)
-                .oauth2ResourceServer(oauth2 -> oauth2
-                        .jwt(jwt -> {})
-                )
-
                 // Logout — clear session + redirect to Keycloak logout
                 .logout(logout -> logout
                         .logoutUrl("/logout")

@@ -54,9 +54,7 @@ spring:
             jwk-set-uri: http://localhost:8180/realms/${KEYCLOAK_REALM:windband}/protocol/openid-connect/certs
             user-info-uri: http://localhost:8180/realms/${KEYCLOAK_REALM:windband}/protocol/openid-connect/userinfo
             user-name-attribute: preferred_username
-      resourceserver:
-        jwt:
-          jwk-set-uri: http://localhost:8180/realms/${KEYCLOAK_REALM:windband}/protocol/openid-connect/certs
+
 
 
 server:

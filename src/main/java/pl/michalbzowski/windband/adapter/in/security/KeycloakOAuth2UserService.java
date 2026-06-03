@@ -36,7 +36,9 @@ public class KeycloakOAuth2UserService extends OidcUserService {
     @Override
     @Transactional
     public OidcUser loadUser(OidcUserRequest userRequest) throws OAuth2AuthenticationException {
+        log.info("KeycloakOAuth2UserService.loadUser called for client: {}", userRequest.getClientRegistration().getRegistrationId());
         OidcUser oidcUser = super.loadUser(userRequest);
+        log.info("OIDC user loaded: subject={}, email={}", oidcUser.getSubject(), oidcUser.getEmail());
 
         String subjectId = oidcUser.getSubject();
         String email = oidcUser.getEmail();
