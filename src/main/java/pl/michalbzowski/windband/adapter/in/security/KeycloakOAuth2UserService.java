@@ -2,17 +2,26 @@ package pl.michalbzowski.windband.adapter.in.security;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
 import org.springframework.security.oauth2.client.oidc.userinfo.OidcUserRequest;
 import org.springframework.security.oauth2.client.oidc.userinfo.OidcUserService;
 import org.springframework.security.oauth2.core.OAuth2AuthenticationException;
+import org.springframework.security.oauth2.core.oidc.OidcIdToken;
+import org.springframework.security.oauth2.core.oidc.OidcUserInfo;
+import org.springframework.security.oauth2.core.oidc.user.DefaultOidcUser;
 import org.springframework.security.oauth2.core.oidc.user.OidcUser;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.client.RestClient;
 import pl.michalbzowski.windband.domain.user.AppUser;
 import pl.michalbzowski.windband.domain.user.AppUserRepository;
 import pl.michalbzowski.windband.domain.user.UserTeamRoleRepository;
 
+import java.time.Instant;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
 
 /**
  * Custom OAuth2UserService that bridges Keycloak OIDC authentication
@@ -37,14 +46,34 @@ public class KeycloakOAuth2UserService extends OidcUserService {
     @Transactional
     public OidcUser loadUser(OidcUserRequest userRequest) throws OAuth2AuthenticationException {
         log.info("KeycloakOAuth2UserService.loadUser called for client: {}", userRequest.getClientRegistration().getRegistrationId());
-        OidcUser oidcUser;
+
+        // Manually fetch user-info from Keycloak to avoid OidcUserService using
+        // the discovery document's userinfo_endpoint (keycloak.michalbzowski.pl)
+        // which is unreachable from the container. We use the configured
+        // user-info-uri (localhost:8180) instead.
+        String userInfoUri = userRequest.getClientRegistration().getProviderDetails().getUserInfoEndpoint().getUri();
+        log.info("Fetching user-info from: {}", userInfoUri);
+
+        Map<String, Object> claims;
         try {
-            oidcUser = super.loadUser(userRequest);
-            log.info("OIDC user loaded: subject={}, email={}", oidcUser.getSubject(), oidcUser.getEmail());
+            claims = RestClient.create()
+                    .get()
+                    .uri(userInfoUri)
+                    .header(HttpHeaders.AUTHORIZATION, "Bearer " + userRequest.getAccessToken().getTokenValue())
+                    .accept(MediaType.APPLICATION_JSON)
+                    .retrieve()
+                    .body(Map.class);
+            log.info("User-info claims: {}", claims);
         } catch (Exception e) {
-            log.error("KeycloakOAuth2UserService.loadUser FAILED at super.loadUser", e);
-            throw e;
+            log.error("Failed to fetch user-info from {}", userInfoUri, e);
+            throw new OAuth2AuthenticationException(
+                    new org.springframework.security.oauth2.core.OAuth2Error("user_info_error", "Failed to fetch user-info: " + e.getMessage(), null),
+                    e);
         }
+
+        var userInfo = new OidcUserInfo(claims);
+        var oidcUser = new DefaultOidcUser(Set.of(), userRequest.getIdToken(), userInfo);
+        log.info("OIDC user built: subject={}, email={}", oidcUser.getSubject(), oidcUser.getEmail());
         String subjectId = oidcUser.getSubject();
         String email = oidcUser.getEmail();
         String username = oidcUser.getPreferredUsername();
