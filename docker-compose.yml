@@ -77,6 +77,8 @@ services:
         condition: service_healthy
     extra_hosts:
       - "keycloak.michalbzowski.pl:172.17.0.1"
+    ports:
+      - "8080:8080"
     environment:
       DB_HOST: db
       DB_PORT: 5432
