@@ -54,9 +54,20 @@ public class KeycloakOAuth2UserService extends OidcUserService {
     public OidcUser loadUser(OidcUserRequest userRequest) throws OAuth2AuthenticationException {
         log.info("KeycloakOAuth2UserService.loadUser called for client: {}", clientId);
 
-        // Use super.loadUser() — now that KC_HOSTNAME=localhost, the token issuer
-        // should match the internal URL and user-info should work.
-        OidcUser oidcUser = super.loadUser(userRequest);
+        OidcUser oidcUser;
+        try {
+            // Build OidcUser from ID Token only — skip userinfo endpoint
+            // (userinfo returns 401 behind Cloudflare Tunnel due to issuer mismatch)
+            OidcIdToken idToken = userRequest.getIdToken();
+            OidcUserInfo userInfo = new OidcUserInfo(idToken.getClaims());
+            oidcUser = new DefaultOidcUser(
+                    java.util.Collections.singleton(new org.springframework.security.core.authority.SimpleGrantedAuthority("ROLE_USER")),
+                    idToken, userInfo);
+        } catch (Exception e) {
+            log.error("Error building OidcUser from ID Token: {}", e.getMessage(), e);
+            throw new OAuth2AuthenticationException(
+                    new org.springframework.security.oauth2.core.OAuth2Error("load_user_error", e.getMessage(), null), e);
+        }
         log.info("OIDC user loaded: subject={}, email={}", oidcUser.getSubject(), oidcUser.getEmail());
         String subjectId = oidcUser.getSubject();
         String email = oidcUser.getEmail();

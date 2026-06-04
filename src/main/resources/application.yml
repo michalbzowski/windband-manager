@@ -60,6 +60,11 @@ spring:
 server:
   port: ${SERVER_PORT:8080}
 
+logging:
+  level:
+    org.springframework.security.oauth2: DEBUG
+    org.springframework.security.web: DEBUG
+
 app:
   base-url: ${BASE_URL:http://localhost:8080}
   keycloak:
