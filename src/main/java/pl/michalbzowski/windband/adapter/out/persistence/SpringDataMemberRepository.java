@@ -9,6 +9,8 @@ public interface SpringDataMemberRepository extends JpaRepository<Member, Long> 
 
     List<Member> findByActiveTrue();
 
+    List<Member> findByActiveTrueAndBandId(Long bandId);
+
     @Override
     <S extends Member> S saveAndFlush(S entity);
 }

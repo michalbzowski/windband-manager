@@ -31,8 +31,18 @@ public class RehearsalRepositoryAdapter implements RehearsalRepository {
     }
 
     @Override
+    public List<Rehearsal> findByDateBetweenAndBandId(LocalDate from, LocalDate to, Long bandId) {
+        return springDataRepo.findByDateBetweenAndBandIdOrderByDateDesc(from, to, bandId);
+    }
+
+    @Override
     public List<Rehearsal> findAllOrderByDateDesc() {
         return springDataRepo.findAllByOrderByDateDesc();
+    }
+
+    @Override
+    public List<Rehearsal> findAllOrderByDateDescByBandId(Long bandId) {
+        return springDataRepo.findAllByBandIdOrderByDateDesc(bandId);
     }
 
     @Override
