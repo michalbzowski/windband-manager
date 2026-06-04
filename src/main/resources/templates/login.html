@@ -12,11 +12,15 @@
             <p style="margin:0;">Nieprawidłowa nazwa użytkownika lub hasło.</p>
         </div>
 
-        <div id="session-expired" style="display:none; background:#fff3cd; border:1px solid #ffc107; border-radius:8px; padding:1rem; margin-bottom:1rem;" role="alert">
-            <p style="margin:0;">Twoja sesja wygasła. Zaloguj się ponownie.</p>
+        <div th:if="${param.error}" style="background:#ffe0e0; border:1px solid #ff8080; border-radius:8px; padding:1rem; margin-bottom:1rem;" role="alert">
+            <p style="margin:0;">Nieprawidłowa nazwa użytkownika lub hasło.</p>
         </div>
 
-        <form id="login-form" onsubmit="return doLogin(event)">
+        <div th:if="${param.logout}" style="background:#d4edda; border:1px solid #c3e6cb; border-radius:8px; padding:1rem; margin-bottom:1rem;" role="alert">
+            <p style="margin:0;">Zostałeś wylogowany.</p>
+        </div>
+
+        <form method="post" action="/login">
             <label for="username">Nazwa użytkownika</label>
             <input type="text" id="username" name="username" required autofocus>
 
@@ -25,44 +29,10 @@
 
             <button type="submit">Zaloguj</button>
         </form>
+
         <p style="margin-top:1rem; color:var(--pico-muted-color);">
             Nie masz konta? <a href="/register">Zarejestruj zespół</a>
         </p>
     </main>
-
-    <script>
-        // Check for expired session parameter
-        (function() {
-            const urlParams = new URLSearchParams(window.location.search);
-            if (urlParams.get('expired') === 'true') {
-                document.getElementById('session-expired').style.display = 'block';
-                // Remove the query param to clean URL
-                window.history.replaceState({}, document.title, '/login');
-            }
-        })();
-
-        function doLogin(event) {
-            event.preventDefault();
-            const username = document.getElementById('username').value;
-            const password = document.getElementById('password').value;
-            const errDiv = document.getElementById('login-error');
-
-            fetch('/api/auth/login', {
-                method: 'POST',
-                headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({username: username, password: password})
-            }).then(function(resp) {
-                if (resp.ok) {
-                    window.location.href = '/';
-                } else {
-                    errDiv.style.display = 'block';
-                }
-            }).catch(function() {
-                errDiv.style.display = 'block';
-            });
-
-            return false;
-        }
-    </script>
 </body>
 </html>

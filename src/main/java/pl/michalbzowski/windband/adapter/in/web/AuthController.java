@@ -1,83 +1,42 @@
 package pl.michalbzowski.windband.adapter.in.web;
 
-import jakarta.servlet.http.Cookie;
-import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
 import lombok.Data;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.authentication.AuthenticationManager;
-import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
-import org.springframework.security.core.Authentication;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
-import org.springframework.security.core.userdetails.UserDetails;
+import org.springframework.security.oauth2.core.oidc.user.OidcUser;
 import org.springframework.web.bind.annotation.*;
-import pl.michalbzowski.windband.adapter.in.security.TeamAwareUserDetails;
+import pl.michalbzowski.windband.adapter.in.security.WindbandOidcUser;
 import pl.michalbzowski.windband.application.command.team.RegisterTeamCommand;
 import pl.michalbzowski.windband.application.command.team.TeamRegistrationService;
 import pl.michalbzowski.windband.application.query.team.TeamQueryService;
-import pl.michalbzowski.windband.config.JwtConfig;
 
-import java.util.HashMap;
 import java.util.Map;
 
+/**
+ * Authentication controller.
+ *
+ * Login and logout are now handled by Spring Security OIDC (Keycloak).
+ * This controller only handles:
+ * - Team registration (public, no auth required)
+ * - Username/email/slug availability checks
+ * - Current user info
+ */
 @RestController
 @RequestMapping("/api/auth")
 @RequiredArgsConstructor
 public class AuthController {
 
-    private final AuthenticationManager authenticationManager;
-    private final JwtConfig jwtConfig;
     private final TeamRegistrationService teamRegistrationService;
     private final TeamQueryService teamQueryService;
 
-    @PostMapping("/login")
-    public ResponseEntity<Void> login(@RequestBody LoginRequest request, HttpServletResponse response) {
-        Authentication auth = authenticationManager.authenticate(
-                new UsernamePasswordAuthenticationToken(request.getUsername(), request.getPassword())
-        );
-
-        if (auth.isAuthenticated()) {
-            UserDetails ud = (UserDetails) auth.getPrincipal();
-
-            Map<String, Object> claims = new HashMap<>();
-            if (ud instanceof TeamAwareUserDetails tud) {
-                claims.put("userId", tud.getUserId());
-                claims.put("email", tud.getEmail());
-                claims.put("activeTeamId", tud.getActiveTeamId());
-                claims.put("activeTeamSlug", tud.getActiveTeamSlug());
-                claims.put("activeTeamRole", tud.getActiveTeamRole());
-                claims.put("teamIds", tud.getTeamIds());
-            }
-
-            String token = jwtConfig.generateToken(request.getUsername(), claims);
-            Cookie cookie = new Cookie("JWT", token);
-            cookie.setHttpOnly(false);
-            cookie.setPath("/");
-            cookie.setMaxAge(86400);
-            cookie.setAttribute("SameSite", "Lax");
-            response.addCookie(cookie);
-            response.setStatus(200);
-            return ResponseEntity.ok().build();
-        }
-
-        return ResponseEntity.status(401).build();
-    }
-
-    @PostMapping("/logout")
-    public ResponseEntity<Void> logout(HttpServletResponse response) {
-        Cookie cookie = new Cookie("JWT", null);
-        cookie.setHttpOnly(false);
-        cookie.setPath("/");
-        cookie.setMaxAge(0);
-        response.addCookie(cookie);
-        return ResponseEntity.ok().build();
-    }
-
     /**
      * Public endpoint: register a new team with an admin user.
-     * No authentication required.
+     * The user must already exist in Keycloak (authenticated via OIDC).
+     * No authentication required — this is called after Keycloak registration
+     * from the team creation page.
      */
     @PostMapping("/register-team")
     public ResponseEntity<?> registerTeam(@Valid @RequestBody RegisterTeamCommand cmd) {
@@ -114,23 +73,28 @@ public class AuthController {
     }
 
     /**
-     * Get current user info from JWT.
+     * Get current user info from OIDC authentication.
      */
     @GetMapping("/me")
-    public ResponseEntity<?> me(@AuthenticationPrincipal UserDetails userDetails) {
-        if (userDetails instanceof TeamAwareUserDetails tud) {
+    public ResponseEntity<?> me(@AuthenticationPrincipal OidcUser oidcUser) {
+        if (oidcUser instanceof WindbandOidcUser wu) {
             return ResponseEntity.ok(Map.of(
-                    "userId", tud.getUserId(),
-                    "username", tud.getUsername(),
-                    "email", tud.getEmail(),
-                    "activeTeamId", tud.getActiveTeamId(),
-                    "activeTeamSlug", tud.getActiveTeamSlug(),
-                    "activeTeamRole", tud.getActiveTeamRole(),
-                    "teamIds", tud.getTeamIds()
+                    "userId", wu.getUserId(),
+                    "username", wu.getWbUsername(),
+                    "email", wu.getWbEmail(),
+                    "activeTeamId", wu.getActiveTeamId(),
+                    "activeTeamSlug", wu.getActiveTeamSlug(),
+                    "activeTeamRole", wu.getActiveTeamRole(),
+                    "teamIds", wu.getTeamIds(),
+                    "hasTeam", wu.getActiveTeamId() != null
             ));
         }
-        if (userDetails != null) {
-            return ResponseEntity.ok(Map.of("username", userDetails.getUsername()));
+        if (oidcUser != null) {
+            return ResponseEntity.ok(Map.of(
+                    "username", oidcUser.getPreferredUsername(),
+                    "email", oidcUser.getEmail(),
+                    "hasTeam", false
+            ));
         }
         return ResponseEntity.status(401).body(Map.of("error", "Not authenticated"));
     }
