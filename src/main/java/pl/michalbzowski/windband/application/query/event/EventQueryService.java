@@ -107,14 +107,32 @@ public class EventQueryService {
     }
 
     public List<BandEvent> getAllEvents() {
+        return getAllEvents(null);
+    }
+
+    public List<BandEvent> getAllEvents(Long teamId) {
+        if (teamId != null) {
+            return eventRepository.findAllOrderByDateDescByBandId(teamId);
+        }
         return eventRepository.findAllOrderByDateDesc();
     }
 
     public List<BandEvent> getEventsBetween(LocalDate from, LocalDate to) {
+        return getEventsBetween(from, to, null);
+    }
+
+    public List<BandEvent> getEventsBetween(LocalDate from, LocalDate to, Long teamId) {
+        if (teamId != null) {
+            return eventRepository.findByDateBetweenAndBandId(from, to, teamId);
+        }
         return eventRepository.findByDateBetween(from, to);
     }
 
     public long getEventCountBetween(LocalDate from, LocalDate to) {
-        return eventRepository.findByDateBetween(from, to).size();
+        return getEventCountBetween(from, to, null);
+    }
+
+    public long getEventCountBetween(LocalDate from, LocalDate to, Long teamId) {
+        return getEventsBetween(from, to, teamId).size();
     }
 }

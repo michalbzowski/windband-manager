@@ -31,8 +31,18 @@ public class EventRepositoryAdapter implements EventRepository {
     }
 
     @Override
+    public List<BandEvent> findByDateBetweenAndBandId(LocalDate from, LocalDate to, Long bandId) {
+        return springDataRepo.findByDateBetweenAndBandIdOrderByDateDesc(from, to, bandId);
+    }
+
+    @Override
     public List<BandEvent> findAllOrderByDateDesc() {
         return springDataRepo.findAllByOrderByDateDesc();
+    }
+
+    @Override
+    public List<BandEvent> findAllOrderByDateDescByBandId(Long bandId) {
+        return springDataRepo.findAllByBandIdOrderByDateDesc(bandId);
     }
 
     @Override

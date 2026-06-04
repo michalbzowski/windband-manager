@@ -12,7 +12,11 @@ public interface EventRepository {
 
     List<BandEvent> findByDateBetween(LocalDate from, LocalDate to);
 
+    List<BandEvent> findByDateBetweenAndBandId(LocalDate from, LocalDate to, Long bandId);
+
     List<BandEvent> findAllOrderByDateDesc();
+
+    List<BandEvent> findAllOrderByDateDescByBandId(Long bandId);
 
     void delete(BandEvent event);
 }

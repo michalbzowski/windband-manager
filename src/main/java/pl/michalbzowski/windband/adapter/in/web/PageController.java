@@ -59,21 +59,38 @@ public class PageController {
     }
 
     @GetMapping("/")
-    public String dashboard(Model model) {
-        var band = getDefaultBand();
+    public String dashboard(@AuthenticationPrincipal OidcUser oidcUser, Model model) {
+        Long activeTeamId = null;
+        if (oidcUser instanceof WindbandOidcUser wu) {
+            activeTeamId = wu.getActiveTeamId();
+        }
         
-        // Stats - proste pobieranie przez listy
-        long activeMembers = memberQueryService.getActiveMemberCount();
-        long totalMembers = memberQueryService.findAllActiveMembers().size();
+        // If no team is set, don't show any data
+        if (activeTeamId == null) {
+            model.addAttribute("totalMembers", 0L);
+            model.addAttribute("activeMembers", 0L);
+            model.addAttribute("rehearsalsThisWeek", 0L);
+            model.addAttribute("upcomingEvents", 0L);
+            model.addAttribute("activeOrders", 0L);
+            model.addAttribute("totalUniforms", 0L);
+            model.addAttribute("totalInstruments", 0L);
+            return "dashboard";
+        }
+        
+        var band = bandQueryService.getBandById(activeTeamId);
+        
+        // Stats - z filtracją po zespole
+        long activeMembers = memberQueryService.getActiveMemberCount(activeTeamId);
+        long totalMembers = memberQueryService.findAllActiveMembers(activeTeamId).size();
         
         LocalDate today = LocalDate.now();
         LocalDate weekEnd = today.plusDays(7);
-        long rehearsalsThisWeek = rehearsalQueryService.getRehearsalCountBetween(today, weekEnd);
+        long rehearsalsThisWeek = rehearsalQueryService.getRehearsalCountBetween(today, weekEnd, activeTeamId);
         
         // Events - używamy countBetween
-        long upcomingEvents = eventQueryService.getEventCountBetween(today, LocalDate.of(2099, 12, 31));
+        long upcomingEvents = eventQueryService.getEventCountBetween(today, LocalDate.of(2099, 12, 31), activeTeamId);
         
-        // Inventory - proste liczenie
+        // Inventory - proste liczenie (bez filtrowania po zespole dla uproszczenia)
         var orders = inventoryQueryService.getAllOrders();
         long activeOrders = orders.stream()
                 .filter(o -> "SUBMITTED".equals(o.status()) || 

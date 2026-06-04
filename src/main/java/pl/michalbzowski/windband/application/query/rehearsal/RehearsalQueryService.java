@@ -23,14 +23,32 @@ public class RehearsalQueryService {
     }
 
     public List<Rehearsal> getAllRehearsals() {
+        return getAllRehearsals(null);
+    }
+
+    public List<Rehearsal> getAllRehearsals(Long teamId) {
+        if (teamId != null) {
+            return rehearsalRepository.findAllOrderByDateDescByBandId(teamId);
+        }
         return rehearsalRepository.findAllOrderByDateDesc();
     }
 
     public List<Rehearsal> getRehearsalsBetween(LocalDate from, LocalDate to) {
+        return getRehearsalsBetween(from, to, null);
+    }
+
+    public List<Rehearsal> getRehearsalsBetween(LocalDate from, LocalDate to, Long teamId) {
+        if (teamId != null) {
+            return rehearsalRepository.findByDateBetweenAndBandId(from, to, teamId);
+        }
         return rehearsalRepository.findByDateBetween(from, to);
     }
 
     public long getRehearsalCountBetween(LocalDate from, LocalDate to) {
-        return rehearsalRepository.findByDateBetween(from, to).size();
+        return getRehearsalCountBetween(from, to, null);
+    }
+
+    public long getRehearsalCountBetween(LocalDate from, LocalDate to, Long teamId) {
+        return getRehearsalsBetween(from, to, teamId).size();
     }
 }
