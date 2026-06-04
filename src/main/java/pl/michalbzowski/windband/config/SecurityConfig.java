@@ -124,7 +124,7 @@ public class SecurityConfig {
 
                 // Logout — clear session + redirect to Keycloak logout
                 .logout(logout -> logout
-                        .logoutUrl("/logout")
+                        .logoutUrl("/api/auth/logout")
                         .logoutSuccessHandler(oidcLogoutSuccessHandler())
                         .invalidateHttpSession(true)
                         .deleteCookies("JSESSIONID")
