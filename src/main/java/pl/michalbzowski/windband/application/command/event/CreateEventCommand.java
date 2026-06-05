@@ -16,6 +16,4 @@ public class CreateEventCommand {
     private String paymentType;
     private BigDecimal paymentAmount;
     private String notes;
-    private String paymentType;
-    private BigDecimal paymentAmount;
 }
