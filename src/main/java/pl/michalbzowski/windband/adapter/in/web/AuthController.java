@@ -1,5 +1,6 @@
 package pl.michalbzowski.windband.adapter.in.web;
 
+import jakarta.servlet.http.HttpSession;
 import jakarta.validation.Valid;
 import lombok.Data;
 import lombok.RequiredArgsConstructor;
@@ -14,6 +15,7 @@ import pl.michalbzowski.windband.adapter.in.security.WindbandOidcUser;
 import pl.michalbzowski.windband.application.command.team.RegisterTeamCommand;
 import pl.michalbzowski.windband.application.command.team.TeamRegistrationService;
 import pl.michalbzowski.windband.application.query.team.TeamQueryService;
+import pl.michalbzowski.windband.domain.user.UserTeamRoleRepository;
 
 import java.util.Map;
 
@@ -33,6 +35,7 @@ public class AuthController {
 
     private final TeamRegistrationService teamRegistrationService;
     private final TeamQueryService teamQueryService;
+    private final UserTeamRoleRepository userTeamRoleRepository;
 
     @Autowired(required = false)
     private BuildProperties buildProperties;
@@ -79,29 +82,84 @@ public class AuthController {
 
     /**
      * Get current user info from OIDC authentication.
+     * Respects active team override from session (set by switch-team endpoint).
      */
     @GetMapping("/me")
-    public ResponseEntity<?> me(@AuthenticationPrincipal OidcUser oidcUser) {
+    public ResponseEntity<?> me(@AuthenticationPrincipal OidcUser oidcUser, HttpSession session) {
         if (oidcUser instanceof WindbandOidcUser wu) {
+            // Check session override for active team
+            Long sessionTeamId = (Long) session.getAttribute("activeTeamId");
+            Long activeTeamId = sessionTeamId != null && wu.belongsToTeam(sessionTeamId)
+                    ? sessionTeamId : wu.getActiveTeamId();
+
+            String activeTeamSlug = null;
+            String activeTeamRole = null;
+            if (activeTeamId != null) {
+                var role = userTeamRoleRepository.findByUserIdAndTeamId(wu.getUserId(), activeTeamId);
+                if (role.isPresent()) {
+                    var team = role.get().getTeam();
+                    activeTeamSlug = team.getSlug();
+                    activeTeamRole = role.get().getRole().name();
+                }
+            }
+
+            var userTeams = teamQueryService.getUserTeams(wu.getUserId());
+
             return ResponseEntity.ok(Map.of(
                     "userId", wu.getUserId(),
                     "username", wu.getWbUsername(),
                     "email", wu.getWbEmail(),
-                    "activeTeamId", wu.getActiveTeamId(),
-                    "activeTeamSlug", wu.getActiveTeamSlug(),
-                    "activeTeamRole", wu.getActiveTeamRole(),
+                    "activeTeamId", activeTeamId,
+                    "activeTeamSlug", activeTeamSlug,
+                    "activeTeamRole", activeTeamRole,
                     "teamIds", wu.getTeamIds(),
-                    "hasTeam", wu.getActiveTeamId() != null
+                    "teams", userTeams,
+                    "hasTeam", activeTeamId != null
             ));
         }
         if (oidcUser != null) {
             return ResponseEntity.ok(Map.of(
                     "username", oidcUser.getPreferredUsername(),
                     "email", oidcUser.getEmail(),
-                    "hasTeam", false
+                    "hasTeam", false,
+                    "teams", java.util.List.of()
             ));
         }
         return ResponseEntity.status(401).body(Map.of("error", "Not authenticated"));
+    }
+
+    /**
+     * Switch active team for the current session.
+     */
+    @PostMapping("/switch-team/{teamId}")
+    public ResponseEntity<?> switchTeam(
+            @PathVariable Long teamId,
+            @AuthenticationPrincipal OidcUser oidcUser,
+            HttpSession session) {
+        if (!(oidcUser instanceof WindbandOidcUser wu)) {
+            return ResponseEntity.status(401).body(Map.of("error", "Not authenticated"));
+        }
+
+        if (!wu.belongsToTeam(teamId)) {
+            return ResponseEntity.status(403).body(Map.of("error", "Nie należysz do zespołu " + teamId));
+        }
+
+        // Store in session
+        session.setAttribute("activeTeamId", teamId);
+
+        // Look up team info
+        var role = userTeamRoleRepository.findByUserIdAndTeamId(wu.getUserId(), teamId);
+        if (role.isEmpty()) {
+            return ResponseEntity.badRequest().body(Map.of("error", "Nie znaleziono roli w zespole"));
+        }
+
+        var team = role.get().getTeam();
+        return ResponseEntity.ok(Map.of(
+                "activeTeamId", teamId,
+                "activeTeamSlug", team.getSlug(),
+                "activeTeamName", team.getName(),
+                "activeTeamRole", role.get().getRole().name()
+        ));
     }
 
     @Data
