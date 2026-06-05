@@ -23,6 +23,9 @@ public class Instrument {
 
     private String description;
 
+    @Column(name = "sort_priority")
+    private Integer sortPriority = 0;
+
     private Instrument(String name) {
         this.name = Objects.requireNonNull(name, "instrument name required");
     }
@@ -37,5 +40,9 @@ public class Instrument {
 
     public void updateDescription(String description) {
         this.description = description;
+    }
+
+    public void updateSortPriority(Integer sortPriority) {
+        this.sortPriority = sortPriority != null ? sortPriority : 0;
     }
 }

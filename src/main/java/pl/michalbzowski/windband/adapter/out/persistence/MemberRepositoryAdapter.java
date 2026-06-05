@@ -36,6 +36,11 @@ public class MemberRepositoryAdapter implements MemberRepository {
     }
 
     @Override
+    public List<Member> findAllActiveByBandId(Long bandId) {
+        return springDataRepo.findByActiveTrueAndBandId(bandId);
+    }
+
+    @Override
     public List<Member> findByInstrument(Instrument instrument) {
         return springDataRepo.findAll().stream()
                 .filter(m -> m.getAllInstruments().contains(instrument))

@@ -12,7 +12,11 @@ public interface RehearsalRepository {
 
     List<Rehearsal> findByDateBetween(LocalDate from, LocalDate to);
 
+    List<Rehearsal> findByDateBetweenAndBandId(LocalDate from, LocalDate to, Long bandId);
+
     List<Rehearsal> findAllOrderByDateDesc();
+
+    List<Rehearsal> findAllOrderByDateDescByBandId(Long bandId);
 
     void delete(Rehearsal rehearsal);
 }

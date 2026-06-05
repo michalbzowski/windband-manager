@@ -27,11 +27,30 @@ spring:
   thymeleaf:
     cache: false
 
+  security:
+    oauth2:
+      client:
+        registration:
+          keycloak:
+            client-id: windband-manager
+            client-secret: test-secret
+            scope: openid,profile,email
+            authorization-grant-type: authorization_code
+        provider:
+          keycloak:
+            issuer-uri: http://localhost:8180/realms/windband
+            user-name-attribute: preferred_username
+      resourceserver:
+        jwt:
+          issuer-uri: http://localhost:8180/realms/windband
+
 server:
   port: 8080
 
 app:
-  jwt:
-    secret: testSecretKeyForLocalDevelopmentThatIsLongEnough256Bits12345678901234567890
-    expiration-ms: 86400000
   base-url: http://localhost:8080
+  keycloak:
+    url: http://localhost:8180
+    realm: windband
+    client-id: windband-manager
+    client-secret: test-secret

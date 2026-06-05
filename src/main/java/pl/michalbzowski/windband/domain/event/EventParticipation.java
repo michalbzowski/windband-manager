@@ -49,15 +49,12 @@ public class EventParticipation {
         this.response = response;
     }
 
-    void recordPayment(BigDecimal amount) {
+    public void recordPayment(BigDecimal amount) {
         this.paymentAmount = amount;
         this.paymentStatus = PaymentStatus.PENDING;
     }
 
     void markPaymentPaid() {
-        if (paymentStatus != PaymentStatus.PENDING) {
-            throw new IllegalStateException("No pending payment to mark as paid");
-        }
         this.paymentStatus = PaymentStatus.PAID;
     }
 }

@@ -22,6 +22,7 @@
                 <table role="grid">
                     <thead>
                         <tr>
+                            <th>Kolejność</th>
                             <th>Nazwa</th>
                             <th>Opis</th>
                             <th>Akcje</th>
@@ -29,6 +30,7 @@
                     </thead>
                     <tbody>
                         <tr th:each="inst : ${instruments}">
+                            <td th:text="${inst.getSortPriority()}">0</td>
                             <td th:text="${inst.getName()}">Trąbka</td>
                             <td th:text="${inst.getDescription()}">Instrument dęty blaszany</td>
                             <td>

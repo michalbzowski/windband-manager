@@ -40,19 +40,34 @@
         </div>
 
         <label>
-            Opłata za wydarzenie
-            <select name="paymentType" id="payment-type-select" required>
+            Typ płatności
+            <select name="paymentType" id="payment-type-select" onchange="togglePaymentAmount()">
                 <option value="FREE">Granie bezpłatne</option>
-                <option value="PAID_SPLIT">Granie płatne – pieniądze do podziału między grających</option>
-                <option value="PAID_TEAM_ACCOUNT">Granie płatne – pieniądze na konto zespołu</option>
+                <option value="PAID_SPLIT">Płatne — podział między grających</option>
+                <option value="PAID_TO_TEAM">Płatne — na konto zespołu</option>
             </select>
         </label>
 
         <label id="payment-amount-label" style="display:none;">
             Kwota (PLN)
-            <input type="number" name="paymentAmount" id="payment-amount-input"
-                   step="0.01" min="0" placeholder="0.00">
+            <input type="number" name="paymentAmount" id="payment-amount-input" step="0.01" min="0" placeholder="0.00">
         </label>
+
+        <script th:inline="javascript">
+        function togglePaymentAmount() {
+            var select = document.getElementById('payment-type-select');
+            var label = document.getElementById('payment-amount-label');
+            var input = document.getElementById('payment-amount-input');
+            if (select.value === 'PAID_SPLIT' || select.value === 'PAID_TO_TEAM') {
+                label.style.display = '';
+                input.required = true;
+            } else {
+                label.style.display = 'none';
+                input.required = false;
+                input.value = '';
+            }
+        }
+        </script>
 
         <label>
             Notatki

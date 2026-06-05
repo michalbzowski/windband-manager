@@ -12,6 +12,12 @@ public interface SpringDataEventRepository extends JpaRepository<BandEvent, Long
     @Query("SELECT e FROM BandEvent e LEFT JOIN FETCH e.participations WHERE e.date BETWEEN :from AND :to ORDER BY e.date DESC")
     List<BandEvent> findByDateBetweenOrderByDateDesc(LocalDate from, LocalDate to);
 
+    @Query("SELECT e FROM BandEvent e LEFT JOIN FETCH e.participations WHERE e.date BETWEEN :from AND :to AND e.band.id = :bandId ORDER BY e.date DESC")
+    List<BandEvent> findByDateBetweenAndBandIdOrderByDateDesc(LocalDate from, LocalDate to, Long bandId);
+
     @Query("SELECT DISTINCT e FROM BandEvent e LEFT JOIN FETCH e.participations ORDER BY e.date DESC")
     List<BandEvent> findAllByOrderByDateDesc();
+
+    @Query("SELECT e FROM BandEvent e LEFT JOIN FETCH e.participations WHERE e.band.id = :bandId ORDER BY e.date DESC")
+    List<BandEvent> findAllByBandIdOrderByDateDesc(Long bandId);
 }

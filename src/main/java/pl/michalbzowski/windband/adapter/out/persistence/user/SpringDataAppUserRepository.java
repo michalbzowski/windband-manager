@@ -21,4 +21,6 @@ public interface SpringDataAppUserRepository extends JpaRepository<AppUser, Long
 
     @Override
     boolean existsByEmail(String email);
+
+    Optional<AppUser> findByExternalId(String externalId);
 }

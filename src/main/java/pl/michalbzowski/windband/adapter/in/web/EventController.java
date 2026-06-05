@@ -73,9 +73,24 @@ public class EventController {
         return ResponseEntity.ok().build();
     }
 
+    @PostMapping("/{id}/payment-status")
+    public ResponseEntity<Void> updatePaymentStatus(@PathVariable Long id,
+                                                     @RequestBody UpdatePaymentStatusCommand cmd) {
+        cmd.setEventId(id);
+        commandService.updatePaymentStatus(cmd.getEventId(), cmd.getMemberId(), cmd.getStatus());
+        return ResponseEntity.ok().build();
+    }
+
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> deleteEvent(@PathVariable Long id) {
         commandService.deleteEvent(id);
         return ResponseEntity.noContent().build();
+    }
+
+    @PutMapping("/{id}")
+    public ResponseEntity<Void> updateEvent(@PathVariable Long id, @RequestBody UpdateEventCommand cmd) {
+        cmd.setId(id);
+        commandService.updateEvent(cmd);
+        return ResponseEntity.ok().build();
     }
 }

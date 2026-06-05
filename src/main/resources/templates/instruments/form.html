@@ -15,6 +15,11 @@
             <textarea name="description" th:text="${instrument.description()}"></textarea>
         </label>
 
+        <label>
+            Kolejność
+            <input type="number" name="sortPriority" th:value="${instrument.sortPriority()}" min="0" value="0">
+        </label>
+
         <div style="display:flex; gap:0.5rem; margin-top:1rem;">
             <button type="submit" class="primary"
                     th:text="${instrument.id() != null && instrument.id() != 0 ? 'Zapisz zmiany' : 'Dodaj instrument'}">Dodaj</button>

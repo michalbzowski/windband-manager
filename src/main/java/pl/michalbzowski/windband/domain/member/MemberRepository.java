@@ -13,6 +13,8 @@ public interface MemberRepository {
 
     List<Member> findAllActive();
 
+    List<Member> findAllActiveByBandId(Long bandId);
+
     List<Member> findByInstrument(Instrument instrument);
 
     boolean existsById(Long id);

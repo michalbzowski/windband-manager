@@ -5,10 +5,14 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import pl.michalbzowski.windband.application.command.member.MemberNotFoundException;
 import pl.michalbzowski.windband.application.dto.MemberDto;
+import pl.michalbzowski.windband.domain.member.Instrument;
+import pl.michalbzowski.windband.domain.member.InstrumentRepository;
 import pl.michalbzowski.windband.domain.member.Member;
 import pl.michalbzowski.windband.domain.member.MemberRepository;
 
+import java.util.Comparator;
 import java.util.List;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -16,9 +20,36 @@ import java.util.List;
 public class MemberQueryService {
 
     private final MemberRepository memberRepository;
+    private final InstrumentRepository instrumentRepository;
 
     public List<MemberDto> getAllActiveMembers() {
-        return memberRepository.findAllActive().stream()
+        return getAllActiveMembers(null);
+    }
+
+    public List<MemberDto> getAllActiveMembers(Long teamId) {
+        // Build instrument priority map (lower number = higher priority)
+        var instrumentPriorities = instrumentRepository.findAllOrderBySortPriority().stream()
+                .collect(Collectors.toMap(
+                        Instrument::getName,
+                        Instrument::getSortPriority,
+                        (existing, replacement) -> existing,
+                        java.util.LinkedHashMap::new
+                ));
+
+        List<Member> members = (teamId != null)
+                ? memberRepository.findAllActiveByBandId(teamId)
+                : memberRepository.findAllActive();
+
+        return members.stream()
+                .sorted(Comparator
+                        .<Member>comparingInt(m -> {
+                            Integer priority = m.getPrimaryInstrument()
+                                    .map(i -> instrumentPriorities.get(i.getName()))
+                                    .orElse(Integer.MAX_VALUE);
+                            return priority != null ? priority : Integer.MAX_VALUE;
+                        })
+                        .thenComparing(Member::getLastName)
+                        .thenComparing(Member::getFirstName))
                 .map(this::toDto)
                 .toList();
     }
@@ -35,21 +66,49 @@ public class MemberQueryService {
     }
 
     public long getActiveMemberCount() {
+        return getActiveMemberCount(null);
+    }
+
+    public long getActiveMemberCount(Long teamId) {
+        if (teamId != null) {
+            return memberRepository.findAllActiveByBandId(teamId).size();
+        }
         return memberRepository.findAllActive().size();
     }
 
     public List<Member> findAllActiveMembers() {
+        return findAllActiveMembers(null);
+    }
+
+    public List<Member> findAllActiveMembers(Long teamId) {
+        if (teamId != null) {
+            return memberRepository.findAllActiveByBandId(teamId);
+        }
         return memberRepository.findAllActive();
     }
 
     public long getMinorCount() {
-        return memberRepository.findAllActive().stream()
+        return getMinorCount(null);
+    }
+
+    public long getMinorCount(Long teamId) {
+        List<Member> members = (teamId != null)
+                ? memberRepository.findAllActiveByBandId(teamId)
+                : memberRepository.findAllActive();
+        return members.stream()
                 .filter(Member::isMinor)
                 .count();
     }
 
     public long getSeniorCount() {
-        return memberRepository.findAllActive().stream()
+        return getSeniorCount(null);
+    }
+
+    public long getSeniorCount(Long teamId) {
+        List<Member> members = (teamId != null)
+                ? memberRepository.findAllActiveByBandId(teamId)
+                : memberRepository.findAllActive();
+        return members.stream()
                 .filter(Member::isSenior)
                 .count();
     }

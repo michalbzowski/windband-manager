@@ -1,9 +1,13 @@
 package pl.michalbzowski.windband.adapter.in.web;
 
-import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.security.oauth2.core.oidc.user.OidcUser;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
+import lombok.RequiredArgsConstructor;
+import pl.michalbzowski.windband.adapter.in.security.WindbandOidcUser;
 import pl.michalbzowski.windband.application.query.band.BandQueryService;
 import pl.michalbzowski.windband.application.query.event.EventQueryService;
 import pl.michalbzowski.windband.application.query.inventory.InventoryQueryService;
@@ -27,32 +31,66 @@ public class PageController {
         return bandQueryService.getDefaultBand();
     }
 
-    @GetMapping("/login")
-    public String login() {
-        return "login";
-    }
+    @Value("${app.keycloak.registration-redirect-url:}")
+    private String keycloakRegistrationUrl;
 
+    /**
+     * Registration page. In OIDC mode, unauthenticated users are redirected
+     * to Keycloak registration. Authenticated users without a team see the
+     * team creation form.
+     */
     @GetMapping("/register")
-    public String register() {
-        return "register";
+    public String register(@AuthenticationPrincipal OidcUser oidcUser, Model model) {
+        if (oidcUser == null) {
+            // Not authenticated — redirect to Keycloak registration page
+            if (keycloakRegistrationUrl != null && !keycloakRegistrationUrl.isBlank()) {
+                return "redirect:" + keycloakRegistrationUrl;
+            }
+            return "redirect:/";
+        }
+
+        if (oidcUser instanceof WindbandOidcUser wu && wu.getActiveTeamId() == null) {
+            model.addAttribute("email", wu.getWbEmail());
+            model.addAttribute("username", wu.getWbUsername());
+            return "register";
+        }
+
+        return "redirect:/";
     }
 
     @GetMapping("/")
-    public String dashboard(Model model) {
-        var band = getDefaultBand();
+    public String dashboard(@AuthenticationPrincipal OidcUser oidcUser, Model model) {
+        Long activeTeamId = null;
+        if (oidcUser instanceof WindbandOidcUser wu) {
+            activeTeamId = wu.getActiveTeamId();
+        }
         
-        // Stats - proste pobieranie przez listy
-        long activeMembers = memberQueryService.getActiveMemberCount();
-        long totalMembers = memberQueryService.findAllActiveMembers().size();
+        // If no team is set, don't show any data
+        if (activeTeamId == null) {
+            model.addAttribute("totalMembers", 0L);
+            model.addAttribute("activeMembers", 0L);
+            model.addAttribute("rehearsalsThisWeek", 0L);
+            model.addAttribute("upcomingEvents", 0L);
+            model.addAttribute("activeOrders", 0L);
+            model.addAttribute("totalUniforms", 0L);
+            model.addAttribute("totalInstruments", 0L);
+            return "dashboard";
+        }
+        
+        var band = bandQueryService.getBandById(activeTeamId);
+        
+        // Stats - z filtracją po zespole
+        long activeMembers = memberQueryService.getActiveMemberCount(activeTeamId);
+        long totalMembers = memberQueryService.findAllActiveMembers(activeTeamId).size();
         
         LocalDate today = LocalDate.now();
         LocalDate weekEnd = today.plusDays(7);
-        long rehearsalsThisWeek = rehearsalQueryService.getRehearsalCountBetween(today, weekEnd);
+        long rehearsalsThisWeek = rehearsalQueryService.getRehearsalCountBetween(today, weekEnd, activeTeamId);
         
         // Events - używamy countBetween
-        long upcomingEvents = eventQueryService.getEventCountBetween(today, LocalDate.of(2099, 12, 31));
+        long upcomingEvents = eventQueryService.getEventCountBetween(today, LocalDate.of(2099, 12, 31), activeTeamId);
         
-        // Inventory - proste liczenie
+        // Inventory - proste liczenie (bez filtrowania po zespole dla uproszczenia)
         var orders = inventoryQueryService.getAllOrders();
         long activeOrders = orders.stream()
                 .filter(o -> "SUBMITTED".equals(o.status()) || 

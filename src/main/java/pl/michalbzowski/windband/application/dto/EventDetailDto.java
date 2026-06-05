@@ -14,19 +14,27 @@ public record EventDetailDto(
         String eventType,
         String paymentType,
         BigDecimal paymentAmount,
+        BigDecimal payoutPerMember,
         String notes,
         long confirmedCount,
         long declinedCount,
         long noResponseCount,
         List<ParticipationDto> participations,
-        List<GroupSummaryDto> allGroups
+        List<GroupSummaryDto> allGroups,
+        List<InstrumentCountDto> instrumentSummary
 ) {
     public record ParticipationDto(
             Long id,
             Long memberId,
             String memberName,
+            String instrumentName,
             String response,
             BigDecimal paymentAmount,
             String paymentStatus
+    ) {}
+
+    public record InstrumentCountDto(
+            String instrumentName,
+            long count
     ) {}
 }

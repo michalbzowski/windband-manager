@@ -36,11 +36,40 @@ spring:
           starttls:
             enable: true
 
+  security:
+    oauth2:
+      client:
+        registration:
+          keycloak:
+            client-id: ${KEYCLOAK_CLIENT_ID:windband-manager}
+            client-secret: ${KEYCLOAK_CLIENT_SECRET:windband-secret-key-change-in-production-2026}
+            scope: openid,profile,email
+            authorization-grant-type: authorization_code
+            redirect-uri: "{baseUrl}/login/oauth2/code/{registrationId}"
+            provider: keycloak
+        provider:
+          keycloak:
+            authorization-uri: http://keycloak.michalbzowski.pl/realms/${KEYCLOAK_REALM:windband}/protocol/openid-connect/auth
+            token-uri: http://keycloak:8180/realms/${KEYCLOAK_REALM:windband}/protocol/openid-connect/token
+            user-info-uri: http://keycloak:8180/realms/${KEYCLOAK_REALM:windband}/protocol/openid-connect/userinfo
+            jwk-set-uri: http://keycloak:8180/realms/${KEYCLOAK_REALM:windband}/protocol/openid-connect/certs
+            user-name-attribute: preferred_username
+
+
+
 server:
   port: ${SERVER_PORT:8080}
 
+logging:
+  level:
+    org.springframework.security.oauth2: DEBUG
+    org.springframework.security.web: DEBUG
+
 app:
-  jwt:
-    secret: ${JWT_SECRET:changeMeToASecureRandomStringOfAtLeast256BitsForProductionUse}
-    expiration-ms: 86400000  # 24h
   base-url: ${BASE_URL:http://localhost:8080}
+  keycloak:
+    url: ${KEYCLOAK_PUBLIC_URL:http://localhost:8180}
+    realm: ${KEYCLOAK_REALM:windband}
+    client-id: ${KEYCLOAK_CLIENT_ID:windband-manager}
+    client-secret: ${KEYCLOAK_CLIENT_SECRET:windband-secret-key-change-in-production-2026}
+    registration-redirect-url: ${app.keycloak.url}/realms/${app.keycloak.realm}/protocol/openid-connect/registrations?client_id=${app.keycloak.client-id}&redirect_uri=${app.base-url}/register&response_type=code&scope=openid profile email}

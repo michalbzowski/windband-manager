@@ -26,6 +26,43 @@
                 evt.detail.headers['Authorization'] = 'Bearer ' + token;
             }
         });
+
+        // Check JWT expiry on page load and redirect to login if expired
+        (function() {
+            try {
+                const name = 'JWT=';
+                const decodedCookie = decodeURIComponent(document.cookie);
+                const ca = decodedCookie.split(';');
+                let token = null;
+                for(let i = 0; i < ca.length; i++) {
+                    let c = ca[i];
+                    while (c.charAt(0) === ' ') c = c.substring(1);
+                    if (c.indexOf(name) === 0) {
+                        token = c.substring(name.length, c.length);
+                        break;
+                    }
+                }
+                if (token) {
+                    // JWT format: header.payload.signature
+                    const parts = token.split('.');
+                    if (parts.length === 3) {
+                        // Decode payload (second part)
+                        const payload = JSON.parse(atob(parts[1]));
+                        const exp = payload.exp;
+                        if (exp) {
+                            const now = Math.floor(Date.now() / 1000);
+                            if (exp < now) {
+                                // Token expired, redirect to login
+                                window.location.href = '/login?expired=true';
+                                return;
+                            }
+                        }
+                    }
+                }
+            } catch (e) {
+                // If any error, just continue (token might be invalid)
+            }
+        })();
     </script>
 </head>
 <body>
@@ -57,7 +94,9 @@
                 <span style="color:var(--pico-muted-color); font-size:0.75rem;">Ładowanie...</span>
             </li>
             <li>
-                <button class="outline secondary small" onclick="doLogout()">Wyloguj</button>
+                <form th:action="@{/api/auth/logout}" method="POST" style="display:inline;">
+                    <button type="submit" class="outline secondary small">Wyloguj</button>
+                </form>
             </li>
         </ul>
     </nav>
@@ -97,7 +136,14 @@
             fetch('/api/auth/logout', {
                 method: 'POST',
                 credentials: 'same-origin'
-            }).then(function() {
+            })
+            .then(function(response) {
+                // Redirect to login page regardless of response status
+                window.location.href = '/login';
+            })
+            .catch(function(error) {
+                console.error('Logout error:', error);
+                // Still redirect to login even on error
                 window.location.href = '/login';
             });
         }
