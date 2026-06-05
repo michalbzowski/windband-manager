@@ -36,8 +36,11 @@ public class EventController {
     }
 
     @PostMapping
-    public ResponseEntity<BandEvent> createEvent(@RequestBody CreateEventCommand cmd) {
-        var event = commandService.createEvent(cmd);
+    public ResponseEntity<BandEvent> createEvent(@RequestBody CreateEventCommand cmd,
+                                                  @AuthenticationPrincipal OidcUser oidcUser,
+                                                  HttpSession session) {
+        Long activeTeamId = resolveActiveTeamId(oidcUser, session);
+        var event = commandService.createEvent(cmd, activeTeamId);
         return ResponseEntity.status(HttpStatus.CREATED).body(event);
     }
 

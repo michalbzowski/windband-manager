@@ -40,8 +40,11 @@ public class MemberController {
     }
 
     @PostMapping
-    public ResponseEntity<MemberDto> createMember(@RequestBody CreateMemberCommand cmd) {
-        var member = commandService.createMember(cmd);
+    public ResponseEntity<MemberDto> createMember(@RequestBody CreateMemberCommand cmd,
+                                                  @AuthenticationPrincipal OidcUser oidcUser,
+                                                  HttpSession session) {
+        Long activeTeamId = resolveActiveTeamId(oidcUser, session);
+        var member = commandService.createMember(cmd, activeTeamId);
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(queryService.getMemberById(member.getId()));
     }

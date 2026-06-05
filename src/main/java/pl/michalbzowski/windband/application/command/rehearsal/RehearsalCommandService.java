@@ -19,9 +19,9 @@ public class RehearsalCommandService {
     private final MemberRepository memberRepository;
     private final BandRepository bandRepository;
 
-    public Rehearsal scheduleRehearsal(ScheduleRehearsalCommand cmd) {
-        Band band = bandRepository.findById(1L)
-                .orElseThrow(() -> new IllegalStateException("Default band not found"));
+    public Rehearsal scheduleRehearsal(ScheduleRehearsalCommand cmd, Long teamId) {
+        Band band = bandRepository.findById(teamId)
+                .orElseThrow(() -> new IllegalStateException("Band not found for team ID: " + teamId));
         Rehearsal rehearsal = Rehearsal.schedule(
                 cmd.getDate(),
                 cmd.getStartTime(),

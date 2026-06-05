@@ -18,9 +18,9 @@ public class MemberCommandService {
     private final InstrumentRepository instrumentRepository;
     private final BandRepository bandRepository;
 
-    public Member createMember(CreateMemberCommand cmd) {
-        Band band = bandRepository.findById(1L)
-                .orElseThrow(() -> new IllegalStateException("Default band not found"));
+    public Member createMember(CreateMemberCommand cmd, Long teamId) {
+        Band band = bandRepository.findById(teamId)
+                .orElseThrow(() -> new IllegalStateException("Band not found: " + teamId));
         Member member = Member.create(
                 cmd.getFirstName(),
                 cmd.getLastName(),

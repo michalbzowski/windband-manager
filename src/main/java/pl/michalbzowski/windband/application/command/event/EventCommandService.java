@@ -24,9 +24,9 @@ public class EventCommandService {
     private final GroupRepository groupRepository;
     private final BandRepository bandRepository;
 
-    public BandEvent createEvent(CreateEventCommand cmd) {
-        Band band = bandRepository.findById(1L)
-                .orElseThrow(() -> new IllegalStateException("Default band not found"));
+    public BandEvent createEvent(CreateEventCommand cmd, Long teamId) {
+        Band band = bandRepository.findById(teamId)
+                .orElseThrow(() -> new IllegalStateException("Band not found for team ID: " + teamId));
         EventType type = EventType.valueOf(cmd.getEventType().toUpperCase());
         PaymentType paymentType = cmd.getPaymentType() != null
                 ? PaymentType.valueOf(cmd.getPaymentType().toUpperCase())

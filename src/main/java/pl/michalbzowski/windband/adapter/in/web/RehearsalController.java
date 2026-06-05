@@ -38,8 +38,11 @@ public class RehearsalController {
     }
 
     @PostMapping
-    public ResponseEntity<Rehearsal> scheduleRehearsal(@RequestBody ScheduleRehearsalCommand cmd) {
-        var rehearsal = commandService.scheduleRehearsal(cmd);
+    public ResponseEntity<Rehearsal> scheduleRehearsal(@RequestBody ScheduleRehearsalCommand cmd,
+                                                       @AuthenticationPrincipal OidcUser oidcUser,
+                                                       HttpSession session) {
+        Long activeTeamId = resolveActiveTeamId(oidcUser, session);
+        var rehearsal = commandService.scheduleRehearsal(cmd, activeTeamId);
         return ResponseEntity.status(HttpStatus.CREATED).body(rehearsal);
     }
 
