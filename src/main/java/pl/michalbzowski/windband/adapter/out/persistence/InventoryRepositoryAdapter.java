@@ -28,6 +28,11 @@ public class InventoryRepositoryAdapter implements InventoryRepository {
     }
 
     @Override
+    public List<UniformItem> findAllUniformItemsByBandId(Long bandId) {
+        return uniformRepo.findByBandId(bandId);
+    }
+
+    @Override
     public List<UniformItem> findUniformItemsByMember(Member member) {
         return uniformRepo.findByAssignedMember(member);
     }
@@ -53,6 +58,11 @@ public class InventoryRepositoryAdapter implements InventoryRepository {
     }
 
     @Override
+    public List<InstrumentItem> findAllInstrumentItemsByBandId(Long bandId) {
+        return instrumentRepo.findByBandId(bandId);
+    }
+
+    @Override
     public List<InstrumentItem> findInstrumentItemsByMember(Member member) {
         return instrumentRepo.findByAssignedMember(member);
     }
@@ -75,6 +85,11 @@ public class InventoryRepositoryAdapter implements InventoryRepository {
     @Override
     public List<InventoryOrder> findAllOrders() {
         return orderRepo.findAllByOrderByCreatedAtDesc();
+    }
+
+    @Override
+    public List<InventoryOrder> findAllOrdersByBandId(Long bandId) {
+        return orderRepo.findByBandId(bandId);
     }
 
     @Override

@@ -23,6 +23,10 @@ public class MemberQueryService {
     private final InstrumentRepository instrumentRepository;
 
     public List<MemberDto> getAllActiveMembers() {
+        return getAllActiveMembers(null);
+    }
+
+    public List<MemberDto> getAllActiveMembers(Long teamId) {
         // Build instrument priority map (lower number = higher priority)
         var instrumentPriorities = instrumentRepository.findAllOrderBySortPriority().stream()
                 .collect(Collectors.toMap(
@@ -32,7 +36,11 @@ public class MemberQueryService {
                         java.util.LinkedHashMap::new
                 ));
 
-        return memberRepository.findAllActive().stream()
+        List<Member> members = (teamId != null)
+                ? memberRepository.findAllActiveByBandId(teamId)
+                : memberRepository.findAllActive();
+
+        return members.stream()
                 .sorted(Comparator
                         .<Member>comparingInt(m -> {
                             Integer priority = m.getPrimaryInstrument()
@@ -58,21 +66,49 @@ public class MemberQueryService {
     }
 
     public long getActiveMemberCount() {
+        return getActiveMemberCount(null);
+    }
+
+    public long getActiveMemberCount(Long teamId) {
+        if (teamId != null) {
+            return memberRepository.findAllActiveByBandId(teamId).size();
+        }
         return memberRepository.findAllActive().size();
     }
 
     public List<Member> findAllActiveMembers() {
+        return findAllActiveMembers(null);
+    }
+
+    public List<Member> findAllActiveMembers(Long teamId) {
+        if (teamId != null) {
+            return memberRepository.findAllActiveByBandId(teamId);
+        }
         return memberRepository.findAllActive();
     }
 
     public long getMinorCount() {
-        return memberRepository.findAllActive().stream()
+        return getMinorCount(null);
+    }
+
+    public long getMinorCount(Long teamId) {
+        List<Member> members = (teamId != null)
+                ? memberRepository.findAllActiveByBandId(teamId)
+                : memberRepository.findAllActive();
+        return members.stream()
                 .filter(Member::isMinor)
                 .count();
     }
 
     public long getSeniorCount() {
-        return memberRepository.findAllActive().stream()
+        return getSeniorCount(null);
+    }
+
+    public long getSeniorCount(Long teamId) {
+        List<Member> members = (teamId != null)
+                ? memberRepository.findAllActiveByBandId(teamId)
+                : memberRepository.findAllActive();
+        return members.stream()
                 .filter(Member::isSenior)
                 .count();
     }

@@ -129,6 +129,49 @@
 </div>
 
 <script th:inline="javascript">
+    var eventId = [[${event.id}]];
+    var paymentType = [[${event.paymentType}]];
+    var paymentAmount = [[${event.paymentAmount}]];
+    var isPaidSplit = (paymentType === 'PAID_SPLIT');
+    var confirmedCount = [[${event.confirmedCount}]];
+
+    // Show/hide payout column based on payment type
+    function updatePayoutColumns() {
+        var cols = document.querySelectorAll('.payout-col');
+        cols.forEach(function(col) {
+            col.style.display = isPaidSplit ? '' : 'none';
+        });
+    }
+
+    // Calculate and display per-member payout
+    function updatePayoutAmounts() {
+        if (!isPaidSplit || !paymentAmount || confirmedCount === 0) {
+            document.querySelectorAll('.payout-amount').forEach(function(td) {
+                td.textContent = '-';
+            });
+            return;
+        }
+        var perPerson = (parseFloat(paymentAmount) / confirmedCount).toFixed(2);
+        document.querySelectorAll('.payout-amount').forEach(function(td) {
+            td.textContent = perPerson + ' PLN';
+        });
+    }
+
+    // Update table when confirmed count changes
+    function handleResponseChange() {
+        // Recalculate confirmed count
+        var selects = document.querySelectorAll('.response-select');
+        var newConfirmed = 0;
+        selects.forEach(function(s) {
+            if (s.value === 'CONFIRMED') newConfirmed++;
+        });
+        confirmedCount = newConfirmed;
+        updatePayoutAmounts();
+    }
+
+    updatePayoutColumns();
+    updatePayoutAmounts();
+
     var invitedMemberIds = new Set(
         [[${event.participations}]].map(function(p) { return p.memberId; })
     );
@@ -137,7 +180,6 @@
     document.getElementById('invite-btn').addEventListener('click', function() {
         var select = document.getElementById('invite-member-select');
         var memberId = parseInt(select.value);
-        var eventId = [[${event.id}]];
         if (memberId) {
             fetch('/api/events/' + eventId + '/invite', {
                 method: 'POST',
@@ -153,7 +195,6 @@
     document.getElementById('invite-group-btn').addEventListener('click', function() {
         var select = document.getElementById('invite-group-select');
         var groupId = select.value;
-        var eventId = [[${event.id}]];
         if (groupId) {
             fetch('/api/events/' + eventId + '/invite-group', {
                 method: 'POST',
@@ -168,8 +209,8 @@
     // Record response
     document.querySelectorAll('.response-select').forEach(function(select) {
         select.addEventListener('change', function() {
-            var eventId = this.dataset.eventId;
-            var memberId = this.dataset.memberId;
+            var eid = this.dataset.eventId;
+            var mid = this.dataset.memberId;
             var response = this.value;
             var row = this.closest('tr');
             var payoutCell = row.querySelector('.payout-amount');
@@ -178,7 +219,7 @@
             fetch('/api/events/' + eventId + '/response', {
                 method: 'POST',
                 headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({eventId: parseInt(eventId), memberId: parseInt(memberId), response: response})
+                body: JSON.stringify({eventId: parseInt(eid), memberId: parseInt(mid), response: response})
             }).then(function(res) {
                 if (!res.ok) {
                     console.error('Failed to update response');

@@ -13,7 +13,7 @@ public class CreateEventCommand {
     private LocalTime startTime;
     private String location;
     private String eventType;
-    private String notes;
     private String paymentType;
     private BigDecimal paymentAmount;
+    private String notes;
 }

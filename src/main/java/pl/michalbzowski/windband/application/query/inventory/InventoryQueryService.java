@@ -24,30 +24,51 @@ public class InventoryQueryService {
 
     // === Items ===
 
-    public List<InventoryItemDto> getAllUniformItems() {
-        return inventoryRepository.findAllUniformItems().stream()
+    public List<InventoryItemDto> getAllUniformItems(Long teamId) {
+        if (teamId == null) return List.of();
+        return inventoryRepository.findAllUniformItemsByBandId(teamId).stream()
                 .map(this::toItemDto)
                 .toList();
+    }
+
+    public List<UniformItem> getAllUniformItemsEntities(Long teamId) {
+        if (teamId == null) return List.of();
+        return inventoryRepository.findAllUniformItemsByBandId(teamId);
+    }
+
+    public List<InventoryItemDto> getAllInstrumentItems(Long teamId) {
+        if (teamId == null) return List.of();
+        return inventoryRepository.findAllInstrumentItemsByBandId(teamId).stream()
+                .map(this::toItemDto)
+                .toList();
+    }
+
+    public List<InstrumentItem> getAllInstrumentItemsEntities(Long teamId) {
+        if (teamId == null) return List.of();
+        return inventoryRepository.findAllInstrumentItemsByBandId(teamId);
+    }
+
+    // Legacy methods (no filtering - returns empty for safety)
+    public List<InventoryItemDto> getAllUniformItems() {
+        return List.of();
     }
 
     public List<UniformItem> getAllUniformItemsEntities() {
-        return inventoryRepository.findAllUniformItems();
+        return List.of();
     }
 
     public List<InventoryItemDto> getAllInstrumentItems() {
-        return inventoryRepository.findAllInstrumentItems().stream()
-                .map(this::toItemDto)
-                .toList();
+        return List.of();
     }
 
     public List<InstrumentItem> getAllInstrumentItemsEntities() {
-        return inventoryRepository.findAllInstrumentItems();
+        return List.of();
     }
 
     public List<InventoryItemDto> getAllItems() {
         List<InventoryItemDto> all = new java.util.ArrayList<>();
-        all.addAll(getAllUniformItems());
-        all.addAll(getAllInstrumentItems());
+        all.addAll(getAllUniformItems(null));
+        all.addAll(getAllInstrumentItems(null));
         return all;
     }
 
@@ -63,14 +84,25 @@ public class InventoryQueryService {
 
     // === Orders ===
 
-    public List<InventoryOrderDto> getAllOrders() {
-        return inventoryRepository.findAllOrders().stream()
+    public List<InventoryOrderDto> getAllOrders(Long teamId) {
+        if (teamId == null) return List.of();
+        return inventoryRepository.findAllOrdersByBandId(teamId).stream()
                 .map(this::toOrderDto)
                 .toList();
     }
 
+    public List<InventoryOrder> getAllOrdersEntities(Long teamId) {
+        if (teamId == null) return List.of();
+        return inventoryRepository.findAllOrdersByBandId(teamId);
+    }
+
+    // Legacy methods
+    public List<InventoryOrderDto> getAllOrders() {
+        return List.of();
+    }
+
     public List<InventoryOrder> getAllOrdersEntities() {
-        return inventoryRepository.findAllOrders();
+        return List.of();
     }
 
     public List<InventoryOrderDto> getOrdersByStatus(OrderStatus status) {

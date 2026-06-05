@@ -5,9 +5,9 @@ import lombok.Data;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
-import org.springframework.security.core.userdetails.UserDetails;
+import org.springframework.security.oauth2.core.oidc.user.OidcUser;
 import org.springframework.web.bind.annotation.*;
-import pl.michalbzowski.windband.adapter.in.security.TeamAwareUserDetails;
+import pl.michalbzowski.windband.adapter.in.security.WindbandOidcUser;
 import pl.michalbzowski.windband.application.command.team.InviteUserCommand;
 import pl.michalbzowski.windband.application.command.team.TeamRegistrationService;
 
@@ -27,12 +27,12 @@ public class TeamInviteController {
     public ResponseEntity<?> inviteUser(
             @PathVariable Long teamId,
             @Valid @RequestBody InviteUserCommand cmd,
-            @AuthenticationPrincipal UserDetails userDetails) {
+            @AuthenticationPrincipal OidcUser oidcUser) {
 
         Long adminUserId = null;
-        if (userDetails instanceof TeamAwareUserDetails tud) {
-            adminUserId = tud.getUserId();
-            if (!tud.belongsToTeam(teamId)) {
+        if (oidcUser instanceof WindbandOidcUser wu) {
+            adminUserId = wu.getUserId();
+            if (!wu.belongsToTeam(teamId)) {
                 return ResponseEntity.status(403).body(Map.of("error", "You don't belong to this team"));
             }
         }
@@ -76,10 +76,10 @@ public class TeamInviteController {
     @GetMapping("/members")
     public ResponseEntity<?> listMembers(
             @PathVariable Long teamId,
-            @AuthenticationPrincipal UserDetails userDetails) {
+            @AuthenticationPrincipal OidcUser oidcUser) {
 
-        if (userDetails instanceof TeamAwareUserDetails tud) {
-            if (!tud.belongsToTeam(teamId)) {
+        if (oidcUser instanceof WindbandOidcUser wu) {
+            if (!wu.belongsToTeam(teamId)) {
                 return ResponseEntity.status(403).body(Map.of("error", "Access denied"));
             }
         }

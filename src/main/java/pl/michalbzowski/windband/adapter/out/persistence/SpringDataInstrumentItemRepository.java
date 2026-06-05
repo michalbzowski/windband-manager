@@ -10,6 +10,8 @@ import java.util.List;
 public interface SpringDataInstrumentItemRepository extends JpaRepository<InstrumentItem, Long> {
     List<InstrumentItem> findByAssignedMember(Member member);
 
+    List<InstrumentItem> findByBandId(Long bandId);
+
     @Query("SELECT i FROM InstrumentItem i LEFT JOIN FETCH i.assignedMember")
     List<InstrumentItem> findAllWithMember();
 }
