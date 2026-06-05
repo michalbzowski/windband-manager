@@ -8,8 +8,11 @@
     <link rel="stylesheet" th:href="@{/css/app.css}">
     <script src="https://unpkg.com/htmx.org@2.0.2"></script>
     <script>
-        // TEST - remove after debugging
-        window.onerror = function(msg) { console.log('Global error:', msg); };
+        // Ignore errors from browser extensions - they shouldn't break our code
+        window.onerror = function(msg, url, line, col, error) {
+            console.log('Ignored error:', msg);
+            return true;
+        };
         console.log('Page loaded, script starting...');
 
         // Add JWT token to all HTMX requests
