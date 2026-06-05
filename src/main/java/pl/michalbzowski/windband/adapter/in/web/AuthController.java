@@ -115,17 +115,39 @@ public class AuthController {
      */
     @GetMapping("/build-info")
     public ResponseEntity<?> buildInfo() {
+        String version = null;
+        String name = null;
+        String time = null;
+
         if (buildProperties != null) {
-            return ResponseEntity.ok(Map.of(
-                    "version", buildProperties.getVersion() != null ? buildProperties.getVersion() : "unknown",
-                    "name", buildProperties.getName() != null ? buildProperties.getName() : "unknown",
-                    "time", buildProperties.getTime() != null ? buildProperties.getTime().toString() : "unknown"
-            ));
+            version = buildProperties.getVersion();
+            name = buildProperties.getName();
+            time = buildProperties.getTime() != null ? buildProperties.getTime().toString() : null;
         }
+
+        // Fallback: read from JAR MANIFEST.MF (works even when the build-info goal
+        // places the file outside BOOT-INF/classes/ classpath in the fat JAR)
+        if (version == null || "unknown".equals(version)) {
+            try (var is = AuthController.class.getResourceAsStream("/META-INF/MANIFEST.MF")) {
+                if (is != null) {
+                    var manifest = new java.util.jar.Manifest(is);
+                    var attrs = manifest.getMainAttributes();
+                    if (version == null || "unknown".equals(version)) {
+                        version = attrs.getValue("Implementation-Version");
+                    }
+                    if (name == null || "unknown".equals(name)) {
+                        name = attrs.getValue("Implementation-Title");
+                    }
+                }
+            } catch (Exception ignored) {
+                // fall through with whatever we have
+            }
+        }
+
         return ResponseEntity.ok(Map.of(
-                "version", "unknown",
-                "name", "unknown",
-                "time", "unknown"
+                "version", version != null ? version : "unknown",
+                "name", name != null ? name : "unknown",
+                "time", time != null ? time : "unknown"
         ));
     }
 }
