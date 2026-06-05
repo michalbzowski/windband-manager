@@ -13,6 +13,7 @@ import pl.michalbzowski.windband.application.query.event.EventQueryService;
 import pl.michalbzowski.windband.application.query.inventory.InventoryQueryService;
 import pl.michalbzowski.windband.application.query.member.MemberQueryService;
 import pl.michalbzowski.windband.application.query.rehearsal.RehearsalQueryService;
+import pl.michalbzowski.windband.application.query.team.TeamQueryService;
 import pl.michalbzowski.windband.domain.band.Band;
 
 import java.time.LocalDate;
@@ -58,13 +59,13 @@ public class PageController {
         return "redirect:/";
     }
 
-    @GetMapping("/")
+@GetMapping("/")
     public String dashboard(@AuthenticationPrincipal OidcUser oidcUser, Model model) {
         Long activeTeamId = null;
         if (oidcUser instanceof WindbandOidcUser wu) {
             activeTeamId = wu.getActiveTeamId();
         }
-        
+
         // If no team is set, don't show any data
         if (activeTeamId == null) {
             model.addAttribute("totalMembers", 0L);
@@ -76,7 +77,7 @@ public class PageController {
             model.addAttribute("totalInstruments", 0L);
             return "dashboard";
         }
-        
+
         var band = bandQueryService.getBandById(activeTeamId);
         
         // Stats - z filtracją po zespole

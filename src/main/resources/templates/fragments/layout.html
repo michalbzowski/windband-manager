@@ -88,24 +88,21 @@
             <li><a th:href="@{/band/attributes(type='MEMBER')}" hx-target="#content" hx-swap="innerHTML transition:true">Atrybuty</a></li>
         </ul>
         <ul>
-            <!-- User info populated by JavaScript from /api/auth/me -->
-            <li class="nav-user-info" id="nav-user-info" style="display:none;">
+            <li class="nav-user-info">
                 <span class="team-icon">👤</span>
-                <span id="nav-username"></span>
+                <span th:text="${#authentication.principal.wbUsername}">user</span>
                 <span class="separator">|</span>
                 <span class="team-icon">🎺</span>
+                <!-- Active team: show select if multi-team, text if single -->
                 <span id="nav-team-area">
                     <select id="nav-team-select" style="display:none; font-size:0.85rem; padding:0.2rem 0.5rem; border-radius:4px;" onchange="switchTeam(this.value)"></select>
                     <span id="nav-team-single">
-                        <span class="team-name" id="nav-team"></span>
-                        <span class="team-role" id="nav-role"></span>
+                        <span class="team-name" th:text="${#authentication.principal.activeTeamSlug ?: 'brak zespołu'}">zespół</span>
+                        <span class="team-role" th:if="${#authentication.principal.activeTeamRole}">(<span th:text="${#authentication.principal.activeTeamRole.toLowerCase()}">rola</span>)</span>
                     </span>
                 </span>
             </li>
-            <li><a href="/register" hx-target="#content" hx-swap="innerHTML transition:true" id="nav-new-team" style="display:none;">➕ Nowy zespół</a></li>
-            <li class="nav-user-info" id="nav-user-loading">
-                <span style="color:var(--pico-muted-color); font-size:0.75rem;">Ładowanie...</span>
-            </li>
+            <li><a href="/register" hx-target="#content" hx-swap="innerHTML transition:true" id="nav-new-team" sec:authorize="isAuthenticated()">➕ Nowy zespół</a></li>
             <li>
                 <form th:action="@{/api/auth/logout}" method="POST" style="display:inline;">
                     <button type="submit" class="outline secondary small">Wyloguj</button>
@@ -124,90 +121,34 @@
     </footer>
 
 <script th:fragment="footer-scripts">
-    // Load user info on page load
-    (function() {
-        fetch('/api/auth/me', { credentials: 'same-origin' })
-            .then(function(resp) {
-                if (!resp.ok) throw new Error('Not authenticated');
-                return resp.json();
-            })
-            .then(function(data) {
-                document.getElementById('nav-user-loading').style.display = 'none';
-                var info = document.getElementById('nav-user-info');
-                info.style.display = 'flex';
-                document.getElementById('nav-username').textContent = data.username || '?';
+    // Pass teams data from server to JS for the team switcher
+    var USER_TEAMS = /*[ [[${userTeams}]] ]*/ [];
+    var ACTIVE_TEAM_ID = /*[ [[${#authentication.principal.activeTeamId}]] ]*/ null;
 
-                // Show New Team link when user has no team
-                var newTeamBtn = document.getElementById('nav-new-team');
-                if (data.teams) {
-                    newTeamBtn.style.display = 'inline';
-                }
-
-                if (data.activeTeamSlug) {
-                    var teams = data.teams || [];
-
-                    if (teams.length > 1) {
-                        // Multiple teams: show dropdown
-                        document.getElementById('nav-team-single').style.display = 'none';
-                        var select = document.getElementById('nav-team-select');
-                        select.style.display = 'inline-block';
-                        select.innerHTML = '';
-                        for (var i = 0; i < teams.length; i++) {
-                            var opt = document.createElement('option');
-                            opt.value = teams[i].id;
-                            opt.textContent = teams[i].name + ' (' + teams[i].role.toLowerCase() + ')';
-                            if (teams[i].id === data.activeTeamId) {
-                                opt.selected = true;
-                            }
-                            select.appendChild(opt);
-                        }
-                    } else {
-                        // Single team: show name + role
-                        document.getElementById('nav-team-single').style.display = 'inline';
-                        var team = teams.length === 1 ? teams[0] : null;
-                        document.getElementById('nav-team').textContent = (team ? team.name : data.activeTeamSlug) || '?';
-                        document.getElementById('nav-role').textContent = data.activeTeamRole
-                            ? '(' + data.activeTeamRole.toLowerCase() + ')' : '';
-                    }
-                } else {
-                    document.getElementById('nav-team-single').style.display = 'inline';
-                    document.getElementById('nav-team').textContent = 'brak zespołu';
-                    document.getElementById('nav-role').textContent = '';
-                }
-            })
-            .catch(function() {
-                document.getElementById('nav-user-loading').style.display = 'none';
-            });
-    })();
+    if (USER_TEAMS && USER_TEAMS.length > 1) {
+        // Multiple teams: show dropdown
+        document.getElementById('nav-team-single').style.display = 'none';
+        var select = document.getElementById('nav-team-select');
+        select.style.display = 'inline-block';
+        select.innerHTML = '';
+        for (var i = 0; i < USER_TEAMS.length; i++) {
+            var opt = document.createElement('option');
+            opt.value = USER_TEAMS[i].id;
+            opt.textContent = USER_TEAMS[i].name + ' (' + USER_TEAMS[i].role.toLowerCase() + ')';
+            if (USER_TEAMS[i].id === ACTIVE_TEAM_ID) {
+                opt.selected = true;
+            }
+            select.appendChild(opt);
+        }
+    }
 
     // Switch active team
     function switchTeam(teamId) {
         fetch('/api/auth/switch-team/' + teamId, { method: 'POST', credentials: 'same-origin' })
             .then(function(resp) { return resp.json(); })
             .then(function(data) {
-                // Reload #content with new team context
-                var main = document.getElementById('content');
-                if (main) {
-                    htmx.ajax('GET', '/', { target: '#content', swap: 'innerHTML' });
-                }
-                // Re-fetch user info to update nav
-                htmx.trigger('body', 'reload-nav');
-                // Force re-fetch of user info
-                setTimeout(function() {
-                    fetch('/api/auth/me', { credentials: 'same-origin' })
-                        .then(function(r) { return r.json(); })
-                        .then(function(userData) {
-                            var select = document.getElementById('nav-team-select');
-                            if (select && select.style.display !== 'none') {
-                                for (var i = 0; i < select.options.length; i++) {
-                                    if (select.options[i].value == teamId) {
-                                        select.options[i].selected = true;
-                                        break;
-                                    }
-                                }
-                            }
-                        });
-                }, 100);
+                // Reload page content with new team context
+                htmx.ajax('GET', '/', { target: '#content', swap: 'innerHTML' });
             })
             .catch(function(err) {
                 console.error('Switch team error:', err);
