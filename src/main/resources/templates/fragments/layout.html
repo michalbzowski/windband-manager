@@ -8,6 +8,10 @@
     <link rel="stylesheet" th:href="@{/css/app.css}">
     <script src="https://unpkg.com/htmx.org@2.0.2"></script>
     <script>
+        // TEST - remove after debugging
+        window.onerror = function(msg) { console.log('Global error:', msg); };
+        console.log('Page loaded, script starting...');
+
         // Add JWT token to all HTMX requests
         document.addEventListener('htmx:configRequest', function(evt) {
             const name = 'JWT=';
