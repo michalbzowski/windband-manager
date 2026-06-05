@@ -117,61 +117,61 @@
         <small>Wind Band Manager &copy; 2025 Michał Bzowski | <span id="build-version">...</span></small>
     </footer>
 
-    <script>
-        // Load user info on page load
-        (function() {
-            fetch('/api/auth/me', { credentials: 'same-origin' })
-                .then(function(resp) {
-                    if (!resp.ok) throw new Error('Not authenticated');
-                    return resp.json();
-                })
-                .then(function(data) {
-                    document.getElementById('nav-user-loading').style.display = 'none';
-                    var info = document.getElementById('nav-user-info');
-                    info.style.display = 'flex';
-                    document.getElementById('nav-username').textContent = data.username || '?';
-                    document.getElementById('nav-team').textContent = data.activeTeamSlug || 'brak zespołu';
-                    document.getElementById('nav-role').textContent = data.activeTeamRole
-                        ? '(' + data.activeTeamRole.toLowerCase() + ')' : '';
-                })
-                .catch(function() {
-                    document.getElementById('nav-user-loading').style.display = 'none';
-                });
-        })();
-
-        // Load build info
-        (function() {
-            console.log('Loading build info...');
-            fetch('/api/auth/build-info', { credentials: 'same-origin' })
-                .then(function(resp) { 
-                    console.log('build-info response:', resp.status);
-                    return resp.json(); 
-                })
-                .then(function(data) {
-                    console.log('build-info data:', data);
-                    var version = data.version || '?';
-                    var time = data.time ? data.time.replace('T', ' ').replace('Z', '') : '?';
-                    document.getElementById('build-version').textContent = 'v' + version + ' | ' + time;
-                })
-                .catch(function(err) {
-                    console.error('build-info error:', err);
-                    document.getElementById('build-version').textContent = 'v unknown';
-                });
-        })();
-
-        function doLogout() {
-            fetch('/api/auth/logout', {
-                method: 'POST',
-                credentials: 'same-origin'
+<script th:fragment="footer-scripts">
+    // Load user info on page load
+    (function() {
+        fetch('/api/auth/me', { credentials: 'same-origin' })
+            .then(function(resp) {
+                if (!resp.ok) throw new Error('Not authenticated');
+                return resp.json();
             })
-            .then(function(response) {
-                window.location.href = '/login';
+            .then(function(data) {
+                document.getElementById('nav-user-loading').style.display = 'none';
+                var info = document.getElementById('nav-user-info');
+                info.style.display = 'flex';
+                document.getElementById('nav-username').textContent = data.username || '?';
+                document.getElementById('nav-team').textContent = data.activeTeamSlug || 'brak zespołu';
+                document.getElementById('nav-role').textContent = data.activeTeamRole
+                    ? '(' + data.activeTeamRole.toLowerCase() + ')' : '';
             })
-            .catch(function(error) {
-                console.error('Logout error:', error);
-                window.location.href = '/login';
+            .catch(function() {
+                document.getElementById('nav-user-loading').style.display = 'none';
             });
-        }
-    </script>
+    })();
+
+    // Load build info
+    (function() {
+        console.log('Loading build info...');
+        fetch('/api/auth/build-info', { credentials: 'same-origin' })
+            .then(function(resp) { 
+                console.log('build-info response:', resp.status);
+                return resp.json(); 
+            })
+            .then(function(data) {
+                console.log('build-info data:', data);
+                var version = data.version || '?';
+                var time = data.time ? data.time.replace('T', ' ').replace('Z', '') : '?';
+                document.getElementById('build-version').textContent = 'v' + version + ' | ' + time;
+            })
+            .catch(function(err) {
+                console.error('build-info error:', err);
+                document.getElementById('build-version').textContent = 'v unknown';
+            });
+    })();
+
+    function doLogout() {
+        fetch('/api/auth/logout', {
+            method: 'POST',
+            credentials: 'same-origin'
+        })
+        .then(function(response) {
+            window.location.href = '/login';
+        })
+        .catch(function(error) {
+            console.error('Logout error:', error);
+            window.location.href = '/login';
+        });
+    }
+</script>
 </body>
 </html>
