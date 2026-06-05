@@ -15,6 +15,10 @@
         };
         console.log('Page loaded, script starting...');
 
+        // Delay script execution to let page fully load
+        setTimeout(function() {
+            console.log('Running delayed scripts...');
+
         // Add JWT token to all HTMX requests
         document.addEventListener('htmx:configRequest', function(evt) {
             const name = 'JWT=';
@@ -174,6 +178,7 @@
                 window.location.href = '/login';
             });
         }
+        }); // end setTimeout
     </script>
 </body>
 </html>
