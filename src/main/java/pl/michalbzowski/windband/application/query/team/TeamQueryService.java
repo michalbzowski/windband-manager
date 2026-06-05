@@ -53,6 +53,19 @@ public class TeamQueryService {
     }
 
     /**
+     * Get details about a specific team membership for a user.
+     */
+    public java.util.Optional<UserTeamDto> getUserTeam(Long userId, Long teamId) {
+        var role = userTeamRoleRepository.findByUserIdAndTeamId(userId, teamId);
+        return role.map(tr -> new UserTeamDto(
+                tr.getTeam().getId(),
+                tr.getTeam().getName(),
+                tr.getTeam().getSlug(),
+                tr.getRole().name()
+        ));
+    }
+
+    /**
      * Get details about a specific team.
      */
     public Band getTeamById(Long teamId) {
