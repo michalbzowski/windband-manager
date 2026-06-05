@@ -89,7 +89,7 @@
                         <option th:each="team : ${userTeams}"
                                 th:value="${team.id}"
                                 th:selected="${team.id == activeTeamId}"
-                                th:text="${team.name + ' (' + #strings.toLowerCase(team.role) + ')'}"></option>
+                                th:text="${team.name}"></option>
                     </select>
                     <span id="nav-team-single" th:if="${#lists.size(userTeams) <= 1}">
                         <span class="team-name" th:text="${activeTeamSlug ?: 'brak zespołu'}">zespół</span>

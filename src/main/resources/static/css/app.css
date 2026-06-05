@@ -153,8 +153,10 @@ button.small, a.small {
     background: var(--pico-primary-background);
     color: var(--pico-primary-inverse);
     cursor: pointer;
-    min-width: 120px;
-    max-width: 220px;
+    min-width: 180px;
+    max-width: none;
+    width: auto;
+    flex-shrink: 0;
     appearance: auto;
 }
 
@@ -210,6 +212,18 @@ nav details.dropdown ul li a {
 nav details.dropdown ul li a:hover {
     background: var(--pico-primary-background);
     color: var(--pico-primary-inverse);
+}
+
+/* Responsive: on narrow screens, let first ul soft-wrap */
+@media (max-width: 768px) {
+    nav > ul:first-child {
+        flex-wrap: wrap;
+        gap: 0.25rem;
+    }
+    .nav-team-item select {
+        min-width: 120px;
+        font-size: 0.8rem;
+    }
 }
 
 /* Dropdown divider */
