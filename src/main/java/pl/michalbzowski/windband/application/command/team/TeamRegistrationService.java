@@ -120,6 +120,31 @@ public class TeamRegistrationService {
         userTeamRoleRepository.save(role);
     }
 
+    /**
+     * Register a new team for an existing user (e.g. Keycloak-authenticated user
+     * who wants to create an additional team). Links the user as ADMIN of the new team.
+     */
+    public TeamRegistrationResult createTeamForExistingUser(Long userId, String teamName, String teamSlug) {
+        // Validate slug uniqueness
+        if (bandRepository.existsBySlug(teamSlug)) {
+            throw new IllegalArgumentException("Team slug already taken: " + teamSlug);
+        }
+
+        // Validate user exists
+        AppUser user = appUserRepository.findById(userId)
+                .orElseThrow(() -> new IllegalArgumentException("User not found"));
+
+        // Create team/band
+        Band band = Band.create(teamName, teamSlug);
+        band = bandRepository.save(band);
+
+        // Link user to team as ADMIN
+        UserTeamRole role = UserTeamRole.createAdmin(user, band);
+        userTeamRoleRepository.save(role);
+
+        return new TeamRegistrationResult(band.getId(), band.getSlug(), user.getId(), user.getUsername());
+    }
+
     // --- DTOs ---
 
     public record TeamRegistrationResult(Long teamId, String teamSlug, Long adminUserId, String adminUsername) {}

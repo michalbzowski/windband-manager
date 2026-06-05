@@ -178,24 +178,16 @@
         btn.disabled = true;
         spinner.style.display = 'inline';
 
-        // Get current user info to pre-fill username/email
-        fetch('/api/auth/me', { credentials: 'same-origin' })
-            .then(function(r) { return r.json(); })
-            .then(function(userData) {
-                const data = {
-                    teamName: teamName.value.trim(),
-                    teamSlug: teamSlug.value.trim(),
-                    adminUsername: userData.username || '',
-                    adminEmail: userData.email || '',
-                    adminPassword: 'KEYCLOAK_AUTH'  // marker — auth is via Keycloak
-                };
-
-                return fetch('/api/auth/register-team', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(data)
-                });
+        // Create team for existing user
+        fetch('/api/auth/teams', {
+            method: 'POST',
+            credentials: 'same-origin',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                teamName: teamName.value.trim(),
+                teamSlug: teamSlug.value.trim()
             })
+        })
             .then(function(resp) {
                 if (resp.status === 201) {
                     return resp.json().then(function(result) {

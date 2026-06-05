@@ -57,6 +57,44 @@ public class AuthController {
     }
 
     /**
+     * Create a new team for the currently authenticated user (existing user).
+     * Requires authentication — the user must be logged in via OIDC/Keycloak.
+     */
+    @PostMapping("/teams")
+    public ResponseEntity<?> createTeam(
+            @Valid @RequestBody CreateTeamRequest request,
+            @AuthenticationPrincipal OidcUser oidcUser,
+            HttpSession session) {
+        if (!(oidcUser instanceof WindbandOidcUser wu)) {
+            return ResponseEntity.status(401).body(Map.of("error", "Not authenticated"));
+        }
+        try {
+            var result = teamRegistrationService.createTeamForExistingUser(
+                    wu.getUserId(), request.getTeamName(), request.getTeamSlug());
+            // Set the new team as active in session
+            session.setAttribute("activeTeamId", result.teamId());
+            return ResponseEntity.status(HttpStatus.CREATED).body(Map.of(
+                    "teamId", result.teamId(),
+                    "teamSlug", result.teamSlug(),
+                    "teamName", request.getTeamName()
+            ));
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
+        }
+    }
+
+    @Data
+    public static class CreateTeamRequest {
+        @jakarta.validation.constraints.NotBlank
+        @jakarta.validation.constraints.Size(min = 2, max = 128)
+        private String teamName;
+
+        @jakarta.validation.constraints.NotBlank
+        @jakarta.validation.constraints.Pattern(regexp = "^[a-z0-9][a-z0-9-]{1,62}[a-z0-9]$")
+        private String teamSlug;
+    }
+
+    /**
      * Check if a username is available (real-time validation).
      */
     @GetMapping("/check-username")
