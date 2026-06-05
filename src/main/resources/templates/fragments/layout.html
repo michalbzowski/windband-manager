@@ -93,10 +93,18 @@
                 <span th:text="${#authentication.principal.wbUsername}">user</span>
                 <span class="separator">|</span>
                 <span class="team-icon">🎺</span>
-                <!-- Active team: show select if multi-team, text if single -->
                 <span id="nav-team-area">
-                    <select id="nav-team-select" style="display:none; font-size:0.85rem; padding:0.2rem 0.5rem; border-radius:4px;" onchange="switchTeam(this.value)"></select>
-                    <span id="nav-team-single">
+                    <!-- Server-side rendered team selector: dropdown if multi-team, text if single -->
+                    <select id="nav-team-select"
+                            th:if="${#lists.size(userTeams) > 1}"
+                            style="font-size:0.85rem; padding:0.2rem 0.5rem; border-radius:4px;"
+                            onchange="switchTeam(this.value)">
+                        <option th:each="team : ${userTeams}"
+                                th:value="${team.id}"
+                                th:selected="${team.id == activeTeamId}"
+                                th:text="${team.name + ' (' + #strings.toLowerCase(team.role) + ')'}"></option>
+                    </select>
+                    <span id="nav-team-single" th:if="${#lists.size(userTeams) <= 1}">
                         <span class="team-name" th:text="${activeTeamSlug ?: 'brak zespołu'}">zespół</span>
                         <span class="team-role" th:if="${activeTeamRole}">(<span th:text="${#strings.toLowerCase(activeTeamRole)}">rola</span>)</span>
                     </span>
@@ -121,34 +129,13 @@
     </footer>
 
 <script th:fragment="footer-scripts">
-    // Pass teams data from server to JS for the team switcher
-    var USER_TEAMS = /*[ [[${userTeams}]] ]*/ [];
-    var ACTIVE_TEAM_ID = /*[ [[${activeTeamId}]] ]*/ null;
-
-    if (USER_TEAMS && USER_TEAMS.length > 1) {
-        // Multiple teams: show dropdown
-        document.getElementById('nav-team-single').style.display = 'none';
-        var select = document.getElementById('nav-team-select');
-        select.style.display = 'inline-block';
-        select.innerHTML = '';
-        for (var i = 0; i < USER_TEAMS.length; i++) {
-            var opt = document.createElement('option');
-            opt.value = USER_TEAMS[i].id;
-            opt.textContent = USER_TEAMS[i].name + ' (' + USER_TEAMS[i].role.toLowerCase() + ')';
-            if (USER_TEAMS[i].id === ACTIVE_TEAM_ID) {
-                opt.selected = true;
-            }
-            select.appendChild(opt);
-        }
-    }
-
-    // Switch active team
+    // Switch active team and reload page to update nav
     function switchTeam(teamId) {
         fetch('/api/auth/switch-team/' + teamId, { method: 'POST', credentials: 'same-origin' })
             .then(function(resp) { return resp.json(); })
             .then(function(data) {
-                // Reload page content with new team context
-                htmx.ajax('GET', '/', { target: '#content', swap: 'innerHTML' });
+                // Full page reload so the server-rendered nav reflects the new team
+                window.location.href = '/';
             })
             .catch(function(err) {
                 console.error('Switch team error:', err);

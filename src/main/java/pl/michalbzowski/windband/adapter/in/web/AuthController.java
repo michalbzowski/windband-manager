@@ -125,10 +125,17 @@ public class AuthController {
     @GetMapping("/me")
     public ResponseEntity<?> me(@AuthenticationPrincipal OidcUser oidcUser, HttpSession session) {
         if (oidcUser instanceof WindbandOidcUser wu) {
-            // Check session override for active team
+            // Check session override for active team.
+            // Use DB-backed check (not cached WindbandOidcUser.teamIds) so
+            // teams created after login are immediately recognized.
             Long sessionTeamId = (Long) session.getAttribute("activeTeamId");
-            Long activeTeamId = sessionTeamId != null && wu.belongsToTeam(sessionTeamId)
-                    ? sessionTeamId : wu.getActiveTeamId();
+            Long activeTeamId;
+            if (sessionTeamId != null) {
+                var team = teamQueryService.getUserTeam(wu.getUserId(), sessionTeamId);
+                activeTeamId = team.isPresent() ? sessionTeamId : wu.getActiveTeamId();
+            } else {
+                activeTeamId = wu.getActiveTeamId();
+            }
 
             String activeTeamSlug = null;
             String activeTeamRole = null;
@@ -179,7 +186,11 @@ public class AuthController {
         }
 
         if (!wu.belongsToTeam(teamId)) {
-            return ResponseEntity.status(403).body(Map.of("error", "Nie należysz do zespołu " + teamId));
+            // Also check DB in case team was created after login
+            var fromDb = teamQueryService.getUserTeam(wu.getUserId(), teamId);
+            if (fromDb.isEmpty()) {
+                return ResponseEntity.status(403).body(Map.of("error", "Nie należysz do zespołu " + teamId));
+            }
         }
 
         // Store in session

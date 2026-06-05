@@ -40,8 +40,16 @@ public class TeamModelAdvice {
             return null;
         }
         Long sessionTeamId = (Long) session.getAttribute("activeTeamId");
-        return sessionTeamId != null && wu.belongsToTeam(sessionTeamId)
-                ? sessionTeamId : wu.getActiveTeamId();
+        // Check against DB instead of cached WindbandOidcUser.teamIds — the
+        // principal is frozen at login time and doesn't know about teams
+        // created later in the same session.
+        if (sessionTeamId != null) {
+            boolean stillBelongs = teamQueryService.getUserTeam(wu.getUserId(), sessionTeamId).isPresent();
+            if (stillBelongs) {
+                return sessionTeamId;
+            }
+        }
+        return wu.getActiveTeamId();
     }
 
     @ModelAttribute("activeTeamSlug")
@@ -61,10 +69,15 @@ public class TeamModelAdvice {
             return null;
         }
         Long sessionTeamId = (Long) session.getAttribute("activeTeamId");
-        Long teamId = sessionTeamId != null && wu.belongsToTeam(sessionTeamId)
-                ? sessionTeamId : wu.getActiveTeamId();
+        // Check against DB instead of cached WindbandOidcUser.teamIds
+        if (sessionTeamId != null) {
+            var team = teamQueryService.getUserTeam(wu.getUserId(), sessionTeamId);
+            if (team.isPresent()) {
+                return team.get();
+            }
+        }
+        Long teamId = wu.getActiveTeamId();
         if (teamId == null) return null;
-
         return teamQueryService.getUserTeam(wu.getUserId(), teamId).orElse(null);
     }
 }
