@@ -134,14 +134,20 @@
 
         // Load build info
         (function() {
+            console.log('Loading build info...');
             fetch('/api/auth/build-info', { credentials: 'same-origin' })
-                .then(function(resp) { return resp.json(); })
+                .then(function(resp) { 
+                    console.log('build-info response:', resp.status);
+                    return resp.json(); 
+                })
                 .then(function(data) {
+                    console.log('build-info data:', data);
                     var version = data.version || '?';
                     var time = data.time ? data.time.replace('T', ' ').replace('Z', '') : '?';
                     document.getElementById('build-version').textContent = 'v' + version + ' | ' + time;
                 })
-                .catch(function() {
+                .catch(function(err) {
+                    console.error('build-info error:', err);
                     document.getElementById('build-version').textContent = 'v unknown';
                 });
         })();
