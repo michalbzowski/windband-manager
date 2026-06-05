@@ -113,15 +113,14 @@
                         <li><a th:href="@{/band/attributes(type='MEMBER')}" hx-target="#content" hx-swap="innerHTML transition:true">Atrybuty</a></li>
                         <li><hr class="dropdown-divider"></li>
                         <li><a href="/register" hx-target="#content" hx-swap="innerHTML transition:true">➕ Nowy zespół</a></li>
+                        <li><hr class="dropdown-divider"></li>
+                        <li>
+                            <form th:action="@{/api/auth/logout}" method="POST" style="display:inline;">
+                                <button type="submit" style="width:100%; text-align:left; background:none; border:none; color:var(--pico-color); padding:0.5rem 0.75rem; font-size:0.85rem; cursor:pointer;">🚪 Wyloguj</button>
+                            </form>
+                        </li>
                     </ul>
                 </details>
-            </li>
-        </ul>
-        <ul>
-            <li>
-                <form th:action="@{/api/auth/logout}" method="POST" style="display:inline;">
-                    <button type="submit" class="outline secondary small">Wyloguj</button>
-                </form>
             </li>
         </ul>
     </nav>
