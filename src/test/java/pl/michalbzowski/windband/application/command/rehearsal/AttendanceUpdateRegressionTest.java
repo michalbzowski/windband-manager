@@ -79,7 +79,7 @@ class AttendanceUpdateRegressionTest {
         createCmd.setDate(LocalDate.now().plusDays(1));
         createCmd.setStartTime(LocalTime.of(18, 0));
         createCmd.setLocation("Sala 1");
-        Rehearsal rehearsal = commandService.scheduleRehearsal(createCmd);
+        Rehearsal rehearsal = commandService.scheduleRehearsal(createCmd, 1L);
 
         // Record initial attendance as PRESENT
         RecordAttendanceCommand recordCmd = new RecordAttendanceCommand();
@@ -116,7 +116,7 @@ class AttendanceUpdateRegressionTest {
         createCmd.setDate(LocalDate.now().plusDays(2));
         createCmd.setStartTime(LocalTime.of(19, 0));
         createCmd.setLocation("Sala 2");
-        Rehearsal rehearsal = commandService.scheduleRehearsal(createCmd);
+        Rehearsal rehearsal = commandService.scheduleRehearsal(createCmd, 1L);
 
         // Record as PRESENT
         RecordAttendanceCommand cmd1 = new RecordAttendanceCommand();
@@ -159,7 +159,7 @@ class AttendanceUpdateRegressionTest {
         createCmd.setDate(LocalDate.now().plusDays(3));
         createCmd.setStartTime(LocalTime.of(17, 0));
         createCmd.setLocation("Sala 3");
-        Rehearsal rehearsal = commandService.scheduleRehearsal(createCmd);
+        Rehearsal rehearsal = commandService.scheduleRehearsal(createCmd, 1L);
 
         // Record attendance for first time via the "update" path (no prior attendance)
         RecordAttendanceCommand cmd = new RecordAttendanceCommand();
@@ -184,7 +184,7 @@ class AttendanceUpdateRegressionTest {
         createCmd.setDate(LocalDate.now().plusDays(4));
         createCmd.setStartTime(LocalTime.of(18, 30));
         createCmd.setLocation("Sala 4");
-        Rehearsal rehearsal = commandService.scheduleRehearsal(createCmd);
+        Rehearsal rehearsal = commandService.scheduleRehearsal(createCmd, 1L);
 
         // Record initial
         RecordAttendanceCommand cmd1 = new RecordAttendanceCommand();

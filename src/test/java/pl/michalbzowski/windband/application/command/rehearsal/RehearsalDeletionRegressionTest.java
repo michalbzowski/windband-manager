@@ -56,7 +56,7 @@ class RehearsalDeletionRegressionTest {
         createCmd.setEndTime(LocalTime.of(20, 0));
         createCmd.setLocation("Do usunięcia");
 
-        Rehearsal rehearsal = commandService.scheduleRehearsal(createCmd);
+        Rehearsal rehearsal = commandService.scheduleRehearsal(createCmd, 1L);
         Long id = rehearsal.getId();
         assertThat(id).isNotNull();
 

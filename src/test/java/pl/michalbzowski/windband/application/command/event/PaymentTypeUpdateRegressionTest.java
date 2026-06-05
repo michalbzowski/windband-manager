@@ -67,7 +67,7 @@ class PaymentTypeUpdateRegressionTest {
         createCmd.setEventType("CONCERT");
         createCmd.setPaymentType("FREE");
         
-        BandEvent event = commandService.createEvent(createCmd);
+        BandEvent event = commandService.createEvent(createCmd, 1L);
 
         // Verify initial state is FREE
         BandEvent savedEvent = queryService.getEventById(event.getId());
@@ -107,7 +107,7 @@ class PaymentTypeUpdateRegressionTest {
         createCmd.setEventType("CONCERT");
         createCmd.setPaymentType("FREE");
         
-        BandEvent event = commandService.createEvent(createCmd);
+        BandEvent event = commandService.createEvent(createCmd, 1L);
 
         // Verify initial event type
         BandEvent savedEvent = queryService.getEventById(event.getId());
@@ -148,7 +148,7 @@ class PaymentTypeUpdateRegressionTest {
         createCmd.setPaymentType("PAID_SPLIT");
         createCmd.setPaymentAmount(new BigDecimal("200.00"));
         
-        BandEvent event = commandService.createEvent(createCmd);
+        BandEvent event = commandService.createEvent(createCmd, 1L);
 
         // Verify initial payment info
         BandEvent savedEvent = queryService.getEventById(event.getId());

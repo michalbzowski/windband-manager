@@ -55,7 +55,7 @@ class MemberCommandServiceTest {
         cmd.setEmail("jan@email.pl");
         cmd.setPhone("123456789");
 
-        Member member = commandService.createMember(cmd);
+        Member member = commandService.createMember(cmd, 1L);
 
         assertThat(member.getId()).isNotNull();
         assertThat(member.getFirstName()).isEqualTo("Jan");
@@ -69,7 +69,7 @@ class MemberCommandServiceTest {
         cmd.setLastName("Nowak");
         cmd.setDateOfBirth(LocalDate.of(1985, 6, 20));
 
-        Member member = commandService.createMember(cmd);
+        Member member = commandService.createMember(cmd, 1L);
         commandService.deactivateMember(member.getId());
 
         Member deactivated = memberRepository.findById(member.getId()).orElseThrow();
@@ -87,7 +87,7 @@ class MemberCommandServiceTest {
         createCmd.setLastName("Kowalski");
         createCmd.setDateOfBirth(LocalDate.of(1990, 5, 15));
         createCmd.setInstrumentId(trumpet.getId());
-        Member member = commandService.createMember(createCmd);
+        Member member = commandService.createMember(createCmd, 1L);
 
         assertThat(member.getPrimaryInstrument()).isPresent();
         assertThat(member.getPrimaryInstrument().get().getName()).isEqualTo("Trabka");

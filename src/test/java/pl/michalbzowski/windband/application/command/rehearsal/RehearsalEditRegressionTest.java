@@ -55,7 +55,7 @@ class RehearsalEditRegressionTest {
         createCmd.setLocation("Sala 1");
         createCmd.setNotes("Próba ogólna");
 
-        Rehearsal original = commandService.scheduleRehearsal(createCmd);
+        Rehearsal original = commandService.scheduleRehearsal(createCmd, 1L);
         Long id = original.getId();
 
         assertThat(id).isNotNull();
@@ -86,7 +86,7 @@ class RehearsalEditRegressionTest {
         createCmd.setStartTime(LocalTime.of(18, 0));
         createCmd.setLocation("Stare miejsce");
 
-        Rehearsal original = commandService.scheduleRehearsal(createCmd);
+        Rehearsal original = commandService.scheduleRehearsal(createCmd, 1L);
         Long id = original.getId();
 
         ScheduleRehearsalCommand updateCmd = new ScheduleRehearsalCommand();
@@ -118,7 +118,7 @@ class RehearsalEditRegressionTest {
         createCmd.setLocation("Sala 1");
         createCmd.setNotes("Some notes");
 
-        Rehearsal original = commandService.scheduleRehearsal(createCmd);
+        Rehearsal original = commandService.scheduleRehearsal(createCmd, 1L);
         assertThat(original.getNotes()).isEqualTo("Some notes");
 
         ScheduleRehearsalCommand updateCmd = new ScheduleRehearsalCommand();

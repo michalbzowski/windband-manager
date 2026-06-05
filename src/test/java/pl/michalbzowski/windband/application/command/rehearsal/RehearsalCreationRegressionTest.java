@@ -62,7 +62,7 @@ class RehearsalCreationRegressionTest {
         cmd1.setEndTime(LocalTime.of(20, 0));
         cmd1.setLocation("Sala 1");
 
-        Rehearsal r1 = commandService.scheduleRehearsal(cmd1);
+        Rehearsal r1 = commandService.scheduleRehearsal(cmd1, 1L);
 
         assertThat(r1).isNotNull();
         assertThat(r1.getId()).isNotNull();
@@ -76,7 +76,7 @@ class RehearsalCreationRegressionTest {
         cmd2.setStartTime(LocalTime.of(19, 0));
         cmd2.setLocation("Sala 2");
 
-        Rehearsal r2 = commandService.scheduleRehearsal(cmd2);
+        Rehearsal r2 = commandService.scheduleRehearsal(cmd2, 1L);
 
         assertThat(r2).isNotNull();
         assertThat(r2.getId()).isNotNull();
@@ -99,7 +99,7 @@ class RehearsalCreationRegressionTest {
             cmd.setStartTime(LocalTime.of(18, 0));
             cmd.setLocation("Sala " + i);
 
-            Rehearsal r = commandService.scheduleRehearsal(cmd);
+            Rehearsal r = commandService.scheduleRehearsal(cmd, 1L);
             assertThat(r).isNotNull();
             assertThat(r.getId()).isNotNull();
         }
@@ -122,7 +122,7 @@ class RehearsalCreationRegressionTest {
         cmd.setLocation("DK Psary");
         cmd.setNotes("Próba generalna");
 
-        Rehearsal r = commandService.scheduleRehearsal(cmd);
+        Rehearsal r = commandService.scheduleRehearsal(cmd, 1L);
 
         assertThat(r.getDate()).isEqualTo(LocalDate.of(2026, 6, 15));
         assertThat(r.getStartTime()).isEqualTo(LocalTime.of(17, 30));

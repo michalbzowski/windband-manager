@@ -64,7 +64,7 @@ class MemberCreationRegressionTest {
         cmd1.setEmail("jan@email.pl");
         cmd1.setPhone("123456789");
 
-        Member member1 = commandService.createMember(cmd1);
+        Member member1 = commandService.createMember(cmd1, 1L);
 
         assertThat(member1.getId()).isNotNull();
         assertThat(memberRepository.findAllActive()).hasSize(initialCount + 1);
@@ -77,7 +77,7 @@ class MemberCreationRegressionTest {
         cmd2.setEmail("piotr@email.pl");
         cmd2.setPhone("987654321");
 
-        Member member2 = commandService.createMember(cmd2);
+        Member member2 = commandService.createMember(cmd2, 1L);
 
         assertThat(member2.getId()).isNotNull();
         assertThat(member2.getId()).isNotEqualTo(member1.getId());
@@ -89,7 +89,7 @@ class MemberCreationRegressionTest {
         cmd3.setLastName("Wiśniewska");
         cmd3.setDateOfBirth(LocalDate.of(1995, 3, 10));
 
-        Member member3 = commandService.createMember(cmd3);
+        Member member3 = commandService.createMember(cmd3, 1L);
 
         assertThat(member3.getId()).isNotNull();
         assertThat(memberRepository.findAllActive()).hasSize(initialCount + 3);
@@ -113,7 +113,7 @@ class MemberCreationRegressionTest {
             cmd.setDateOfBirth(LocalDate.of(2000, 1, 1));
             cmd.setEmail("same@email.pl");
 
-            commandService.createMember(cmd);
+            commandService.createMember(cmd, 1L);
         }
 
         assertThat(memberRepository.findAllActive()).hasSize(initialCount + 3);
