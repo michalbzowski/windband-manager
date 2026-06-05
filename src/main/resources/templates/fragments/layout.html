@@ -138,7 +138,7 @@
                 .then(function(resp) { return resp.json(); })
                 .then(function(data) {
                     var version = data.version || '?';
-                    var time = data.time ? new Date(data.time).toLocaleString('pl-PL') : '?';
+                    var time = data.time ? data.time.replace('T', ' ').replace('Z', '') : '?';
                     document.getElementById('build-version').textContent = 'v' + version + ' | ' + time;
                 })
                 .catch(function() {
