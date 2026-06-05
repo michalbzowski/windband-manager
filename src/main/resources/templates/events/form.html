@@ -84,6 +84,21 @@
 </div>
 
 <script th:inline="javascript">
+    // Show/hide payment amount field based on payment type
+    (function() {
+        var paymentSelect = document.getElementById('payment-type-select');
+        var amountLabel = document.getElementById('payment-amount-label');
+        function toggleAmount() {
+            var isPaid = paymentSelect.value === 'PAID_SPLIT' || paymentSelect.value === 'PAID_TEAM_ACCOUNT';
+            amountLabel.style.display = isPaid ? '' : 'none';
+            if (!isPaid) {
+                document.getElementById('payment-amount-input').value = '';
+            }
+        }
+        paymentSelect.addEventListener('change', toggleAmount);
+        toggleAmount();
+    })();
+
     // Guard: prevent duplicate event listeners when form is reloaded via htmx
     if (!window._eventFormHandlerAttached) {
         window._eventFormHandlerAttached = true;

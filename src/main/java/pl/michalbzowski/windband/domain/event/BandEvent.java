@@ -59,6 +59,8 @@ public class BandEvent {
         this.startTime = startTime;
         this.location = location;
         this.eventType = Objects.requireNonNull(eventType, "eventType required");
+        this.paymentType = paymentType != null ? paymentType : PaymentType.FREE;
+        this.paymentAmount = paymentAmount;
         this.band = Objects.requireNonNull(band, "band required");
         this.paymentType = paymentType != null ? paymentType : PaymentType.FREE;
         this.paymentAmount = paymentAmount;
