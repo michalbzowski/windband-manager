@@ -1,13 +1,18 @@
 package pl.michalbzowski.windband.adapter.in.web;
 
+import jakarta.servlet.http.HttpSession;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.security.oauth2.core.oidc.user.OidcUser;
 import org.springframework.web.bind.annotation.*;
+import pl.michalbzowski.windband.adapter.in.security.WindbandOidcUser;
 import pl.michalbzowski.windband.application.command.rehearsal.RecordAttendanceCommand;
 import pl.michalbzowski.windband.application.command.rehearsal.ScheduleRehearsalCommand;
 import pl.michalbzowski.windband.application.command.rehearsal.RehearsalCommandService;
 import pl.michalbzowski.windband.application.query.rehearsal.RehearsalQueryService;
+import pl.michalbzowski.windband.application.query.team.TeamQueryService;
 import pl.michalbzowski.windband.domain.rehearsal.Rehearsal;
 
 import java.util.List;
@@ -19,10 +24,12 @@ public class RehearsalController {
 
     private final RehearsalCommandService commandService;
     private final RehearsalQueryService queryService;
+    private final TeamQueryService teamQueryService;
 
     @GetMapping
-    public List<Rehearsal> getAllRehearsals() {
-        return queryService.getAllRehearsals();
+    public List<Rehearsal> getAllRehearsals(@AuthenticationPrincipal OidcUser oidcUser, HttpSession session) {
+        Long teamId = resolveActiveTeamId(oidcUser, session);
+        return queryService.getAllRehearsals(teamId);
     }
 
     @GetMapping("/{id}")
@@ -55,5 +62,19 @@ public class RehearsalController {
     public ResponseEntity<Void> deleteRehearsal(@PathVariable Long id) {
         commandService.deleteRehearsal(id);
         return ResponseEntity.noContent().build();
+    }
+
+    private Long resolveActiveTeamId(OidcUser oidcUser, HttpSession session) {
+        if (!(oidcUser instanceof WindbandOidcUser wu)) {
+            return null;
+        }
+        Long sessionTeamId = (Long) session.getAttribute("activeTeamId");
+        if (sessionTeamId != null) {
+            boolean stillBelongs = teamQueryService.getUserTeam(wu.getUserId(), sessionTeamId).isPresent();
+            if (stillBelongs) {
+                return sessionTeamId;
+            }
+        }
+        return wu.getActiveTeamId();
     }
 }

@@ -7,6 +7,7 @@ import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
 import lombok.RequiredArgsConstructor;
+import jakarta.servlet.http.HttpSession;
 import pl.michalbzowski.windband.adapter.in.security.WindbandOidcUser;
 import pl.michalbzowski.windband.application.query.band.BandQueryService;
 import pl.michalbzowski.windband.application.query.event.EventQueryService;
@@ -27,6 +28,7 @@ public class PageController {
     private final EventQueryService eventQueryService;
     private final InventoryQueryService inventoryQueryService;
     private final BandQueryService bandQueryService;
+    private final TeamQueryService teamQueryService;
 
     private Band getDefaultBand() {
         return bandQueryService.getDefaultBand();
@@ -58,10 +60,20 @@ public class PageController {
     }
 
 @GetMapping("/")
-    public String dashboard(@AuthenticationPrincipal OidcUser oidcUser, Model model) {
+    public String dashboard(@AuthenticationPrincipal OidcUser oidcUser, HttpSession session, Model model) {
         Long activeTeamId = null;
         if (oidcUser instanceof WindbandOidcUser wu) {
-            activeTeamId = wu.getActiveTeamId();
+            Long sessionTeamId = (Long) session.getAttribute("activeTeamId");
+            if (sessionTeamId != null) {
+                boolean stillBelongs = teamQueryService.getUserTeam(wu.getUserId(), sessionTeamId).isPresent();
+                if (stillBelongs) {
+                    activeTeamId = sessionTeamId;
+                } else {
+                    activeTeamId = wu.getActiveTeamId();
+                }
+            } else {
+                activeTeamId = wu.getActiveTeamId();
+            }
         }
 
         // If no team is set, don't show any data
@@ -89,8 +101,8 @@ public class PageController {
         // Events - używamy countBetween
         long upcomingEvents = eventQueryService.getEventCountBetween(today, LocalDate.of(2099, 12, 31), activeTeamId);
         
-        // Inventory - proste liczenie (bez filtrowania po zespole dla uproszczenia)
-        var orders = inventoryQueryService.getAllOrders();
+        // Inventory - filtered by activeTeamId
+        var orders = inventoryQueryService.getAllOrders(activeTeamId);
         long activeOrders = orders.stream()
                 .filter(o -> "SUBMITTED".equals(o.status()) || 
                             "PENDING_APPROVAL".equals(o.status()) ||
@@ -98,8 +110,8 @@ public class PageController {
                             "SHIPPED".equals(o.status()))
                 .count();
         
-        long totalUniforms = inventoryQueryService.getAllUniformItems().size();
-        long totalInstruments = inventoryQueryService.getAllInstrumentItems().size();
+        long totalUniforms = inventoryQueryService.getAllUniformItems(activeTeamId).size();
+        long totalInstruments = inventoryQueryService.getAllInstrumentItems(activeTeamId).size();
         
         model.addAttribute("totalMembers", totalMembers);
         model.addAttribute("activeMembers", activeMembers);

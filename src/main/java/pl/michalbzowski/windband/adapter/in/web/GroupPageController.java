@@ -44,13 +44,13 @@ public class GroupPageController {
     }
 
     @GetMapping("/{id}")
-    public String groupDetail(@PathVariable Long id, Model model) {
+    public String groupDetail(@PathVariable Long id, @ModelAttribute("activeTeamId") Long activeTeamId, Model model) {
         var groupDetail = groupQueryService.getGroupDetailById(id);
         model.addAttribute("group", groupDetail);
         Set<Long> memberIdsInGroup = groupDetail.members().stream()
                 .map(GroupMemberDto::memberId)
                 .collect(Collectors.toSet());
-        List<MemberDto> availableMembers = memberQueryService.getAllActiveMembers().stream()
+        List<MemberDto> availableMembers = memberQueryService.getAllActiveMembers(activeTeamId).stream()
                 .filter(m -> !memberIdsInGroup.contains(m.id()))
                 .toList();
         model.addAttribute("members", availableMembers);
@@ -70,7 +70,7 @@ public class GroupPageController {
     }
 
     @PostMapping("/{groupId}/members/{memberId}/remove")
-    public String removeMember(@PathVariable Long groupId, @PathVariable Long memberId, Model model) {
+    public String removeMember(@PathVariable Long groupId, @PathVariable Long memberId, @ModelAttribute("activeTeamId") Long activeTeamId, Model model) {
         groupCommandService.removeMemberFromGroup(groupId, memberId);
         // Return the group detail fragment for HTMX, avoiding redirect issues
         var groupDetail = groupQueryService.getGroupDetailById(groupId);
@@ -78,7 +78,7 @@ public class GroupPageController {
         Set<Long> memberIdsInGroup = groupDetail.members().stream()
                 .map(GroupMemberDto::memberId)
                 .collect(Collectors.toSet());
-        List<MemberDto> availableMembers = memberQueryService.getAllActiveMembers().stream()
+        List<MemberDto> availableMembers = memberQueryService.getAllActiveMembers(activeTeamId).stream()
                 .filter(m -> !memberIdsInGroup.contains(m.id()))
                 .toList();
         model.addAttribute("members", availableMembers);

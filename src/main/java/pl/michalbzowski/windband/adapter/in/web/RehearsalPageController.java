@@ -21,14 +21,14 @@ public class RehearsalPageController {
     private final MemberQueryService memberQueryService;
 
     @GetMapping
-    public String listPage(Model model) {
-        model.addAttribute("rehearsals", rehearsalQueryService.getAllRehearsals());
+    public String listPage(@ModelAttribute("activeTeamId") Long activeTeamId, Model model) {
+        model.addAttribute("rehearsals", rehearsalQueryService.getAllRehearsals(activeTeamId));
         return "rehearsals/list";
     }
 
     @GetMapping("/list")
-    public String listFragment(Model model) {
-        model.addAttribute("rehearsals", rehearsalQueryService.getAllRehearsals());
+    public String listFragment(@ModelAttribute("activeTeamId") Long activeTeamId, Model model) {
+        model.addAttribute("rehearsals", rehearsalQueryService.getAllRehearsals(activeTeamId));
         return "rehearsals/list :: #rehearsals-content";
     }
 
@@ -39,10 +39,10 @@ public class RehearsalPageController {
     }
 
     @GetMapping("/{id}")
-    public String rehearsalDetail(@PathVariable Long id, Model model) {
+    public String rehearsalDetail(@PathVariable Long id, @ModelAttribute("activeTeamId") Long activeTeamId, Model model) {
         var rehearsal = rehearsalQueryService.getRehearsalById(id);
         model.addAttribute("rehearsal", rehearsal);
-        model.addAttribute("members", memberQueryService.getAllActiveMembers());
+        model.addAttribute("members", memberQueryService.getAllActiveMembers(activeTeamId));
         Map<Long, AttendanceStatus> attendanceMap = rehearsal.getAttendances().stream()
                 .collect(Collectors.toMap(
                         a -> a.getMember().getId(),

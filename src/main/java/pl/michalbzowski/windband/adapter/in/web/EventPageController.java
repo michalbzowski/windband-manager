@@ -21,14 +21,14 @@ public class EventPageController {
     private final InstrumentQueryService instrumentQueryService;
 
     @GetMapping
-    public String listPage(Model model) {
-        model.addAttribute("events", eventQueryService.getAllEvents());
+    public String listPage(@ModelAttribute("activeTeamId") Long activeTeamId, Model model) {
+        model.addAttribute("events", eventQueryService.getAllEvents(activeTeamId));
         return "events/list";
     }
 
     @GetMapping("/list")
-    public String listFragment(Model model) {
-        model.addAttribute("events", eventQueryService.getAllEvents());
+    public String listFragment(@ModelAttribute("activeTeamId") Long activeTeamId, Model model) {
+        model.addAttribute("events", eventQueryService.getAllEvents(activeTeamId));
         return "events/list :: #events-content";
     }
 
@@ -39,7 +39,7 @@ public class EventPageController {
     }
 
     @GetMapping("/{id}")
-    public String eventDetail(@PathVariable Long id, Model model) {
+    public String eventDetail(@PathVariable Long id, @ModelAttribute("activeTeamId") Long activeTeamId, Model model) {
         var eventDetail = eventQueryService.getEventDetailById(id);
         model.addAttribute("event", eventDetail);
         
@@ -49,7 +49,7 @@ public class EventPageController {
                 .collect(java.util.stream.Collectors.toSet());
         
         // Filter out already invited members
-        var availableMembers = memberQueryService.getAllActiveMembers().stream()
+        var availableMembers = memberQueryService.getAllActiveMembers(activeTeamId).stream()
                 .filter(m -> !invitedMemberIds.contains(m.id()))
                 .collect(java.util.stream.Collectors.toList());
         

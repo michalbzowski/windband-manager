@@ -20,14 +20,18 @@ public class ReportQueryService {
     private final MemberQueryService memberQuery;
 
     public MonthlyReport generateMonthlyReport(YearMonth yearMonth) {
+        return generateMonthlyReport(yearMonth, null);
+    }
+
+    public MonthlyReport generateMonthlyReport(YearMonth yearMonth, Long teamId) {
         LocalDate from = yearMonth.atDay(1);
         LocalDate to = yearMonth.atEndOfMonth();
 
-        var rehearsals = rehearsalQuery.getRehearsalsBetween(from, to);
-        var events = eventQuery.getEventsBetween(from, to);
-        long total = memberQuery.getActiveMemberCount();
-        long minors = memberQuery.getMinorCount();
-        long seniors = memberQuery.getSeniorCount();
+        var rehearsals = rehearsalQuery.getRehearsalsBetween(from, to, teamId);
+        var events = eventQuery.getEventsBetween(from, to, teamId);
+        long total = memberQuery.getActiveMemberCount(teamId);
+        long minors = memberQuery.getMinorCount(teamId);
+        long seniors = memberQuery.getSeniorCount(teamId);
 
         return new MonthlyReport(from, rehearsals, events, total, minors, seniors);
     }

@@ -1,9 +1,13 @@
 package pl.michalbzowski.windband.adapter.in.web;
 
+import jakarta.servlet.http.HttpSession;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.security.oauth2.core.oidc.user.OidcUser;
 import org.springframework.web.bind.annotation.*;
+import pl.michalbzowski.windband.adapter.in.security.WindbandOidcUser;
 import pl.michalbzowski.windband.application.command.member.AssignInstrumentCommand;
 import pl.michalbzowski.windband.application.command.member.ChangeInstrumentCommand;
 import pl.michalbzowski.windband.application.command.member.CreateMemberCommand;
@@ -11,6 +15,7 @@ import pl.michalbzowski.windband.application.command.member.MemberCommandService
 import pl.michalbzowski.windband.application.command.member.UpdateMemberCommand;
 import pl.michalbzowski.windband.application.dto.MemberDto;
 import pl.michalbzowski.windband.application.query.member.MemberQueryService;
+import pl.michalbzowski.windband.application.query.team.TeamQueryService;
 
 import java.util.List;
 
@@ -21,10 +26,12 @@ public class MemberController {
 
     private final MemberCommandService commandService;
     private final MemberQueryService queryService;
+    private final TeamQueryService teamQueryService;
 
     @GetMapping
-    public List<MemberDto> getAllMembers() {
-        return queryService.getAllActiveMembers();
+    public List<MemberDto> getAllMembers(@AuthenticationPrincipal OidcUser oidcUser, HttpSession session) {
+        Long teamId = resolveActiveTeamId(oidcUser, session);
+        return queryService.getAllActiveMembers(teamId);
     }
 
     @GetMapping("/{id}")
@@ -66,5 +73,19 @@ public class MemberController {
     public ResponseEntity<Void> deactivateMember(@PathVariable Long id) {
         commandService.deactivateMember(id);
         return ResponseEntity.noContent().build();
+    }
+
+    private Long resolveActiveTeamId(OidcUser oidcUser, HttpSession session) {
+        if (!(oidcUser instanceof WindbandOidcUser wu)) {
+            return null;
+        }
+        Long sessionTeamId = (Long) session.getAttribute("activeTeamId");
+        if (sessionTeamId != null) {
+            boolean stillBelongs = teamQueryService.getUserTeam(wu.getUserId(), sessionTeamId).isPresent();
+            if (stillBelongs) {
+                return sessionTeamId;
+            }
+        }
+        return wu.getActiveTeamId();
     }
 }

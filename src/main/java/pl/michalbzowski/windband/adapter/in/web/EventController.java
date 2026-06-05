@@ -1,11 +1,16 @@
 package pl.michalbzowski.windband.adapter.in.web;
 
+import jakarta.servlet.http.HttpSession;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.security.oauth2.core.oidc.user.OidcUser;
 import org.springframework.web.bind.annotation.*;
+import pl.michalbzowski.windband.adapter.in.security.WindbandOidcUser;
 import pl.michalbzowski.windband.application.command.event.*;
 import pl.michalbzowski.windband.application.query.event.EventQueryService;
+import pl.michalbzowski.windband.application.query.team.TeamQueryService;
 import pl.michalbzowski.windband.domain.event.BandEvent;
 
 import java.util.List;
@@ -17,10 +22,12 @@ public class EventController {
 
     private final EventCommandService commandService;
     private final EventQueryService queryService;
+    private final TeamQueryService teamQueryService;
 
     @GetMapping
-    public List<BandEvent> getAllEvents() {
-        return queryService.getAllEvents();
+    public List<BandEvent> getAllEvents(@AuthenticationPrincipal OidcUser oidcUser, HttpSession session) {
+        Long teamId = resolveActiveTeamId(oidcUser, session);
+        return queryService.getAllEvents(teamId);
     }
 
     @GetMapping("/{id}")
@@ -92,5 +99,19 @@ public class EventController {
         cmd.setId(id);
         commandService.updateEvent(cmd);
         return ResponseEntity.ok().build();
+    }
+
+    private Long resolveActiveTeamId(OidcUser oidcUser, HttpSession session) {
+        if (!(oidcUser instanceof WindbandOidcUser wu)) {
+            return null;
+        }
+        Long sessionTeamId = (Long) session.getAttribute("activeTeamId");
+        if (sessionTeamId != null) {
+            boolean stillBelongs = teamQueryService.getUserTeam(wu.getUserId(), sessionTeamId).isPresent();
+            if (stillBelongs) {
+                return sessionTeamId;
+            }
+        }
+        return wu.getActiveTeamId();
     }
 }
