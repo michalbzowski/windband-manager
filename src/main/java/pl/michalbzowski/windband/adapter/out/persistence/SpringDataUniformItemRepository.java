@@ -10,6 +10,8 @@ import java.util.List;
 public interface SpringDataUniformItemRepository extends JpaRepository<UniformItem, Long> {
     List<UniformItem> findByAssignedMember(Member member);
 
+    List<UniformItem> findByBandId(Long bandId);
+
     @Query("SELECT u FROM UniformItem u LEFT JOIN FETCH u.assignedMember")
     List<UniformItem> findAllWithMember();
 }
