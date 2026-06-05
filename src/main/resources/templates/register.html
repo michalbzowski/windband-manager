@@ -18,7 +18,7 @@
             <!-- Info o zalogowanym użytkowniku -->
             <article style="background:#e7f3ff; border:1px solid #b8daff; border-radius:8px; padding:1rem; margin-bottom:1rem;">
                 <p style="margin:0;">
-                    🔐 Zalogowano jako: <strong id="logged-in-user">użytkownik</strong>
+                    🔐 Zalogowano jako: <strong th:text="${#authentication.principal.wbUsername}">użytkownik</strong>
                 </p>
             </article>
 
@@ -90,7 +90,7 @@
     <script>
     // ==================== POBIERANIE DANYCH ZALOGOWANEGO UŻYTKOWNIKA ====================
     (function() {
-        fetch('/api/auth/me')
+        fetch('/api/auth/me', { credentials: 'same-origin' })
             .then(function(r) { return r.json(); })
             .then(function(data) {
                 if (data.username) {
@@ -179,7 +179,7 @@
         spinner.style.display = 'inline';
 
         // Get current user info to pre-fill username/email
-        fetch('/api/auth/me')
+        fetch('/api/auth/me', { credentials: 'same-origin' })
             .then(function(r) { return r.json(); })
             .then(function(userData) {
                 const data = {
