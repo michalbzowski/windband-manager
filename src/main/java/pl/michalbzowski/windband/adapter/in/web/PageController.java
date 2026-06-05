@@ -37,8 +37,8 @@ public class PageController {
 
     /**
      * Registration page. In OIDC mode, unauthenticated users are redirected
-     * to Keycloak registration. Authenticated users without a team see the
-     * team creation form.
+     * to Keycloak registration. Authenticated users (with or without a team)
+     * see the team creation form to create additional teams.
      */
     @GetMapping("/register")
     public String register(@AuthenticationPrincipal OidcUser oidcUser, Model model) {
@@ -50,13 +50,11 @@ public class PageController {
             return "redirect:/";
         }
 
-        if (oidcUser instanceof WindbandOidcUser wu && wu.getActiveTeamId() == null) {
+        if (oidcUser instanceof WindbandOidcUser wu) {
             model.addAttribute("email", wu.getWbEmail());
             model.addAttribute("username", wu.getWbUsername());
-            return "register";
         }
-
-        return "redirect:/";
+        return "register";
     }
 
 @GetMapping("/")

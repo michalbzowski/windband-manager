@@ -97,8 +97,8 @@
                 <span id="nav-team-area">
                     <select id="nav-team-select" style="display:none; font-size:0.85rem; padding:0.2rem 0.5rem; border-radius:4px;" onchange="switchTeam(this.value)"></select>
                     <span id="nav-team-single">
-                        <span class="team-name" th:text="${#authentication.principal.activeTeamSlug ?: 'brak zespołu'}">zespół</span>
-                        <span class="team-role" th:if="${#authentication.principal.activeTeamRole}">(<span th:text="${#authentication.principal.activeTeamRole.toLowerCase()}">rola</span>)</span>
+                        <span class="team-name" th:text="${activeTeamSlug ?: 'brak zespołu'}">zespół</span>
+                        <span class="team-role" th:if="${activeTeamRole}">(<span th:text="${#strings.toLowerCase(activeTeamRole)}">rola</span>)</span>
                     </span>
                 </span>
             </li>
@@ -123,7 +123,7 @@
 <script th:fragment="footer-scripts">
     // Pass teams data from server to JS for the team switcher
     var USER_TEAMS = /*[ [[${userTeams}]] ]*/ [];
-    var ACTIVE_TEAM_ID = /*[ [[${#authentication.principal.activeTeamId}]] ]*/ null;
+    var ACTIVE_TEAM_ID = /*[ [[${activeTeamId}]] ]*/ null;
 
     if (USER_TEAMS && USER_TEAMS.length > 1) {
         // Multiple teams: show dropdown
