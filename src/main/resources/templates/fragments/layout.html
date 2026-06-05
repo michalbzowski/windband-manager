@@ -73,31 +73,18 @@
     </script>
 </head>
 <body>
-    <nav class="container-fluid" th:fragment="nav" sec:authorize="isAuthenticated()">
+<nav class="container-fluid" th:fragment="nav" sec:authorize="isAuthenticated()">
         <ul>
             <li><strong><a th:href="@{/}" style="text-decoration:none;color:inherit;">🎺 Wind Band Manager</a></strong></li>
-        </ul>
-        <ul>
-            <li><a th:href="@{/members}" hx-target="#content" hx-swap="innerHTML transition:true">Muzycy</a></li>
-            <li><a th:href="@{/groups}" hx-target="#content" hx-swap="innerHTML transition:true">Grupy</a></li>
-            <li><a th:href="@{/rehearsals}" hx-target="#content" hx-swap="innerHTML transition:true">Próby</a></li>
-            <li><a th:href="@{/events}" hx-target="#content" hx-swap="innerHTML transition:true">Wydarzenia</a></li>
-            <li><a th:href="@{/inventory}" hx-target="#content" hx-swap="innerHTML transition:true">Inwentaryzacja</a></li>
-            <li><a th:href="@{/instruments}" hx-target="#content" hx-swap="innerHTML transition:true">Instrumenty</a></li>
-            <li><a th:href="@{/reports}" hx-target="#content" hx-swap="innerHTML transition:true">Raporty</a></li>
-            <li><a th:href="@{/band/attributes(type='MEMBER')}" hx-target="#content" hx-swap="innerHTML transition:true">Atrybuty</a></li>
-        </ul>
-        <ul>
             <li class="nav-user-info">
-                <span class="team-icon">👤</span>
-                <span th:text="${#authentication.principal.wbUsername}">user</span>
                 <span class="separator">|</span>
-                <span class="team-icon">🎺</span>
+                <span class="team-icon">👤</span>
+                <span th:text="${#authentication.principal.wbUsername}" style="font-weight:600;">user</span>
+            </li>
+            <li class="nav-team-item">
                 <span id="nav-team-area">
-                    <!-- Server-side rendered team selector: dropdown if multi-team, text if single -->
                     <select id="nav-team-select"
                             th:if="${#lists.size(userTeams) > 1}"
-                            style="font-size:0.85rem; padding:0.2rem 0.5rem; border-radius:4px;"
                             onchange="switchTeam(this.value)">
                         <option th:each="team : ${userTeams}"
                                 th:value="${team.id}"
@@ -110,7 +97,27 @@
                     </span>
                 </span>
             </li>
-            <li><a href="/register" hx-target="#content" hx-swap="innerHTML transition:true" id="nav-new-team" sec:authorize="isAuthenticated()">➕ Nowy zespół</a></li>
+        </ul>
+        <ul>
+            <li><a th:href="@{/members}" hx-target="#content" hx-swap="innerHTML transition:true">Muzycy</a></li>
+            <li><a th:href="@{/groups}" hx-target="#content" hx-swap="innerHTML transition:true">Grupy</a></li>
+            <li><a th:href="@{/rehearsals}" hx-target="#content" hx-swap="innerHTML transition:true">Próby</a></li>
+            <li><a th:href="@{/events}" hx-target="#content" hx-swap="innerHTML transition:true">Wydarzenia</a></li>
+            <li>
+                <details class="dropdown">
+                    <summary role="button" class="secondary outline" style="padding:0.3rem 0.6rem; font-size:0.85rem;">Więcej ▾</summary>
+                    <ul>
+                        <li><a th:href="@{/inventory}" hx-target="#content" hx-swap="innerHTML transition:true">Inwentaryzacja</a></li>
+                        <li><a th:href="@{/instruments}" hx-target="#content" hx-swap="innerHTML transition:true">Instrumenty</a></li>
+                        <li><a th:href="@{/reports}" hx-target="#content" hx-swap="innerHTML transition:true">Raporty</a></li>
+                        <li><a th:href="@{/band/attributes(type='MEMBER')}" hx-target="#content" hx-swap="innerHTML transition:true">Atrybuty</a></li>
+                        <li><hr class="dropdown-divider"></li>
+                        <li><a href="/register" hx-target="#content" hx-swap="innerHTML transition:true">➕ Nowy zespół</a></li>
+                    </ul>
+                </details>
+            </li>
+        </ul>
+        <ul>
             <li>
                 <form th:action="@{/api/auth/logout}" method="POST" style="display:inline;">
                     <button type="submit" class="outline secondary small">Wyloguj</button>
