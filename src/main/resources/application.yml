@@ -49,10 +49,10 @@ spring:
             provider: keycloak
         provider:
           keycloak:
-            authorization-uri: http://keycloak.michalbzowski.pl/realms/${KEYCLOAK_REALM:windband}/protocol/openid-connect/auth
-            token-uri: http://keycloak:8180/realms/${KEYCLOAK_REALM:windband}/protocol/openid-connect/token
-            user-info-uri: http://keycloak:8180/realms/${KEYCLOAK_REALM:windband}/protocol/openid-connect/userinfo
-            jwk-set-uri: http://keycloak:8180/realms/${KEYCLOAK_REALM:windband}/protocol/openid-connect/certs
+            authorization-uri: ${KEYCLOAK_AUTH_URL:http://keycloak.michalbzowski.pl}/realms/${KEYCLOAK_REALM:windband}/protocol/openid-connect/auth
+            token-uri: ${KEYCLOAK_INTERNAL_URL:http://keycloak:8180}/realms/${KEYCLOAK_REALM:windband}/protocol/openid-connect/token
+            user-info-uri: ${KEYCLOAK_INTERNAL_URL:http://keycloak:8180}/realms/${KEYCLOAK_REALM:windband}/protocol/openid-connect/userinfo
+            jwk-set-uri: ${KEYCLOAK_INTERNAL_URL:http://keycloak:8180}/realms/${KEYCLOAK_REALM:windband}/protocol/openid-connect/certs
             user-name-attribute: preferred_username
 
 
