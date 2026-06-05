@@ -15,10 +15,6 @@
         };
         console.log('Page loaded, script starting...');
 
-        // Delay script execution to let page fully load
-        setTimeout(function() {
-            console.log('Running delayed scripts...');
-
         // Add JWT token to all HTMX requests
         document.addEventListener('htmx:configRequest', function(evt) {
             const name = 'JWT=';
@@ -169,16 +165,13 @@
                 credentials: 'same-origin'
             })
             .then(function(response) {
-                // Redirect to login page regardless of response status
                 window.location.href = '/login';
             })
             .catch(function(error) {
                 console.error('Logout error:', error);
-                // Still redirect to login even on error
                 window.location.href = '/login';
             });
         }
-        }); // end setTimeout
     </script>
 </body>
 </html>
