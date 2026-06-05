@@ -3,6 +3,8 @@ package pl.michalbzowski.windband.adapter.in.web;
 import jakarta.validation.Valid;
 import lombok.Data;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.info.BuildProperties;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -31,6 +33,9 @@ public class AuthController {
 
     private final TeamRegistrationService teamRegistrationService;
     private final TeamQueryService teamQueryService;
+
+    @Autowired(required = false)
+    private BuildProperties buildProperties;
 
     /**
      * Public endpoint: register a new team with an admin user.
@@ -103,5 +108,24 @@ public class AuthController {
     public static class LoginRequest {
         private String username;
         private String password;
+    }
+
+    /**
+     * Get build information for debugging.
+     */
+    @GetMapping("/build-info")
+    public ResponseEntity<?> buildInfo() {
+        if (buildProperties != null) {
+            return ResponseEntity.ok(Map.of(
+                    "version", buildProperties.getVersion() != null ? buildProperties.getVersion() : "unknown",
+                    "name", buildProperties.getName() != null ? buildProperties.getName() : "unknown",
+                    "time", buildProperties.getTime() != null ? buildProperties.getTime().toString() : "unknown"
+            ));
+        }
+        return ResponseEntity.ok(Map.of(
+                "version", "unknown",
+                "name", "unknown",
+                "time", "unknown"
+        ));
     }
 }

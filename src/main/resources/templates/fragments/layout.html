@@ -107,7 +107,7 @@
 
     <footer th:fragment="footer" class="container">
         <hr>
-        <small>Wind Band Manager &copy; 2025 Michał Bzowski</small>
+        <small>Wind Band Manager &copy; 2025 Michał Bzowski | <span id="build-version">...</span></small>
     </footer>
 
     <script>
@@ -129,6 +129,20 @@
                 })
                 .catch(function() {
                     document.getElementById('nav-user-loading').style.display = 'none';
+                });
+        })();
+
+        // Load build info
+        (function() {
+            fetch('/api/auth/build-info', { credentials: 'same-origin' })
+                .then(function(resp) { return resp.json(); })
+                .then(function(data) {
+                    var version = data.version || '?';
+                    var time = data.time ? new Date(data.time).toLocaleString('pl-PL') : '?';
+                    document.getElementById('build-version').textContent = 'v' + version + ' | ' + time;
+                })
+                .catch(function() {
+                    document.getElementById('build-version').textContent = 'v unknown';
                 });
         })();
 
