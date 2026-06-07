@@ -8,6 +8,11 @@ body {
 /* Navigation */
 nav {
     margin-bottom: 1rem;
+    overflow: visible;
+}
+
+nav ul {
+    overflow: visible;
 }
 
 nav ul li a {
@@ -198,6 +203,8 @@ nav details.dropdown summary::after {
 }
 
 nav details.dropdown ul {
+    position: absolute;
+    right: 0;
     z-index: 100;
     min-width: 180px;
     box-shadow: 0 4px 12px rgba(0,0,0,0.15);
