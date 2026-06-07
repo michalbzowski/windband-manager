@@ -2,6 +2,7 @@
     <h2 th:text="${instrument.id() != null ? '✏️ Edytuj instrument' : '➕ Dodaj instrument'}">Dodaj instrument</h2>
 
     <form id="instrument-form"
+          th:attr="data-instrument-id=${instrument.id()}"
           hx-target="#instruments-content"
           hx-swap="innerHTML transition:true">
 

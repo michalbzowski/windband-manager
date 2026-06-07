@@ -6,6 +6,7 @@ import org.springframework.transaction.annotation.Transactional;
 import pl.michalbzowski.windband.application.dto.UniformAttributeDefDto;
 import pl.michalbzowski.windband.application.dto.InstrumentAttributeDefDto;
 import pl.michalbzowski.windband.application.dto.OrderAttributeDefDto;
+import pl.michalbzowski.windband.application.dto.AwardAttributeDefDto;
 import pl.michalbzowski.windband.domain.band.Band;
 import pl.michalbzowski.windband.domain.inventory.*;
 
@@ -99,3 +100,4 @@ public class InventoryAttributeQueryService {
         return awardValueRepo.findByAwardItemId(item.getId()).stream()
                 .collect(Collectors.toMap(v -> v.getAttributeDef().getId(), AwardAttributeValue::getValue));
     }
+}
