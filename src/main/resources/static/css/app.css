@@ -203,15 +203,26 @@ nav details.dropdown summary::after {
     display: none; /* hide Pico's default marker, we have ▾ */
 }
 
+nav details.dropdown {
+    position: relative;
+}
+
 nav details.dropdown ul {
     position: absolute;
     right: 0;
     z-index: 1000;
     min-width: 180px;
-    max-width: calc(100vw - 2rem);
     box-shadow: 0 4px 12px rgba(0,0,0,0.15);
     max-height: calc(100vh - 4rem);
     overflow-y: auto;
+}
+
+@media (max-width: 1024px) {
+    nav details.dropdown ul {
+        position: fixed;
+        right: 1rem;
+        left: auto;
+    }
 }
 
 nav details.dropdown ul li a {
