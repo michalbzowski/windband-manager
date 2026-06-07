@@ -50,9 +50,9 @@ spring:
         provider:
           keycloak:
             authorization-uri: https://${KEYCLOAK_AUTH_URL}/realms/${KEYCLOAK_REALM}/protocol/openid-connect/auth
-            token-uri: https://${KEYCLOAK_INTERNAL_URL}/realms/${KEYCLOAK_REALM}/protocol/openid-connect/token
-            user-info-uri: https://${KEYCLOAK_INTERNAL_URL}/realms/${KEYCLOAK_REALM}/protocol/openid-connect/userinfo
-            jwk-set-uri: https://${KEYCLOAK_INTERNAL_URL}/realms/${KEYCLOAK_REALM}/protocol/openid-connect/certs
+            token-uri: http://${KEYCLOAK_INTERNAL_URL}/realms/${KEYCLOAK_REALM}/protocol/openid-connect/token
+            user-info-uri: http://${KEYCLOAK_INTERNAL_URL}/realms/${KEYCLOAK_REALM}/protocol/openid-connect/userinfo
+            jwk-set-uri: http://${KEYCLOAK_INTERNAL_URL}/realms/${KEYCLOAK_REALM}/protocol/openid-connect/certs
             user-name-attribute: preferred_username
 
 
@@ -62,8 +62,9 @@ server:
 
 logging:
   level:
-    org.springframework.security.oauth2: DEBUG
+    org.springframework.security.oauth2: TRACE
     org.springframework.security.web: DEBUG
+    org.springframework.web.client.RestTemplate: DEBUG
 
 app:
   base-url: ${BASE_URL}
