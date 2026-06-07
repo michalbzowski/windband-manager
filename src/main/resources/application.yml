@@ -66,10 +66,10 @@ logging:
     org.springframework.security.web: DEBUG
 
 app:
-  base-url: ${BASE_URL:http://localhost:8080}
+  base-url: ${BASE_URL}
   keycloak:
-    url: ${KEYCLOAK_PUBLIC_URL:http://localhost:8180}
-    realm: ${KEYCLOAK_REALM:windband}
-    client-id: ${KEYCLOAK_CLIENT_ID:windband-manager}
-    client-secret: ${KEYCLOAK_CLIENT_SECRET:windband-secret-key-change-in-production-2026}
+    url: https://${KEYCLOAK_PUBLIC_URL}
+    realm: ${KEYCLOAK_REALM}
+    client-id: ${KEYCLOAK_CLIENT_ID}
+    client-secret: ${KEYCLOAK_CLIENT_SECRET}
     registration-redirect-url: ${app.keycloak.url}/realms/${app.keycloak.realm}/protocol/openid-connect/registrations?client_id=${app.keycloak.client-id}&redirect_uri=${app.base-url}/register&response_type=code&scope=openid profile email}
