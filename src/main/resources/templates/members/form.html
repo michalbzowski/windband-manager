@@ -147,6 +147,7 @@
                 formData.forEach(function(value, key) { data[key] = value; });
                 data.active = formData.has('active');
                 if (data.instrumentId === '') delete data.instrumentId;
+                if (data.dateOfBirth === '') delete data.dateOfBirth;
                 if (data.joinedDate === '') delete data.joinedDate;
                 if (data.resignedDate === '') delete data.resignedDate;
 
