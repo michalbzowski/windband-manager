@@ -12,6 +12,7 @@ import org.springframework.security.web.authentication.AuthenticationFailureHand
 import org.springframework.security.web.authentication.AuthenticationSuccessHandler;
 import org.springframework.security.web.authentication.logout.LogoutSuccessHandler;
 import pl.michalbzowski.windband.adapter.in.security.KeycloakOAuth2UserService;
+import pl.michalbzowski.windband.adapter.in.security.WindbandOidcUser;
 
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.context.annotation.Profile;
@@ -154,7 +155,15 @@ public class SecurityConfig {
     }
 
     private AuthenticationSuccessHandler oidcSuccessHandler() {
-        return (request, response, authentication) -> response.sendRedirect("/");
+        return (request, response, authentication) -> {
+            if (authentication.getPrincipal() instanceof WindbandOidcUser wu) {
+                if (wu.getActiveTeamId() == null) {
+                    response.sendRedirect("/register");
+                    return;
+                }
+            }
+            response.sendRedirect("/");
+        };
     }
 
     private AuthenticationFailureHandler oidcFailureHandler() {
