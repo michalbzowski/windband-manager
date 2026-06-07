@@ -18,13 +18,16 @@
             <a th:href="@{/band/attributes(type='ORDER')}"
                th:class="${type == 'ORDER'} ? 'primary' : 'secondary'"
                style="padding:0.4rem 0.8rem; text-decoration:none; border-radius:4px;">Zamówienia</a>
+            <a th:href="@{/band/attributes(type='AWARD')}"
+               th:class="${type == 'AWARD'} ? 'primary' : 'secondary'"
+               style="padding:0.4rem 0.8rem; text-decoration:none; border-radius:4px;">Odznaczenia</a>
             <a th:href="@{/band/attributes(type='MEMBER')}"
                th:class="${type == 'MEMBER'} ? 'primary' : 'secondary'"
                style="padding:0.4rem 0.8rem; text-decoration:none; border-radius:4px;">Członkowie</a>
         </div>
 
         <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem;">
-            <span>Typ: <span th:switch="${type}"><span th:case="'UNIFORM'">Umundurowanie</span><span th:case="'INSTRUMENT'">Instrumenty</span><span th:case="'ORDER'">Zamówienia</span><span th:case="'MEMBER'">Członkowie</span></span></span>
+            <span>Typ: <span th:switch="${type}"><span th:case="'UNIFORM'">Umundurowanie</span><span th:case="'INSTRUMENT'">Instrumenty</span><span th:case="'ORDER'">Zamówienia</span><span th:case="'AWARD'">Odznaczenia</span><span th:case="'MEMBER'">Członkowie</span></span></span>
             <button class="primary"
                     th:hx-get="@{/band/attributes/new(type=${type})}"
                     hx-target="body"

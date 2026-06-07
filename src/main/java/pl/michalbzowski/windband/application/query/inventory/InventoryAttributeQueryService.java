@@ -24,6 +24,8 @@ public class InventoryAttributeQueryService {
     private final InstrumentAttributeValueRepository instrumentValueRepo;
     private final OrderAttributeDefRepository orderDefRepo;
     private final OrderAttributeValueRepository orderValueRepo;
+    private final AwardAttributeDefRepository awardDefRepo;
+    private final AwardAttributeValueRepository awardValueRepo;
 
     // === Uniform attributes ===
 
@@ -84,4 +86,16 @@ public class InventoryAttributeQueryService {
         }
         return result;
     }
-}
+
+    // === Award attributes ===
+
+    public List<AwardAttributeDefDto> getAwardAttributeDefs(Band band) {
+        return awardDefRepo.findByBandAndActiveTrueOrderByDisplayOrderAsc(band).stream()
+                .map(d -> new AwardAttributeDefDto(d.getId(), d.getName(), d.getType(), d.isRequired(), d.isDisplayInList(), d.getDisplayOrder(), d.getOptions(), d.getDependsOnAttributeId(), d.getDependsOnValue()))
+                .toList();
+    }
+
+    public Map<Long, String> getAwardAttributeValues(AwardItem item) {
+        return awardValueRepo.findByAwardItemId(item.getId()).stream()
+                .collect(Collectors.toMap(v -> v.getAttributeDef().getId(), AwardAttributeValue::getValue));
+    }

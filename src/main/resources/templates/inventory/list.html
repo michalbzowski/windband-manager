@@ -16,6 +16,8 @@
                         onclick="switchTab('uniforms')">🎖️ Stroje</button>
                 <button class="tab-btn secondary" data-tab="instruments"
                         onclick="switchTab('instruments')">🎺 Instrumenty</button>
+                <button class="tab-btn secondary" data-tab="awards"
+                        onclick="switchTab('awards')">🏅 Odznaczenia</button>
             </div>
 
             <!-- ===== ORDERS TAB ===== -->
@@ -384,6 +386,138 @@
                                 </div>
                                 <button class="primary small" onclick="confirmAssignInstrument()">OK</button>
                                 <button class="secondary small" onclick="closeInstAssignModal()">Anuluj</button>
+                            </div>
+                        </article>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ===== AWARDS TAB ===== -->
+            <div id="tab-awards" style="display:none;">
+                <div id="awards-content">
+                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem;">
+                        <h3>Odznaczenia</h3>
+                        <button class="primary small" onclick="showAwardForm()">+ Dodaj odznaczenie</button>
+                    </div>
+
+                    <!-- Add form (hidden) -->
+                    <div id="award-form" style="display:none; margin-bottom:1rem;">
+                        <article>
+                            <h4>Nowe odznaczenie</h4>
+                            <div style="display:flex; gap:0.5rem; flex-wrap:wrap; align-items:flex-end;">
+                                <div>
+                                    <label for="award-name">Nazwa</label>
+                                    <input type="text" id="award-name" placeholder="Np. Medal za 10 lat">
+                                </div>
+                                <div>
+                                    <label for="award-member">Przydziel do</label>
+                                    <select id="award-member">
+                                        <option value="">— Wolny —</option>
+                                        <option th:each="m : ${members}" th:value="${m.id}"
+                                                th:text="${m.firstName} + ' ' + ${m.lastName}">Jan</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <!-- Dynamic attribute fields for awards -->
+                            <div id="award-attributes" style="margin-top:1rem; display:flex; gap:0.5rem; flex-wrap:wrap; align-items:flex-end;" th:if="${!#lists.isEmpty(awardAttributeDefs)}">
+                                <th:block th:each="attrDef : ${awardAttributeDefs}">
+                                    <div th:switch="${attrDef.type()}"
+                                         th:attr="data-depends-on=${attrDef.dependsOnAttributeId()}, data-depends-value=${attrDef.dependsOnValue()}"
+                                         class="attr-field" th:classappend="${attrDef.dependsOnAttributeId() != null} ? 'conditional'">
+                                        <label th:case="'BOOLEAN'" class="checkbox-label" style="display:flex; align-items:center; gap:0.25rem;">
+                                            <input type="checkbox" th:id="'award-attr-' + ${attrDef.id()}" th:name="'attr_' + ${attrDef.id()}">
+                                            <span th:text="${attrDef.name()}">Atrybut</span>
+                                        </label>
+                                        <div th:case="'SELECT'" style="display:flex; flex-direction:column; gap:0.25rem;">
+                                            <label th:text="${attrDef.name()}">Atrybut</label>
+                                            <select th:id="'award-attr-' + ${attrDef.id()}" th:name="'attr_' + ${attrDef.id()}" class="parent-attr-select">
+                                                <option value="">Wybierz...</option>
+                                                <option th:each="opt : ${#strings.arraySplit(#strings.replace(attrDef.options(), '[', '').replace(']', ''), ',')}" th:value="${opt.trim()}" th:text="${opt.trim()}">Opcja</option>
+                                            </select>
+                                        </div>
+                                        <div th:case="'MULTI_SELECT'" style="display:flex; flex-direction:column; gap:0.25rem;">
+                                            <label th:text="${attrDef.name()}">Atrybut</label>
+                                            <select th:id="'award-attr-' + ${attrDef.id()}" th:name="'attr_' + ${attrDef.id()}" multiple style="min-width:150px;">
+                                                <option th:each="opt : ${#strings.arraySplit(#strings.replace(attrDef.options(), '[', '').replace(']', ''), ',')}" th:value="${opt.trim()}" th:text="${opt.trim()}">Opcja</option>
+                                            </select>
+                                        </div>
+                                        <div th:case="'DATE'" style="display:flex; flex-direction:column; gap:0.25rem;">
+                                            <label th:text="${attrDef.name()}">Atrybut</label>
+                                            <input type="date" th:id="'award-attr-' + ${attrDef.id()}" th:name="'attr_' + ${attrDef.id()}">
+                                        </div>
+                                        <div th:case="'NUMBER'" style="display:flex; flex-direction:column; gap:0.25rem;">
+                                            <label th:text="${attrDef.name()}">Atrybut</label>
+                                            <input type="number" th:id="'award-attr-' + ${attrDef.id()}" th:name="'attr_' + ${attrDef.id()}" step="any">
+                                        </div>
+                                        <div th:case="*" style="display:flex; flex-direction:column; gap:0.25rem;">
+                                            <label th:text="${attrDef.name()}">Atrybut</label>
+                                            <input type="text" th:id="'award-attr-' + ${attrDef.id()}" th:name="'attr_' + ${attrDef.id()}">
+                                        </div>
+                                    </div>
+                                </th:block>
+                            </div>
+                            <div style="display:flex; gap:0.5rem; margin-top:1rem;">
+                                <button class="primary small" onclick="submitAward()">Dodaj</button>
+                                <button class="secondary small" onclick="hideAwardForm()">Anuluj</button>
+                            </div>
+                        </article>
+                    </div>
+
+                    <div th:if="${#lists.isEmpty(awardItems)}">
+                        <article><p>Brak odznaczeń.</p></article>
+                    </div>
+
+                    <table th:unless="${#lists.isEmpty(awardItems)}" role="grid">
+                        <thead>
+                            <tr>
+                                <th th:each="attr : ${awardAttributeDefs}" th:if="${attr.displayInList}" th:text="${attr.name}">Nazwa</th>
+                                <th>Opis</th>
+                                <th>Przydzielony do</th>
+                                <th>Akcje</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr th:each="a : ${awardItems}">
+                                <td th:each="attr : ${awardAttributeDefs}" th:if="${attr.displayInList}" th:with="val=${awardAttributeValues?.get(a.id)?.get(attr.id)}">
+                                    <span th:text="${val != null ? val : '—'}" style="color:#999;">—</span>
+                                </td>
+                                <td th:text="${a.description}">Opis</td>
+                                <td>
+                                    <span th:if="${a.assignedMemberName != null}" th:text="${a.assignedMemberName}">Jan</span>
+                                    <span th:if="${a.assignedMemberName == null}" style="color:#999;">— Wolny —</span>
+                                </td>
+                                <td>
+                                    <div style="display:flex; gap:0.25rem; flex-wrap:wrap;">
+                                        <button th:if="${a.assignedMemberName == null}"
+                                                class="outline small"
+                                                th:onclick="'assignAward(' + ${a.id} + ')'">👤 Przydziel</button>
+                                        <button th:if="${a.assignedMemberName != null}"
+                                                class="outline small"
+                                                th:onclick="'returnAward(' + ${a.id} + ')'">↩ Zwróć</button>
+                                        <button class="outline small secondary"
+                                                th:onclick="'disposeAward(' + ${a.id} + ')'">🗑 Zlikwiduj</button>
+                                    </div>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+
+                    <!-- Assign modal -->
+                    <div id="award-assign-modal" style="display:none; margin-top:1rem;">
+                        <article>
+                            <h4>Przydziel odznaczenie</h4>
+                            <input type="hidden" id="award-assign-item-id">
+                            <div style="display:flex; gap:0.5rem; align-items:flex-end;">
+                                <div>
+                                    <label for="award-assign-member">Muzyk</label>
+                                    <select id="award-assign-member">
+                                        <option value="">Wybierz...</option>
+                                        <option th:each="m : ${members}" th:value="${m.id}"
+                                                th:text="${m.firstName} + ' ' + ${m.lastName}">Jan</option>
+                                    </select>
+                                </div>
+                                <button class="primary small" onclick="confirmAssignAward()">OK</button>
+                                <button class="secondary small" onclick="closeAwardAssignModal()">Anuluj</button>
                             </div>
                         </article>
                     </div>
@@ -789,12 +923,13 @@
             var urls = {
                 orders: '/inventory/orders',
                 uniforms: '/inventory/uniforms/fragment',
-                instruments: '/inventory/instruments/fragment'
+                instruments: '/inventory/instruments/fragment',
+                awards: '/inventory/awards/fragment'
             };
             fetch(urls[tab])
             .then(function(r) { return r.text(); })
             .then(function(html) {
-                var targetId = tab === 'orders' ? 'orders-content' : (tab === 'uniforms' ? 'uniforms-content' : 'instruments-content');
+                var targetId = tab === 'orders' ? 'orders-content' : (tab === 'uniforms' ? 'uniforms-content' : (tab === 'awards' ? 'awards-content' : 'instruments-content'));
                 var target = document.getElementById(targetId);
                 var wrapper = document.createElement('div');
                 wrapper.innerHTML = html;
@@ -802,6 +937,56 @@
                 target.replaceWith(newContent);
             })
             .catch(function(err) { console.error('Refresh error:', err); });
+        }
+
+        // === Award form ===
+        function showAwardForm() { document.getElementById('award-form').style.display = 'block'; }
+        function hideAwardForm() { document.getElementById('award-form').style.display = 'none'; }
+        function submitAward() {
+            var name = document.getElementById('award-name').value;
+            var memberId = document.getElementById('award-member').value;
+            if (!name) { alert('Podaj nazwę odznaczenia'); return; }
+
+            var attributes = {};
+            var attrInputs = document.querySelectorAll('#award-attributes input[id^="award-attr-"], #award-attributes select[id^="award-attr-"]');
+            attrInputs.forEach(function(input) {
+                var attrId = input.id.replace('award-attr-', '');
+                if (input.type === 'checkbox') {
+                    attributes[attrId] = input.checked ? 'true' : 'false';
+                } else if (input.value) {
+                    attributes[attrId] = input.value;
+                }
+            });
+
+            fetch('/api/inventory/awards', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({teamId: /*[[${activeTeamId}]]*/ null, name: name, description: '', memberId: memberId ? parseInt(memberId) : null, attributes: attributes})
+            }).then(function(r) { if(r.ok) { hideAwardForm(); refreshTab('awards'); } });
+        }
+        function assignAward(awardId) {
+            document.getElementById('award-assign-item-id').value = awardId;
+            document.getElementById('award-assign-modal').style.display = 'block';
+        }
+        function confirmAssignAward() {
+            var awardId = document.getElementById('award-assign-item-id').value;
+            var memberId = document.getElementById('award-assign-member').value;
+            if (!memberId) { alert('Wybierz muzyka'); return; }
+            fetch('/api/inventory/awards/' + awardId + '/assign', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({memberId: parseInt(memberId)})
+            }).then(function(r) { if(r.ok) { closeAwardAssignModal(); refreshTab('awards'); } });
+        }
+        function closeAwardAssignModal() { document.getElementById('award-assign-modal').style.display = 'none'; }
+        function returnAward(awardId) {
+            fetch('/api/inventory/awards/' + awardId + '/return', {method: 'POST'})
+            .then(function(r) { if(r.ok) refreshTab('awards'); });
+        }
+        function disposeAward(awardId) {
+            if (!confirm('Czy na pewno chcesz zlikwidować to odznaczenie?')) return;
+            fetch('/api/inventory/awards/' + awardId + '/dispose', {method: 'POST'})
+            .then(function(r) { if(r.ok) refreshTab('awards'); });
         }
     </script>
 </body>

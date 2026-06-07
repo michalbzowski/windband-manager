@@ -10,6 +10,7 @@ import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
 import pl.michalbzowski.windband.adapter.in.security.WindbandOidcUser;
 import pl.michalbzowski.windband.application.command.band.MemberAttributeCommandService;
+import pl.michalbzowski.windband.application.command.inventory.AwardAttributeCommandService;
 import pl.michalbzowski.windband.application.command.inventory.InstrumentAttributeCommandService;
 import pl.michalbzowski.windband.application.command.inventory.UniformAttributeCommandService;
 import pl.michalbzowski.windband.application.query.band.BandQueryService;
@@ -28,6 +29,7 @@ public class MemberAttributeController {
     private final MemberAttributeCommandService memberCommandService;
     private final UniformAttributeCommandService uniformCommandService;
     private final InstrumentAttributeCommandService instrumentCommandService;
+    private final AwardAttributeCommandService awardCommandService;
     private final MemberAttributeQueryService memberQueryService;
     private final InventoryAttributeQueryService inventoryQueryService;
     private final BandQueryService bandQueryService;
@@ -62,6 +64,7 @@ public class MemberAttributeController {
             case "UNIFORM" -> inventoryQueryService.getUniformAttributeDefs(band);
             case "INSTRUMENT" -> inventoryQueryService.getInstrumentAttributeDefs(band);
             case "ORDER" -> inventoryQueryService.getOrderAttributeDefs(band);
+            case "AWARD" -> inventoryQueryService.getAwardAttributeDefs(band);
             case "MEMBER" -> memberQueryService.getAttributeDefsForBand(band);
             default -> memberQueryService.getAttributeDefsForBand(band);
         });
@@ -96,6 +99,7 @@ public class MemberAttributeController {
         return switch (type) {
             case "UNIFORM" -> inventoryQueryService.getUniformAttributeDefs(band);
             case "INSTRUMENT" -> inventoryQueryService.getInstrumentAttributeDefs(band);
+            case "AWARD" -> inventoryQueryService.getAwardAttributeDefs(band);
             default -> memberQueryService.getAttributeDefsForBand(band);
         };
     }
@@ -135,6 +139,16 @@ public class MemberAttributeController {
             options = def.getOptions();
             dependsOnAttributeId = def.getDependsOnAttributeId();
             dependsOnValue = def.getDependsOnValue();
+        } else if (cmdService instanceof AwardAttributeCommandService svc) {
+            var def = svc.getAttributeDefById(id);
+            name = def.getName();
+            attrType = def.getType();
+            required = def.isRequired();
+            displayInList = def.isDisplayInList();
+            displayOrder = def.getDisplayOrder();
+            options = def.getOptions();
+            dependsOnAttributeId = def.getDependsOnAttributeId();
+            dependsOnValue = def.getDependsOnValue();
         } else {
             var def = memberCommandService.getAttributeDefById(id);
             name = def.getName();
@@ -160,6 +174,7 @@ public class MemberAttributeController {
         switch (type) {
             case "UNIFORM" -> uniformCommandService.createAttributeDef(band, form.getName(), form.getType(), form.isRequired(), form.isDisplayInList(), form.getDisplayOrder(), form.getOptions(), form.getDependsOnAttributeId(), form.getDependsOnValue());
             case "INSTRUMENT" -> instrumentCommandService.createAttributeDef(band, form.getName(), form.getType(), form.isRequired(), form.isDisplayInList(), form.getDisplayOrder(), form.getOptions(), form.getDependsOnAttributeId(), form.getDependsOnValue());
+            case "AWARD" -> awardCommandService.createAttributeDef(band, form.getName(), form.getType(), form.isRequired(), form.isDisplayInList(), form.getDisplayOrder(), form.getOptions(), form.getDependsOnAttributeId(), form.getDependsOnValue());
             default -> memberCommandService.createAttributeDef(band, form.getName(), form.getType(), form.isRequired(), form.isDisplayInList(), form.getDisplayOrder(), form.getOptions());
         }
         return ResponseEntity.ok().header("HX-Redirect", "/band/attributes?type=" + type).build();
@@ -172,6 +187,8 @@ public class MemberAttributeController {
             ((UniformAttributeCommandService) cmdService).updateAttributeDef(id, form.getName(), form.getType(), form.isRequired(), form.isDisplayInList(), form.getDisplayOrder(), form.getOptions(), form.getDependsOnAttributeId(), form.getDependsOnValue());
         } else if (cmdService instanceof InstrumentAttributeCommandService) {
             ((InstrumentAttributeCommandService) cmdService).updateAttributeDef(id, form.getName(), form.getType(), form.isRequired(), form.isDisplayInList(), form.getDisplayOrder(), form.getOptions(), form.getDependsOnAttributeId(), form.getDependsOnValue());
+        } else if (cmdService instanceof AwardAttributeCommandService) {
+            ((AwardAttributeCommandService) cmdService).updateAttributeDef(id, form.getName(), form.getType(), form.isRequired(), form.isDisplayInList(), form.getDisplayOrder(), form.getOptions(), form.getDependsOnAttributeId(), form.getDependsOnValue());
         } else {
             memberCommandService.updateAttributeDef(id, form.getName(), form.getType(), form.isRequired(), form.isDisplayInList(), form.getDisplayOrder(), form.getOptions());
         }
@@ -185,6 +202,8 @@ public class MemberAttributeController {
             ((UniformAttributeCommandService) cmdService).deleteAttributeDef(id);
         } else if (cmdService instanceof InstrumentAttributeCommandService) {
             ((InstrumentAttributeCommandService) cmdService).deleteAttributeDef(id);
+        } else if (cmdService instanceof AwardAttributeCommandService) {
+            ((AwardAttributeCommandService) cmdService).deleteAttributeDef(id);
         } else {
             memberCommandService.deleteAttributeDef(id);
         }
@@ -228,6 +247,7 @@ public class MemberAttributeController {
         return switch (type) {
             case "UNIFORM" -> uniformCommandService;
             case "INSTRUMENT" -> instrumentCommandService;
+            case "AWARD" -> awardCommandService;
             default -> memberCommandService;
         };
     }

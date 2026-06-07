@@ -21,6 +21,7 @@ public class InventoryQueryService {
 
     private final InventoryRepository inventoryRepository;
     private final MemberRepository memberRepository;
+    private final AwardQueryService awardQueryService;
 
     // === Items ===
 
@@ -198,6 +199,33 @@ public class InventoryQueryService {
                 h.getReturnedAt(),
                 h.isActive(),
                 h.getNotes()
+        );
+    }
+
+    // === Awards ===
+
+    public List<InventoryItemDto> getAllAwardItems(Long teamId) {
+        if (teamId == null) return List.of();
+        return awardQueryService.getAwardItemsForBand(teamId).stream()
+                .map(this::toAwardItemDto)
+                .toList();
+    }
+
+    public List<AwardItem> getAllAwardItemsEntities(Long teamId) {
+        if (teamId == null) return List.of();
+        return awardQueryService.getAwardItemsForBand(teamId);
+    }
+
+    private InventoryItemDto toAwardItemDto(AwardItem item) {
+        return new InventoryItemDto(
+                item.getId(), item.getName(), "AWARD",
+                null, null, item.getDescription(),
+                item.getAssignedMember() != null
+                        ? item.getAssignedMember().getFirstName() + " " + item.getAssignedMember().getLastName()
+                        : null,
+                null,
+                null,
+                item.getOrderNumber()
         );
     }
 }

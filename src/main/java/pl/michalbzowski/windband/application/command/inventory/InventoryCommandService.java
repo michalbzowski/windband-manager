@@ -7,6 +7,8 @@ import pl.michalbzowski.windband.application.command.inventory.InventoryItemNotF
 import pl.michalbzowski.windband.application.command.inventory.InventoryOrderNotFoundException;
 import pl.michalbzowski.windband.application.command.member.MemberNotFoundException;
 import pl.michalbzowski.windband.domain.band.BandRepository;
+import pl.michalbzowski.windband.domain.inventory.AwardItem;
+import pl.michalbzowski.windband.domain.inventory.AwardItemRepository;
 import pl.michalbzowski.windband.domain.inventory.*;
 import pl.michalbzowski.windband.domain.member.Member;
 import pl.michalbzowski.windband.domain.member.MemberRepository;
@@ -24,6 +26,8 @@ public class InventoryCommandService {
     private final BandRepository bandRepository;
     private final UniformAttributeCommandService uniformAttributeCommandService;
     private final InstrumentAttributeCommandService instrumentAttributeCommandService;
+    private final AwardAttributeCommandService awardAttributeCommandService;
+    private final AwardItemRepository awardItemRepository;
 
     private pl.michalbzowski.windband.domain.band.Band getDefaultBand() {
         return bandRepository.findById(1L)
@@ -369,5 +373,61 @@ public class InventoryCommandService {
                     h.markReturned(notes);
                     inventoryRepository.saveAssignment(h);
                 });
+    }
+
+    // === Award operations ===
+
+    public AwardItem addAwardItem(Long teamId, String name, String description, Long memberId, Map<String, String> attributeValues) {
+        Band band = bandRepository.findById(teamId)
+                .orElseThrow(() -> new IllegalArgumentException("Band not found: " + teamId));
+        AwardItem item = AwardItem.create(name, band);
+        item.updateDetails(name, description);
+        if (memberId != null) {
+            Member member = memberRepository.findById(memberId)
+                    .orElseThrow(() -> new IllegalArgumentException("Member not found: " + memberId));
+            item.assignTo(member);
+        }
+        AwardItem saved = awardItemRepository.save(item);
+        setAwardAttributeValues(saved, attributeValues);
+        return saved;
+    }
+
+    public void assignAwardToMember(Long awardId, Long memberId) {
+        AwardItem item = awardItemRepository.findById(awardId)
+                .orElseThrow(() -> new IllegalArgumentException("AwardItem not found: " + awardId));
+        Member member = memberRepository.findById(memberId)
+                .orElseThrow(() -> new IllegalArgumentException("Member not found: " + memberId));
+        item.assignTo(member);
+        awardItemRepository.save(item);
+    }
+
+    public void returnAward(Long awardId) {
+        AwardItem item = awardItemRepository.findById(awardId)
+                .orElseThrow(() -> new IllegalArgumentException("AwardItem not found: " + awardId));
+        item.unassign();
+        awardItemRepository.save(item);
+    }
+
+    public void disposeAward(Long awardId) {
+        AwardItem item = awardItemRepository.findById(awardId)
+                .orElseThrow(() -> new IllegalArgumentException("AwardItem not found: " + awardId));
+        if (item.isAssigned()) {
+            throw new IllegalStateException("Cannot dispose award that is assigned to a member: " + awardId);
+        }
+        awardItemRepository.delete(item);
+    }
+
+    public void updateAwardAttributes(Long awardId, Map<String, String> attributeValues) {
+        AwardItem item = awardItemRepository.findById(awardId)
+                .orElseThrow(() -> new IllegalArgumentException("AwardItem not found: " + awardId));
+        setAwardAttributeValues(item, attributeValues);
+    }
+
+    private void setAwardAttributeValues(AwardItem item, Map<String, String> attributeValues) {
+        if (attributeValues == null) return;
+        for (Map.Entry<String, String> entry : attributeValues.entrySet()) {
+            Long attrDefId = Long.parseLong(entry.getKey());
+            awardAttributeCommandService.setAttributeValue(item.getId(), attrDefId, entry.getValue());
+        }
     }
 }

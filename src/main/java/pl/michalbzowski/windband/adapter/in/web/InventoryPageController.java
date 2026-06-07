@@ -11,6 +11,7 @@ import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
 import pl.michalbzowski.windband.adapter.in.security.WindbandOidcUser;
 import pl.michalbzowski.windband.application.dto.InstrumentAttributeDefDto;
+import pl.michalbzowski.windband.application.dto.AwardAttributeDefDto;
 import pl.michalbzowski.windband.application.dto.InventoryItemDto;
 import pl.michalbzowski.windband.application.dto.InventoryOrderDto;
 import pl.michalbzowski.windband.application.dto.OrderAttributeDefDto;
@@ -20,6 +21,7 @@ import pl.michalbzowski.windband.application.query.inventory.InventoryQueryServi
 import pl.michalbzowski.windband.application.query.inventory.InventoryAttributeQueryService;
 import pl.michalbzowski.windband.application.query.member.MemberQueryService;
 import pl.michalbzowski.windband.domain.band.Band;
+import pl.michalbzowski.windband.domain.inventory.AwardItem;
 import pl.michalbzowski.windband.domain.inventory.InventoryOrder;
 import pl.michalbzowski.windband.domain.inventory.InstrumentItem;
 import pl.michalbzowski.windband.domain.inventory.OrderStatus;
@@ -74,12 +76,15 @@ public class InventoryPageController {
         List<UniformAttributeDefDto> uniformDefs = inventoryAttributeQueryService.getUniformAttributeDefs(band);
         List<InstrumentAttributeDefDto> instrumentDefs = inventoryAttributeQueryService.getInstrumentAttributeDefs(band);
         List<OrderAttributeDefDto> orderDefs = inventoryAttributeQueryService.getOrderAttributeDefs(band);
+        List<AwardAttributeDefDto> awardDefs = inventoryAttributeQueryService.getAwardAttributeDefs(band);
 
         // Get all items filtered by team
         List<UniformItem> uniformItemsEntities = inventoryQueryService.getAllUniformItemsEntities(teamId);
         List<InstrumentItem> instrumentItemsEntities = inventoryQueryService.getAllInstrumentItemsEntities(teamId);
         List<InventoryItemDto> uniformItems = inventoryQueryService.getAllUniformItems(teamId);
         List<InventoryItemDto> instrumentItems = inventoryQueryService.getAllInstrumentItems(teamId);
+        List<InventoryItemDto> awardItems = inventoryQueryService.getAllAwardItems(teamId);
+        List<AwardItem> awardItemsEntities = inventoryQueryService.getAllAwardItemsEntities(teamId);
 
         // Build attribute values map: itemId -> {attrId -> value}
         Map<Long, Map<Long, String>> uniformAttrValues = new HashMap<>();
@@ -100,6 +105,11 @@ public class InventoryPageController {
             orderAttrValues.put(order.getId(), inventoryAttributeQueryService.getOrderAttributeValues(order));
         }
 
+        Map<Long, Map<Long, String>> awardAttrValues = new HashMap<>();
+        for (AwardItem item : awardItemsEntities) {
+            awardAttrValues.put(item.getId(), inventoryAttributeQueryService.getAwardAttributeValues(item));
+        }
+
         model.addAttribute("uniformItems", uniformItems);
         model.addAttribute("instrumentItems", instrumentItems);
         model.addAttribute("orders", orders);
@@ -111,14 +121,19 @@ public class InventoryPageController {
         model.addAttribute("instrumentAttributeValues", instrumentAttrValues);
         model.addAttribute("orderAttributeDefs", orderDefs);
         model.addAttribute("orderAttributeValues", orderAttrValues);
+        model.addAttribute("awardItems", awardItems);
+        model.addAttribute("awardAttributeDefs", awardDefs);
+        model.addAttribute("awardAttributeValues", awardAttrValues);
         
         // JSON versions for JavaScript
         String uniformJson = objectMapper.writeValueAsString(uniformDefs);
         String instrumentJson = objectMapper.writeValueAsString(instrumentDefs);
+        String awardJson = objectMapper.writeValueAsString(awardDefs);
         System.out.println("Uniform attrs JSON: " + uniformJson);
         System.out.println("Instrument attrs JSON: " + instrumentJson);
         model.addAttribute("uniformAttributeDefsJson", uniformJson);
         model.addAttribute("instrumentAttributeDefsJson", instrumentJson);
+        model.addAttribute("awardAttributeDefsJson", awardJson);
         return "inventory/list";
     }
 
@@ -185,6 +200,34 @@ public class InventoryPageController {
         model.addAttribute("instrumentAttributeValues", instrumentAttrValues);
         model.addAttribute("members", memberQueryService.getAllActiveMembers(teamId));
         return "inventory/list :: #instruments-content";
+    }
+
+    @GetMapping("/awards/fragment")
+    public String awardsFragment(@AuthenticationPrincipal OidcUser oidcUser, Model model) {
+        Band band = getActiveBand(oidcUser);
+        Long teamId = getActiveTeamId(oidcUser);
+
+        if (band == null) {
+            model.addAttribute("awardItems", List.of());
+            model.addAttribute("awardAttributeDefs", List.of());
+            model.addAttribute("awardAttributeValues", Map.of());
+            model.addAttribute("members", List.of());
+            return "inventory/list :: #awards-content";
+        }
+
+        List<AwardItem> awardItems = inventoryQueryService.getAllAwardItemsEntities(teamId);
+        List<AwardAttributeDefDto> awardDefs = inventoryAttributeQueryService.getAwardAttributeDefs(band);
+
+        Map<Long, Map<Long, String>> awardAttrValues = new HashMap<>();
+        for (AwardItem item : awardItems) {
+            awardAttrValues.put(item.getId(), inventoryAttributeQueryService.getAwardAttributeValues(item));
+        }
+
+        model.addAttribute("awardItems", awardItems);
+        model.addAttribute("awardAttributeDefs", awardDefs);
+        model.addAttribute("awardAttributeValues", awardAttrValues);
+        model.addAttribute("members", memberQueryService.getAllActiveMembers(teamId));
+        return "inventory/list :: #awards-content";
     }
 
     @GetMapping("/orders/{id}/history")

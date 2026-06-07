@@ -157,6 +157,48 @@ public class InventoryController {
         return ResponseEntity.noContent().build();
     }
 
+    // === Awards ===
+
+    @GetMapping("/awards")
+    public ResponseEntity<?> getAwardItems(@RequestParam(required = false) Long teamId) {
+        if (teamId == null) {
+            return ResponseEntity.ok(queryService.getAllAwardItems(null));
+        }
+        return ResponseEntity.ok(queryService.getAllAwardItems(teamId));
+    }
+
+    @PostMapping("/awards")
+    public ResponseEntity<?> addAwardItem(@RequestBody AddAwardRequest request) {
+        var item = commandService.addAwardItem(
+                request.getTeamId(), request.getName(), request.getDescription(),
+                request.getMemberId(), request.getAttributes());
+        return ResponseEntity.status(HttpStatus.CREATED).body(item);
+    }
+
+    @PostMapping("/awards/{id}/assign")
+    public ResponseEntity<Void> assignAward(@PathVariable Long id, @RequestBody AssignRequest request) {
+        commandService.assignAwardToMember(id, request.getMemberId());
+        return ResponseEntity.ok().build();
+    }
+
+    @PostMapping("/awards/{id}/return")
+    public ResponseEntity<Void> returnAward(@PathVariable Long id) {
+        commandService.returnAward(id);
+        return ResponseEntity.ok().build();
+    }
+
+    @PostMapping("/awards/{id}/dispose")
+    public ResponseEntity<Void> disposeAward(@PathVariable Long id) {
+        commandService.disposeAward(id);
+        return ResponseEntity.ok().build();
+    }
+
+    @PutMapping("/awards/{id}/attributes")
+    public ResponseEntity<Void> updateAwardAttributes(@PathVariable Long id, @RequestBody Map<String, String> attributes) {
+        commandService.updateAwardAttributes(id, attributes);
+        return ResponseEntity.ok().build();
+    }
+
     // === Assignment history ===
 
     @GetMapping("/uniforms/{id}/history")
@@ -207,5 +249,14 @@ public class InventoryController {
     @Data
     public static class ReturnRequest {
         private String notes;
+    }
+
+    @Data
+    public static class AddAwardRequest {
+        private Long teamId;
+        private String name;
+        private String description;
+        private Long memberId;
+        private Map<String, String> attributes;
     }
 }
