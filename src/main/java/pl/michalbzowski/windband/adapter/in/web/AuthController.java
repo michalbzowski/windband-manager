@@ -211,6 +211,30 @@ public class AuthController {
         ));
     }
 
+    /**
+     * Diagnostic endpoint: check DNS resolution and env vars.
+     * Remove after debugging!
+     */
+    @GetMapping("/debug-dns")
+    public ResponseEntity<?> debugDns() {
+        String host = "keycloak.railway.internal";
+        String resolved;
+        try {
+            var addr = java.net.InetAddress.getByName(host);
+            resolved = addr.getHostAddress();
+        } catch (Exception e) {
+            resolved = "FAILED: " + e.getMessage();
+        }
+        return ResponseEntity.ok(Map.of(
+                "host", host,
+                "resolved", resolved,
+                "KEYCLOAK_INTERNAL_URL", System.getenv("KEYCLOAK_INTERNAL_URL"),
+                "KEYCLOAK_AUTH_URL", System.getenv("KEYCLOAK_AUTH_URL"),
+                "KEYCLOAK_PUBLIC_URL", System.getenv("KEYCLOAK_PUBLIC_URL"),
+                "BASE_URL", System.getenv("BASE_URL")
+        ));
+    }
+
     @Data
     public static class LoginRequest {
         private String username;

@@ -65,6 +65,8 @@ logging:
     org.springframework.security.oauth2: TRACE
     org.springframework.security.web: DEBUG
     org.springframework.web.client.RestTemplate: DEBUG
+    org.springframework.boot.autoconfigure.security: DEBUG
+    org.springframework.security.oauth2.client: DEBUG
 
 app:
   base-url: ${BASE_URL}
