@@ -3,9 +3,9 @@ spring:
     name: windband-manager
 
   datasource:
-    url: jdbc:postgresql://${DB_HOST:localhost}:${DB_PORT:5432}/${DB_NAME:windband}
-    username: ${DB_USER:windband}
-    password: ${DB_PASS:windband}
+    url: jdbc:postgresql://${DB_HOST}:${DB_PORT:5432}/${DB_NAME}
+    username: ${DB_USER}
+    password: ${DB_PASS}
     driver-class-name: org.postgresql.Driver
 
   jpa:
@@ -25,10 +25,10 @@ spring:
     cache: false
 
   mail:
-    host: ${MAIL_HOST:smtp.gmail.com}
-    port: ${MAIL_PORT:587}
-    username: ${MAIL_USER:}
-    password: ${MAIL_PASS:}
+    host: ${MAIL_HOST}
+    port: ${MAIL_PORT}
+    username: ${MAIL_USER}
+    password: ${MAIL_PASS}
     properties:
       mail:
         smtp:
@@ -41,18 +41,18 @@ spring:
       client:
         registration:
           keycloak:
-            client-id: ${KEYCLOAK_CLIENT_ID:windband-manager}
-            client-secret: ${KEYCLOAK_CLIENT_SECRET:windband-secret-key-change-in-production-2026}
+            client-id: ${KEYCLOAK_CLIENT_ID}
+            client-secret: ${KEYCLOAK_CLIENT_SECRET}
             scope: openid,profile,email
             authorization-grant-type: authorization_code
             redirect-uri: "{baseUrl}/login/oauth2/code/{registrationId}"
             provider: keycloak
         provider:
           keycloak:
-            authorization-uri: ${KEYCLOAK_AUTH_URL:http://keycloak.michalbzowski.pl}/realms/${KEYCLOAK_REALM:windband}/protocol/openid-connect/auth
-            token-uri: ${KEYCLOAK_INTERNAL_URL:http://keycloak:8180}/realms/${KEYCLOAK_REALM:windband}/protocol/openid-connect/token
-            user-info-uri: ${KEYCLOAK_INTERNAL_URL:http://keycloak:8180}/realms/${KEYCLOAK_REALM:windband}/protocol/openid-connect/userinfo
-            jwk-set-uri: ${KEYCLOAK_INTERNAL_URL:http://keycloak:8180}/realms/${KEYCLOAK_REALM:windband}/protocol/openid-connect/certs
+            authorization-uri: ${KEYCLOAK_AUTH_URL}/realms/${KEYCLOAK_REALM}/protocol/openid-connect/auth
+            token-uri: ${KEYCLOAK_INTERNAL_URL}/realms/${KEYCLOAK_REALM}/protocol/openid-connect/token
+            user-info-uri: ${KEYCLOAK_INTERNAL_URL}/realms/${KEYCLOAK_REALM}/protocol/openid-connect/userinfo
+            jwk-set-uri: ${KEYCLOAK_INTERNAL_URL}/realms/${KEYCLOAK_REALM}/protocol/openid-connect/certs
             user-name-attribute: preferred_username
 
 
