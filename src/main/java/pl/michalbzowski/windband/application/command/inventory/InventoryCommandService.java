@@ -6,6 +6,7 @@ import org.springframework.transaction.annotation.Transactional;
 import pl.michalbzowski.windband.application.command.inventory.InventoryItemNotFoundException;
 import pl.michalbzowski.windband.application.command.inventory.InventoryOrderNotFoundException;
 import pl.michalbzowski.windband.application.command.member.MemberNotFoundException;
+import pl.michalbzowski.windband.domain.band.Band;
 import pl.michalbzowski.windband.domain.band.BandRepository;
 import pl.michalbzowski.windband.domain.inventory.AwardItem;
 import pl.michalbzowski.windband.domain.inventory.AwardItemRepository;
