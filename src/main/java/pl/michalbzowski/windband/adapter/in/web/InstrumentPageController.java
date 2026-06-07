@@ -5,6 +5,7 @@ import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
 import pl.michalbzowski.windband.application.command.member.InstrumentCommandService;
+import pl.michalbzowski.windband.application.query.instrument.InstrumentQueryService;
 import pl.michalbzowski.windband.domain.member.Instrument;
 
 import java.util.List;
@@ -15,17 +16,18 @@ import java.util.List;
 public class InstrumentPageController {
 
     private final InstrumentCommandService instrumentCommandService;
+    private final InstrumentQueryService instrumentQueryService;
 
     @GetMapping
     public String listPage(Model model) {
-        List<Instrument> instruments = instrumentCommandService.getAllInstruments();
+        List<Instrument> instruments = instrumentQueryService.findAll();
         model.addAttribute("instruments", instruments);
         return "instruments/list";
     }
 
     @GetMapping("/list")
     public String listFragment(Model model) {
-        List<Instrument> instruments = instrumentCommandService.getAllInstruments();
+        List<Instrument> instruments = instrumentQueryService.findAll();
         model.addAttribute("instruments", instruments);
         return "instruments/list :: #instruments-content";
     }
