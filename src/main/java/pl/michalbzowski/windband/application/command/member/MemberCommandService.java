@@ -62,9 +62,8 @@ public class MemberCommandService {
             Instrument instrument = instrumentRepository.findById(cmd.getInstrumentId())
                     .orElseThrow(() -> new IllegalArgumentException("Instrument not found: " + cmd.getInstrumentId()));
             member.changeInstrument(instrument);
-            return memberRepository.saveAndFlush(member);
         }
-        return memberRepository.save(member);
+        return memberRepository.saveAndFlush(member);
     }
 
     public void assignInstrument(AssignInstrumentCommand cmd) {
