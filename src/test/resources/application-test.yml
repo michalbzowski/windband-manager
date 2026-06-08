@@ -27,22 +27,36 @@ spring:
   thymeleaf:
     cache: false
 
+  mail:
+    host: localhost
+    port: 587
+    username: test
+    password: test
+    properties:
+      mail:
+        smtp:
+          auth: false
+          starttls:
+            enable: false
+
   security:
     oauth2:
       client:
         registration:
           keycloak:
-            client-id: windband-manager
+            client-id: test-client
             client-secret: test-secret
             scope: openid,profile,email
             authorization-grant-type: authorization_code
+            redirect-uri: "http://localhost:8080/login/oauth2/code/keycloak"
+            provider: keycloak
         provider:
           keycloak:
-            issuer-uri: http://localhost:8180/realms/windband
+            authorization-uri: http://localhost:8180/realms/windband/protocol/openid-connect/auth
+            token-uri: http://localhost:8180/realms/windband/protocol/openid-connect/token
+            user-info-uri: http://localhost:8180/realms/windband/protocol/openid-connect/userinfo
+            jwk-set-uri: http://localhost:8180/realms/windband/protocol/openid-connect/certs
             user-name-attribute: preferred_username
-      resourceserver:
-        jwt:
-          issuer-uri: http://localhost:8180/realms/windband
 
 server:
   port: 8080
@@ -52,5 +66,5 @@ app:
   keycloak:
     url: http://localhost:8180
     realm: windband
-    client-id: windband-manager
+    client-id: test-client
     client-secret: test-secret
