@@ -34,6 +34,7 @@
 
         <div style="display:flex; gap:0.5rem; margin-top:1rem;">
             <button type="submit" class="primary">Zaplanuj</button>
+            <button type="submit" class="secondary" name="saveAndAddAnother" value="true">Zapisz i dodaj kolejny</button>
             <button type="button" class="secondary"
                     hx-get="/rehearsals/list" hx-target="#rehearsals-content"
                     hx-swap="innerHTML transition:true">Anuluj</button>
@@ -52,13 +53,20 @@
                 var formData = new FormData(form);
                 var data = {};
                 formData.forEach(function(value, key) { data[key] = value; });
+                // Check if "Zapisz i dodaj kolejny" button was clicked
+                var saveAndAddAnother = form.querySelector('button[name="saveAndAddAnother"]') && 
+                                        form.querySelector('button[name="saveAndAddAnother"]') === document.activeElement;
 
                 fetch('/api/rehearsals', {
                     method: 'POST',
                     headers: {'Content-Type': 'application/json'},
                     body: JSON.stringify(data)
                 }).then(function() {
-                    htmx.ajax('GET', '/rehearsals/list', {target: '#rehearsals-content', swap: 'innerHTML transition:true'});
+                    if (saveAndAddAnother) {
+                        htmx.ajax('GET', '/rehearsals/new', {target: '#rehearsals-content', swap: 'innerHTML transition:true'});
+                    } else {
+                        htmx.ajax('GET', '/rehearsals/list', {target: '#rehearsals-content', swap: 'innerHTML transition:true'});
+                    }
                 });
             }
         });
