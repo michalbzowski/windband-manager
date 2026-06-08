@@ -168,7 +168,10 @@ class AttributeUiTest extends UiTestBase {
         driver.findElement(By.cssSelector("input[name='displayOrder']")).sendKeys("1");
         driver.findElement(By.cssSelector("input[name='displayInList']")).click();
 
-        driver.findElement(By.cssSelector("form button[type='submit']")).click();
+        // Wait for submit button to be clickable (visible + enabled)
+        var submitBtn = wait.until(ExpectedConditions.elementToBeClickable(
+                By.cssSelector("form button[type='submit']")));
+        submitBtn.click();
         wait.until(ExpectedConditions.presenceOfElementLocated(By.cssSelector("#content h2")));
     }
 }
