@@ -10,9 +10,29 @@
 
         <div style="display:flex; gap:0.5rem; margin-top:1rem;">
             <button type="submit" class="primary">Utwórz grupę</button>
+            <button type="submit" class="secondary" name="saveAndAddAnother" value="true">Zapisz i dodaj kolejny</button>
             <button type="button" class="secondary"
                     hx-get="/groups/list" hx-target="#groups-content"
                     hx-swap="innerHTML transition:true">Anuluj</button>
         </div>
     </form>
 </div>
+
+<script th:inline="javascript">
+    // Handle "Zapisz i dodaj kolejny" for htmx form submission
+    (function() {
+        var form = document.querySelector('#groups-content form');
+        if (form) {
+            form.addEventListener('htmx:afterRequest', function(e) {
+                if (e.detail.successful) {
+                    var saveAndAddAnother = form.querySelector('button[name="saveAndAddAnother"]') && 
+                                            form.querySelector('button[name="saveAndAddAnother"]') === document.activeElement;
+                    if (saveAndAddAnother) {
+                        // Reload the form for adding another group
+                        htmx.ajax('GET', '/groups/new', {target: '#groups-content', swap: 'innerHTML transition:true'});
+                    }
+                }
+            });
+        }
+    })();
+</script>

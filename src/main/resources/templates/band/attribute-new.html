@@ -51,6 +51,7 @@
                 </div>
                 <div style="display:flex; gap:0.5rem; margin-top:0.5rem;">
                     <button type="submit" class="primary small">Dodaj atrybut</button>
+                    <button type="submit" class="secondary small" name="saveAndAddAnother" value="true">Zapisz i dodaj kolejny</button>
                     <a href="/band/attributes" class="secondary small" style="padding:0.4rem 0.8rem; text-decoration:none; border-radius:4px; border:1px solid var(--pico-muted-color);">Anuluj</a>
                 </div>
             </form>
@@ -68,6 +69,23 @@
                 optionsField.style.display = 'none';
             }
         }
+
+        // Handle "Zapisz i dodaj kolejny" for attribute form
+        (function() {
+            var form = document.querySelector('form[th\\:hx-post]');
+            if (form) {
+                form.addEventListener('htmx:afterRequest', function(e) {
+                    if (e.detail.successful) {
+                        var saveAndAddAnother = form.querySelector('button[name="saveAndAddAnother"]') && 
+                                                form.querySelector('button[name="saveAndAddAnother"]') === document.activeElement;
+                        if (saveAndAddAnother) {
+                            // Reload the form for adding another attribute - redirect to /band/attributes/new
+                            window.location.href = '/band/attributes/new';
+                        }
+                    }
+                });
+            }
+        })();
     </script>
 </body>
 </html>

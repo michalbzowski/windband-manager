@@ -24,6 +24,8 @@
         <div style="display:flex; gap:0.5rem; margin-top:1rem;">
             <button type="submit" class="primary"
                     th:text="${instrument.id() != null && instrument.id() != 0 ? 'Zapisz zmiany' : 'Dodaj instrument'}">Dodaj</button>
+            <button type="submit" class="secondary" name="saveAndAddAnother" value="true"
+                    th:if="${instrument.id() == null || instrument.id() == 0}">Zapisz i dodaj kolejny</button>
             <button type="button" class="secondary"
                     hx-get="/instruments/list" hx-target="#instruments-content"
                     hx-swap="innerHTML transition:true">Anuluj</button>
@@ -45,13 +47,20 @@
                 var formData = new FormData(form);
                 var data = {};
                 formData.forEach(function(value, key) { data[key] = value; });
+                // Check if "Zapisz i dodaj kolejny" button was clicked
+                var saveAndAddAnother = form.querySelector('button[name="saveAndAddAnother"]') && 
+                                        form.querySelector('button[name="saveAndAddAnother"]') === document.activeElement;
 
                 fetch(url, {
                     method: method,
                     headers: {'Content-Type': 'application/json'},
                     body: JSON.stringify(data)
                 }).then(function() {
-                    htmx.ajax('GET', '/instruments/list', {target: '#instruments-content', swap: 'innerHTML transition:true'});
+                    if (saveAndAddAnother) {
+                        htmx.ajax('GET', '/instruments/new', {target: '#instruments-content', swap: 'innerHTML transition:true'});
+                    } else {
+                        htmx.ajax('GET', '/instruments/list', {target: '#instruments-content', swap: 'innerHTML transition:true'});
+                    }
                 });
             }
         });
