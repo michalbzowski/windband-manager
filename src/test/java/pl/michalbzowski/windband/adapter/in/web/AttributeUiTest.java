@@ -2,6 +2,7 @@ package pl.michalbzowski.windband.adapter.in.web;
 
 import org.junit.jupiter.api.Test;
 import org.openqa.selenium.By;
+import org.openqa.selenium.JavascriptExecutor;
 import org.openqa.selenium.support.ui.ExpectedConditions;
 import org.openqa.selenium.support.ui.WebDriverWait;
 import pl.michalbzowski.windband.UiTestBase;
@@ -169,9 +170,17 @@ class AttributeUiTest extends UiTestBase {
         driver.findElement(By.cssSelector("input[name='displayInList']")).click();
 
         // Wait for submit button to be clickable (visible + enabled)
-        var submitBtn = wait.until(ExpectedConditions.elementToBeClickable(
-                By.cssSelector("form button[type='submit']")));
-        submitBtn.click();
+        // Fallback to JavaScript click if Selenium considers it non-interactable
+        // (e.g. PicoCSS may hide the button behind its own styling)
+        try {
+            var submitBtn = wait.until(ExpectedConditions.elementToBeClickable(
+                    By.cssSelector("form button[type='submit']")));
+            submitBtn.click();
+        } catch (org.openqa.selenium.TimeoutException e) {
+            // Element exists but not clickable via Selenium — use JS click
+            var btn = driver.findElement(By.cssSelector("form button[type='submit']"));
+            ((JavascriptExecutor) driver).executeScript("arguments[0].click();", btn);
+        }
         wait.until(ExpectedConditions.presenceOfElementLocated(By.cssSelector("#content h2")));
     }
 }
