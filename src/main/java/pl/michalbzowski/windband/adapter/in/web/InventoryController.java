@@ -4,7 +4,10 @@ import lombok.Data;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.security.oauth2.core.oidc.user.OidcUser;
 import org.springframework.web.bind.annotation.*;
+import pl.michalbzowski.windband.adapter.in.security.WindbandOidcUser;
 import pl.michalbzowski.windband.application.command.inventory.InventoryCommandService;
 import pl.michalbzowski.windband.application.query.inventory.InventoryQueryService;
 import pl.michalbzowski.windband.domain.inventory.OrderStatus;
@@ -19,6 +22,13 @@ public class InventoryController {
 
     private final InventoryCommandService commandService;
     private final InventoryQueryService queryService;
+
+    private Long resolveActiveTeamId(OidcUser oidcUser) {
+        if (oidcUser instanceof WindbandOidcUser wu) {
+            return wu.getActiveTeamId();
+        }
+        return null;
+    }
 
     // === Orders ===
 
@@ -99,25 +109,29 @@ public class InventoryController {
 
     @PostMapping("/uniforms/{id}/assign")
     public ResponseEntity<Void> assignUniform(@PathVariable Long id, @RequestBody AssignRequest request) {
-        commandService.assignUniformToMember(id, request.getMemberId());
+        commandService.assignUniformToMember(id, request.getMemberId(), request.getConditionAtAssign());
         return ResponseEntity.ok().build();
     }
 
     @PostMapping("/instruments/{id}/assign")
     public ResponseEntity<Void> assignInstrument(@PathVariable Long id, @RequestBody AssignRequest request) {
-        commandService.assignInstrumentToMember(id, request.getMemberId());
+        commandService.assignInstrumentToMember(id, request.getMemberId(), request.getConditionAtAssign());
         return ResponseEntity.ok().build();
     }
 
     @PostMapping("/uniforms/{id}/return")
     public ResponseEntity<Void> returnUniform(@PathVariable Long id, @RequestBody(required = false) ReturnRequest request) {
-        commandService.returnUniform(id, request != null ? request.getNotes() : null);
+        commandService.returnUniform(id,
+                request != null ? request.getConditionAtReturn() : null,
+                request != null ? request.getNotes() : null);
         return ResponseEntity.ok().build();
     }
 
     @PostMapping("/instruments/{id}/return")
     public ResponseEntity<Void> returnInstrument(@PathVariable Long id, @RequestBody(required = false) ReturnRequest request) {
-        commandService.returnInstrument(id, request != null ? request.getNotes() : null);
+        commandService.returnInstrument(id,
+                request != null ? request.getConditionAtReturn() : null,
+                request != null ? request.getNotes() : null);
         return ResponseEntity.ok().build();
     }
 
@@ -202,23 +216,31 @@ public class InventoryController {
     // === Assignment history ===
 
     @GetMapping("/uniforms/{id}/history")
-    public ResponseEntity<?> getUniformHistory(@PathVariable Long id) {
-        return ResponseEntity.ok(queryService.getHistoryByUniformItem(id));
+    public ResponseEntity<?> getUniformHistory(@PathVariable Long id, @AuthenticationPrincipal OidcUser oidcUser) {
+        Long teamId = resolveActiveTeamId(oidcUser);
+        if (teamId == null) return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+        return ResponseEntity.ok(queryService.getHistoryByUniformItem(id, teamId));
     }
 
     @GetMapping("/instruments/{id}/history")
-    public ResponseEntity<?> getInstrumentHistory(@PathVariable Long id) {
-        return ResponseEntity.ok(queryService.getHistoryByInstrumentItem(id));
+    public ResponseEntity<?> getInstrumentHistory(@PathVariable Long id, @AuthenticationPrincipal OidcUser oidcUser) {
+        Long teamId = resolveActiveTeamId(oidcUser);
+        if (teamId == null) return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+        return ResponseEntity.ok(queryService.getHistoryByInstrumentItem(id, teamId));
     }
 
     @GetMapping("/members/{memberId}/assignments")
-    public ResponseEntity<?> getMemberAssignments(@PathVariable Long memberId) {
-        return ResponseEntity.ok(queryService.getHistoryByMember(memberId));
+    public ResponseEntity<?> getMemberAssignments(@PathVariable Long memberId, @AuthenticationPrincipal OidcUser oidcUser) {
+        Long teamId = resolveActiveTeamId(oidcUser);
+        if (teamId == null) return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+        return ResponseEntity.ok(queryService.getHistoryByMember(memberId, teamId));
     }
 
     @GetMapping("/assignments/active")
-    public ResponseEntity<?> getActiveAssignments() {
-        return ResponseEntity.ok(queryService.getActiveAssignments());
+    public ResponseEntity<?> getActiveAssignments(@AuthenticationPrincipal OidcUser oidcUser) {
+        Long teamId = resolveActiveTeamId(oidcUser);
+        if (teamId == null) return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+        return ResponseEntity.ok(queryService.getActiveAssignments(teamId));
     }
 
     // === Request DTOs ===
@@ -244,10 +266,12 @@ public class InventoryController {
     @Data
     public static class AssignRequest {
         private Long memberId;
+        private String conditionAtAssign;
     }
 
     @Data
     public static class ReturnRequest {
+        private String conditionAtReturn;
         private String notes;
     }
 

@@ -11,6 +11,7 @@ import pl.michalbzowski.windband.application.command.inventory.InventoryOrderNot
 import pl.michalbzowski.windband.application.command.member.MemberNotFoundException;
 import pl.michalbzowski.windband.domain.inventory.*;
 import pl.michalbzowski.windband.domain.member.MemberRepository;
+import pl.michalbzowski.windband.domain.band.Band;
 
 import java.util.List;
 
@@ -119,30 +120,48 @@ public class InventoryQueryService {
 
     // === Assignment history ===
 
-    public List<AssignmentHistoryDto> getHistoryByUniformItem(Long uniformItemId) {
+    public List<AssignmentHistoryDto> getHistoryByUniformItem(Long uniformItemId, Long teamId) {
         UniformItem item = getUniformItemById(uniformItemId);
+        if (item.getBand() == null || !item.getBand().getId().equals(teamId)) {
+            throw new InventoryItemNotFoundException(uniformItemId);
+        }
         return inventoryRepository.findHistoryByUniformItem(item).stream()
                 .map(this::toHistoryDto)
                 .toList();
     }
 
-    public List<AssignmentHistoryDto> getHistoryByInstrumentItem(Long instrumentItemId) {
+    public List<AssignmentHistoryDto> getHistoryByInstrumentItem(Long instrumentItemId, Long teamId) {
         InstrumentItem item = getInstrumentItemById(instrumentItemId);
+        if (item.getBand() == null || !item.getBand().getId().equals(teamId)) {
+            throw new InventoryItemNotFoundException(instrumentItemId);
+        }
         return inventoryRepository.findHistoryByInstrumentItem(item).stream()
                 .map(this::toHistoryDto)
                 .toList();
     }
 
-    public List<AssignmentHistoryDto> getHistoryByMember(Long memberId) {
+    public List<AssignmentHistoryDto> getHistoryByMember(Long memberId, Long teamId) {
         var member = memberRepository.findById(memberId)
                 .orElseThrow(() -> new MemberNotFoundException(memberId));
         return inventoryRepository.findHistoryByMember(member).stream()
+                .filter(h -> {
+                    Long itemBandId = h.isForUniform()
+                            ? (h.getUniformItem().getBand() != null ? h.getUniformItem().getBand().getId() : null)
+                            : (h.getInstrumentItem().getBand() != null ? h.getInstrumentItem().getBand().getId() : null);
+                    return itemBandId != null && itemBandId.equals(teamId);
+                })
                 .map(this::toHistoryDto)
                 .toList();
     }
 
-    public List<AssignmentHistoryDto> getActiveAssignments() {
+    public List<AssignmentHistoryDto> getActiveAssignments(Long teamId) {
         return inventoryRepository.findActiveAssignments().stream()
+                .filter(h -> {
+                    Long itemBandId = h.isForUniform()
+                            ? (h.getUniformItem().getBand() != null ? h.getUniformItem().getBand().getId() : null)
+                            : (h.getInstrumentItem().getBand() != null ? h.getInstrumentItem().getBand().getId() : null);
+                    return itemBandId != null && itemBandId.equals(teamId);
+                })
                 .map(this::toHistoryDto)
                 .toList();
     }
@@ -195,9 +214,12 @@ public class InventoryQueryService {
                 h.isForUniform() ? "UNIFORM" : "INSTRUMENT",
                 h.getItemId(),
                 h.getMember().getFirstName() + " " + h.getMember().getLastName(),
+                h.getAssignedByName(),
                 h.getAssignedAt(),
                 h.getReturnedAt(),
                 h.isActive(),
+                h.getConditionAtAssign(),
+                h.getConditionAtReturn(),
                 h.getNotes()
         );
     }

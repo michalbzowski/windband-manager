@@ -1,6 +1,8 @@
 package pl.michalbzowski.windband.application.command.inventory;
 
 import lombok.RequiredArgsConstructor;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import pl.michalbzowski.windband.application.command.inventory.InventoryItemNotFoundException;
@@ -13,6 +15,8 @@ import pl.michalbzowski.windband.domain.inventory.AwardItemRepository;
 import pl.michalbzowski.windband.domain.inventory.*;
 import pl.michalbzowski.windband.domain.member.Member;
 import pl.michalbzowski.windband.domain.member.MemberRepository;
+import pl.michalbzowski.windband.domain.user.AppUser;
+import pl.michalbzowski.windband.domain.user.AppUserRepository;
 
 import java.time.LocalDate;
 import java.util.Map;
@@ -29,10 +33,18 @@ public class InventoryCommandService {
     private final InstrumentAttributeCommandService instrumentAttributeCommandService;
     private final AwardAttributeCommandService awardAttributeCommandService;
     private final AwardItemRepository awardItemRepository;
+    private final AppUserRepository appUserRepository;
 
     private pl.michalbzowski.windband.domain.band.Band getDefaultBand() {
         return bandRepository.findById(1L)
                 .orElseThrow(() -> new IllegalStateException("Default band (id=1) not found"));
+    }
+
+    private AppUser getCurrentUser() {
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        if (auth == null || !auth.isAuthenticated()) return null;
+        String username = auth.getName();
+        return appUserRepository.findByUsername(username).orElse(null);
     }
 
     // === Place a new order ===
@@ -162,38 +174,42 @@ public class InventoryCommandService {
 
     // === Assign item to member (creates history record) ===
 
-    public void assignUniformToMember(Long uniformId, Long memberId) {
+    public void assignUniformToMember(Long uniformId, Long memberId, String conditionAtAssign) {
         UniformItem item = getUniformOrThrow(uniformId);
         Member member = getMemberOrThrow(memberId);
         closeActiveAssignment(item);
         item.assignTo(member);
         inventoryRepository.saveUniformItem(item);
-        inventoryRepository.saveAssignment(AssetAssignmentHistory.forUniform(item, member, null));
+        AppUser currentUser = getCurrentUser();
+        inventoryRepository.saveAssignment(
+                AssetAssignmentHistory.forUniform(item, member, currentUser, conditionAtAssign, null));
     }
 
-    public void assignInstrumentToMember(Long instrumentId, Long memberId) {
+    public void assignInstrumentToMember(Long instrumentId, Long memberId, String conditionAtAssign) {
         InstrumentItem item = getInstrumentOrThrow(instrumentId);
         Member member = getMemberOrThrow(memberId);
         closeActiveAssignment(item);
         item.assignTo(member);
         inventoryRepository.saveInstrumentItem(item);
-        inventoryRepository.saveAssignment(AssetAssignmentHistory.forInstrument(item, member, null));
+        AppUser currentUser = getCurrentUser();
+        inventoryRepository.saveAssignment(
+                AssetAssignmentHistory.forInstrument(item, member, currentUser, conditionAtAssign, null));
     }
 
     // === Return item to stock ===
 
-    public void returnUniform(Long uniformId, String notes) {
+    public void returnUniform(Long uniformId, String conditionAtReturn, String notes) {
         UniformItem item = getUniformOrThrow(uniformId);
         item.unassign();
         inventoryRepository.saveUniformItem(item);
-        closeActiveAssignment(item, notes);
+        closeActiveAssignment(item, conditionAtReturn, notes);
     }
 
-    public void returnInstrument(Long instrumentId, String notes) {
+    public void returnInstrument(Long instrumentId, String conditionAtReturn, String notes) {
         InstrumentItem item = getInstrumentOrThrow(instrumentId);
         item.unassign();
         inventoryRepository.saveInstrumentItem(item);
-        closeActiveAssignment(item, notes);
+        closeActiveAssignment(item, conditionAtReturn, notes);
     }
 
     // === Retire / Dispose ===
@@ -341,17 +357,17 @@ public class InventoryCommandService {
                 .filter(AssetAssignmentHistory::isActive)
                 .findFirst()
                 .ifPresent(h -> {
-                    h.markReturned(null);
+                    h.markReturned(null, null);
                     inventoryRepository.saveAssignment(h);
                 });
     }
 
-    private void closeActiveAssignment(UniformItem item, String notes) {
+    private void closeActiveAssignment(UniformItem item, String conditionAtReturn, String notes) {
         inventoryRepository.findHistoryByUniformItem(item).stream()
                 .filter(AssetAssignmentHistory::isActive)
                 .findFirst()
                 .ifPresent(h -> {
-                    h.markReturned(notes);
+                    h.markReturned(conditionAtReturn, notes);
                     inventoryRepository.saveAssignment(h);
                 });
     }
@@ -361,17 +377,17 @@ public class InventoryCommandService {
                 .filter(AssetAssignmentHistory::isActive)
                 .findFirst()
                 .ifPresent(h -> {
-                    h.markReturned(null);
+                    h.markReturned(null, null);
                     inventoryRepository.saveAssignment(h);
                 });
     }
 
-    private void closeActiveAssignment(InstrumentItem item, String notes) {
+    private void closeActiveAssignment(InstrumentItem item, String conditionAtReturn, String notes) {
         inventoryRepository.findHistoryByInstrumentItem(item).stream()
                 .filter(AssetAssignmentHistory::isActive)
                 .findFirst()
                 .ifPresent(h -> {
-                    h.markReturned(notes);
+                    h.markReturned(conditionAtReturn, notes);
                     inventoryRepository.saveAssignment(h);
                 });
     }
