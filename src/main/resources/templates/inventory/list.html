@@ -242,7 +242,7 @@
                         <article>
                             <h4>Przydziel stroj</h4>
                             <input type="hidden" id="uni-assign-item-id">
-                            <div style="display:flex; gap:0.5rem; align-items:flex-end;">
+                            <div style="display:flex; gap:0.5rem; align-items:flex-end; flex-wrap:wrap;">
                                 <div>
                                     <label for="uni-assign-member">Muzyk</label>
                                     <select id="uni-assign-member">
@@ -250,6 +250,10 @@
                                         <option th:each="m : ${members}" th:value="${m.id}"
                                                 th:text="${m.firstName} + ' ' + ${m.lastName}">Jan</option>
                                     </select>
+                                </div>
+                                <div>
+                                    <label for="uni-assign-condition">Stan przy przydzieleniu</label>
+                                    <input type="text" id="uni-assign-condition" placeholder="Np. nowy, dobry, używany">
                                 </div>
                                 <button class="primary small" onclick="confirmAssignUniform()">OK</button>
                                 <button class="secondary small" onclick="closeUniAssignModal()">Anuluj</button>
@@ -375,7 +379,7 @@
                         <article>
                             <h4>Przydziel instrument</h4>
                             <input type="hidden" id="inst-assign-item-id">
-                            <div style="display:flex; gap:0.5rem; align-items:flex-end;">
+                            <div style="display:flex; gap:0.5rem; align-items:flex-end; flex-wrap:wrap;">
                                 <div>
                                     <label for="inst-assign-member">Muzyk</label>
                                     <select id="inst-assign-member">
@@ -383,6 +387,10 @@
                                         <option th:each="m : ${members}" th:value="${m.id}"
                                                 th:text="${m.firstName} + ' ' + ${m.lastName}">Jan</option>
                                     </select>
+                                </div>
+                                <div>
+                                    <label for="inst-assign-condition">Stan przy przydzieleniu</label>
+                                    <input type="text" id="inst-assign-condition" placeholder="Np. nowy, dobry, używany">
                                 </div>
                                 <button class="primary small" onclick="confirmAssignInstrument()">OK</button>
                                 <button class="secondary small" onclick="closeInstAssignModal()">Anuluj</button>
@@ -833,14 +841,18 @@
         function confirmAssignUniform() {
             var itemId = document.getElementById('uni-assign-item-id').value;
             var memberId = document.getElementById('uni-assign-member').value;
+            var condition = document.getElementById('uni-assign-condition').value;
             if (!memberId) { alert('Wybierz muzyka'); return; }
             fetch('/api/inventory/uniforms/' + itemId + '/assign', { method:'POST', headers:{'Content-Type':'application/json'},
-                body: JSON.stringify({memberId: parseInt(memberId)})
+                body: JSON.stringify({memberId: parseInt(memberId), conditionAtAssign: condition})
             }).then(function(r) { if(r.ok) { closeUniAssignModal(); refreshTab('uniforms'); } });
         }
         function closeUniAssignModal() { document.getElementById('uni-assign-modal').style.display = 'none'; }
         function returnUniform(id) {
-            fetch('/api/inventory/uniforms/' + id + '/return', {method:'POST', headers:{'Content-Type':'application/json'}, body:'{}'})
+            if (!confirm('Zwróć stroj do magazynu?')) return;
+            var condition = prompt('Stan przy zwrocie (opcjonalnie):', '');
+            fetch('/api/inventory/uniforms/' + id + '/return', {method:'POST', headers:{'Content-Type':'application/json'},
+                body: JSON.stringify({conditionAtReturn: condition})})
             .then(function(r) { if(r.ok) refreshTab('uniforms'); });
         }
         function retireUniform(id) {
@@ -861,14 +873,18 @@
         function confirmAssignInstrument() {
             var itemId = document.getElementById('inst-assign-item-id').value;
             var memberId = document.getElementById('inst-assign-member').value;
+            var condition = document.getElementById('inst-assign-condition').value;
             if (!memberId) { alert('Wybierz muzyka'); return; }
             fetch('/api/inventory/instruments/' + itemId + '/assign', { method:'POST', headers:{'Content-Type':'application/json'},
-                body: JSON.stringify({memberId: parseInt(memberId)})
+                body: JSON.stringify({memberId: parseInt(memberId), conditionAtAssign: condition})
             }).then(function(r) { if(r.ok) { closeInstAssignModal(); refreshTab('instruments'); } });
         }
         function closeInstAssignModal() { document.getElementById('inst-assign-modal').style.display = 'none'; }
         function returnInstrument(id) {
-            fetch('/api/inventory/instruments/' + id + '/return', {method:'POST', headers:{'Content-Type':'application/json'}, body:'{}'})
+            if (!confirm('Zwróć instrument do magazynu?')) return;
+            var condition = prompt('Stan przy zwrocie (opcjonalnie):', '');
+            fetch('/api/inventory/instruments/' + id + '/return', {method:'POST', headers:{'Content-Type':'application/json'},
+                body: JSON.stringify({conditionAtReturn: condition})})
             .then(function(r) { if(r.ok) refreshTab('instruments'); });
         }
         function retireInstrument(id) {
@@ -897,10 +913,13 @@
             var html = '<article><h4>📜 Historia przypisań</h4>';
             if (!data || data.length === 0) { html += '<p>Brak historii.</p>'; }
             else {
-                html += '<table role="grid"><thead><tr><th>Muzyk</th><th>Od</th><th>Do</th><th>Status</th></tr></thead><tbody>';
+                html += '<table role="grid"><thead><tr><th>Muzyk</th><th>Przydzielił</th><th>Od</th><th>Do</th><th>Stan przy przydz.</th><th>Stan przy zwrot.</th><th>Status</th></tr></thead><tbody>';
                 data.forEach(function(h) {
-                    html += '<tr><td>' + h.memberName + '</td><td>' + h.assignedAt + '</td><td>' +
+                    html += '<tr><td>' + h.memberName + '</td><td>' +
+                        (h.assignedByName || '—') + '</td><td>' + h.assignedAt + '</td><td>' +
                         (h.returnedAt || '<em>aktywne</em>') + '</td><td>' +
+                        (h.conditionAtAssign || '—') + '</td><td>' +
+                        (h.conditionAtReturn || '—') + '</td><td>' +
                         (h.active ? '<span class="badge success">Aktywne</span>' : '<span class="badge">Zwrócone</span>') +
                         '</td></tr>';
                 });
@@ -910,7 +929,7 @@
             var modal = document.createElement('div');
             modal.id = 'history-modal';
             modal.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:1000;';
-            modal.innerHTML = '<div style="background:white;padding:1rem;border-radius:0.5rem;max-width:600px;width:90%;max-height:80vh;overflow:auto;">' + html + '</div>';
+            modal.innerHTML = '<div style="background:white;padding:1rem;border-radius:0.5rem;max-width:800px;width:90%;max-height:80vh;overflow:auto;">' + html + '</div>';
             document.body.appendChild(modal);
         }
         function closeHistoryModal() {
