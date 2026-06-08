@@ -3,13 +3,7 @@ package pl.michalbzowski.windband.application.query;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.test.context.DynamicPropertyRegistry;
-import org.springframework.test.context.DynamicPropertySource;
 import org.springframework.transaction.annotation.Transactional;
-import org.testcontainers.containers.PostgreSQLContainer;
-import org.testcontainers.junit.jupiter.Container;
-import org.testcontainers.junit.jupiter.Testcontainers;
 import pl.michalbzowski.windband.application.command.event.CreateEventCommand;
 import pl.michalbzowski.windband.application.command.event.EventCommandService;
 import pl.michalbzowski.windband.application.command.member.CreateMemberCommand;
@@ -27,28 +21,14 @@ import java.time.LocalTime;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import pl.michalbzowski.windband.BaseIntegrationTest;
 
 /**
  * Tests verifying multi-team isolation:
  * Entities created in one team (band) must NOT appear in queries for another team.
  */
-@SpringBootTest
-@Testcontainers
 @Transactional
-class MultiTeamIsolationTest {
-
-    @Container
-    static final PostgreSQLContainer<?> postgres = new PostgreSQLContainer<>("postgres:16-alpine")
-            .withDatabaseName("windband_test")
-            .withUsername("test")
-            .withPassword("test");
-
-    @DynamicPropertySource
-    static void configure(DynamicPropertyRegistry registry) {
-        registry.add("spring.datasource.url", postgres::getJdbcUrl);
-        registry.add("spring.datasource.username", postgres::getUsername);
-        registry.add("spring.datasource.password", postgres::getPassword);
-    }
+class MultiTeamIsolationTest extends BaseIntegrationTest {
 
     @Autowired
     private BandRepository bandRepository;

@@ -2,12 +2,6 @@ package pl.michalbzowski.windband.application.command.member;
 
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.test.context.DynamicPropertyRegistry;
-import org.springframework.test.context.DynamicPropertySource;
-import org.testcontainers.containers.PostgreSQLContainer;
-import org.testcontainers.junit.jupiter.Container;
-import org.testcontainers.junit.jupiter.Testcontainers;
 import pl.michalbzowski.windband.domain.member.Member;
 import pl.michalbzowski.windband.domain.member.MemberRepository;
 
@@ -16,6 +10,7 @@ import java.time.LocalDate;
 import static org.assertj.core.api.Assertions.*;
 
 import org.springframework.transaction.annotation.Transactional;
+import pl.michalbzowski.windband.BaseIntegrationTest;
 
 /**
  * Regression test for GitHub Issue #3:
@@ -26,23 +21,8 @@ import org.springframework.transaction.annotation.Transactional;
  * but the backend must also be verified to ensure each API call
  * results in exactly one new member record.
  */
-@SpringBootTest
-@Testcontainers
 @Transactional
-class MemberCreationRegressionTest {
-
-    @Container
-    static final PostgreSQLContainer<?> postgres = new PostgreSQLContainer<>("postgres:16-alpine")
-            .withDatabaseName("windband_test")
-            .withUsername("test")
-            .withPassword("test");
-
-    @DynamicPropertySource
-    static void configure(DynamicPropertyRegistry registry) {
-        registry.add("spring.datasource.url", postgres::getJdbcUrl);
-        registry.add("spring.datasource.username", postgres::getUsername);
-        registry.add("spring.datasource.password", postgres::getPassword);
-    }
+class MemberCreationRegressionTest extends BaseIntegrationTest {
 
     @Autowired
     private MemberCommandService commandService;

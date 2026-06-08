@@ -2,13 +2,7 @@ package pl.michalbzowski.windband.application.command.rehearsal;
 
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.test.context.DynamicPropertyRegistry;
-import org.springframework.test.context.DynamicPropertySource;
 import org.springframework.transaction.annotation.Transactional;
-import org.testcontainers.containers.PostgreSQLContainer;
-import org.testcontainers.junit.jupiter.Container;
-import org.testcontainers.junit.jupiter.Testcontainers;
 import pl.michalbzowski.windband.application.query.rehearsal.RehearsalQueryService;
 import pl.michalbzowski.windband.domain.rehearsal.Rehearsal;
 
@@ -16,6 +10,7 @@ import java.time.LocalDate;
 import java.time.LocalTime;
 
 import static org.assertj.core.api.Assertions.*;
+import pl.michalbzowski.windband.BaseIntegrationTest;
 
 /**
  * Regression test for GitHub Issue #6:
@@ -23,23 +18,8 @@ import static org.assertj.core.api.Assertions.*;
  *
  * Verifies that a scheduled rehearsal can be deleted via the API.
  */
-@SpringBootTest
-@Testcontainers
 @Transactional
-class RehearsalDeletionRegressionTest {
-
-    @Container
-    static final PostgreSQLContainer<?> postgres = new PostgreSQLContainer<>("postgres:16-alpine")
-            .withDatabaseName("windband_test")
-            .withUsername("test")
-            .withPassword("test");
-
-    @DynamicPropertySource
-    static void configure(DynamicPropertyRegistry registry) {
-        registry.add("spring.datasource.url", postgres::getJdbcUrl);
-        registry.add("spring.datasource.username", postgres::getUsername);
-        registry.add("spring.datasource.password", postgres::getPassword);
-    }
+class RehearsalDeletionRegressionTest extends BaseIntegrationTest {
 
     @Autowired
     private RehearsalCommandService commandService;

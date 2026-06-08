@@ -2,14 +2,9 @@ package pl.michalbzowski.windband.application.command.event;
 
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.test.context.DynamicPropertyRegistry;
-import org.springframework.test.context.DynamicPropertySource;
-import org.testcontainers.containers.PostgreSQLContainer;
-import org.testcontainers.junit.jupiter.Container;
-import org.testcontainers.junit.jupiter.Testcontainers;
 
 import static org.assertj.core.api.Assertions.*;
+import pl.michalbzowski.windband.BaseIntegrationTest;
 
 /**
  * Regression test for issue #40: Zmiana statusu wypłaty nie udaje się
@@ -20,22 +15,7 @@ import static org.assertj.core.api.Assertions.*;
  * Before fix: 409 Conflict when trying to update payment status on PAID_TO_TEAM event
  * After fix: Payment status can be updated for both PAID_SPLIT and PAID_TO_TEAM events
  */
-@SpringBootTest
-@Testcontainers
-class PaymentStatusRegressionTest {
-
-    @Container
-    static final PostgreSQLContainer<?> postgres = new PostgreSQLContainer<>("postgres:16-alpine")
-            .withDatabaseName("windband_test")
-            .withUsername("test")
-            .withPassword("test");
-
-    @DynamicPropertySource
-    static void configure(DynamicPropertyRegistry registry) {
-        registry.add("spring.datasource.url", postgres::getJdbcUrl);
-        registry.add("spring.datasource.username", postgres::getUsername);
-        registry.add("spring.datasource.password", postgres::getPassword);
-    }
+class PaymentStatusRegressionTest extends BaseIntegrationTest {
 
     @Autowired
     private EventCommandService commandService;

@@ -2,12 +2,6 @@ package pl.michalbzowski.windband.application.command.rehearsal;
 
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.test.context.DynamicPropertyRegistry;
-import org.springframework.test.context.DynamicPropertySource;
-import org.testcontainers.containers.PostgreSQLContainer;
-import org.testcontainers.junit.jupiter.Container;
-import org.testcontainers.junit.jupiter.Testcontainers;
 import pl.michalbzowski.windband.domain.rehearsal.Rehearsal;
 import pl.michalbzowski.windband.domain.rehearsal.RehearsalRepository;
 
@@ -18,6 +12,7 @@ import java.util.List;
 import static org.assertj.core.api.Assertions.*;
 
 import org.springframework.transaction.annotation.Transactional;
+import pl.michalbzowski.windband.BaseIntegrationTest;
 
 /**
  * Regression test for GitHub Issue #4:
@@ -29,23 +24,8 @@ import org.springframework.transaction.annotation.Transactional;
  * multiple POST requests for a single user action. Each API call should
  * create exactly one rehearsal — no more, no less.
  */
-@SpringBootTest
-@Testcontainers
 @Transactional
-class RehearsalCreationRegressionTest {
-
-    @Container
-    static final PostgreSQLContainer<?> postgres = new PostgreSQLContainer<>("postgres:16-alpine")
-            .withDatabaseName("windband_test")
-            .withUsername("test")
-            .withPassword("test");
-
-    @DynamicPropertySource
-    static void configure(DynamicPropertyRegistry registry) {
-        registry.add("spring.datasource.url", postgres::getJdbcUrl);
-        registry.add("spring.datasource.username", postgres::getUsername);
-        registry.add("spring.datasource.password", postgres::getPassword);
-    }
+class RehearsalCreationRegressionTest extends BaseIntegrationTest {
 
     @Autowired
     private RehearsalCommandService commandService;

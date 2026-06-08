@@ -2,12 +2,6 @@ package pl.michalbzowski.windband.application.query.member;
 
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.test.context.DynamicPropertyRegistry;
-import org.springframework.test.context.DynamicPropertySource;
-import org.testcontainers.containers.PostgreSQLContainer;
-import org.testcontainers.junit.jupiter.Container;
-import org.testcontainers.junit.jupiter.Testcontainers;
 import pl.michalbzowski.windband.application.command.member.CreateMemberCommand;
 import pl.michalbzowski.windband.application.command.member.MemberCommandService;
 import pl.michalbzowski.windband.application.dto.MemberDto;
@@ -16,23 +10,9 @@ import java.time.LocalDate;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.*;
+import pl.michalbzowski.windband.BaseIntegrationTest;
 
-@SpringBootTest
-@Testcontainers
-class MemberQueryServiceTest {
-
-    @Container
-    static final PostgreSQLContainer<?> postgres = new PostgreSQLContainer<>("postgres:16-alpine")
-            .withDatabaseName("windband_test")
-            .withUsername("test")
-            .withPassword("test");
-
-    @DynamicPropertySource
-    static void configure(DynamicPropertyRegistry registry) {
-        registry.add("spring.datasource.url", postgres::getJdbcUrl);
-        registry.add("spring.datasource.username", postgres::getUsername);
-        registry.add("spring.datasource.password", postgres::getPassword);
-    }
+class MemberQueryServiceTest extends BaseIntegrationTest {
 
     @Autowired
     private MemberQueryService queryService;

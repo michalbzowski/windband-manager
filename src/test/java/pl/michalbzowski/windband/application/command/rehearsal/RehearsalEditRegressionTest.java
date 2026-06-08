@@ -2,12 +2,6 @@ package pl.michalbzowski.windband.application.command.rehearsal;
 
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.test.context.DynamicPropertyRegistry;
-import org.springframework.test.context.DynamicPropertySource;
-import org.testcontainers.containers.PostgreSQLContainer;
-import org.testcontainers.junit.jupiter.Container;
-import org.testcontainers.junit.jupiter.Testcontainers;
 import pl.michalbzowski.windband.domain.rehearsal.Rehearsal;
 
 import java.time.LocalDate;
@@ -16,6 +10,7 @@ import java.time.LocalTime;
 import static org.assertj.core.api.Assertions.*;
 
 import org.springframework.transaction.annotation.Transactional;
+import pl.michalbzowski.windband.BaseIntegrationTest;
 
 /**
  * Regression test for GitHub Issue #5:
@@ -24,23 +19,8 @@ import org.springframework.transaction.annotation.Transactional;
  * Verifies that a scheduled rehearsal can be updated — date, times,
  * location, and notes can all be changed after initial creation.
  */
-@SpringBootTest
-@Testcontainers
 @Transactional
-class RehearsalEditRegressionTest {
-
-    @Container
-    static final PostgreSQLContainer<?> postgres = new PostgreSQLContainer<>("postgres:16-alpine")
-            .withDatabaseName("windband_test")
-            .withUsername("test")
-            .withPassword("test");
-
-    @DynamicPropertySource
-    static void configure(DynamicPropertyRegistry registry) {
-        registry.add("spring.datasource.url", postgres::getJdbcUrl);
-        registry.add("spring.datasource.username", postgres::getUsername);
-        registry.add("spring.datasource.password", postgres::getPassword);
-    }
+class RehearsalEditRegressionTest extends BaseIntegrationTest {
 
     @Autowired
     private RehearsalCommandService commandService;

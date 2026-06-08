@@ -2,12 +2,6 @@ package pl.michalbzowski.windband.application.command.member;
 
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.test.context.DynamicPropertyRegistry;
-import org.springframework.test.context.DynamicPropertySource;
-import org.testcontainers.containers.PostgreSQLContainer;
-import org.testcontainers.junit.jupiter.Container;
-import org.testcontainers.junit.jupiter.Testcontainers;
 import pl.michalbzowski.windband.domain.member.Instrument;
 import pl.michalbzowski.windband.domain.member.InstrumentRepository;
 
@@ -15,6 +9,7 @@ import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import org.springframework.transaction.annotation.Transactional;
+import pl.michalbzowski.windband.BaseIntegrationTest;
 
 /**
  * Regression test for issue #61:
@@ -23,23 +18,8 @@ import org.springframework.transaction.annotation.Transactional;
  * When editing an instrument without changing sortPriority,
  * the sortPriority should be preserved.
  */
-@SpringBootTest
-@Testcontainers
 @Transactional
-class InstrumentEditPreservesSortPriorityTest {
-
-    @Container
-    static final PostgreSQLContainer<?> postgres = new PostgreSQLContainer<>("postgres:16-alpine")
-            .withDatabaseName("windband_test")
-            .withUsername("test")
-            .withPassword("test");
-
-    @DynamicPropertySource
-    static void configure(DynamicPropertyRegistry registry) {
-        registry.add("spring.datasource.url", postgres::getJdbcUrl);
-        registry.add("spring.datasource.username", postgres::getUsername);
-        registry.add("spring.datasource.password", postgres::getPassword);
-    }
+class InstrumentEditPreservesSortPriorityTest extends BaseIntegrationTest {
 
     @Autowired
     private InstrumentCommandService commandService;
