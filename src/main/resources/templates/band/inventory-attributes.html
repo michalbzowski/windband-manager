@@ -9,19 +9,19 @@
 
         <!-- Type tabs -->
         <div style="display:flex; gap:0.5rem; margin-bottom:1rem;">
-            <a th:href="@{/band/attributes(type='UNIFORM')}"
+            <a th:href="@{/band/inventory-attributes(type='UNIFORM')}"
                th:class="${type == 'UNIFORM'} ? 'primary' : 'secondary'"
                style="padding:0.4rem 0.8rem; text-decoration:none; border-radius:4px;">Umundurowanie</a>
-            <a th:href="@{/band/attributes(type='INSTRUMENT')}"
+            <a th:href="@{/band/inventory-attributes(type='INSTRUMENT')}"
                th:class="${type == 'INSTRUMENT'} ? 'primary' : 'secondary'"
                style="padding:0.4rem 0.8rem; text-decoration:none; border-radius:4px;">Instrumenty</a>
-            <a th:href="@{/band/attributes(type='ORDER')}"
+            <a th:href="@{/band/inventory-attributes(type='ORDER')}"
                th:class="${type == 'ORDER'} ? 'primary' : 'secondary'"
                style="padding:0.4rem 0.8rem; text-decoration:none; border-radius:4px;">Zamówienia</a>
-            <a th:href="@{/band/attributes(type='AWARD')}"
+            <a th:href="@{/band/inventory-attributes(type='AWARD')}"
                th:class="${type == 'AWARD'} ? 'primary' : 'secondary'"
                style="padding:0.4rem 0.8rem; text-decoration:none; border-radius:4px;">Odznaczenia</a>
-            <a th:href="@{/band/attributes(type='MEMBER')}"
+            <a th:href="@{/band/inventory-attributes(type='MEMBER')}"
                th:class="${type == 'MEMBER'} ? 'primary' : 'secondary'"
                style="padding:0.4rem 0.8rem; text-decoration:none; border-radius:4px;">Członkowie</a>
         </div>
@@ -29,7 +29,7 @@
         <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem;">
             <span>Typ: <span th:switch="${type}"><span th:case="'UNIFORM'">Umundurowanie</span><span th:case="'INSTRUMENT'">Instrumenty</span><span th:case="'ORDER'">Zamówienia</span><span th:case="'AWARD'">Odznaczenia</span><span th:case="'MEMBER'">Członkowie</span></span></span>
             <button class="primary"
-                    th:hx-get="@{/band/attributes/new(type=${type})}"
+                    th:hx-get="@{/band/inventory-attributes/new(type=${type})}"
                     hx-target="body"
                     hx-swap="innerHTML">+ Dodaj atrybut</button>
         </div>
@@ -67,13 +67,13 @@
                     <td style="padding:0.5rem; font-size:0.8rem; color:var(--pico-muted-color);" th:text="${attrDef.options() != null and !attrDef.options().isEmpty()} ? ${#strings.abbreviate(attrDef.options(), 40)} : '-'">Opcje</td>
                     <td style="padding:0.5rem;">
                         <button class="outline small"
-                                th:hx-get="@{/band/attributes/{id}/edit(id=${attrDef.id()},type=${type})}"
+                                th:hx-get="@{/band/inventory-attributes/{id}/edit(id=${attrDef.id()},type=${type})}"
                                 hx-target="body"
                                 hx-swap="innerHTML">Edytuj</button>
                         <button class="outline small secondary"
-                                th:hx-delete="@{/band/attributes/{id}(id=${attrDef.id()},type=${type})}"
+                                th:hx-delete="@{/band/inventory-attributes/{id}(id=${attrDef.id()},type=${type})}"
                                 hx-confirm="Czy na pewno chcesz usunąć ten atrybut?"
-                                hx-on::after-request="if (event.detail.successful) htmx.ajax('GET', '/band/attributes?type=[[${type}]]', {target:'body', swap:'innerHTML'})">Usuń</button>
+                                hx-on::after-request="if (event.detail.successful) htmx.ajax('GET', '/band/inventory-attributes?type=[[${type}]]', {target:'body', swap:'innerHTML'})">Usuń</button>
                     </td>
                 </tr>
             </tbody>

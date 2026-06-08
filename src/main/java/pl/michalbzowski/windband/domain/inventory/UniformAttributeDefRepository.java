@@ -6,8 +6,6 @@ import java.util.List;
 import java.util.Optional;
 
 public interface UniformAttributeDefRepository {
-    UniformAttributeDef save(UniformAttributeDef def);
     List<UniformAttributeDef> findByBand(Band band);
-    Optional<UniformAttributeDef> findById(Long id);
-    void delete(UniformAttributeDef def);
+    Optional<UniformAttributeDef> findByBandAndName(Band band, String name);
 }

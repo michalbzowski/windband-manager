@@ -3,6 +3,7 @@ package pl.michalbzowski.windband.application.command.inventory;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import pl.michalbzowski.windband.adapter.out.persistence.OrderAttributeDefRepositoryAdapter;
 import pl.michalbzowski.windband.domain.band.Band;
 import pl.michalbzowski.windband.domain.inventory.*;
 
@@ -11,7 +12,7 @@ import pl.michalbzowski.windband.domain.inventory.*;
 @Transactional
 public class OrderAttributeCommandService {
 
-    private final OrderAttributeDefRepository defRepository;
+    private final OrderAttributeDefRepositoryAdapter defRepository;
     private final OrderAttributeValueRepository valueRepository;
     private final InventoryRepository inventoryRepository;
 

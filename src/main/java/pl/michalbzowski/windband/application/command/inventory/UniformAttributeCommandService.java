@@ -3,6 +3,7 @@ package pl.michalbzowski.windband.application.command.inventory;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import pl.michalbzowski.windband.adapter.out.persistence.UniformAttributeDefRepositoryAdapter;
 import pl.michalbzowski.windband.domain.band.Band;
 import pl.michalbzowski.windband.domain.inventory.*;
 
@@ -11,11 +12,14 @@ import pl.michalbzowski.windband.domain.inventory.*;
 @Transactional
 public class UniformAttributeCommandService {
 
-    private final UniformAttributeDefRepository defRepository;
+    private final UniformAttributeDefRepositoryAdapter defRepository;
     private final UniformAttributeValueRepository valueRepository;
     private final InventoryRepository inventoryRepository;
 
     public UniformAttributeDef createAttributeDef(Band band, String name, String type, boolean required, boolean displayInList, int displayOrder, String options, Long dependsOnAttributeId, String dependsOnValue) {
+        defRepository.findByBandAndName(band, name).ifPresent(existing -> {
+            throw new DuplicateAttributeException("Uniform attribute '" + name + "' already exists for this band");
+        });
         UniformAttributeDef def = UniformAttributeDef.create(band, name, type, required, displayInList, displayOrder, options);
         def.setDependsOnAttributeId(dependsOnAttributeId);
         def.setDependsOnValue(dependsOnValue);

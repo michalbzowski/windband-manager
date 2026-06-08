@@ -16,21 +16,24 @@ public class OrderAttributeDefRepositoryAdapter implements OrderAttributeDefRepo
     private final SpringDataOrderAttributeDefRepository springDataRepo;
 
     @Override
-    public OrderAttributeDef save(OrderAttributeDef def) {
-        return springDataRepo.save(def);
-    }
-
-    @Override
     public List<OrderAttributeDef> findByBand(Band band) {
         return springDataRepo.findByBandOrderByName(band);
     }
 
     @Override
+    public Optional<OrderAttributeDef> findByBandAndName(Band band, String name) {
+        return springDataRepo.findByBandAndName(band, name);
+    }
+
+    // Additional methods delegated directly to Spring Data (not in domain interface to avoid CrudRepository conflict)
+    public OrderAttributeDef save(OrderAttributeDef def) {
+        return springDataRepo.save(def);
+    }
+
     public Optional<OrderAttributeDef> findById(Long id) {
         return springDataRepo.findById(id);
     }
 
-    @Override
     public void delete(OrderAttributeDef def) {
         springDataRepo.delete(def);
     }

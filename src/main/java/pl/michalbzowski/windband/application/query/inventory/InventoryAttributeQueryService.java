@@ -3,6 +3,9 @@ package pl.michalbzowski.windband.application.query.inventory;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import pl.michalbzowski.windband.adapter.out.persistence.InstrumentAttributeDefRepositoryAdapter;
+import pl.michalbzowski.windband.adapter.out.persistence.OrderAttributeDefRepositoryAdapter;
+import pl.michalbzowski.windband.adapter.out.persistence.UniformAttributeDefRepositoryAdapter;
 import pl.michalbzowski.windband.application.dto.UniformAttributeDefDto;
 import pl.michalbzowski.windband.application.dto.InstrumentAttributeDefDto;
 import pl.michalbzowski.windband.application.dto.OrderAttributeDefDto;
@@ -19,11 +22,11 @@ import java.util.stream.Collectors;
 @Transactional
 public class InventoryAttributeQueryService {
 
-    private final UniformAttributeDefRepository uniformDefRepo;
+    private final UniformAttributeDefRepositoryAdapter uniformDefRepo;
     private final UniformAttributeValueRepository uniformValueRepo;
-    private final InstrumentAttributeDefRepository instrumentDefRepo;
+    private final InstrumentAttributeDefRepositoryAdapter instrumentDefRepo;
     private final InstrumentAttributeValueRepository instrumentValueRepo;
-    private final OrderAttributeDefRepository orderDefRepo;
+    private final OrderAttributeDefRepositoryAdapter orderDefRepo;
     private final OrderAttributeValueRepository orderValueRepo;
     private final AwardAttributeDefRepository awardDefRepo;
     private final AwardAttributeValueRepository awardValueRepo;

@@ -6,8 +6,6 @@ import java.util.List;
 import java.util.Optional;
 
 public interface OrderAttributeDefRepository {
-    OrderAttributeDef save(OrderAttributeDef def);
     List<OrderAttributeDef> findByBand(Band band);
-    Optional<OrderAttributeDef> findById(Long id);
-    void delete(OrderAttributeDef def);
+    Optional<OrderAttributeDef> findByBandAndName(Band band, String name);
 }
