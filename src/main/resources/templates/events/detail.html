@@ -181,7 +181,7 @@
         var select = document.getElementById('invite-member-select');
         var memberId = parseInt(select.value);
         if (memberId) {
-            fetch('/api/events/' + eventId + '/invite', {
+            fetchWithToast('/api/events/' + eventId + '/invite', { toastMessage: 'Zaproszono uczestnika',
                 method: 'POST',
                 headers: {'Content-Type': 'application/json'},
                 body: JSON.stringify({eventId: eventId, memberId: memberId})
@@ -196,7 +196,7 @@
         var select = document.getElementById('invite-group-select');
         var groupId = select.value;
         if (groupId) {
-            fetch('/api/events/' + eventId + '/invite-group', {
+            fetchWithToast('/api/events/' + eventId + '/invite-group', { toastMessage: 'Zaproszono grupę',
                 method: 'POST',
                 headers: {'Content-Type': 'application/json'},
                 body: JSON.stringify({eventId: eventId, groupId: parseInt(groupId)})
@@ -216,7 +216,7 @@
             var payoutCell = row.querySelector('.payout-amount');
             var paymentStatusCell = row.querySelector('.payment-status-select')?.closest('td');
             
-            fetch('/api/events/' + eventId + '/response', {
+            fetchWithToast('/api/events/' + eventId + '/response', { toastMessage: 'Zaktualizowano status',
                 method: 'POST',
                 headers: {'Content-Type': 'application/json'},
                 body: JSON.stringify({eventId: parseInt(eid), memberId: parseInt(mid), response: response})
@@ -237,7 +237,7 @@
             var memberId = this.dataset.memberId;
             var instrumentId = this.value;
             if (instrumentId) {
-                fetch('/api/members/' + memberId + '/instrument', {
+                fetchWithToast('/api/members/' + memberId + '/instrument', { toastMessage: 'Zapisano instrument',
                     method: 'PUT',
                     headers: {'Content-Type': 'application/json'},
                     body: JSON.stringify({memberId: parseInt(memberId), instrumentId: parseInt(instrumentId)})
@@ -254,7 +254,7 @@
             var eventId = this.dataset.eventId;
             var memberId = this.dataset.memberId;
             var status = this.value;
-            fetch('/api/events/' + eventId + '/payment-status', {
+            fetchWithToast('/api/events/' + eventId + '/payment-status', { toastMessage: 'Zaktualizowano płatność',
                 method: 'POST',
                 headers: {'Content-Type': 'application/json'},
                 body: JSON.stringify({eventId: parseInt(eventId), memberId: parseInt(memberId), status: status})

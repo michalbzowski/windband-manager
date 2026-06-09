@@ -57,7 +57,7 @@
                 var saveAndAddAnother = form.querySelector('button[name="saveAndAddAnother"]') && 
                                         form.querySelector('button[name="saveAndAddAnother"]') === document.activeElement;
 
-                fetch('/api/rehearsals', {
+                fetchWithToast('/api/rehearsals',{ toastMessage: 'Zapisano próbę', {
                     method: 'POST',
                     headers: {'Content-Type': 'application/json'},
                     body: JSON.stringify(data)

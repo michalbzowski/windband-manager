@@ -90,7 +90,7 @@
     <script>
     // ==================== POBIERANIE DANYCH ZALOGOWANEGO UŻYTKOWNIKA ====================
     (function() {
-        fetch('/api/auth/me', { credentials: 'same-origin' })
+        fetchWithToast('/api/auth/me', { credentials: 'same-origin' })
             .then(function(r) { return r.json(); })
             .then(function(data) {
                 if (data.username) {
@@ -179,7 +179,7 @@
         spinner.style.display = 'inline';
 
         // Create team for existing user
-        fetch('/api/auth/teams', {
+        fetchWithToast('/api/auth/teams', {
             method: 'POST',
             credentials: 'same-origin',
             headers: { 'Content-Type': 'application/json' },

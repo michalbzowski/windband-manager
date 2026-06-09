@@ -51,7 +51,7 @@
                 var saveAndAddAnother = form.querySelector('button[name="saveAndAddAnother"]') && 
                                         form.querySelector('button[name="saveAndAddAnother"]') === document.activeElement;
 
-                fetch(url, {
+                fetchWithToast(url, { toastMessage: 'Zapisano instrument',
                     method: method,
                     headers: {'Content-Type': 'application/json'},
                     body: JSON.stringify(data)

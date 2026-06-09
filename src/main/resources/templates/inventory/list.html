@@ -778,12 +778,12 @@
             });
             
             var url = type === 'UNIFORM' ? '/api/inventory/orders/uniform' : '/api/inventory/orders/instrument';
-            fetch(url, { method:'POST', headers:{'Content-Type':'application/json'},
+            fetchWithToast(url, { toastMessage: 'Zamówienie zostało złożone', method:'POST', headers:{'Content-Type':'application/json'},
                 body: JSON.stringify({memberId: parseInt(memberId), attributes: attributes})
             }).then(function(r) { if(r.ok) { hideOrderForm(); refreshTab('orders'); } });
         }
         function advanceOrder(id, action) {
-            fetch('/api/inventory/orders/' + id + '/' + action, {method:'POST'})
+            fetchWithToast('/api/inventory/orders/' + id + '/' + action, {method:'POST', toastMessage: 'Zamówienie zaktualizowane'})
             .then(function(r) { if(r.ok) refreshTab('orders'); });
         }
 
@@ -805,7 +805,7 @@
                 }
             });
             
-            fetch('/api/inventory/uniforms', { method:'POST', headers:{'Content-Type':'application/json'},
+            fetchWithToast('/api/inventory/uniforms', { toastMessage: 'Dodano uniform', method:'POST', headers:{'Content-Type':'application/json'},
                 body: JSON.stringify({memberId:memberId?parseInt(memberId):null, attributes:attributes})
             }).then(function(r) { if(r.ok) { hideUniformForm(); refreshTab('uniforms'); } });
         }
@@ -828,7 +828,7 @@
                 }
             });
             
-            fetch('/api/inventory/instruments', { method:'POST', headers:{'Content-Type':'application/json'},
+            fetchWithToast('/api/inventory/instruments', { toastMessage: 'Dodano instrument', method:'POST', headers:{'Content-Type':'application/json'},
                 body: JSON.stringify({memberId:memberId?parseInt(memberId):null, attributes:attributes})
             }).then(function(r) { if(r.ok) { hideInstrumentForm(); refreshTab('instruments'); } });
         }
@@ -843,7 +843,7 @@
             var memberId = document.getElementById('uni-assign-member').value;
             var condition = document.getElementById('uni-assign-condition').value;
             if (!memberId) { alert('Wybierz muzyka'); return; }
-            fetch('/api/inventory/uniforms/' + itemId + '/assign', { method:'POST', headers:{'Content-Type':'application/json'},
+            fetchWithToast('/api/inventory/uniforms/' + itemId + '/assign', { toastMessage: 'Uniform przydzielony', method:'POST', headers:{'Content-Type':'application/json'},
                 body: JSON.stringify({memberId: parseInt(memberId), conditionAtAssign: condition})
             }).then(function(r) { if(r.ok) { closeUniAssignModal(); refreshTab('uniforms'); } });
         }
@@ -851,18 +851,18 @@
         function returnUniform(id) {
             if (!confirm('Zwróć stroj do magazynu?')) return;
             var condition = prompt('Stan przy zwrocie (opcjonalnie):', '');
-            fetch('/api/inventory/uniforms/' + id + '/return', {method:'POST', headers:{'Content-Type':'application/json'},
+            fetchWithToast('/api/inventory/uniforms/' + id + '/return', { toastMessage: 'Uniform zwrócony', method:'POST', headers:{'Content-Type':'application/json'},
                 body: JSON.stringify({conditionAtReturn: condition})})
             .then(function(r) { if(r.ok) refreshTab('uniforms'); });
         }
         function retireUniform(id) {
             if (!confirm('Zlikwidować ze stanu?')) return;
-            fetch('/api/inventory/uniforms/' + id + '/retire', {method:'POST'})
+            fetchWithToast('/api/inventory/uniforms/' + id + '/retire', { toastMessage: 'Uniform zlikwidowany ze stanu', method:'POST' })
             .then(function(r) { if(r.ok) refreshTab('uniforms'); });
         }
         function disposeUniform(id) {
             if (!confirm('Zlikwidować fizycznie?')) return;
-            fetch('/api/inventory/uniforms/' + id + '/dispose', {method:'POST'})
+            fetchWithToast('/api/inventory/uniforms/' + id + '/dispose', { toastMessage: 'Uniform fizycznie zlikwidowany', method:'POST' })
             .then(function(r) { if(r.ok) refreshTab('uniforms'); });
         }
 
@@ -875,7 +875,7 @@
             var memberId = document.getElementById('inst-assign-member').value;
             var condition = document.getElementById('inst-assign-condition').value;
             if (!memberId) { alert('Wybierz muzyka'); return; }
-            fetch('/api/inventory/instruments/' + itemId + '/assign', { method:'POST', headers:{'Content-Type':'application/json'},
+            fetchWithToast('/api/inventory/instruments/' + itemId + '/assign', { toastMessage: 'Instrument przydzielony', method:'POST', headers:{'Content-Type':'application/json'},
                 body: JSON.stringify({memberId: parseInt(memberId), conditionAtAssign: condition})
             }).then(function(r) { if(r.ok) { closeInstAssignModal(); refreshTab('instruments'); } });
         }
@@ -883,29 +883,29 @@
         function returnInstrument(id) {
             if (!confirm('Zwróć instrument do magazynu?')) return;
             var condition = prompt('Stan przy zwrocie (opcjonalnie):', '');
-            fetch('/api/inventory/instruments/' + id + '/return', {method:'POST', headers:{'Content-Type':'application/json'},
+            fetchWithToast('/api/inventory/instruments/' + id + '/return', { toastMessage: 'Instrument zwrócony', method:'POST', headers:{'Content-Type':'application/json'},
                 body: JSON.stringify({conditionAtReturn: condition})})
             .then(function(r) { if(r.ok) refreshTab('instruments'); });
         }
         function retireInstrument(id) {
             if (!confirm('Zlikwidować ze stanu?')) return;
-            fetch('/api/inventory/instruments/' + id + '/retire', {method:'POST'})
+            fetchWithToast('/api/inventory/instruments/' + id + '/retire', { toastMessage: 'Instrument zlikwidowany ze stanu', method:'POST' })
             .then(function(r) { if(r.ok) refreshTab('instruments'); });
         }
         function disposeInstrument(id) {
             if (!confirm('Zlikwidować fizycznie?')) return;
-            fetch('/api/inventory/instruments/' + id + '/dispose', {method:'POST'})
+            fetchWithToast('/api/inventory/instruments/' + id + '/dispose', { toastMessage: 'Instrument fizycznie zlikwidowany', method:'POST' })
             .then(function(r) { if(r.ok) refreshTab('instruments'); });
         }
 
         // === History ===
         function showUniformHistory(id) {
-            fetch('/api/inventory/uniforms/' + id + '/history')
+            fetchWithToast('/api/inventory/uniforms/' + id + '/history')
             .then(function(r) { return r.json(); })
             .then(function(data) { showHistoryModal('uniform', data); });
         }
         function showInstrumentHistory(id) {
-            fetch('/api/inventory/instruments/' + id + '/history')
+            fetchWithToast('/api/inventory/instruments/' + id + '/history')
             .then(function(r) { return r.json(); })
             .then(function(data) { showHistoryModal('instrument', data); });
         }
@@ -945,7 +945,7 @@
                 instruments: '/inventory/instruments/fragment',
                 awards: '/inventory/awards/fragment'
             };
-            fetch(urls[tab])
+            fetchWithToast(urls[tab])
             .then(function(r) { return r.text(); })
             .then(function(html) {
                 var targetId = tab === 'orders' ? 'orders-content' : (tab === 'uniforms' ? 'uniforms-content' : (tab === 'awards' ? 'awards-content' : 'instruments-content'));
@@ -977,8 +977,7 @@
                 }
             });
 
-            fetch('/api/inventory/awards', {
-                method: 'POST',
+            fetchWithToast('/api/inventory/awards', { toastMessage: 'Dodano odznaczenie', method: 'POST',
                 headers: {'Content-Type': 'application/json'},
                 body: JSON.stringify({teamId: /*[[${activeTeamId}]]*/ null, name: name, description: '', memberId: memberId ? parseInt(memberId) : null, attributes: attributes})
             }).then(function(r) { if(r.ok) { hideAwardForm(); refreshTab('awards'); } });
@@ -991,7 +990,7 @@
             var awardId = document.getElementById('award-assign-item-id').value;
             var memberId = document.getElementById('award-assign-member').value;
             if (!memberId) { alert('Wybierz muzyka'); return; }
-            fetch('/api/inventory/awards/' + awardId + '/assign', {
+            fetchWithToast('/api/inventory/awards/' + awardId + '/assign', { toastMessage: 'Odznaczenie przydzielone',
                 method: 'POST',
                 headers: {'Content-Type': 'application/json'},
                 body: JSON.stringify({memberId: parseInt(memberId)})
@@ -999,12 +998,12 @@
         }
         function closeAwardAssignModal() { document.getElementById('award-assign-modal').style.display = 'none'; }
         function returnAward(awardId) {
-            fetch('/api/inventory/awards/' + awardId + '/return', {method: 'POST'})
+            fetchWithToast('/api/inventory/awards/' + awardId + '/return', {method: 'POST', toastMessage: 'Odznaczenie zwrócone'})
             .then(function(r) { if(r.ok) refreshTab('awards'); });
         }
         function disposeAward(awardId) {
             if (!confirm('Czy na pewno chcesz zlikwidować to odznaczenie?')) return;
-            fetch('/api/inventory/awards/' + awardId + '/dispose', {method: 'POST'})
+            fetchWithToast('/api/inventory/awards/' + awardId + '/dispose', {method: 'POST', toastMessage: 'Odznaczenie zlikwidowane'})
             .then(function(r) { if(r.ok) refreshTab('awards'); });
         }
     </script>

@@ -156,7 +156,7 @@
                 if (data.joinedDate === '') delete data.joinedDate;
                 if (data.resignedDate === '') delete data.resignedDate;
 
-                fetch(url, {
+                fetchWithToast(url, { toastMessage: 'Zapisano członka',
                     method: method,
                     headers: {'Content-Type': 'application/json'},
                     body: JSON.stringify(data)
@@ -191,7 +191,7 @@
                                 value = checked.join(';');
                             }
                             var attrUrl = '/api/bands/1/attribute-defs/' + attrId + '/members/' + memberId;
-                            attrPromises.push(fetch(attrUrl, {
+                            attrPromises.push(fetchWithToast(attrUrl, { toastMessage: 'Zapisano atrybut',
                                 method: 'POST',
                                 headers: {'Content-Type': 'application/json'},
                                 body: JSON.stringify({value: value})
