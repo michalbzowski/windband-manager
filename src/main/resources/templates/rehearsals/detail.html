@@ -47,7 +47,7 @@
                 const memberId = event.target.dataset.memberId;
                 const selectedStatus = event.target.value;
 
-                fetch('/api/rehearsals/' + rehearsalId + '/attendance', {
+                fetchWithToast('/api/rehearsals/' + rehearsalId + '/attendance',{ toastMessage: 'Zapisano obecność', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
@@ -99,7 +99,7 @@
             var memberId = select.id.replace('status_', '');
             var status = select.value;
             if (status !== 'NO_RESPONSE') {
-                promises.push(fetch('/api/rehearsals/' + rehearsalId + '/attendance', {
+                promises.push(fetchWithToast('/api/rehearsals/' + rehearsalId + '/attendance',{ toastMessage: 'Zapisano obecność', {
                     method: 'POST',
                     headers: {'Content-Type': 'application/json'},
                     body: JSON.stringify({rehearsalId: rehearsalId, memberId: parseInt(memberId), status: status})

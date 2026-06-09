@@ -73,7 +73,7 @@
         var memberId = select.value;
         var groupId = [[${group.id}]];
         if (memberId) {
-            fetch('/api/groups/' + groupId + '/members/' + memberId, {
+            fetchWithToast('/api/groups/' + groupId + '/members/' + memberId, { toastMessage: 'Zapisano członka do grupy',
                 method: 'POST',
                 headers: {'Content-Type': 'application/json'}
             }).then(function() {
