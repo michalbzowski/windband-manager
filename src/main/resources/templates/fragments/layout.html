@@ -129,15 +129,123 @@
         <!-- treść ładowana przez HTMX -->
     </main>
 
+    <!-- Toast container -->
+    <div id="toast-container"></div>
+
     <footer th:fragment="footer" class="container">
         <hr>
         <small>Wind Band Manager &copy; 2025 Michał Bzowski | <span id="build-version">...</span></small>
     </footer>
 
 <script th:fragment="footer-scripts">
+    // Toast notification system
+    var Toast = {
+        container: null,
+        
+        init: function() {
+            this.container = document.getElementById('toast-container');
+        },
+        
+        show: function(message, type, duration, action) {
+            if (!this.container) this.init();
+            
+            var toast = document.createElement('div');
+            toast.className = 'toast ' + (type || 'info');
+            
+            // Icon based on type
+            var icon = '';
+            if (type === 'success') icon = '✓ ';
+            else if (type === 'error') icon = '✕ ';
+            else icon = 'ℹ ';
+            
+            var content = icon + message;
+            if (action) {
+                content += ' <a href="' + action.url + '" onclick="event.stopPropagation();">' + action.label + '</a>';
+            }
+            toast.innerHTML = content;
+            
+            this.container.appendChild(toast);
+            
+            // Auto-hide for success and info (not for errors)
+            var autoHide = (type !== 'error');
+            var hideDuration = duration || (type === 'success' ? 3000 : 5000);
+            
+            if (autoHide) {
+                setTimeout(function() {
+                    toast.classList.add('hiding');
+                    setTimeout(function() {
+                        if (toast.parentNode) {
+                            toast.parentNode.removeChild(toast);
+                        }
+                    }, 300);
+                }, hideDuration);
+            }
+        },
+        
+        success: function(message, action) {
+            this.show(message, 'success', 3000, action);
+        },
+        
+        error: function(message, action) {
+            this.show(message, 'error', null, action); // Error toasts don't auto-hide
+        },
+        
+        info: function(message, action) {
+            this.show(message, 'info', 5000, action);
+        }
+    };
+
+    // Initialize toast on page load
+    document.addEventListener('DOMContentLoaded', function() {
+        Toast.init();
+    });
+
+    // HTMX toast integration - show toasts after HTMX swaps
+    document.addEventListener('htmx:afterSwap', function(evt) {
+        // Check for response headers or data attributes for toast messages
+        var target = evt.detail.target;
+        if (target) {
+            var toastData = target.querySelector('[data-toast]');
+            if (toastData) {
+                var message = toastData.getAttribute('data-toast');
+                var type = toastData.getAttribute('data-toast-type') || 'success';
+                Toast[type](message);
+            }
+        }
+    });
+
+    // Fetch wrapper with automatic toast notifications
+    function fetchWithToast(url, options) {
+        var originalOptions = options || {};
+        var toastMessage = originalOptions.toastMessage;
+        var showSuccessToast = originalOptions.showSuccessToast !== false;
+        
+        return fetch(url, options).then(function(response) {
+            if (toastMessage) {
+                if (response.ok) {
+                    if (showSuccessToast) {
+                        Toast.success(toastMessage);
+                    }
+                } else {
+                    Toast.error(toastMessage + ' (' + response.status + ')');
+                }
+            }
+            return response;
+        }).catch(function(error) {
+            if (toastMessage) {
+                Toast.error(toastMessage + ': ' + (error.message || 'błąd sieci'));
+            }
+            throw error;
+        });
+    }
+
     // Switch active team and reload page to update nav
     function switchTeam(teamId) {
-        fetch('/api/auth/switch-team/' + teamId, { method: 'POST', credentials: 'same-origin' })
+        fetchWithToast('/api/auth/switch-team/' + teamId, { 
+            method: 'POST', 
+            credentials: 'same-origin',
+            toastMessage: 'Przełączono zespół'
+        })
             .then(function(resp) { return resp.json(); })
             .then(function(data) {
                 // Full page reload so the server-rendered nav reflects the new team
