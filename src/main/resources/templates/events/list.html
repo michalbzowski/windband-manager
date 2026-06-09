@@ -32,14 +32,14 @@
                     </thead>
                     <tbody>
                         <tr th:each="e : ${events}">
-                            <td th:text="${e.name}">Koncert</td>
-                            <td th:text="${e.date}">01.01.2025</td>
-                            <td th:text="${e.location}">Rynek</td>
-                            <td th:text="${e.eventType}">CONCERT</td>
-                            <td>
+                            <td data-label="Nazwa" th:text="${e.name}">Koncert</td>
+                            <td data-label="Data" th:text="${e.date}">01.01.2025</td>
+                            <td data-label="Miejsce" th:text="${e.location}">Rynek</td>
+                            <td data-label="Typ" th:text="${e.eventType}">CONCERT</td>
+                            <td data-label="Potwierdzenia">
                                 <span th:text="${e.confirmedCount} + ' ✅ / ' + ${e.declinedCount} + ' ❌ / ' + ${e.noResponseCount} + ' ?'">5 ✅ / 2 ❌ / 8 ?</span>
                             </td>
-                            <td>
+                            <td data-label="Akcje">
                                 <button class="outline small"
                                         th:hx-get="@{/events/{id}(id=${e.id})}"
                                         hx-target="#events-content"

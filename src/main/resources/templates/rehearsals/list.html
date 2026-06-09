@@ -31,13 +31,13 @@
                     </thead>
                     <tbody>
                         <tr th:each="r : ${rehearsals}">
-                            <td th:text="${r.date}">01.01.2025</td>
-                            <td th:text="${r.startTime}">18:00</td>
-                            <td th:text="${r.location}">Sala prób</td>
-                            <td>
+                            <td data-label="Data" th:text="${r.date}">01.01.2025</td>
+                            <td data-label="Godzina" th:text="${r.startTime}">18:00</td>
+                            <td data-label="Miejsce" th:text="${r.location}">Sala prób</td>
+                            <td data-label="Obecność">
                                 <span th:text="${r.presentCount} + ' / ' + ${r.attendances.size()}">12 / 15</span>
                             </td>
-                            <td>
+                            <td data-label="Akcje">
                                 <button class="outline small"
                                         th:hx-get="@{/rehearsals/{id}(id=${r.id})}"
                                         hx-target="#rehearsals-content"

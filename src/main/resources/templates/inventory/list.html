@@ -9,7 +9,7 @@
             <h2>📦 Inwentaryzacja</h2>
 
             <!-- Tabs -->
-            <div style="display:flex; gap:0.5rem; margin-bottom:1rem; border-bottom:1px solid #ddd;">
+            <div id="inventory-tabs" style="display:flex; gap:0.5rem; margin-bottom:1rem; border-bottom:1px solid #ddd;">
                 <button class="tab-btn primary" data-tab="orders"
                         onclick="switchTab('orders')">📋 Zamówienia</button>
                 <button class="tab-btn secondary" data-tab="uniforms"
@@ -81,10 +81,10 @@
                             </thead>
                             <tbody>
                                 <tr th:each="o : ${orders}">
-                                    <td th:text="${#temporals.format(o.createdAt, 'dd.MM.yyyy HH:mm')}">01.01.2025</td>
-                                    <td th:text="${o.requesterName}">Jan Kowalski</td>
-                                    <td th:text="${o.orderType}">UNIFORM</td>
-                                    <td>
+                                    <td data-label="Data" th:text="${#temporals.format(o.createdAt, 'dd.MM.yyyy HH:mm')}">01.01.2025</td>
+                                    <td data-label="Składający" th:text="${o.requesterName}">Jan Kowalski</td>
+                                    <td data-label="Typ" th:text="${o.orderType}">UNIFORM</td>
+                                    <td data-label="Status">
                                         <span th:switch="${o.status}">
                                             <span th:case="'SUBMITTED'" class="badge info">Złożono</span>
                                             <span th:case="'PENDING_APPROVAL'" class="badge warning">Do akceptacji</span>
@@ -94,13 +94,13 @@
                                             <span th:case="'CANCELLED'" class="badge error">Anulowano</span>
                                         </span>
                                     </td>
-                                    <td th:text="${o.orderNumber != null ? o.orderNumber : '-'}">ORD-1-20250101</td>
+                                    <td data-label="Nr zamówienia" th:text="${o.orderNumber != null ? o.orderNumber : '-'}">ORD-1-20250101</td>
                                     <!-- Dynamic attribute cells - show uniform attrs for UNIFORM orders, instrument attrs for INSTRUMENT orders -->
                                     <td th:each="attr : ${uniformAttributeDefs}" th:if="${attr.displayInList}" 
                                         th:text="${orderAttributeValues?.get(o.id)?.get(attr.id)}">-</td>
                                     <td th:each="attr : ${instrumentAttributeDefs}" th:if="${attr.displayInList}" 
                                         th:text="${orderAttributeValues?.get(o.id)?.get(attr.id)}">-</td>
-                                    <td>
+                                    <td data-label="Akcje">
                                         <div style="display:flex; gap:0.25rem; flex-wrap:wrap;">
                                             <button th:if="${o.status == 'SUBMITTED'}"
                                                     class="outline small"
