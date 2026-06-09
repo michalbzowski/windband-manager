@@ -33,28 +33,28 @@
                     </thead>
                     <tbody>
                         <tr th:each="m : ${members}">
-                            <td>
+                            <td data-label="Imię i nazwisko">
                                 <strong th:text="${m.firstName} + ' ' + ${m.lastName}">Jan Kowalski</strong>
                             </td>
-                            <td th:text="${m.age}">35</td>
-                            <td>
+                            <td data-label="Wiek" th:text="${m.age}">35</td>
+                            <td data-label="Instrument">
                                 <span th:if="${m.primaryInstrument}" th:text="${m.primaryInstrument}" class="instrument-badge">Trąbka</span>
                                 <span th:if="${m.allInstruments != null && m.allInstruments.size() > 1}">
                                     <small th:text="' +' + ${m.allInstruments.size() - 1}">+2</small>
                                 </span>
                             </td>
-                            <td>
+                            <td data-label="Kontakt">
                                 <small th:if="${m.email}" th:text="${m.email}">jan@email.pl</small>
                                 <br th:if="${m.email != null && m.phone != null}">
                                 <small th:if="${m.phone}" th:text="${m.phone}">123456789</small>
                             </td>
-                            <td>
+                            <td data-label="Dołączył">
                                 <small th:if="${m.joinedDate}" th:text="${#temporals.format(m.joinedDate, 'dd-MM-yyyy')}">01-01-2024</small>
                             </td>
-                            <td>
+                            <td data-label="Rezygnacja">
                                 <small th:if="${m.resignedDate}" th:text="${#temporals.format(m.resignedDate, 'dd-MM-yyyy')}">01-01-2025</small>
                             </td>
-                            <td>
+                            <td data-label="Akcje">
                                 <button class="outline small"
                                         th:hx-get="@{/members/{id}/edit(id=${m.id})}"
                                         hx-target="#members-content" hx-swap="innerHTML transition:true">Edytuj</button>
