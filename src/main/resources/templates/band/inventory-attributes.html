@@ -8,22 +8,22 @@
         <h2>🏷️ Atrybuty</h2>
 
         <!-- Type tabs -->
-        <div style="display:flex; gap:0.5rem; margin-bottom:1rem;">
+        <div id="attribute-tabs" style="display:flex; gap:0.5rem; margin-bottom:1rem; border-bottom:1px solid #ddd;">
             <a th:href="@{/band/inventory-attributes(type='UNIFORM')}"
                th:class="${type == 'UNIFORM'} ? 'primary' : 'secondary'"
-               style="padding:0.4rem 0.8rem; text-decoration:none; border-radius:4px;">Umundurowanie</a>
+               style="padding:0.4rem 0.8rem; text-decoration:none; border-radius:0.25rem 0.25rem 0 0;">Umundurowanie</a>
             <a th:href="@{/band/inventory-attributes(type='INSTRUMENT')}"
                th:class="${type == 'INSTRUMENT'} ? 'primary' : 'secondary'"
-               style="padding:0.4rem 0.8rem; text-decoration:none; border-radius:4px;">Instrumenty</a>
+               style="padding:0.4rem 0.8rem; text-decoration:none; border-radius:0.25rem 0.25rem 0 0;">Instrumenty</a>
             <a th:href="@{/band/inventory-attributes(type='ORDER')}"
                th:class="${type == 'ORDER'} ? 'primary' : 'secondary'"
-               style="padding:0.4rem 0.8rem; text-decoration:none; border-radius:4px;">Zamówienia</a>
+               style="padding:0.4rem 0.8rem; text-decoration:none; border-radius:0.25rem 0.25rem 0 0;">Zamówienia</a>
             <a th:href="@{/band/inventory-attributes(type='AWARD')}"
                th:class="${type == 'AWARD'} ? 'primary' : 'secondary'"
-               style="padding:0.4rem 0.8rem; text-decoration:none; border-radius:4px;">Odznaczenia</a>
+               style="padding:0.4rem 0.8rem; text-decoration:none; border-radius:0.25rem 0.25rem 0 0;">Odznaczenia</a>
             <a th:href="@{/band/inventory-attributes(type='MEMBER')}"
                th:class="${type == 'MEMBER'} ? 'primary' : 'secondary'"
-               style="padding:0.4rem 0.8rem; text-decoration:none; border-radius:4px;">Członkowie</a>
+               style="padding:0.4rem 0.8rem; text-decoration:none; border-radius:0.25rem 0.25rem 0 0;">Członkowie</a>
         </div>
 
         <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem;">
