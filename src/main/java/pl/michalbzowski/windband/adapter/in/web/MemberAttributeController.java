@@ -60,6 +60,12 @@ public class MemberAttributeController {
             return "band/inventory-attributes";
         }
         model.addAttribute("type", type);
+        // Provide all attribute defs for client-side tabs
+        model.addAttribute("uniformAttributeDefs", inventoryQueryService.getUniformAttributeDefs(band));
+        model.addAttribute("instrumentAttributeDefs", inventoryQueryService.getInstrumentAttributeDefs(band));
+        model.addAttribute("orderAttributeDefs", inventoryQueryService.getOrderAttributeDefs(band));
+        model.addAttribute("awardAttributeDefs", inventoryQueryService.getAwardAttributeDefs(band));
+        model.addAttribute("memberAttributeDefs", memberQueryService.getAttributeDefsForBand(band));
         model.addAttribute("attributeDefs", switch (type) {
             case "UNIFORM" -> inventoryQueryService.getUniformAttributeDefs(band);
             case "INSTRUMENT" -> inventoryQueryService.getInstrumentAttributeDefs(band);
