@@ -18,38 +18,35 @@ class InventoryAttributesUiTest extends UiTestBase {
         var tabsContainer = driver.findElement(By.id("attribute-tabs"));
         assertThat(tabsContainer).isNotNull();
 
-        // Verify all tab links are present
-        var uniformTab = driver.findElement(By.xpath("//a[contains(@href, 'type=UNIFORM')]"));
-        var instrumentTab = driver.findElement(By.xpath("//a[contains(@href, 'type=INSTRUMENT')]"));
-        var orderTab = driver.findElement(By.xpath("//a[contains(@href, 'type=ORDER')]"));
-        var awardTab = driver.findElement(By.xpath("//a[contains(@href, 'type=AWARD')]"));
-        var memberTab = driver.findElement(By.xpath("//a[contains(@href, 'type=MEMBER')]"));
+        // Verify all tab buttons are present
+        var uniformsTab = driver.findElement(By.xpath("//button[@data-tab='uniforms']"));
+        var instrumentsTab = driver.findElement(By.xpath("//button[@data-tab='instruments']"));
+        var ordersTab = driver.findElement(By.xpath("//button[@data-tab='orders']"));
+        var awardsTab = driver.findElement(By.xpath("//button[@data-tab='awards']"));
+        var membersTab = driver.findElement(By.xpath("//button[@data-tab='members']"));
 
-        assertThat(uniformTab).isNotNull();
-        assertThat(instrumentTab).isNotNull();
-        assertThat(orderTab).isNotNull();
-        assertThat(awardTab).isNotNull();
-        assertThat(memberTab).isNotNull();
+        assertThat(uniformsTab).isNotNull();
+        assertThat(instrumentsTab).isNotNull();
+        assertThat(ordersTab).isNotNull();
+        assertThat(awardsTab).isNotNull();
+        assertThat(membersTab).isNotNull();
 
         // Verify selected tab has primary class
-        assertThat(uniformTab.getAttribute("class")).contains("primary");
+        assertThat(uniformsTab.getAttribute("class")).contains("primary");
 
         // Verify non-selected tabs have secondary class
-        assertThat(instrumentTab.getAttribute("class")).contains("secondary");
-        assertThat(orderTab.getAttribute("class")).contains("secondary");
+        assertThat(instrumentsTab.getAttribute("class")).contains("secondary");
+        assertThat(ordersTab.getAttribute("class")).contains("secondary");
 
         // Test tab switching by clicking on Instrumenty tab
-        instrumentTab.click();
-
-        // Verify URL changed
-        assertThat(driver.getCurrentUrl()).contains("type=INSTRUMENT");
+        instrumentsTab.click();
 
         // Verify Instrumenty tab now has primary class
-        var instrumentTabAfterClick = driver.findElement(By.xpath("//a[contains(@href, 'type=INSTRUMENT')]"));
-        assertThat(instrumentTabAfterClick.getAttribute("class")).contains("primary");
+        var instrumentsTabAfterClick = driver.findElement(By.xpath("//button[@data-tab='instruments']"));
+        assertThat(instrumentsTabAfterClick.getAttribute("class")).contains("primary");
 
         // Verify UNIFORM tab now has secondary class
-        var uniformTabAfterClick = driver.findElement(By.xpath("//a[contains(@href, 'type=UNIFORM')]"));
-        assertThat(uniformTabAfterClick.getAttribute("class")).contains("secondary");
+        var uniformsTabAfterClick = driver.findElement(By.xpath("//button[@data-tab='uniforms']"));
+        assertThat(uniformsTabAfterClick.getAttribute("class")).contains("secondary");
     }
 }

@@ -7,77 +7,306 @@
     <main class="container" id="content">
         <h2>🏷️ Atrybuty</h2>
 
-        <!-- Type tabs -->
-        <div id="attribute-tabs" style="display:flex; gap:0.5rem; margin-bottom:1rem; border-bottom:1px solid #ddd;">
-            <a th:href="@{/band/inventory-attributes(type='UNIFORM')}"
-               th:class="${type == 'UNIFORM'} ? 'primary' : 'secondary'"
-               style="padding:0.4rem 0.8rem; text-decoration:none; border-radius:0.25rem 0.25rem 0 0;">Umundurowanie</a>
-            <a th:href="@{/band/inventory-attributes(type='INSTRUMENT')}"
-               th:class="${type == 'INSTRUMENT'} ? 'primary' : 'secondary'"
-               style="padding:0.4rem 0.8rem; text-decoration:none; border-radius:0.25rem 0.25rem 0 0;">Instrumenty</a>
-            <a th:href="@{/band/inventory-attributes(type='ORDER')}"
-               th:class="${type == 'ORDER'} ? 'primary' : 'secondary'"
-               style="padding:0.4rem 0.8rem; text-decoration:none; border-radius:0.25rem 0.25rem 0 0;">Zamówienia</a>
-            <a th:href="@{/band/inventory-attributes(type='AWARD')}"
-               th:class="${type == 'AWARD'} ? 'primary' : 'secondary'"
-               style="padding:0.4rem 0.8rem; text-decoration:none; border-radius:0.25rem 0.25rem 0 0;">Odznaczenia</a>
-            <a th:href="@{/band/inventory-attributes(type='MEMBER')}"
-               th:class="${type == 'MEMBER'} ? 'primary' : 'secondary'"
-               style="padding:0.4rem 0.8rem; text-decoration:none; border-radius:0.25rem 0.25rem 0 0;">Członkowie</a>
+        <!-- Responsive tabs - client-side switching like inventory view -->
+        <div id="attribute-tabs" style="display:flex; gap:0.5rem; margin-bottom:1rem; border-bottom:1px solid #ddd; flex-wrap:wrap;">
+            <button class="tab-btn" th:classappend="${type == 'UNIFORM'} ? 'primary' : 'secondary'" data-tab="uniforms" onclick="switchTab('uniforms')">🎖️ Umundurowanie</button>
+            <button class="tab-btn" th:classappend="${type == 'INSTRUMENT'} ? 'primary' : 'secondary'" data-tab="instruments" onclick="switchTab('instruments')">🎺 Instrumenty</button>
+            <button class="tab-btn" th:classappend="${type == 'ORDER'} ? 'primary' : 'secondary'" data-tab="orders" onclick="switchTab('orders')">📋 Zamówienia</button>
+            <button class="tab-btn" th:classappend="${type == 'AWARD'} ? 'primary' : 'secondary'" data-tab="awards" onclick="switchTab('awards')">🏅 Odznaczenia</button>
+            <button class="tab-btn" th:classappend="${type == 'MEMBER'} ? 'primary' : 'secondary'" data-tab="members" onclick="switchTab('members')">👥 Członkowie</button>
         </div>
 
-        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem;">
-            <span>Typ: <span th:switch="${type}"><span th:case="'UNIFORM'">Umundurowanie</span><span th:case="'INSTRUMENT'">Instrumenty</span><span th:case="'ORDER'">Zamówienia</span><span th:case="'AWARD'">Odznaczenia</span><span th:case="'MEMBER'">Członkowie</span></span></span>
-            <button class="primary"
-                    th:hx-get="@{/band/inventory-attributes/new(type=${type})}"
-                    hx-target="body"
-                    hx-swap="innerHTML">+ Dodaj atrybut</button>
+        <!-- ===== UNIFORMS TAB ===== -->
+        <div id="tab-uniforms" th:style="${type != 'UNIFORM'} ? 'display:none;' : ''">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem;">
+                <span>Umundurowanie</span>
+                <button class="primary small"
+                        th:hx-get="@{/band/inventory-attributes/new(type='UNIFORM')}"
+                        hx-target="body"
+                        hx-swap="innerHTML">+ Dodaj atrybut</button>
+            </div>
+            <div th:if="${uniformAttributeDefs == null or #lists.isEmpty(uniformAttributeDefs)}">
+                <p>Brak atrybutów dla tego typu. Dodaj pierwszy!</p>
+            </div>
+            <table role="grid" th:if="${uniformAttributeDefs != null and !#lists.isEmpty(uniformAttributeDefs)}">
+                <thead>
+                    <tr>
+                        <th>Nazwa</th>
+                        <th>Typ</th>
+                        <th style="text-align:center;">Wymagany</th>
+                        <th style="text-align:center;">Kolejność</th>
+                        <th>Opcje</th>
+                        <th>Akcje</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr th:each="attrDef : ${uniformAttributeDefs}">
+                        <td data-label="Nazwa" th:text="${attrDef.name()}">Nazwa</td>
+                        <td data-label="Typ">
+                            <span th:switch="${attrDef.type()}">
+                                <span th:case="'BOOLEAN'">Tak/Nie</span>
+                                <span th:case="'NUMBER'">Liczba</span>
+                                <span th:case="'SELECT'">Wybór</span>
+                                <span th:case="'MULTI_SELECT'">Wybór wielokrotny</span>
+                                <span th:case="'DATE'">Data</span>
+                                <span th:case="*">Tekst</span>
+                            </span>
+                        </td>
+                        <td data-label="Wymagany" style="text-align:center;" th:text="${attrDef.required()} ? '✅' : '❌'">Wymagany</td>
+                        <td data-label="Kolejność" style="text-align:center;" th:text="${attrDef.displayOrder()}">0</td>
+                        <td data-label="Opcje" th:text="${attrDef.options() != null and !attrDef.options().isEmpty()} ? ${#strings.abbreviate(attrDef.options(), 40)} : '-'">Opcje</td>
+                        <td>
+                            <button class="outline small"
+                                    th:hx-get="@{/band/inventory-attributes/{id}/edit(id=${attrDef.id()},type='UNIFORM')}"
+                                    hx-target="body"
+                                    hx-swap="innerHTML">Edytuj</button>
+                            <button class="outline small secondary"
+                                    th:hx-delete="@{/band/inventory-attributes/{id}(id=${attrDef.id()},type='UNIFORM')}"
+                                    hx-confirm="Czy na pewno chcesz usunąć ten atrybut?"
+                                    hx-on::after-request="if (event.detail.successful) window.location.reload()">Usuń</button>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
         </div>
 
-        <div th:if="${attributeDefs == null or #lists.isEmpty(attributeDefs)}">
-            <p>Brak atrybutów dla tego typu. Dodaj pierwszy!</p>
+        <!-- ===== INSTRUMENTS TAB ===== -->
+        <div id="tab-instruments" th:style="${type != 'INSTRUMENT'} ? 'display:none;' : ''">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem;">
+                <span>Instrumenty</span>
+                <button class="primary small"
+                        th:hx-get="@{/band/inventory-attributes/new(type='INSTRUMENT')}"
+                        hx-target="body"
+                        hx-swap="innerHTML">+ Dodaj atrybut</button>
+            </div>
+            <div th:if="${instrumentAttributeDefs == null or #lists.isEmpty(instrumentAttributeDefs)}">
+                <p>Brak atrybutów dla tego typu. Dodaj pierwszy!</p>
+            </div>
+            <table role="grid" th:if="${instrumentAttributeDefs != null and !#lists.isEmpty(instrumentAttributeDefs)}">
+                <thead>
+                    <tr>
+                        <th>Nazwa</th>
+                        <th>Typ</th>
+                        <th style="text-align:center;">Wymagany</th>
+                        <th style="text-align:center;">Kolejność</th>
+                        <th>Opcje</th>
+                        <th>Akcje</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr th:each="attrDef : ${instrumentAttributeDefs}">
+                        <td data-label="Nazwa" th:text="${attrDef.name()}">Nazwa</td>
+                        <td data-label="Typ">
+                            <span th:switch="${attrDef.type()}">
+                                <span th:case="'BOOLEAN'">Tak/Nie</span>
+                                <span th:case="'NUMBER'">Liczba</span>
+                                <span th:case="'SELECT'">Wybór</span>
+                                <span th:case="'MULTI_SELECT'">Wybór wielokrotny</span>
+                                <span th:case="'DATE'">Data</span>
+                                <span th:case="*">Tekst</span>
+                            </span>
+                        </td>
+                        <td data-label="Wymagany" style="text-align:center;" th:text="${attrDef.required()} ? '✅' : '❌'">Wymagany</td>
+                        <td data-label="Kolejność" style="text-align:center;" th:text="${attrDef.displayOrder()}">0</td>
+                        <td data-label="Opcje" th:text="${attrDef.options() != null and !attrDef.options().isEmpty()} ? ${#strings.abbreviate(attrDef.options(), 40)} : '-'">Opcje</td>
+                        <td>
+                            <button class="outline small"
+                                    th:hx-get="@{/band/inventory-attributes/{id}/edit(id=${attrDef.id()},type='INSTRUMENT')}"
+                                    hx-target="body"
+                                    hx-swap="innerHTML">Edytuj</button>
+                            <button class="outline small secondary"
+                                    th:hx-delete="@{/band/inventory-attributes/{id}(id=${attrDef.id()},type='INSTRUMENT')}"
+                                    hx-confirm="Czy na pewno chcesz usunąć ten atrybut?"
+                                    hx-on::after-request="if (event.detail.successful) window.location.reload()">Usuń</button>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
         </div>
-        <table th:if="${attributeDefs != null and !#lists.isEmpty(attributeDefs)}"
-               style="width:100%; border-collapse:collapse;">
-            <thead>
-                <tr style="border-bottom:2px solid var(--pico-muted-border-color);">
-                    <th style="text-align:left; padding:0.5rem;">Nazwa</th>
-                    <th style="text-align:left; padding:0.5rem;">Typ</th>
-                    <th style="text-align:center; padding:0.5rem;">Wymagany</th>
-                    <th style="text-align:center; padding:0.5rem;">Kolejność</th>
-                    <th style="text-align:left; padding:0.5rem;">Opcje</th>
-                    <th style="text-align:left; padding:0.5rem;">Akcje</th>
-                </tr>
-            </thead>
-            <tbody>
-                <tr th:each="attrDef : ${attributeDefs}" style="border-bottom:1px solid var(--pico-muted-border-color);">
-                    <td style="padding:0.5rem;" th:text="${attrDef.name()}">Nazwa</td>
-                    <td style="padding:0.5rem;">
-                        <span th:switch="${attrDef.type()}">
-                            <span th:case="'BOOLEAN'">Tak/Nie</span>
-                            <span th:case="'NUMBER'">Liczba</span>
-                            <span th:case="'SELECT'">Wybór</span>
-                            <span th:case="'MULTI_SELECT'">Wybór wielokrotny</span>
-                            <span th:case="'DATE'">Data</span>
-                            <span th:case="*">Tekst</span>
-                        </span>
-                    </td>
-                    <td style="padding:0.5rem; text-align:center;" th:text="${attrDef.required()} ? '✅' : '❌'">Wymagany</td>
-                    <td style="padding:0.5rem; text-align:center;" th:text="${attrDef.displayOrder()}">0</td>
-                    <td style="padding:0.5rem; font-size:0.8rem; color:var(--pico-muted-color);" th:text="${attrDef.options() != null and !attrDef.options().isEmpty()} ? ${#strings.abbreviate(attrDef.options(), 40)} : '-'">Opcje</td>
-                    <td style="padding:0.5rem;">
-                        <button class="outline small"
-                                th:hx-get="@{/band/inventory-attributes/{id}/edit(id=${attrDef.id()},type=${type})}"
-                                hx-target="body"
-                                hx-swap="innerHTML">Edytuj</button>
-                        <button class="outline small secondary"
-                                th:hx-delete="@{/band/inventory-attributes/{id}(id=${attrDef.id()},type=${type})}"
-                                hx-confirm="Czy na pewno chcesz usunąć ten atrybut?"
-                                hx-on::after-request="if (event.detail.successful) htmx.ajax('GET', '/band/inventory-attributes?type=[[${type}]]', {target:'body', swap:'innerHTML'})">Usuń</button>
-                    </td>
-                </tr>
-            </tbody>
-        </table>
+
+        <!-- ===== ORDERS TAB ===== -->
+        <div id="tab-orders" th:style="${type != 'ORDER'} ? 'display:none;' : ''">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem;">
+                <span>Zamówienia</span>
+                <button class="primary small"
+                        th:hx-get="@{/band/inventory-attributes/new(type='ORDER')}"
+                        hx-target="body"
+                        hx-swap="innerHTML">+ Dodaj atrybut</button>
+            </div>
+            <div th:if="${orderAttributeDefs == null or #lists.isEmpty(orderAttributeDefs)}">
+                <p>Brak atrybutów dla tego typu. Dodaj pierwszy!</p>
+            </div>
+            <table role="grid" th:if="${orderAttributeDefs != null and !#lists.isEmpty(orderAttributeDefs)}">
+                <thead>
+                    <tr>
+                        <th>Nazwa</th>
+                        <th>Typ</th>
+                        <th style="text-align:center;">Wymagany</th>
+                        <th style="text-align:center;">Kolejność</th>
+                        <th>Opcje</th>
+                        <th>Akcje</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr th:each="attrDef : ${orderAttributeDefs}">
+                        <td data-label="Nazwa" th:text="${attrDef.name()}">Nazwa</td>
+                        <td data-label="Typ">
+                            <span th:switch="${attrDef.type()}">
+                                <span th:case="'BOOLEAN'">Tak/Nie</span>
+                                <span th:case="'NUMBER'">Liczba</span>
+                                <span th:case="'SELECT'">Wybór</span>
+                                <span th:case="'MULTI_SELECT'">Wybór wielokrotny</span>
+                                <span th:case="'DATE'">Data</span>
+                                <span th:case="*">Tekst</span>
+                            </span>
+                        </td>
+                        <td data-label="Wymagany" style="text-align:center;" th:text="${attrDef.required()} ? '✅' : '❌'">Wymagany</td>
+                        <td data-label="Kolejność" style="text-align:center;" th:text="${attrDef.displayOrder()}">0</td>
+                        <td data-label="Opcje" th:text="${attrDef.options() != null and !attrDef.options().isEmpty()} ? ${#strings.abbreviate(attrDef.options(), 40)} : '-'">Opcje</td>
+                        <td>
+                            <button class="outline small"
+                                    th:hx-get="@{/band/inventory-attributes/{id}/edit(id=${attrDef.id()},type='ORDER')}"
+                                    hx-target="body"
+                                    hx-swap="innerHTML">Edytuj</button>
+                            <button class="outline small secondary"
+                                    th:hx-delete="@{/band/inventory-attributes/{id}(id=${attrDef.id()},type='ORDER')}"
+                                    hx-confirm="Czy na pewno chcesz usunąć ten atrybut?"
+                                    hx-on::after-request="if (event.detail.successful) window.location.reload()">Usuń</button>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <!-- ===== AWARDS TAB ===== -->
+        <div id="tab-awards" th:style="${type != 'AWARD'} ? 'display:none;' : ''">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem;">
+                <span>Odznaczenia</span>
+                <button class="primary small"
+                        th:hx-get="@{/band/inventory-attributes/new(type='AWARD')}"
+                        hx-target="body"
+                        hx-swap="innerHTML">+ Dodaj atrybut</button>
+            </div>
+            <div th:if="${awardAttributeDefs == null or #lists.isEmpty(awardAttributeDefs)}">
+                <p>Brak atrybutów dla tego typu. Dodaj pierwszy!</p>
+            </div>
+            <table role="grid" th:if="${awardAttributeDefs != null and !#lists.isEmpty(awardAttributeDefs)}">
+                <thead>
+                    <tr>
+                        <th>Nazwa</th>
+                        <th>Typ</th>
+                        <th style="text-align:center;">Wymagany</th>
+                        <th style="text-align:center;">Kolejność</th>
+                        <th>Opcje</th>
+                        <th>Akcje</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr th:each="attrDef : ${awardAttributeDefs}">
+                        <td data-label="Nazwa" th:text="${attrDef.name()}">Nazwa</td>
+                        <td data-label="Typ">
+                            <span th:switch="${attrDef.type()}">
+                                <span th:case="'BOOLEAN'">Tak/Nie</span>
+                                <span th:case="'NUMBER'">Liczba</span>
+                                <span th:case="'SELECT'">Wybór</span>
+                                <span th:case="'MULTI_SELECT'">Wybór wielokrotny</span>
+                                <span th:case="'DATE'">Data</span>
+                                <span th:case="*">Tekst</span>
+                            </span>
+                        </td>
+                        <td data-label="Wymagany" style="text-align:center;" th:text="${attrDef.required()} ? '✅' : '❌'">Wymagany</td>
+                        <td data-label="Kolejność" style="text-align:center;" th:text="${attrDef.displayOrder()}">0</td>
+                        <td data-label="Opcje" th:text="${attrDef.options() != null and !attrDef.options().isEmpty()} ? ${#strings.abbreviate(attrDef.options(), 40)} : '-'">Opcje</td>
+                        <td>
+                            <button class="outline small"
+                                    th:hx-get="@{/band/inventory-attributes/{id}/edit(id=${attrDef.id()},type='AWARD')}"
+                                    hx-target="body"
+                                    hx-swap="innerHTML">Edytuj</button>
+                            <button class="outline small secondary"
+                                    th:hx-delete="@{/band/inventory-attributes/{id}(id=${attrDef.id()},type='AWARD')}"
+                                    hx-confirm="Czy na pewno chcesz usunąć ten atrybut?"
+                                    hx-on::after-request="if (event.detail.successful) window.location.reload()">Usuń</button>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <!-- ===== MEMBERS TAB ===== -->
+        <div id="tab-members" th:style="${type != 'MEMBER'} ? 'display:none;' : ''">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem;">
+                <span>Członkowie</span>
+                <button class="primary small"
+                        th:hx-get="@{/band/inventory-attributes/new(type='MEMBER')}"
+                        hx-target="body"
+                        hx-swap="innerHTML">+ Dodaj atrybut</button>
+            </div>
+            <div th:if="${memberAttributeDefs == null or #lists.isEmpty(memberAttributeDefs)}">
+                <p>Brak atrybutów dla tego typu. Dodaj pierwszy!</p>
+            </div>
+            <table role="grid" th:if="${memberAttributeDefs != null and !#lists.isEmpty(memberAttributeDefs)}">
+                <thead>
+                    <tr>
+                        <th>Nazwa</th>
+                        <th>Typ</th>
+                        <th style="text-align:center;">Wymagany</th>
+                        <th style="text-align:center;">Kolejność</th>
+                        <th>Opcje</th>
+                        <th>Akcje</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr th:each="attrDef : ${memberAttributeDefs}">
+                        <td data-label="Nazwa" th:text="${attrDef.name()}">Nazwa</td>
+                        <td data-label="Typ">
+                            <span th:switch="${attrDef.type()}">
+                                <span th:case="'BOOLEAN'">Tak/Nie</span>
+                                <span th:case="'NUMBER'">Liczba</span>
+                                <span th:case="'SELECT'">Wybór</span>
+                                <span th:case="'MULTI_SELECT'">Wybór wielokrotny</span>
+                                <span th:case="'DATE'">Data</span>
+                                <span th:case="*">Tekst</span>
+                            </span>
+                        </td>
+                        <td data-label="Wymagany" style="text-align:center;" th:text="${attrDef.required()} ? '✅' : '❌'">Wymagany</td>
+                        <td data-label="Kolejność" style="text-align:center;" th:text="${attrDef.displayOrder()}">0</td>
+                        <td data-label="Opcje" th:text="${attrDef.options() != null and !attrDef.options().isEmpty()} ? ${#strings.abbreviate(attrDef.options(), 40)} : '-'">Opcje</td>
+                        <td>
+                            <button class="outline small"
+                                    th:hx-get="@{/band/inventory-attributes/{id}/edit(id=${attrDef.id()},type='MEMBER')}"
+                                    hx-target="body"
+                                    hx-swap="innerHTML">Edytuj</button>
+                            <button class="outline small secondary"
+                                    th:hx-delete="@{/band/inventory-attributes/{id}(id=${attrDef.id()},type='MEMBER')}"
+                                    hx-confirm="Czy na pewno chcesz usunąć ten atrybut?"
+                                    hx-on::after-request="if (event.detail.successful) window.location.reload()">Usuń</button>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <style>
+        .tab-btn { padding:0.5rem 1rem; border:none; cursor:pointer; border-radius:0.25rem 0.25rem 0 0; background:transparent; color:var(--pico-muted-color); }
+        .tab-btn.primary { background:var(--pico-primary-background); color:var(--pico-primary-color); font-weight:500; }
+        .tab-btn.secondary { background:transparent; }
+        @media (max-width: 576px) {
+            #attribute-tabs { flex-wrap:nowrap; overflow-x:auto; -webkit-overflow-scrolling:touch; padding-bottom:0.25rem; }
+            .tab-btn { white-space:nowrap; font-size:0.85rem; padding:0.4rem 0.6rem; }
+        }
+        </style>
+
+        <script th:inline="javascript">
+        function switchTab(tab) {
+            document.querySelectorAll('[id^="tab-"]').forEach(function(el) { el.style.display = 'none'; });
+            document.getElementById('tab-' + tab).style.display = 'block';
+            document.querySelectorAll('.tab-btn').forEach(function(btn) {
+                btn.classList.remove('primary'); btn.classList.add('secondary');
+            });
+            document.querySelector('[data-tab="' + tab + '"]').classList.add('primary');
+            document.querySelector('[data-tab="' + tab + '"]').classList.remove('secondary');
+        }
+        </script>
     </main>
 </body>
 </html>

@@ -56,7 +56,7 @@
 
                 var rehearsalId = [[${rehearsal.id}]];
 
-                fetch('/api/rehearsals/' + rehearsalId, {
+                fetchWithToast('/api/rehearsals/' + rehearsalId,{ toastMessage: 'Zapisano próbę', {
                     method: 'PUT',
                     headers: {'Content-Type': 'application/json'},
                     body: JSON.stringify(data)
