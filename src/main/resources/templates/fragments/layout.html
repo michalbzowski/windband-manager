@@ -132,8 +132,8 @@
         <!-- treść ładowana przez HTMX -->
     </main>
 
-    <!-- Toast container -->
-    <div id="toast-container"></div>
+    <!-- Toast container — must be included by every page that uses the layout -->
+    <div th:fragment="toast-container" id="toast-container"></div>
 
     <footer th:fragment="footer" class="container">
         <hr>
