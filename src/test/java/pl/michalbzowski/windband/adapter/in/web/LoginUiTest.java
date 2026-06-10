@@ -1,5 +1,6 @@
 package pl.michalbzowski.windband.adapter.in.web;
 
+import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import pl.michalbzowski.windband.UiTestBase;
 
@@ -8,10 +9,11 @@ import static org.assertj.core.api.Assertions.assertThat;
 /**
  * UI test for OIDC login flow.
  *
- * Since login is now handled by Keycloak, we test that:
- * 1. Accessing /login redirects to Keycloak
- * 2. The Keycloak login page loads
+ * <p><strong>@Disabled:</strong> Requires Keycloak or stubbed OAuth2 authorization server
+ * running. In CI, no Keycloak is available, so /login renders the local form login
+ * (200 OK) instead of redirecting (302) to the OAuth2 authorization endpoint.</p>
  */
+@Disabled("Requires Keycloak/stubbed OAuth2 server — not available in CI test environment")
 class LoginUiTest extends UiTestBase {
 
     @Test

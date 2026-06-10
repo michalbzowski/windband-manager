@@ -1,12 +1,13 @@
 package pl.michalbzowski.windband.domain.inventory;
 
-import org.springframework.data.jpa.repository.JpaRepository;
-import org.springframework.stereotype.Repository;
 import pl.michalbzowski.windband.domain.band.Band;
 
 import java.util.List;
+import java.util.Optional;
 
-@Repository
-public interface AwardAttributeDefRepository extends JpaRepository<AwardAttributeDef, Long> {
+public interface AwardAttributeDefRepository {
+    AwardAttributeDef save(AwardAttributeDef def);
+    Optional<AwardAttributeDef> findById(Long id);
+    void delete(AwardAttributeDef def);
     List<AwardAttributeDef> findByBandAndActiveTrueOrderByDisplayOrderAsc(Band band);
 }
