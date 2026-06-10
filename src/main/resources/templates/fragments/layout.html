@@ -184,7 +184,7 @@
     // Load build info
     (function() {
         console.log('Loading build info...');
-        fetchWithToast('/api/auth/build-info', { credentials: 'same-origin' }))
+        fetchWithToast('/api/auth/build-info', { credentials: 'same-origin' })
             .then(function(resp) {
                 console.log('build-info response:', resp.status);
                 return resp.json();

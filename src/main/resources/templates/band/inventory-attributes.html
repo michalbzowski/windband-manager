@@ -9,15 +9,15 @@
 
         <!-- Responsive tabs - client-side switching like inventory view -->
         <div id="attribute-tabs" style="display:flex; gap:0.5rem; margin-bottom:1rem; border-bottom:1px solid #ddd; flex-wrap:wrap;">
-            <button class="tab-btn" th:classappend="${type == 'UNIFORM'} ? 'primary' : 'secondary'" data-tab="uniforms" onclick="switchTab('uniforms')">🎖️ Umundurowanie</button>
-            <button class="tab-btn" th:classappend="${type == 'INSTRUMENT'} ? 'primary' : 'secondary'" data-tab="instruments" onclick="switchTab('instruments')">🎺 Instrumenty</button>
-            <button class="tab-btn" th:classappend="${type == 'ORDER'} ? 'primary' : 'secondary'" data-tab="orders" onclick="switchTab('orders')">📋 Zamówienia</button>
-            <button class="tab-btn" th:classappend="${type == 'AWARD'} ? 'primary' : 'secondary'" data-tab="awards" onclick="switchTab('awards')">🏅 Odznaczenia</button>
-            <button class="tab-btn" th:classappend="${type == 'MEMBER'} ? 'primary' : 'secondary'" data-tab="members" onclick="switchTab('members')">👥 Członkowie</button>
+            <button class="tab-btn" th:classappend="${type == 'UNIFORM'} ? 'primary' : 'secondary'" data-tab="uniforms">🎖️ Umundurowanie</button>
+            <button class="tab-btn" th:classappend="${type == 'INSTRUMENT'} ? 'primary' : 'secondary'" data-tab="instruments">🎺 Instrumenty</button>
+            <button class="tab-btn" th:classappend="${type == 'ORDER'} ? 'primary' : 'secondary'" data-tab="orders">📋 Zamówienia</button>
+            <button class="tab-btn" th:classappend="${type == 'AWARD'} ? 'primary' : 'secondary'" data-tab="awards">🏅 Odznaczenia</button>
+            <button class="tab-btn" th:classappend="${type == 'MEMBER'} ? 'primary' : 'secondary'" data-tab="members">👥 Członkowie</button>
         </div>
 
         <!-- ===== UNIFORMS TAB ===== -->
-        <div id="tab-uniforms" th:style="${type != 'UNIFORM'} ? 'display:none;' : ''">
+        <div id="tab-uniforms" class="attribute-tab" data-type="UNIFORM">
             <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem;">
                 <span>Umundurowanie</span>
                 <button class="primary small"
@@ -71,7 +71,7 @@
         </div>
 
         <!-- ===== INSTRUMENTS TAB ===== -->
-        <div id="tab-instruments" th:style="${type != 'INSTRUMENT'} ? 'display:none;' : ''">
+        <div id="tab-instruments" class="attribute-tab" data-type="INSTRUMENT">
             <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem;">
                 <span>Instrumenty</span>
                 <button class="primary small"
@@ -125,7 +125,7 @@
         </div>
 
         <!-- ===== ORDERS TAB ===== -->
-        <div id="tab-orders" th:style="${type != 'ORDER'} ? 'display:none;' : ''">
+        <div id="tab-orders" class="attribute-tab" data-type="ORDER">
             <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem;">
                 <span>Zamówienia</span>
                 <button class="primary small"
@@ -179,7 +179,7 @@
         </div>
 
         <!-- ===== AWARDS TAB ===== -->
-        <div id="tab-awards" th:style="${type != 'AWARD'} ? 'display:none;' : ''">
+        <div id="tab-awards" class="attribute-tab" data-type="AWARD">
             <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem;">
                 <span>Odznaczenia</span>
                 <button class="primary small"
@@ -233,7 +233,7 @@
         </div>
 
         <!-- ===== MEMBERS TAB ===== -->
-        <div id="tab-members" th:style="${type != 'MEMBER'} ? 'display:none;' : ''">
+        <div id="tab-members" class="attribute-tab" data-type="MEMBER">
             <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem;">
                 <span>Członkowie</span>
                 <button class="primary small"
@@ -290,6 +290,12 @@
         .tab-btn { padding:0.5rem 1rem; border:none; cursor:pointer; border-radius:0.25rem 0.25rem 0 0; background:transparent; color:var(--pico-muted-color); }
         .tab-btn.primary { background:var(--pico-primary-background); color:var(--pico-primary-color); font-weight:500; }
         .tab-btn.secondary { background:transparent; }
+        .attribute-tab {
+            margin-bottom: 1.5rem;
+            padding: 0 0 1rem 0;
+            border-bottom: 1px solid #eee;
+        }
+        .attribute-tab:last-child { border-bottom: none; }
         @media (max-width: 576px) {
             #attribute-tabs { flex-wrap:nowrap; overflow-x:auto; -webkit-overflow-scrolling:touch; padding-bottom:0.25rem; }
             .tab-btn { white-space:nowrap; font-size:0.85rem; padding:0.4rem 0.6rem; }
@@ -297,15 +303,29 @@
         </style>
 
         <script th:inline="javascript">
-        function switchTab(tab) {
-            document.querySelectorAll('[id^="tab-"]').forEach(function(el) { el.style.display = 'none'; });
-            document.getElementById('tab-' + tab).style.display = 'block';
-            document.querySelectorAll('.tab-btn').forEach(function(btn) {
-                btn.classList.remove('primary'); btn.classList.add('secondary');
-            });
-            document.querySelector('[data-tab="' + tab + '"]').classList.add('primary');
-            document.querySelector('[data-tab="' + tab + '"]').classList.remove('secondary');
-        }
+        // Highlight the active tab button based on ?type= URL param.
+        // Tab content panels are always visible — user sees all attribute types
+        // at a glance instead of having to click through tabs.
+        (function() {
+            var params = new URLSearchParams(window.location.search);
+            var activeType = params.get('type');
+            if (activeType) {
+                document.querySelectorAll('.tab-btn').forEach(function(btn) {
+                    btn.classList.remove('primary');
+                    btn.classList.add('secondary');
+                });
+                var activeBtn = document.querySelector('.tab-btn[data-tab="' + activeType.toLowerCase() + 's"]')
+                    || document.querySelector('.tab-btn[data-tab="' + activeType.toLowerCase() + '"]');
+                if (activeBtn) {
+                    activeBtn.classList.add('primary');
+                    activeBtn.classList.remove('secondary');
+                    // Scroll the active tab button into view on small screens
+                    if (window.innerWidth < 576) {
+                        activeBtn.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' });
+                    }
+                }
+            }
+        })();
         </script>
     </main>
 <div th:insert="~{fragments/layout :: toast-container}"></div>
