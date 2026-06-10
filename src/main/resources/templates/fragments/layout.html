@@ -7,6 +7,9 @@
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.min.css">
     <link rel="stylesheet" th:href="@{/css/app.css}">
     <script src="https://unpkg.com/htmx.org@2.0.2"></script>
+    <!-- Global utilities: Toast, fetchWithToast. Loaded on every page so that
+         htmx-loaded fragments (forms) can use them. -->
+    <script th:src="@{/js/windband-utils.js}"></script>
     <script>
         // Ignore errors from browser extensions - they shouldn't break our code
         window.onerror = function(msg, url, line, col, error) {
@@ -138,66 +141,13 @@
     </footer>
 
 <script th:fragment="footer-scripts">
-    // Toast notification system
-    var Toast = {
-        container: null,
-        
-        init: function() {
-            this.container = document.getElementById('toast-container');
-        },
-        
-        show: function(message, type, duration, action) {
-            if (!this.container) this.init();
-            
-            var toast = document.createElement('div');
-            toast.className = 'toast ' + (type || 'info');
-            
-            // Icon based on type
-            var icon = '';
-            if (type === 'success') icon = '✓ ';
-            else if (type === 'error') icon = '✕ ';
-            else icon = 'ℹ ';
-            
-            var content = icon + message;
-            if (action) {
-                content += ' <a href="' + action.url + '" onclick="event.stopPropagation();">' + action.label + '</a>';
-            }
-            toast.innerHTML = content;
-            
-            this.container.appendChild(toast);
-            
-            // Auto-hide for success and info (not for errors)
-            var autoHide = (type !== 'error');
-            var hideDuration = duration || (type === 'success' ? 3000 : 5000);
-            
-            if (autoHide) {
-                setTimeout(function() {
-                    toast.classList.add('hiding');
-                    setTimeout(function() {
-                        if (toast.parentNode) {
-                            toast.parentNode.removeChild(toast);
-                        }
-                    }, 300);
-                }, hideDuration);
-            }
-        },
-        
-        success: function(message, action) {
-            this.show(message, 'success', 3000, action);
-        },
-        
-        error: function(message, action) {
-            this.show(message, 'error', null, action); // Error toasts don't auto-hide
-        },
-        
-        info: function(message, action) {
-            this.show(message, 'info', 5000, action);
-        }
-    };
+    // Toast init + htmx:afterSwap toast integration.
+    // Toast and fetchWithToast are now provided globally by /js/windband-utils.js
+    // (loaded in <head>), so they're available in htmx-loaded form fragments too.
 
     // Initialize toast on page load
     document.addEventListener('DOMContentLoaded', function() {
-        Toast.init();
+        if (window.Toast) Toast.init();
     });
 
     // HTMX toast integration - show toasts after HTMX swaps
@@ -209,40 +159,15 @@
             if (toastData) {
                 var message = toastData.getAttribute('data-toast');
                 var type = toastData.getAttribute('data-toast-type') || 'success';
-                Toast[type](message);
+                if (window.Toast && Toast[type]) Toast[type](message);
             }
         }
     });
 
-    // Fetch wrapper with automatic toast notifications
-    function fetchWithToast(url, options) {
-        var originalOptions = options || {};
-        var toastMessage = originalOptions.toastMessage;
-        var showSuccessToast = originalOptions.showSuccessToast !== false;
-        
-        return fetch(url, options).then(function(response) {
-            if (toastMessage) {
-                if (response.ok) {
-                    if (showSuccessToast) {
-                        Toast.success(toastMessage);
-                    }
-                } else {
-                    Toast.error(toastMessage + ' (' + response.status + ')');
-                }
-            }
-            return response;
-        }).catch(function(error) {
-            if (toastMessage) {
-                Toast.error(toastMessage + ': ' + (error.message || 'błąd sieci'));
-            }
-            throw error;
-        });
-    }
-
     // Switch active team and reload page to update nav
     function switchTeam(teamId) {
-        fetchWithToast('/api/auth/switch-team/' + teamId, { 
-            method: 'POST', 
+        fetchWithToast('/api/auth/switch-team/' + teamId, {
+            method: 'POST',
             credentials: 'same-origin',
             toastMessage: 'Przełączono zespół'
         })
@@ -260,9 +185,9 @@
     (function() {
         console.log('Loading build info...');
         fetchWithToast('/api/auth/build-info', { credentials: 'same-origin' }))
-            .then(function(resp) { 
+            .then(function(resp) {
                 console.log('build-info response:', resp.status);
-                return resp.json(); 
+                return resp.json();
             })
             .then(function(data) {
                 console.log('build-info data:', data);

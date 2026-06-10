@@ -2,38 +2,29 @@ package pl.michalbzowski.windband.adapter.in.web;
 
 import org.junit.jupiter.api.Test;
 import org.openqa.selenium.By;
+import org.openqa.selenium.JavascriptExecutor;
 import org.openqa.selenium.WebElement;
 import org.openqa.selenium.support.ui.ExpectedConditions;
 import org.openqa.selenium.support.ui.WebDriverWait;
 import org.springframework.beans.factory.annotation.Autowired;
 import pl.michalbzowski.windband.UiTestBase;
-import pl.michalbzowski.windband.domain.band.Band;
 import pl.michalbzowski.windband.domain.band.BandRepository;
-import pl.michalbzowski.windband.domain.member.Member;
 import pl.michalbzowski.windband.domain.member.MemberRepository;
 
 import java.time.Duration;
-import java.time.LocalDate;
+import java.util.Map;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
 /**
- * UI tests for the members page.
+ * UI tests for the members page — full add→edit flow through the actual UI.
  *
- * <p><strong>Note on form submit:</strong> The member form's submit handler (in
- * form.html) calls {@code window.fetchWithToast(...)} which is defined in
- * {@code fragments/layout :: footer-scripts}. When the form fragment is loaded
- * by htmx, {@code fetchWithToast} is NOT in the global scope and the submit
- * silently fails. This is a pre-existing bug in all entity forms (member, event,
- * attribute, etc.) that use the same submit pattern. The form-opening
- * navigation DOES work — it's only the submit that fails.</p>
- *
- * <p>To still cover the visible add→edit-list flow end-to-end, this test
- * performs mutations through the domain repository (the same one the
- * controllers' command services use internally) and then navigates the UI to
- * verify the list reflects the changes. The UI form-open and edit-row
- * navigation are still verified in the browser.</p>
+ * <p>Regression coverage for the form submit pipeline: opening the new form,
+ * filling required fields, submitting, and verifying the list re-renders with
+ * the new row. Then opening the edit form for that row, modifying ONE field at
+ * a time, and verifying each change appears on the list while the previously
+ * edited fields are preserved.</p>
  */
 class MemberUiTest extends UiTestBase {
 
@@ -62,16 +53,14 @@ class MemberUiTest extends UiTestBase {
     }
 
     /**
-     * Full add → edit flow:
-     * 1. Open the new-member form via UI (verifies form opens)
-     * 2. Add the member via the domain repository (form submit JS is broken —
-     *    see class JavaDoc for details)
-     * 3. Reload the UI list and verify the new member appears with all entered data
-     * 4. Click "Edytuj" on the row (UI)
-     * 5. Edit EMAIL only via repository (one field at a time)
-     * 6. Reload the UI list and verify the new email appears, old email gone
-     * 7. Edit PHONE only via repository (one field at a time)
-     * 8. Reload the UI list and verify the new phone appears, email from step 5 preserved
+     * Full add → edit flow through the actual UI:
+     * 1. Open the new-member form (verifies form opens)
+     * 2. Fill required fields, click submit
+     * 3. Verify the new member appears on the list with all entered data
+     * 4. Click "Edytuj" on that row, change EMAIL only, submit
+     * 5. Verify the new email appears, old email is gone, phone preserved
+     * 6. Click "Edytuj" again, change PHONE only, submit
+     * 7. Verify the new phone appears, email from step 4 is preserved
      */
     @Test
     void shouldAddMemberAndEditOneFieldAtATime() {
@@ -86,28 +75,25 @@ class MemberUiTest extends UiTestBase {
         String updatedPhone = "999888777";
 
         WebDriverWait wait = new WebDriverWait(driver, Duration.ofSeconds(10));
-        Long memberId;
+        Long memberId = null;
 
         try {
-            // === STEP 1: Open the new-member form via UI (verify UI works) ===
+            // === STEP 1: Open the new-member form via UI ===
             loginAndNavigateTo("/members");
             driver.findElement(By.xpath("//button[contains(text(), 'Dodaj muzyka')]")).click();
             wait.until(ExpectedConditions.presenceOfElementLocated(By.cssSelector("#member-form")));
             assertThat(driver.findElement(By.cssSelector("#members-content h2")).getText())
                     .contains("Dodaj muzyka");
 
-            // === STEP 2: Add the member via the domain repository (form submit is broken) ===
-            Band band = bandRepository.findById(1L)
-                    .orElseThrow(() -> new IllegalStateException("Test Band (id=1) not found — data.sql not loaded?"));
-            Member created = memberRepository.save(Member.create(
-                    firstName, lastName, LocalDate.parse(dob), band));
-            created.updateContact(initialEmail, initialPhone);
-            memberRepository.save(created);
-            memberId = created.getId();
-            assertThat(memberId).as("Created member should have an id").isNotNull();
+            // === STEP 2: Fill the form and submit ===
+            fillField("firstName", firstName);
+            fillField("lastName", lastName);
+            fillField("dateOfBirth", dob);
+            fillField("email", initialEmail);
+            fillField("phone", initialPhone);
+            submitPrimaryFormButton();
 
-            // === STEP 3: Reload UI list and verify member appears ===
-            driver.get(baseUrl() + "/members");
+            // === STEP 3: Verify the new member appears on the list ===
             wait.until(ExpectedConditions.textToBePresentInElementLocated(
                     By.cssSelector("#members-content"), firstName + " " + lastName));
 
@@ -119,52 +105,81 @@ class MemberUiTest extends UiTestBase {
                     .contains(initialEmail)
                     .contains(initialPhone);
 
-            // === STEP 4: Click "Edytuj" on the row (UI) ===
+            // Find the new member's id by reading the "Edytuj" button's hx-get attribute
+            memberId = readMemberIdFromEditButton(wait, firstName + " " + lastName);
+            assertThat(memberId).as("New member should have an id").isNotNull();
+
+            // === STEP 4: Click "Edytuj", change EMAIL only, submit ===
             clickEditForMember(wait, firstName + " " + lastName);
             wait.until(ExpectedConditions.presenceOfElementLocated(By.cssSelector("#member-form")));
 
-            // === STEP 5: Edit EMAIL only via repository (one field at a time) ===
-            Member forEmailEdit = memberRepository.findById(memberId).orElseThrow();
-            forEmailEdit.updateContact(updatedEmail, forEmailEdit.getPhone());
-            memberRepository.save(forEmailEdit);
+            // Verify the form was pre-populated with current values
+            String currentEmailBeforeEdit = driver.findElement(
+                    By.cssSelector("input[name='email']")).getAttribute("value");
+            assertThat(currentEmailBeforeEdit).isEqualTo(initialEmail);
 
-            // === STEP 6: Reload UI list and verify updated email appears ===
-            driver.get(baseUrl() + "/members");
+            clearAndFillField("email", updatedEmail);
+            submitPrimaryFormButton();
+
+            // === STEP 5: Verify the new email appears, old email gone, phone preserved ===
             wait.until(ExpectedConditions.textToBePresentInElementLocated(
                     By.cssSelector("#members-content"), updatedEmail));
 
             String listAfterEmailEdit = driver.findElement(By.cssSelector("#members-content")).getText();
             assertThat(listAfterEmailEdit)
-                    .as("After email edit: new email should appear, old email gone, phone preserved")
+                    .as("After email edit: new email appears, old email gone, phone preserved")
                     .contains(updatedEmail)
                     .doesNotContain(initialEmail)
                     .contains(initialPhone);
 
-            // === STEP 7: Edit PHONE only via repository (one field at a time) ===
+            // === STEP 6: Click "Edytuj" again, change PHONE only, submit ===
             clickEditForMember(wait, firstName + " " + lastName);
             wait.until(ExpectedConditions.presenceOfElementLocated(By.cssSelector("#member-form")));
 
-            Member forPhoneEdit = memberRepository.findById(memberId).orElseThrow();
-            forPhoneEdit.updateContact(forPhoneEdit.getEmail(), updatedPhone);
-            memberRepository.save(forPhoneEdit);
+            // Verify email from step 4 is still in the form (one-field-at-a-time edit didn't clobber it)
+            String emailInForm = driver.findElement(
+                    By.cssSelector("input[name='email']")).getAttribute("value");
+            assertThat(emailInForm)
+                    .as("Edit form should show the previously-edited email, not the original")
+                    .isEqualTo(updatedEmail);
 
-            // === STEP 8: Reload UI list and verify updated phone appears ===
-            driver.get(baseUrl() + "/members");
+            clearAndFillField("phone", updatedPhone);
+            submitPrimaryFormButton();
+
+            // === STEP 7: Verify the new phone appears, email from step 4 preserved ===
             wait.until(ExpectedConditions.textToBePresentInElementLocated(
                     By.cssSelector("#members-content"), updatedPhone));
 
             String listAfterPhoneEdit = driver.findElement(By.cssSelector("#members-content")).getText();
             assertThat(listAfterPhoneEdit)
-                    .as("After phone edit: new phone should appear, email from previous edit preserved")
+                    .as("After phone edit: new phone appears, email from previous edit preserved")
                     .contains(updatedPhone)
                     .contains(updatedEmail)
                     .doesNotContain(initialPhone);
         } finally {
             // === Cleanup: delete the test member so it doesn't pollute the list for other tests ===
-            memberRepository.findAllActive().stream()
-                    .filter(m -> firstName.equals(m.getFirstName()))
-                    .forEach(memberRepository::delete);
+            if (memberId != null) {
+                deleteMemberViaApi(memberId);
+            } else {
+                memberRepository.findAllActive().stream()
+                        .filter(m -> firstName.equals(m.getFirstName()))
+                        .forEach(m -> deleteMemberViaApi(m.getId()));
+            }
         }
+    }
+
+    private void fillField(String name, String value) {
+        driver.findElement(By.cssSelector("input[name='" + name + "']")).sendKeys(value);
+    }
+
+    private void clearAndFillField(String name, String value) {
+        WebElement input = driver.findElement(By.cssSelector("input[name='" + name + "']"));
+        input.clear();
+        input.sendKeys(value);
+    }
+
+    private void submitPrimaryFormButton() {
+        driver.findElement(By.cssSelector("form#member-form button.primary[type='submit']")).click();
     }
 
     /**
@@ -175,6 +190,39 @@ class MemberUiTest extends UiTestBase {
         String xpath = String.format(
                 "//tr[td[contains(., '%s')]]//button[contains(text(), 'Edytuj')]", fullName);
         WebElement btn = wait.until(ExpectedConditions.presenceOfElementLocated(By.xpath(xpath)));
-        ((org.openqa.selenium.JavascriptExecutor) driver).executeScript("arguments[0].click();", btn);
+        ((JavascriptExecutor) driver).executeScript("arguments[0].click();", btn);
+    }
+
+    /**
+     * Reads the new member's id from its "Edytuj" button's hx-get attribute.
+     * The button looks like: {@code hx-get="/members/123/edit"}.
+     */
+    private Long readMemberIdFromEditButton(WebDriverWait wait, String fullName) {
+        String xpath = String.format(
+                "//tr[td[contains(., '%s')]]//button[contains(text(), 'Edytuj')]", fullName);
+        WebElement btn = wait.until(ExpectedConditions.presenceOfElementLocated(By.xpath(xpath)));
+        String hxGet = btn.getAttribute("hx-get");
+        // hx-get="/members/{id}/edit"
+        if (hxGet == null) {
+            throw new IllegalStateException("'Edytuj' button has no hx-get attribute: " + btn.getAttribute("outerHTML"));
+        }
+        String[] parts = hxGet.split("/");
+        // ["", "members", "{id}", "edit"]
+        return Long.parseLong(parts[2]);
+    }
+
+    /**
+     * Performs a DELETE via fetch from the browser context (so the session
+     * cookie is included). Returns true if the delete succeeded.
+     */
+    @SuppressWarnings("unchecked")
+    private boolean deleteMemberViaApi(Long id) {
+        String script = ""
+                + "var done = arguments[0];"
+                + "fetch('/api/members/" + id + "', {method: 'DELETE', credentials: 'same-origin'})"
+                + "  .then(function(r) { done(r.status); })"
+                + "  .catch(function(e) { done(0); });";
+        Object status = ((JavascriptExecutor) driver).executeAsyncScript(script);
+        return status instanceof Number && ((Number) status).intValue() == 204;
     }
 }
