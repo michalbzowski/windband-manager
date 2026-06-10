@@ -61,7 +61,7 @@ public class InventoryPageController {
     public String listPage(@AuthenticationPrincipal OidcUser oidcUser, Model model) throws JsonProcessingException {
         Band band = getActiveBand(oidcUser);
         Long teamId = getActiveTeamId(oidcUser);
-        
+
         // If no team, show empty inventory
         if (band == null) {
             model.addAttribute("uniformItems", List.of());
@@ -129,8 +129,6 @@ public class InventoryPageController {
         String uniformJson = objectMapper.writeValueAsString(uniformDefs);
         String instrumentJson = objectMapper.writeValueAsString(instrumentDefs);
         String awardJson = objectMapper.writeValueAsString(awardDefs);
-        System.out.println("Uniform attrs JSON: " + uniformJson);
-        System.out.println("Instrument attrs JSON: " + instrumentJson);
         model.addAttribute("uniformAttributeDefsJson", uniformJson);
         model.addAttribute("instrumentAttributeDefsJson", instrumentJson);
         model.addAttribute("awardAttributeDefsJson", awardJson);

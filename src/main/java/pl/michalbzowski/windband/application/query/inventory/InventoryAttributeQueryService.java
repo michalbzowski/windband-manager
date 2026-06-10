@@ -31,7 +31,8 @@ public class InventoryAttributeQueryService {
     // === Uniform attributes ===
 
     public List<UniformAttributeDefDto> getUniformAttributeDefs(Band band) {
-        return uniformDefRepo.findByBand(band).stream()
+        List<UniformAttributeDef> defs = uniformDefRepo.findByBand(band);
+        return defs.stream()
                 .map(d -> new UniformAttributeDefDto(d.getId(), d.getName(), d.getType(), d.isRequired(), d.isDisplayInList(), d.getDisplayOrder(), d.getOptions(), d.getDependsOnAttributeId(), d.getDependsOnValue()))
                 .toList();
     }

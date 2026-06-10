@@ -22,7 +22,8 @@ public class UniformAttributeCommandService {
         UniformAttributeDef def = UniformAttributeDef.create(band, name, type, required, displayInList, displayOrder, options);
         def.setDependsOnAttributeId(dependsOnAttributeId);
         def.setDependsOnValue(dependsOnValue);
-        return defRepository.save(def);
+        UniformAttributeDef saved = defRepository.save(def);
+        return saved;
     }
 
     public UniformAttributeDef updateAttributeDef(Long id, String name, String type, boolean required, boolean displayInList, int displayOrder, String options, Long dependsOnAttributeId, String dependsOnValue) {

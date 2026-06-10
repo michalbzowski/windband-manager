@@ -7,8 +7,10 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
+import pl.michalbzowski.windband.application.command.band.MemberAttributeCommandService;
 import pl.michalbzowski.windband.application.command.inventory.*;
 import pl.michalbzowski.windband.application.query.band.BandQueryService;
+import pl.michalbzowski.windband.application.query.band.MemberAttributeQueryService;
 import pl.michalbzowski.windband.application.query.inventory.InventoryAttributeQueryService;
 import pl.michalbzowski.windband.domain.band.Band;
 
@@ -26,7 +28,10 @@ public class InventoryAttributePageController {
     private final UniformAttributeCommandService uniformCommandService;
     private final InstrumentAttributeCommandService instrumentCommandService;
     private final OrderAttributeCommandService orderCommandService;
+    private final AwardAttributeCommandService awardCommandService;
+    private final MemberAttributeCommandService memberCommandService;
     private final InventoryAttributeQueryService queryService;
+    private final MemberAttributeQueryService memberQueryService;
     private final BandQueryService bandQueryService;
 
     private Band getDefaultBand() {
@@ -39,10 +44,20 @@ public class InventoryAttributePageController {
     public String listPage(@RequestParam(defaultValue = "UNIFORM") String type, Model model) {
         Band band = getDefaultBand();
         model.addAttribute("type", type);
+        // Provide each list under its own name so the inventory-attributes.html template
+        // (which iterates per-type: ${uniformAttributeDefs}, ${instrumentAttributeDefs},
+        // ${orderAttributeDefs}, ${awardAttributeDefs}, ${memberAttributeDefs}) can render.
+        // Also keep `attributeDefs` for backwards compatibility with the legacy band/attribute-defs.html.
+        model.addAttribute("uniformAttributeDefs", queryService.getUniformAttributeDefs(band));
+        model.addAttribute("instrumentAttributeDefs", queryService.getInstrumentAttributeDefs(band));
+        model.addAttribute("orderAttributeDefs", queryService.getOrderAttributeDefs(band));
+        model.addAttribute("awardAttributeDefs", queryService.getAwardAttributeDefs(band));
+        model.addAttribute("memberAttributeDefs", memberQueryService.getAttributeDefsForBand(band));
         model.addAttribute("attributeDefs", switch (type) {
             case "UNIFORM" -> queryService.getUniformAttributeDefs(band);
             case "INSTRUMENT" -> queryService.getInstrumentAttributeDefs(band);
             case "ORDER" -> queryService.getOrderAttributeDefs(band);
+            case "AWARD" -> queryService.getAwardAttributeDefs(band);
             default -> List.of();
         });
         return "band/inventory-attributes";
@@ -106,6 +121,8 @@ public class InventoryAttributePageController {
                 case "UNIFORM" -> uniformCommandService.createAttributeDef(band, form.getName(), form.getAttributeType(), form.isRequired(), form.isDisplayInList(), form.getDisplayOrder(), form.getOptions(), form.getDependsOnAttributeId(), form.getDependsOnValue());
                 case "INSTRUMENT" -> instrumentCommandService.createAttributeDef(band, form.getName(), form.getAttributeType(), form.isRequired(), form.isDisplayInList(), form.getDisplayOrder(), form.getOptions(), form.getDependsOnAttributeId(), form.getDependsOnValue());
                 case "ORDER" -> orderCommandService.createAttributeDef(band, form.getName(), form.getAttributeType(), form.isRequired(), form.isDisplayInList(), form.getDisplayOrder(), form.getOptions(), form.getDependsOnAttributeId(), form.getDependsOnValue());
+                case "AWARD" -> awardCommandService.createAttributeDef(band, form.getName(), form.getAttributeType(), form.isRequired(), form.isDisplayInList(), form.getDisplayOrder(), form.getOptions(), form.getDependsOnAttributeId(), form.getDependsOnValue());
+                case "MEMBER" -> memberCommandService.createAttributeDef(band, form.getName(), form.getAttributeType(), form.isRequired(), form.isDisplayInList(), form.getDisplayOrder(), form.getOptions());
                 default -> throw new IllegalArgumentException("Unknown inventoryType: " + inventoryType);
             }
             return ResponseEntity.ok().header("HX-Redirect", "/band/inventory-attributes?type=" + inventoryType).build();
