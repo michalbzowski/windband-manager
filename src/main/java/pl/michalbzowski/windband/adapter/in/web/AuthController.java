@@ -15,7 +15,6 @@ import pl.michalbzowski.windband.adapter.in.security.WindbandOidcUser;
 import pl.michalbzowski.windband.application.command.team.RegisterTeamCommand;
 import pl.michalbzowski.windband.application.command.team.TeamRegistrationService;
 import pl.michalbzowski.windband.application.query.team.TeamQueryService;
-import pl.michalbzowski.windband.domain.user.UserTeamRoleRepository;
 
 import java.util.Map;
 
@@ -35,7 +34,6 @@ public class AuthController {
 
     private final TeamRegistrationService teamRegistrationService;
     private final TeamQueryService teamQueryService;
-    private final UserTeamRoleRepository userTeamRoleRepository;
 
     @Autowired(required = false)
     private BuildProperties buildProperties;
@@ -140,11 +138,10 @@ public class AuthController {
             String activeTeamSlug = null;
             String activeTeamRole = null;
             if (activeTeamId != null) {
-                var role = userTeamRoleRepository.findByUserIdAndTeamId(wu.getUserId(), activeTeamId);
-                if (role.isPresent()) {
-                    var team = role.get().getTeam();
-                    activeTeamSlug = team.getSlug();
-                    activeTeamRole = role.get().getRole().name();
+                var team = teamQueryService.getUserTeam(wu.getUserId(), activeTeamId);
+                if (team.isPresent()) {
+                    activeTeamSlug = team.get().slug();
+                    activeTeamRole = team.get().role();
                 }
             }
 
@@ -196,18 +193,17 @@ public class AuthController {
         // Store in session
         session.setAttribute("activeTeamId", teamId);
 
-        // Look up team info
-        var role = userTeamRoleRepository.findByUserIdAndTeamId(wu.getUserId(), teamId);
-        if (role.isEmpty()) {
+        // Look up team info via application service (controllers must not depend on domain repos directly)
+        var team = teamQueryService.getUserTeam(wu.getUserId(), teamId);
+        if (team.isEmpty()) {
             return ResponseEntity.badRequest().body(Map.of("error", "Nie znaleziono roli w zespole"));
         }
 
-        var team = role.get().getTeam();
         return ResponseEntity.ok(Map.of(
                 "activeTeamId", teamId,
-                "activeTeamSlug", team.getSlug(),
-                "activeTeamName", team.getName(),
-                "activeTeamRole", role.get().getRole().name()
+                "activeTeamSlug", team.get().slug(),
+                "activeTeamName", team.get().name(),
+                "activeTeamRole", team.get().role()
         ));
     }
 

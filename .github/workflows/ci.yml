@@ -11,6 +11,11 @@ concurrency:
   group: ci-${{ github.ref }}
   cancel-in-progress: true
 
+# dorny/test-reporter wymaga checks: write; bez tego zwraca 404
+permissions:
+  contents: read
+  checks: write
+
 jobs:
   build:
     name: Build & Test (mvn verify)

@@ -51,7 +51,7 @@ class AttendanceUpdateRegressionTest extends BaseIntegrationTest {
     @Test
     void shouldUpdateAttendanceAfterInitialRecord() {
         // Setup: create band, member, and rehearsal
-        Band band = bandRepository.save(Band.create("Test Band", "test-band-8"));
+        Band band = bandRepository.save(Band.create("Test Band 1", "test-band-8"));
         Member member = memberRepository.save(Member.create(
                 "Jan", "Kowalski", LocalDate.of(1990, 1, 1), band));
 

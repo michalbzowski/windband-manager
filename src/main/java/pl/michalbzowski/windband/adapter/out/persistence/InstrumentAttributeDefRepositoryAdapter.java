@@ -25,15 +25,17 @@ public class InstrumentAttributeDefRepositoryAdapter implements InstrumentAttrib
         return springDataRepo.findByBandAndName(band, name);
     }
 
-    // Additional methods delegated directly to Spring Data (not in domain interface to avoid CrudRepository conflict)
+    @Override
     public InstrumentAttributeDef save(InstrumentAttributeDef def) {
         return springDataRepo.save(def);
     }
 
+    @Override
     public Optional<InstrumentAttributeDef> findById(Long id) {
         return springDataRepo.findById(id);
     }
 
+    @Override
     public void delete(InstrumentAttributeDef def) {
         springDataRepo.delete(def);
     }

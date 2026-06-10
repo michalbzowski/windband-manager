@@ -25,15 +25,17 @@ public class UniformAttributeDefRepositoryAdapter implements UniformAttributeDef
         return springDataRepo.findByBandAndName(band, name);
     }
 
-    // Additional methods delegated directly to Spring Data (not in domain interface to avoid CrudRepository conflict)
+    @Override
     public UniformAttributeDef save(UniformAttributeDef def) {
         return springDataRepo.save(def);
     }
 
+    @Override
     public Optional<UniformAttributeDef> findById(Long id) {
         return springDataRepo.findById(id);
     }
 
+    @Override
     public void delete(UniformAttributeDef def) {
         springDataRepo.delete(def);
     }
