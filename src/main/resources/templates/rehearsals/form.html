@@ -65,16 +65,22 @@
                 body: JSON.stringify(data)
             }).then(function(response) {
                 console.log('[REHEARSAL] response status:', response.status);
-                // Use htmx if available (loaded from CDN), otherwise fallback to fetch+swap
-                var target = saveAndAddAnother ? '/rehearsals/new' : '/rehearsals/list';
+                // Reload the rehearsals list content
+                var target = saveAndAddAnother ? '/rehearsals/new' : '/rehearsals';
                 if (typeof htmx !== 'undefined') {
                     htmx.ajax('GET', target, {target: '#rehearsals-content', swap: 'innerHTML transition:true'});
                 } else {
                     // Fallback when htmx is not loaded (e.g. offline CI)
+                    // Fetch full page and extract #rehearsals-content
                     fetch(target)
                         .then(function(r) { return r.text(); })
                         .then(function(html) {
-                            document.getElementById('rehearsals-content').innerHTML = html;
+                            var parser = new DOMParser();
+                            var doc = parser.parseFromString(html, 'text/html');
+                            var content = doc.getElementById('rehearsals-content');
+                            if (content) {
+                                document.getElementById('rehearsals-content').innerHTML = content.innerHTML;
+                            }
                         });
                 }
             }).catch(function(err) {
