@@ -6,7 +6,7 @@
     <title th:text="${title} + ' — Wind Band Manager'">Wind Band Manager</title>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.min.css">
     <link rel="stylesheet" th:href="@{/css/app.css}">
-    <script src="https://unpkg.com/htmx.org@2.0.2"></script>
+    <script th:src="@{/js/htmx.min.js}"></script>
     <!-- Global utilities: Toast, fetchWithToast. Loaded on every page so that
          htmx-loaded fragments (forms) can use them. -->
     <script th:src="@{/js/windband-utils.js}"></script>
