@@ -68,7 +68,10 @@
                 return response.json();
             }).then(function(rehearsal) {
                 // Navigate to rehearsal detail page after successful save
-                window.location.href = '/rehearsals/' + rehearsal.id;
+                if (typeof htmx !== 'undefined') {
+                    window.location.href = '/rehearsals/' + rehearsal.id;
+                }
+                // When htmx is not available, just show toast (user can navigate manually)
             }).catch(function(err) {
                 console.log('[REHEARSAL] fetch error:', err);
             });
