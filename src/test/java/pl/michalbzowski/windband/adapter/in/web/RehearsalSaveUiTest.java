@@ -76,7 +76,7 @@ class RehearsalSaveUiTest extends UiTestBase {
         submitBtn.click();
 
         // Wait for toast to appear (confirms save was successful)
-        Thread.sleep(1000);
+        try { Thread.sleep(1000); } catch (InterruptedException ie) { Thread.currentThread().interrupt(); }
 
         // Navigate to rehearsals list to verify the save
         driver.get(baseUrl() + "/rehearsals");
