@@ -65,10 +65,17 @@
                 body: JSON.stringify(data)
             }).then(function(response) {
                 console.log('[REHEARSAL] response status:', response.status);
-                if (saveAndAddAnother) {
-                    htmx.ajax('GET', '/rehearsals/new', {target: '#rehearsals-content', swap: 'innerHTML transition:true'});
+                // Use htmx if available (loaded from CDN), otherwise fallback to fetch+swap
+                var target = saveAndAddAnother ? '/rehearsals/new' : '/rehearsals/list';
+                if (typeof htmx !== 'undefined') {
+                    htmx.ajax('GET', target, {target: '#rehearsals-content', swap: 'innerHTML transition:true'});
                 } else {
-                    htmx.ajax('GET', '/rehearsals/list', {target: '#rehearsals-content', swap: 'innerHTML transition:true'});
+                    // Fallback when htmx is not loaded (e.g. offline CI)
+                    fetch(target)
+                        .then(function(r) { return r.text(); })
+                        .then(function(html) {
+                            document.getElementById('rehearsals-content').innerHTML = html;
+                        });
                 }
             }).catch(function(err) {
                 console.log('[REHEARSAL] fetch error:', err);
