@@ -57,6 +57,8 @@ class MultiTeamIsolationTest extends BaseIntegrationTest {
 
     @BeforeEach
     void setUp() {
+        // Clean up events from previous test classes (state pollution from shared Testcontainers)
+        eventQueryService.getAllEvents(band1Id).forEach(e -> eventCommandService.deleteEvent(e.getId()));
         // Band 1 already exists from Flyway seed (id=1)
         // Create Band 2 for multi-team testing
         Band band2 = bandRepository.save(Band.create("Drugi Zespół", "drugi-zespol"));

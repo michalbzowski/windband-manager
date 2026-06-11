@@ -41,9 +41,18 @@ public class RehearsalController {
     public ResponseEntity<Rehearsal> scheduleRehearsal(@RequestBody ScheduleRehearsalCommand cmd,
                                                        @AuthenticationPrincipal OidcUser oidcUser,
                                                        HttpSession session) {
+        System.err.println("[DEBUG] POST /api/rehearsals oidcUser=" + (oidcUser != null ? oidcUser.getClass().getName() : "null") + " isWindband=" + (oidcUser instanceof WindbandOidcUser));
         Long activeTeamId = resolveActiveTeamId(oidcUser, session);
-        var rehearsal = commandService.scheduleRehearsal(cmd, activeTeamId);
-        return ResponseEntity.status(HttpStatus.CREATED).body(rehearsal);
+        System.err.println("[DEBUG] POST /api/rehearsals teamId=" + activeTeamId + " cmd.date=" + cmd.getDate() + " cmd.location=" + cmd.getLocation());
+        try {
+            var rehearsal = commandService.scheduleRehearsal(cmd, activeTeamId);
+            System.err.println("[DEBUG] Saved rehearsal id=" + rehearsal.getId() + " location=" + rehearsal.getLocation());
+            return ResponseEntity.status(HttpStatus.CREATED).body(rehearsal);
+        } catch (Exception e) {
+            System.err.println("[DEBUG] ERROR: " + e.getClass().getName() + ": " + e.getMessage());
+            e.printStackTrace();
+            throw e;
+        }
     }
 
     @PutMapping("/{id}")
