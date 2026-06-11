@@ -75,20 +75,17 @@ class RehearsalSaveUiTest extends UiTestBase {
                 By.cssSelector("#rehearsal-form button[type='submit'].primary"));
         submitBtn.click();
 
-        // After successful save, page redirects to /rehearsals (full page reload)
-        // Wait for the rehearsals list page to load
-        wait.until(ExpectedConditions.urlContains("/rehearsals"));
-        wait.until(ExpectedConditions.presenceOfElementLocated(By.id("rehearsals-content")));
+        // After successful save, page redirects to rehearsal detail page
+        wait.until(ExpectedConditions.urlMatches(".*/rehearsals/\\d+"));
+        wait.until(ExpectedConditions.presenceOfElementLocated(By.id("content")));
 
-        // Verify the rehearsal list is shown (not the form anymore)
-        // The list should contain our rehearsal data
+        // Verify the detail page shows the saved rehearsal's location
         String content = (String) ((JavascriptExecutor) driver).executeScript(
-                "return document.querySelector('#rehearsals-content').textContent;");
-        System.out.println("[TEST] rehearsals-content text: " + content);
+                "return document.querySelector('#content').textContent;");
+        System.out.println("[TEST] content text: " + content);
 
-        // The list should show the location we entered, confirming the save
         assertThat(content)
-                .as("Rehearsals list should contain the saved rehearsal's location")
+                .as("Rehearsal detail should contain the saved rehearsal's location")
                 .contains("Sala prób");
     }
 

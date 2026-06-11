@@ -65,11 +65,10 @@
                 body: JSON.stringify(data)
             }).then(function(response) {
                 console.log('[REHEARSAL] response status:', response.status);
-                if (saveAndAddAnother) {
-                    window.location.href = '/rehearsals/new';
-                } else {
-                    window.location.href = '/rehearsals';
-                }
+                return response.json();
+            }).then(function(rehearsal) {
+                // Navigate to rehearsal detail page after successful save
+                window.location.href = '/rehearsals/' + rehearsal.id;
             }).catch(function(err) {
                 console.log('[REHEARSAL] fetch error:', err);
             });
