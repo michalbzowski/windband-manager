@@ -55,7 +55,7 @@
     </div>
 
     <div style="display:flex; gap:0.5rem; margin-top:1rem;">
-        <form hx-post="@{/groups/{id}/delete(id=${group.id})}"
+        <form th:hx-post="@{/groups/{id}/delete(id=${group.id})}"
               hx-target="#content" hx-swap="innerHTML transition:true"
               style="display:inline;"
               onsubmit="return confirm('Czy na pewno chcesz usunąć tę grupę?');">
