@@ -67,10 +67,23 @@
                 console.log('[REHEARSAL] response status:', response.status);
                 return response.json();
             }).then(function(rehearsal) {
-                // Redirect to rehearsals list after a brief delay so the toast is visible
-                setTimeout(function() {
-                    window.location.href = '/rehearsals';
-                }, 1500);
+                if (saveAndAddAnother) {
+                    // Clear the form and keep the user on the page
+                    form.reset();
+                    // Set default date to today again
+                    var today = new Date().toISOString().split('T')[0];
+                    var dateInput = form.querySelector("input[name='date']");
+                    if (dateInput) dateInput.value = today;
+                    var startTimeInput = form.querySelector("input[name='startTime']");
+                    if (startTimeInput) startTimeInput.value = '18:00';
+                    var endTimeInput = form.querySelector("input[name='endTime']");
+                    if (endTimeInput) endTimeInput.value = '20:00';
+                } else {
+                    // Redirect to rehearsals list after a brief delay so the toast is visible
+                    setTimeout(function() {
+                        window.location.href = '/rehearsals';
+                    }, 1500);
+                }
             }).catch(function(err) {
                 console.log('[REHEARSAL] fetch error:', err);
             });

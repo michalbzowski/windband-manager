@@ -95,6 +95,14 @@ public class InventoryAttributePageController {
                 var def = orderCommandService.getAttributeDefById(id);
                 yield new AttributeDefForm(def.getName(), def.getType(), def.isRequired(), def.isDisplayInList(), def.getDisplayOrder(), def.getOptions(), def.getDependsOnAttributeId(), def.getDependsOnValue());
             }
+            case "AWARD" -> {
+                var def = awardCommandService.getAttributeDefById(id);
+                yield new AttributeDefForm(def.getName(), def.getType(), def.isRequired(), def.isDisplayInList(), def.getDisplayOrder(), def.getOptions(), def.getDependsOnAttributeId(), def.getDependsOnValue());
+            }
+            case "MEMBER" -> {
+                var def = memberCommandService.getAttributeDefById(id);
+                yield new AttributeDefForm(def.getName(), def.getType(), def.isRequired(), def.isDisplayInList(), def.getDisplayOrder(), def.getOptions(), null, null);
+            }
             default -> throw new IllegalArgumentException("Unknown type: " + type);
         };
         model.addAttribute("attributeDef", form);
@@ -107,6 +115,8 @@ public class InventoryAttributePageController {
             case "UNIFORM" -> queryService.getUniformAttributeDefs(band);
             case "INSTRUMENT" -> queryService.getInstrumentAttributeDefs(band);
             case "ORDER" -> queryService.getOrderAttributeDefs(band);
+            case "AWARD" -> queryService.getAwardAttributeDefs(band);
+            case "MEMBER" -> memberQueryService.getAttributeDefsForBand(band);
             default -> List.of();
         };
     }
@@ -152,6 +162,8 @@ public class InventoryAttributePageController {
             case "UNIFORM" -> uniformCommandService.deleteAttributeDef(id);
             case "INSTRUMENT" -> instrumentCommandService.deleteAttributeDef(id);
             case "ORDER" -> orderCommandService.deleteAttributeDef(id);
+            case "AWARD" -> awardCommandService.deleteAttributeDef(id);
+            case "MEMBER" -> memberCommandService.deleteAttributeDef(id);
             default -> throw new IllegalArgumentException("Unknown type: " + type);
         }
         return ResponseEntity.ok().header("HX-Redirect", "/band/inventory-attributes?type=" + type).build();

@@ -57,6 +57,8 @@ public class MemberCommandService {
             member.setResignedDate(cmd.getResignedDate());
         } else if (!cmd.isActive()) {
             member.setResignedDate(LocalDate.now());
+        } else {
+            member.setResignedDate(null);
         }
         if (cmd.getInstrumentId() != null) {
             Instrument instrument = instrumentRepository.findById(cmd.getInstrumentId())
