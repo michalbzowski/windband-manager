@@ -75,9 +75,9 @@ class RehearsalSaveUiTest extends UiTestBase {
                 By.cssSelector("#rehearsal-form button[type='submit'].primary"));
         submitBtn.click();
 
-        // After successful save, the page should redirect to the rehearsals list
-        // The list view should contain the rehearsal we just created
-        try { Thread.sleep(500); } catch (InterruptedException ie) { Thread.currentThread().interrupt(); }
+        // After successful save, page redirects to /rehearsals (full page reload)
+        // Wait for the rehearsals list page to load
+        wait.until(ExpectedConditions.urlContains("/rehearsals"));
         wait.until(ExpectedConditions.presenceOfElementLocated(By.id("rehearsals-content")));
 
         // Verify the rehearsal list is shown (not the form anymore)
