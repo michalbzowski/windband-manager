@@ -20,6 +20,7 @@ public class RehearsalCommandService {
     private final BandRepository bandRepository;
 
     public Rehearsal scheduleRehearsal(ScheduleRehearsalCommand cmd, Long teamId) {
+        System.out.println("[DEBUG] scheduleRehearsal teamId=" + teamId + " date=" + cmd.getDate() + " startTime=" + cmd.getStartTime() + " location=" + cmd.getLocation());
         Band band = bandRepository.findById(teamId)
                 .orElseThrow(() -> new IllegalStateException("Band not found for team ID: " + teamId));
         Rehearsal rehearsal = Rehearsal.schedule(
@@ -34,7 +35,9 @@ public class RehearsalCommandService {
         if (cmd.getNotes() != null) {
             rehearsal.updateNotes(cmd.getNotes());
         }
-        return rehearsalRepository.save(rehearsal);
+        Rehearsal saved = rehearsalRepository.save(rehearsal);
+        System.out.println("[DEBUG] saved rehearsal id=" + saved.getId() + " location=" + saved.getLocation());
+        return saved;
     }
 
     public Rehearsal updateRehearsal(Long id, ScheduleRehearsalCommand cmd) {

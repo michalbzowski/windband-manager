@@ -48,14 +48,12 @@ class RehearsalSaveUiTest extends UiTestBase {
                 By.cssSelector("#rehearsals-content form#rehearsal-form")));
 
         // Fill required fields
-        var dateInput = driver.findElement(By.cssSelector("input[name='date']"));
+        // Set date using JS to ensure correct format for input[type=date]
+        String today = java.time.LocalDate.now().toString();
+        ((JavascriptExecutor) driver).executeScript(
+                "document.querySelector(\"input[name='date']\").value = '" + today + "';");
+
         var startTimeInput = driver.findElement(By.cssSelector("input[name='startTime']"));
-
-        // Clear and set date to today
-        dateInput.clear();
-        dateInput.sendKeys(java.time.LocalDate.now().toString());
-
-        // Set start time
         startTimeInput.clear();
         startTimeInput.sendKeys("18:00");
 
@@ -64,8 +62,13 @@ class RehearsalSaveUiTest extends UiTestBase {
         endTimeInput.clear();
         endTimeInput.sendKeys("20:00");
 
-        var locationInput = driver.findElement(By.cssSelector("input[name='location']"));
-        locationInput.sendKeys("Sala prób");
+        // Set location via JS to ensure FormData picks it up
+        ((JavascriptExecutor) driver).executeScript(
+                "document.querySelector(\"input[name='location']\").value = 'Sala prób';");
+        // Verify the value was set
+        String locationVal = (String) ((JavascriptExecutor) driver).executeScript(
+                "return document.querySelector(\"input[name='location']\").value;");
+        System.out.println("[TEST] location value after JS set: '" + locationVal + "'");
 
         // Submit the form by clicking "Zaplanuj" button
         var submitBtn = driver.findElement(
@@ -74,12 +77,14 @@ class RehearsalSaveUiTest extends UiTestBase {
 
         // After successful save, the page should redirect to the rehearsals list
         // The list view should contain the rehearsal we just created
+        try { Thread.sleep(500); } catch (InterruptedException ie) { Thread.currentThread().interrupt(); }
         wait.until(ExpectedConditions.presenceOfElementLocated(By.id("rehearsals-content")));
 
         // Verify the rehearsal list is shown (not the form anymore)
         // The list should contain our rehearsal data
         String content = (String) ((JavascriptExecutor) driver).executeScript(
                 "return document.querySelector('#rehearsals-content').textContent;");
+        System.out.println("[TEST] rehearsals-content text: " + content);
 
         // The list should show the location we entered, confirming the save
         assertThat(content)
@@ -104,9 +109,9 @@ class RehearsalSaveUiTest extends UiTestBase {
                 By.cssSelector("#rehearsal-form")));
 
         // Fill required fields
-        var dateInput = driver.findElement(By.cssSelector("input[name='date']"));
-        dateInput.clear();
-        dateInput.sendKeys(java.time.LocalDate.now().toString());
+        String today = java.time.LocalDate.now().toString();
+        ((JavascriptExecutor) driver).executeScript(
+                "document.querySelector(\"input[name='date']\").value = '" + today + "';");
 
         var startTimeInput = driver.findElement(By.cssSelector("input[name='startTime']"));
         startTimeInput.clear();
