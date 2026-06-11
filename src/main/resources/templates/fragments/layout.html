@@ -141,17 +141,13 @@
     </footer>
 
 <script th:fragment="footer-scripts">
-    // Toast init + htmx:afterSwap toast integration.
-    // Toast and fetchWithToast are now provided globally by /js/windband-utils.js
-    // (loaded in <head>), so they're available in htmx-loaded form fragments too.
-
-    // Initialize toast on page load
-    document.addEventListener('DOMContentLoaded', function() {
-        if (window.Toast) Toast.init();
-    });
-
-    // HTMX toast integration - show toasts after HTMX swaps
+    // HTMX toast integration - reinit toast container after htmx swaps
+    // (htmx replaces DOM elements, so the cached container reference becomes stale)
     document.addEventListener('htmx:afterSwap', function(evt) {
+        if (window.Toast) {
+            Toast.container = null;
+            Toast.init();
+        }
         // Check for response headers or data attributes for toast messages
         var target = evt.detail.target;
         if (target) {
