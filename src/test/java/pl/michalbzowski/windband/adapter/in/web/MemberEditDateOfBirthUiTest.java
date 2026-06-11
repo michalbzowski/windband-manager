@@ -66,9 +66,9 @@ class MemberEditDateOfBirthUiTest extends UiTestBase {
                     .contains("Edytuj muzyka");
 
             // === STEP 3: Change only the date of birth ===
-            WebElement dobInput = driver.findElement(By.cssSelector("input[name='dateOfBirth']"));
-            dobInput.clear();
-            dobInput.sendKeys(updatedDob);
+            // Use JS to set date value reliably (sendKeys on date inputs can be garbled)
+            ((JavascriptExecutor) driver).executeScript(
+                    "document.querySelector(\"input[name='dateOfBirth']\").value = '" + updatedDob + "';");
 
             // === STEP 4: Click save ===
             driver.findElement(By.cssSelector("form#member-form button.primary[type='submit']")).click();
@@ -85,12 +85,12 @@ class MemberEditDateOfBirthUiTest extends UiTestBase {
                     .contains(firstName);
 
             // Verify the updated dob is reflected by checking the page source
-            // (date of birth is not directly shown on list, but we can open edit again)
             WebElement editBtn2 = wait.until(ExpectedConditions.presenceOfElementLocated(By.xpath(xpath)));
             ((JavascriptExecutor) driver).executeScript("arguments[0].click();", editBtn2);
             wait.until(ExpectedConditions.presenceOfElementLocated(By.cssSelector("#member-form")));
 
-            String dobValue = driver.findElement(By.cssSelector("input[name='dateOfBirth']")).getAttribute("value");
+            String dobValue = (String) ((JavascriptExecutor) driver)
+                    .executeScript("return document.querySelector(\"input[name='dateOfBirth']\").value;");
             assertThat(dobValue)
                     .as("Date of birth should be updated to the new value")
                     .isEqualTo(updatedDob);

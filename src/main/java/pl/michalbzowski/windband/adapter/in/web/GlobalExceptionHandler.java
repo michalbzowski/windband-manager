@@ -2,8 +2,8 @@ package pl.michalbzowski.windband.adapter.in.web;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.ControllerAdvice;
 import org.springframework.web.bind.annotation.ExceptionHandler;
-import org.springframework.web.bind.annotation.RestControllerAdvice;
 import pl.michalbzowski.windband.application.command.event.EventNotFoundException;
 import pl.michalbzowski.windband.application.command.inventory.InventoryItemNotFoundException;
 import pl.michalbzowski.windband.application.command.member.MemberNotFoundException;
@@ -12,7 +12,7 @@ import pl.michalbzowski.windband.application.command.rehearsal.RehearsalNotFound
 import java.time.LocalDateTime;
 import java.util.Map;
 
-@RestControllerAdvice
+@ControllerAdvice
 public class GlobalExceptionHandler {
 
     @ExceptionHandler(MemberNotFoundException.class)

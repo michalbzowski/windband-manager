@@ -212,6 +212,14 @@ public class InventoryAttributePageController {
             this.dependsOnAttributeId = dependsOnAttributeId;
             this.dependsOnValue = dependsOnValue;
         }
+
+        /**
+         * Alias so the shared template (which uses ${attributeDef.type}) works
+         * with this form's {@code attributeType} field.
+         */
+        public String getType() {
+            return attributeType;
+        }
     }
 
     public record SaveValueRequest(String value) {}
