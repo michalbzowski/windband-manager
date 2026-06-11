@@ -75,11 +75,13 @@ class RehearsalSaveUiTest extends UiTestBase {
                 By.cssSelector("#rehearsal-form button[type='submit'].primary"));
         submitBtn.click();
 
-        // Wait for toast to appear (confirms save was successful)
-        try { Thread.sleep(1000); } catch (InterruptedException ie) { Thread.currentThread().interrupt(); }
+        // Wait for redirect to rehearsals list (happens after 1.5s delay for toast)
+        wait.until(ExpectedConditions.urlContains("/rehearsals"));
+        // Make sure we're NOT on /rehearsals/new or a detail page
+        wait.until(ExpectedConditions.not(ExpectedConditions.urlContains("/new")));
+        wait.until(ExpectedConditions.not(ExpectedConditions.urlMatches(".*/rehearsals/\\d+.*")));
 
-        // Navigate to rehearsals list to verify the save
-        driver.get(baseUrl() + "/rehearsals");
+        // Wait for the list to load
         wait.until(ExpectedConditions.presenceOfElementLocated(By.id("rehearsals-content")));
 
         // Verify the rehearsal list contains our saved rehearsal
@@ -122,15 +124,17 @@ class RehearsalSaveUiTest extends UiTestBase {
                 By.cssSelector("#rehearsal-form button[type='submit'].primary"));
         submitBtn.click();
 
-        // Wait for redirect to list
-        wait.until(ExpectedConditions.presenceOfElementLocated(By.id("rehearsals-content")));
+        // Wait for toast to appear on the form page (before redirect)
+        // Toast is shown by fetchWithToast after successful save
+        WebDriverWait toastWait = new WebDriverWait(driver, Duration.ofSeconds(5));
+        toastWait.until(ExpectedConditions.presenceOfElementLocated(
+                By.cssSelector("#toast-container .toast, .toast-message, [class*='toast']")));
 
-        // Check for toast message — the toast container should have "Zapisano próbę"
-        // Toast is shown via the toast-container fragment
-        Thread.sleep(500); // Brief wait for toast to appear
-        String pageContent = (String) ((JavascriptExecutor) driver).executeScript(
-                "return document.body.textContent;");
-        assertThat(pageContent)
+        // Verify toast content
+        String toastText = (String) ((JavascriptExecutor) driver).executeScript(
+                "return document.getElementById('toast-container') ? document.getElementById('toast-container').textContent : '';");
+        System.out.println("[TEST] toast-container text: '" + toastText + "'");
+        assertThat(toastText)
                 .as("Toast with success message should appear after saving a rehearsal")
                 .contains("Zapisano próbę");
     }

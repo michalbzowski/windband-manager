@@ -67,11 +67,10 @@
                 console.log('[REHEARSAL] response status:', response.status);
                 return response.json();
             }).then(function(rehearsal) {
-                // Navigate to rehearsal detail page after successful save
-                if (typeof htmx !== 'undefined') {
-                    window.location.href = '/rehearsals/' + rehearsal.id;
-                }
-                // When htmx is not available, just show toast (user can navigate manually)
+                // Redirect to rehearsals list after a brief delay so the toast is visible
+                setTimeout(function() {
+                    window.location.href = '/rehearsals';
+                }, 1500);
             }).catch(function(err) {
                 console.log('[REHEARSAL] fetch error:', err);
             });
