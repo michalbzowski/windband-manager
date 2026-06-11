@@ -53,29 +53,13 @@ public class MemberAttributeController {
 
     @GetMapping
     public String attributesPage(@AuthenticationPrincipal OidcUser oidcUser, @RequestParam(defaultValue = "MEMBER") String type, Model model) {
-        Band band = getActiveBand(oidcUser);
-        if (band == null) {
-            model.addAttribute("type", type);
-            model.addAttribute("attributeDefs", List.of());
-            return "band/inventory-attributes";
-        }
-        model.addAttribute("type", type);
-        // Provide all attribute defs for client-side tabs
-        model.addAttribute("uniformAttributeDefs", inventoryQueryService.getUniformAttributeDefs(band));
-        model.addAttribute("instrumentAttributeDefs", inventoryQueryService.getInstrumentAttributeDefs(band));
-        model.addAttribute("orderAttributeDefs", inventoryQueryService.getOrderAttributeDefs(band));
-        model.addAttribute("awardAttributeDefs", inventoryQueryService.getAwardAttributeDefs(band));
-        model.addAttribute("memberAttributeDefs", memberQueryService.getAttributeDefsForBand(band));
-        model.addAttribute("attributeDefs", switch (type) {
-            case "UNIFORM" -> inventoryQueryService.getUniformAttributeDefs(band);
-            case "INSTRUMENT" -> inventoryQueryService.getInstrumentAttributeDefs(band);
-            case "ORDER" -> inventoryQueryService.getOrderAttributeDefs(band);
-            case "AWARD" -> inventoryQueryService.getAwardAttributeDefs(band);
-            case "MEMBER" -> memberQueryService.getAttributeDefsForBand(band);
-            default -> memberQueryService.getAttributeDefsForBand(band);
-        });
-        return "band/inventory-attributes";
+        // Redirect to the canonical /band/inventory-attributes endpoint.
+        // This ensures backward compatibility for any old links/bookmarks.
+        return "redirect:/band/inventory-attributes?type=" + type;
     }
+
+    // --- Legacy redirect for GET /band/attributes without type param ---
+    // (removed — the redirect above replaces the old inline rendering)
 
     @GetMapping("/list")
     public String attributeList(@AuthenticationPrincipal OidcUser oidcUser, Model model) {
