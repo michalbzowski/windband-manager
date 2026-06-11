@@ -290,6 +290,8 @@
         .tab-btn { padding:0.5rem 1rem; border:none; cursor:pointer; border-radius:0.25rem 0.25rem 0 0; background:transparent; color:var(--pico-muted-color); }
         .tab-btn.primary { background:var(--pico-primary-background); color:var(--pico-primary-color); font-weight:500; }
         .tab-btn.secondary { background:transparent; }
+        .attribute-tab { display: none; }
+        .attribute-tab.active-tab { display: block; }
         .attribute-tab {
             margin-bottom: 1.5rem;
             padding: 0 0 1rem 0;
@@ -303,28 +305,63 @@
         </style>
 
         <script th:inline="javascript">
-        // Highlight the active tab button based on ?type= URL param.
-        // Tab content panels are always visible — user sees all attribute types
-        // at a glance instead of having to click through tabs.
+        // Tab switching: show only the selected tab content
         (function() {
             var params = new URLSearchParams(window.location.search);
-            var activeType = params.get('type');
-            if (activeType) {
-                document.querySelectorAll('.tab-btn').forEach(function(btn) {
-                    btn.classList.remove('primary');
-                    btn.classList.add('secondary');
-                });
-                var activeBtn = document.querySelector('.tab-btn[data-tab="' + activeType.toLowerCase() + 's"]')
-                    || document.querySelector('.tab-btn[data-tab="' + activeType.toLowerCase() + '"]');
-                if (activeBtn) {
-                    activeBtn.classList.add('primary');
-                    activeBtn.classList.remove('secondary');
-                    // Scroll the active tab button into view on small screens
-                    if (window.innerWidth < 576) {
-                        activeBtn.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' });
-                    }
-                }
+            var activeType = params.get('type') || 'UNIFORM';
+            var tabMap = { 'UNIFORM': 'uniforms', 'INSTRUMENT': 'instruments', 'ORDER': 'orders', 'AWARD': 'awards', 'MEMBER': 'members' };
+            var activeTabId = tabMap[activeType] || 'uniforms';
+
+            // Show active tab content, hide others
+            document.querySelectorAll('.attribute-tab').forEach(function(panel) {
+                panel.classList.remove('active-tab');
+                panel.style.display = 'none';
+            });
+            var activePanel = document.getElementById('tab-' + activeTabId);
+            if (activePanel) {
+                activePanel.classList.add('active-tab');
+                activePanel.style.display = 'block';
             }
+
+            // Highlight active tab button
+            document.querySelectorAll('.tab-btn').forEach(function(btn) {
+                btn.classList.remove('primary');
+                btn.classList.add('secondary');
+            });
+            var activeBtn = document.querySelector('.tab-btn[data-tab="' + activeTabId + '"]');
+            if (activeBtn) {
+                activeBtn.classList.add('primary');
+                activeBtn.classList.remove('secondary');
+            }
+
+            // Attach click handlers for tab switching
+            document.querySelectorAll('.tab-btn').forEach(function(btn) {
+                btn.addEventListener('click', function() {
+                    var tabId = this.getAttribute('data-tab');
+                    if (!tabId) return;
+
+                    // Hide all panels
+                    document.querySelectorAll('.attribute-tab').forEach(function(panel) {
+                        panel.classList.remove('active-tab');
+                        panel.style.display = 'none';
+                    });
+
+                    // Show selected panel
+                    var panel = document.getElementById('tab-' + tabId);
+                    if (panel) {
+                        panel.classList.add('active-tab');
+                        panel.style.display = 'block';
+                    }
+
+                    // Update button styles
+                    document.querySelectorAll('.tab-btn').forEach(function(b) {
+                        b.classList.remove('primary');
+                        b.classList.add('secondary');
+                    });
+                    this.classList.add('primary');
+                    this.classList.remove('secondary');
+                });
+            });
         })();
         </script>
     </main>
