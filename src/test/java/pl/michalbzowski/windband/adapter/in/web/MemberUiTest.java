@@ -168,6 +168,136 @@ class MemberUiTest extends UiTestBase {
         }
     }
 
+    /**
+     * Full add → edit flow that changes ALL editable fields at once:
+     * 1. Add a member with known values
+     * 2. Open edit form, verify pre-population
+     * 3. Change EVERY field (name, dob, joinedDate, email, phone) at once
+     * 4. Submit and verify all new values appear on the list
+     * 5. Re-open edit form to verify all fields persisted
+     */
+    @Test
+    void shouldAddMemberAndEditAllFieldsAtOnce() {
+        String unique = UUID.randomUUID().toString().substring(0, 8);
+        // Initial values
+        String firstName = "FullEdit" + unique;
+        String lastName = "Test" + unique;
+        String dob = "1990-01-15";
+        String joinedDate = "2020-03-01";
+        String email = "fulledit" + unique + "@test.pl";
+        String phone = "111222333";
+        // Updated values — all different
+        String updFirstName = "UpdatedFirst" + unique;
+        String updLastName = "UpdatedLast" + unique;
+        String updDob = "1985-12-25";
+        String updJoinedDate = "2019-06-15";
+        String updEmail = "updated" + unique + "@test.pl";
+        String updPhone = "999888777";
+
+        WebDriverWait wait = new WebDriverWait(driver, Duration.ofSeconds(10));
+        Long memberId = null;
+
+        try {
+            // === STEP 1: Add a member via UI ===
+            loginAndNavigateTo("/members");
+            driver.findElement(By.xpath("//button[contains(text(), 'Dodaj muzyka')]")).click();
+            wait.until(ExpectedConditions.presenceOfElementLocated(By.cssSelector("#member-form")));
+
+            fillField("firstName", firstName);
+            fillField("lastName", lastName);
+            fillField("dateOfBirth", dob);
+            fillField("joinedDate", joinedDate);
+            fillField("email", email);
+            fillField("phone", phone);
+            submitPrimaryFormButton();
+
+            // Wait for the list to reload with the new member
+            wait.until(ExpectedConditions.textToBePresentInElementLocated(
+                    By.cssSelector("#members-content"), firstName + " " + lastName));
+
+            String listAfterAdd = driver.findElement(By.cssSelector("#members-content")).getText();
+            assertThat(listAfterAdd)
+                    .as("After add: member should be visible with initial data")
+                    .contains(firstName)
+                    .contains(lastName)
+                    .contains(email)
+                    .contains(phone);
+
+            // Read the new member's id
+            memberId = readMemberIdFromEditButton(wait, firstName + " " + lastName);
+
+            // === STEP 2: Open edit form, verify pre-population ===
+            clickEditForMember(wait, firstName + " " + lastName);
+            wait.until(ExpectedConditions.presenceOfElementLocated(By.cssSelector("#member-form")));
+
+            assertThat(driver.findElement(By.cssSelector("#members-content h2")).getText())
+                    .as("Edit form heading should show 'Edytuj'")
+                    .contains("Edytuj muzyka");
+
+            // Verify all fields are pre-populated with the original values
+            assertThat(driver.findElement(By.cssSelector("input[name='firstName']")).getAttribute("value"))
+                    .as("firstName should be pre-populated").isEqualTo(firstName);
+            assertThat(driver.findElement(By.cssSelector("input[name='lastName']")).getAttribute("value"))
+                    .as("lastName should be pre-populated").isEqualTo(lastName);
+            assertThat(driver.findElement(By.cssSelector("input[name='dateOfBirth']")).getAttribute("value"))
+                    .as("dateOfBirth should be pre-populated").isEqualTo(dob);
+            assertThat(driver.findElement(By.cssSelector("input[name='email']")).getAttribute("value"))
+                    .as("email should be pre-populated").isEqualTo(email);
+            assertThat(driver.findElement(By.cssSelector("input[name='phone']")).getAttribute("value"))
+                    .as("phone should be pre-populated").isEqualTo(phone);
+
+            // === STEP 3: Change ALL fields at once ===
+            clearAndFillField("firstName", updFirstName);
+            clearAndFillField("lastName", updLastName);
+            clearAndFillField("dateOfBirth", updDob);
+            clearAndFillField("joinedDate", updJoinedDate);
+            clearAndFillField("email", updEmail);
+            clearAndFillField("phone", updPhone);
+            submitPrimaryFormButton();
+
+            // === STEP 4: Verify all new values appear on the list ===
+            wait.until(ExpectedConditions.textToBePresentInElementLocated(
+                    By.cssSelector("#members-content"), updFirstName + " " + updLastName));
+
+            String listAfterEdit = driver.findElement(By.cssSelector("#members-content")).getText();
+            assertThat(listAfterEdit)
+                    .as("After full edit: all new values should be visible, old values gone")
+                    .contains(updFirstName)
+                    .contains(updLastName)
+                    .contains(updEmail)
+                    .contains(updPhone)
+                    .doesNotContain(firstName)
+                    .doesNotContain(lastName)
+                    .doesNotContain(email)
+                    .doesNotContain(phone);
+
+            // === STEP 5: Re-open edit form to verify all fields persisted ===
+            clickEditForMember(wait, updFirstName + " " + updLastName);
+            wait.until(ExpectedConditions.presenceOfElementLocated(By.cssSelector("#member-form")));
+
+            assertThat(driver.findElement(By.cssSelector("input[name='firstName']")).getAttribute("value"))
+                    .as("firstName should have updated value").isEqualTo(updFirstName);
+            assertThat(driver.findElement(By.cssSelector("input[name='lastName']")).getAttribute("value"))
+                    .as("lastName should have updated value").isEqualTo(updLastName);
+            assertThat(driver.findElement(By.cssSelector("input[name='dateOfBirth']")).getAttribute("value"))
+                    .as("dateOfBirth should have updated value").isEqualTo(updDob);
+            assertThat(driver.findElement(By.cssSelector("input[name='email']")).getAttribute("value"))
+                    .as("email should have updated value").isEqualTo(updEmail);
+            assertThat(driver.findElement(By.cssSelector("input[name='phone']")).getAttribute("value"))
+                    .as("phone should have updated value").isEqualTo(updPhone);
+
+        } finally {
+            // Cleanup
+            if (memberId != null) {
+                deleteMemberViaApi(memberId);
+            } else {
+                memberRepository.findAllActive().stream()
+                        .filter(m -> updFirstName.equals(m.getFirstName()))
+                        .forEach(m -> deleteMemberViaApi(m.getId()));
+            }
+        }
+    }
+
     private void fillField(String name, String value) {
         driver.findElement(By.cssSelector("input[name='" + name + "']")).sendKeys(value);
     }
