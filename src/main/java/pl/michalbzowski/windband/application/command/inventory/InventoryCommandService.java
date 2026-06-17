@@ -8,6 +8,7 @@ import org.springframework.transaction.annotation.Transactional;
 import pl.michalbzowski.windband.application.command.inventory.InventoryItemNotFoundException;
 import pl.michalbzowski.windband.application.command.inventory.InventoryOrderNotFoundException;
 import pl.michalbzowski.windband.application.command.member.MemberNotFoundException;
+import pl.michalbzowski.windband.adapter.in.security.WindbandOidcUser;
 import pl.michalbzowski.windband.domain.band.Band;
 import pl.michalbzowski.windband.domain.band.BandRepository;
 import pl.michalbzowski.windband.domain.inventory.AwardItem;
@@ -38,6 +39,17 @@ public class InventoryCommandService {
     private pl.michalbzowski.windband.domain.band.Band getDefaultBand() {
         return bandRepository.findById(1L)
                 .orElseThrow(() -> new IllegalStateException("Default band (id=1) not found"));
+    }
+
+    private Band getActiveBand() {
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        if (auth != null && auth.getPrincipal() instanceof WindbandOidcUser wu) {
+            Long teamId = wu.getActiveTeamId();
+            if (teamId != null) {
+                return bandRepository.findById(teamId).orElse(null);
+            }
+        }
+        return null;
     }
 
     private AppUser getCurrentUser() {
@@ -247,7 +259,10 @@ public class InventoryCommandService {
     // === Add existing items directly (without order) ===
 
     public UniformItem addUniformItem(Long memberId, Map<String, String> attributes) {
-        var band = getDefaultBand();
+        var band = getActiveBand();
+        if (band == null) {
+            throw new IllegalStateException("Cannot create uniform: user has no active team");
+        }
         UniformItem item = UniformItem.createOwned(band); // domyślnie własny
         UniformItem saved = inventoryRepository.saveUniformItem(item);
 
@@ -275,7 +290,10 @@ public class InventoryCommandService {
     }
 
     public InstrumentItem addInstrumentItem(Long memberId, Map<String, String> attributes) {
-        var band = getDefaultBand();
+        var band = getActiveBand();
+        if (band == null) {
+            throw new IllegalStateException("Cannot create instrument: user has no active team");
+        }
         InstrumentItem item = InstrumentItem.createOwned(band);
         InstrumentItem saved = inventoryRepository.saveInstrumentItem(item);
 
