@@ -136,6 +136,16 @@ public class InventoryPageController {
         model.addAttribute("uniformAttributeDefsJson", uniformJson);
         model.addAttribute("instrumentAttributeDefsJson", instrumentJson);
         model.addAttribute("awardAttributeDefsJson", awardJson);
+
+        // Debug info for troubleshooting attribute visibility
+        String debugInfo = "teamId=" + teamId + " band=" + band.getId()
+                + " uniformDefs=" + uniformDefs.size()
+                + " instrumentDefs=" + instrumentDefs.size()
+                + " orderDefs=" + orderDefs.size()
+                + " awardDefs=" + awardDefs.size();
+        model.addAttribute("debugInfo", debugInfo);
+        System.out.println("[DEBUG InventoryPageController] " + debugInfo);
+
         return "inventory/list";
     }
 
