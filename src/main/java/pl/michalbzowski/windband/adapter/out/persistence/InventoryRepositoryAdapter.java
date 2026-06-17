@@ -113,6 +113,11 @@ public class InventoryRepositoryAdapter implements InventoryRepository {
     }
 
     @Override
+    public void deleteAssignment(AssetAssignmentHistory assignment) {
+        historyRepo.delete(assignment);
+    }
+
+    @Override
     public List<AssetAssignmentHistory> findHistoryByUniformItem(UniformItem item) {
         return historyRepo.findByUniformItemOrderByAssignedAtDesc(item);
     }

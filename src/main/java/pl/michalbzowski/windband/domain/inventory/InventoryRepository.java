@@ -33,6 +33,7 @@ public interface InventoryRepository {
 
     // Assignment history
     AssetAssignmentHistory saveAssignment(AssetAssignmentHistory assignment);
+    void deleteAssignment(AssetAssignmentHistory assignment);
     List<AssetAssignmentHistory> findHistoryByUniformItem(UniformItem item);
     List<AssetAssignmentHistory> findHistoryByInstrumentItem(InstrumentItem item);
     List<AssetAssignmentHistory> findHistoryByMember(Member member);
