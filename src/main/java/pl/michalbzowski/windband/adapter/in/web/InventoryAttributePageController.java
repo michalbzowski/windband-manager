@@ -145,6 +145,7 @@ public class InventoryAttributePageController {
     @PostMapping
     public ResponseEntity<Void> create(@AuthenticationPrincipal OidcUser oidcUser, @RequestParam String inventoryType, @ModelAttribute AttributeDefForm form) {
         Band band = getActiveBand(oidcUser);
+        System.out.println("[DEBUG InventoryAttributePageController.create] inventoryType=" + inventoryType + " band=" + (band != null ? band.getId() : "null") + " name=" + form.getName());
         if (band == null) {
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(null);
         }

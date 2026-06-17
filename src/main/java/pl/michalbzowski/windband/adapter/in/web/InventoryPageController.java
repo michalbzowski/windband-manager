@@ -62,6 +62,8 @@ public class InventoryPageController {
         Band band = getActiveBand(oidcUser);
         Long teamId = getActiveTeamId(oidcUser);
 
+        System.out.println("[DEBUG InventoryPageController] teamId=" + teamId + " band=" + (band != null ? band.getId() : "null"));
+
         // If no team, show empty inventory
         if (band == null) {
             model.addAttribute("uniformItems", List.of());
@@ -77,6 +79,8 @@ public class InventoryPageController {
         List<InstrumentAttributeDefDto> instrumentDefs = inventoryAttributeQueryService.getInstrumentAttributeDefs(band);
         List<OrderAttributeDefDto> orderDefs = inventoryAttributeQueryService.getOrderAttributeDefs(band);
         List<AwardAttributeDefDto> awardDefs = inventoryAttributeQueryService.getAwardAttributeDefs(band);
+
+        System.out.println("[DEBUG InventoryPageController] uniformDefs=" + uniformDefs.size() + " instrumentDefs=" + instrumentDefs.size());
 
         // Get all items filtered by team
         List<UniformItem> uniformItemsEntities = inventoryQueryService.getAllUniformItemsEntities(teamId);
