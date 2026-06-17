@@ -260,6 +260,7 @@ public class InventoryCommandService {
 
     public UniformItem addUniformItem(Long memberId, Map<String, String> attributes) {
         var band = getActiveBand();
+        System.out.println("[DEBUG addUniformItem] band=" + (band != null ? band.getId() : "null") + " memberId=" + memberId);
         if (band == null) {
             throw new IllegalStateException("Cannot create uniform: user has no active team");
         }

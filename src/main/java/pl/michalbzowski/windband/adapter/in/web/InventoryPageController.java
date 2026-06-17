@@ -162,7 +162,9 @@ public class InventoryPageController {
     public String uniformsFragment(@AuthenticationPrincipal OidcUser oidcUser, Model model) {
         Band band = getActiveBand(oidcUser);
         Long teamId = getActiveTeamId(oidcUser);
-        
+
+        System.out.println("[DEBUG uniformsFragment] teamId=" + teamId + " band=" + (band != null ? band.getId() : "null"));
+
         if (band == null) {
             model.addAttribute("uniformItems", List.of());
             model.addAttribute("uniformAttributeDefs", List.of());

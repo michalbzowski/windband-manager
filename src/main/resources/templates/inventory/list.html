@@ -794,7 +794,7 @@
         function hideUniformForm() { document.getElementById('uniform-form').style.display = 'none'; }
         function submitUniform() {
             var memberId = document.getElementById('uni-member').value;
-            
+
             // Collect attribute values
             var attributes = {};
             var attrInputs = document.querySelectorAll('#uniform-attributes input[id^="uni-attr-"], #uniform-attributes select[id^="uni-attr-"]');
@@ -806,10 +806,16 @@
                     attributes[attrId] = input.value;
                 }
             });
-            
+
+            var payload = {memberId:memberId?parseInt(memberId):null, attributes:attributes};
+            console.log('[DEBUG submitUniform] payload:', JSON.stringify(payload));
+
             fetchWithToast('/api/inventory/uniforms', { toastMessage: 'Dodano uniform', method:'POST', headers:{'Content-Type':'application/json'},
-                body: JSON.stringify({memberId:memberId?parseInt(memberId):null, attributes:attributes})
-            }).then(function(r) { if(r.ok) { hideUniformForm(); refreshTab('uniforms'); } });
+                body: JSON.stringify(payload)
+            }).then(function(r) {
+                console.log('[DEBUG submitUniform] response status:', r.status);
+                if(r.ok) { hideUniformForm(); refreshTab('uniforms'); }
+            }).catch(function(err) { console.error('[DEBUG submitUniform] error:', err); });
         }
 
         // === Instrument form ===
@@ -947,15 +953,22 @@
                 instruments: '/inventory/instruments/fragment',
                 awards: '/inventory/awards/fragment'
             };
+            console.log('[DEBUG refreshTab] fetching:', urls[tab]);
             fetchWithToast(urls[tab])
             .then(function(r) { return r.text(); })
             .then(function(html) {
+                console.log('[DEBUG refreshTab] response length:', html.length, 'preview:', html.substring(0, 200));
                 var targetId = tab === 'orders' ? 'orders-content' : (tab === 'uniforms' ? 'uniforms-content' : (tab === 'awards' ? 'awards-content' : 'instruments-content'));
                 var target = document.getElementById(targetId);
+                if (!target) {
+                    console.error('[DEBUG refreshTab] target not found:', targetId);
+                    return;
+                }
                 var wrapper = document.createElement('div');
                 wrapper.innerHTML = html;
                 var newContent = wrapper.firstElementChild;
                 target.replaceWith(newContent);
+                console.log('[DEBUG refreshTab] replaced:', targetId);
             })
             .catch(function(err) { console.error('Refresh error:', err); });
         }
