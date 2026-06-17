@@ -239,7 +239,9 @@ class MemberUiTest extends UiTestBase {
                     .as("firstName should be pre-populated").isEqualTo(firstName);
             assertThat(driver.findElement(By.cssSelector("input[name='lastName']")).getAttribute("value"))
                     .as("lastName should be pre-populated").isEqualTo(lastName);
-            assertThat(driver.findElement(By.cssSelector("input[name='dateOfBirth']")).getAttribute("value"))
+            String dobValue = (String) ((JavascriptExecutor) driver)
+                    .executeScript("return document.querySelector(\"input[name='dateOfBirth']\").value;");
+            assertThat(dobValue)
                     .as("dateOfBirth should be pre-populated").isEqualTo(dob);
             assertThat(driver.findElement(By.cssSelector("input[name='email']")).getAttribute("value"))
                     .as("email should be pre-populated").isEqualTo(email);
@@ -279,7 +281,9 @@ class MemberUiTest extends UiTestBase {
                     .as("firstName should have updated value").isEqualTo(updFirstName);
             assertThat(driver.findElement(By.cssSelector("input[name='lastName']")).getAttribute("value"))
                     .as("lastName should have updated value").isEqualTo(updLastName);
-            assertThat(driver.findElement(By.cssSelector("input[name='dateOfBirth']")).getAttribute("value"))
+            String updDobValue = (String) ((JavascriptExecutor) driver)
+                    .executeScript("return document.querySelector(\"input[name='dateOfBirth']\").value;");
+            assertThat(updDobValue)
                     .as("dateOfBirth should have updated value").isEqualTo(updDob);
             assertThat(driver.findElement(By.cssSelector("input[name='email']")).getAttribute("value"))
                     .as("email should have updated value").isEqualTo(updEmail);
@@ -299,13 +303,24 @@ class MemberUiTest extends UiTestBase {
     }
 
     private void fillField(String name, String value) {
-        driver.findElement(By.cssSelector("input[name='" + name + "']")).sendKeys(value);
+        WebElement input = driver.findElement(By.cssSelector("input[name='" + name + "']"));
+        if ("date".equals(input.getAttribute("type"))) {
+            ((JavascriptExecutor) driver).executeScript(
+                    "arguments[0].value = '" + value + "';", input);
+        } else {
+            input.sendKeys(value);
+        }
     }
 
     private void clearAndFillField(String name, String value) {
         WebElement input = driver.findElement(By.cssSelector("input[name='" + name + "']"));
         input.clear();
-        input.sendKeys(value);
+        if ("date".equals(input.getAttribute("type"))) {
+            ((JavascriptExecutor) driver).executeScript(
+                    "arguments[0].value = '" + value + "';", input);
+        } else {
+            input.sendKeys(value);
+        }
     }
 
     private void submitPrimaryFormButton() {
