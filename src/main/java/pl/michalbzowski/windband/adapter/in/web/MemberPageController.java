@@ -11,6 +11,7 @@ import pl.michalbzowski.windband.application.dto.MemberDto;
 import pl.michalbzowski.windband.application.query.band.BandQueryService;
 import pl.michalbzowski.windband.application.query.band.MemberAttributeQueryService;
 import pl.michalbzowski.windband.application.query.instrument.InstrumentQueryService;
+import pl.michalbzowski.windband.application.query.inventory.InventoryQueryService;
 import pl.michalbzowski.windband.application.query.member.MemberQueryService;
 import pl.michalbzowski.windband.domain.band.Band;
 import pl.michalbzowski.windband.domain.member.Member;
@@ -28,6 +29,7 @@ public class MemberPageController {
     private final InstrumentQueryService instrumentQueryService;
     private final BandQueryService bandQueryService;
     private final MemberAttributeQueryService attributeQueryService;
+    private final InventoryQueryService inventoryQueryService;
 
     private Long getActiveTeamId(OidcUser oidcUser) {
         if (oidcUser instanceof WindbandOidcUser wu) {
@@ -81,6 +83,20 @@ public class MemberPageController {
         Member member = memberQueryService.getMemberEntityById(id);
         model.addAttribute("attributeValues", attributeQueryService.getAttributeValuesForMember(member));
         return "members/form";
+    }
+
+    @GetMapping("/{id}/detail")
+    public String memberDetail(@PathVariable Long id, @AuthenticationPrincipal OidcUser oidcUser, Model model) {
+        Long teamId = getActiveTeamId(oidcUser);
+        if (teamId == null) {
+            return "redirect:/register";
+        }
+        MemberDto dto = memberQueryService.getMemberById(id);
+        model.addAttribute("member", dto);
+        model.addAttribute("uniformItems", inventoryQueryService.getUniformItemsByMember(id, teamId));
+        model.addAttribute("instrumentItems", inventoryQueryService.getInstrumentItemsByMember(id, teamId));
+        model.addAttribute("awardItems", inventoryQueryService.getAwardItemsByMember(id, teamId));
+        return "members/detail";
     }
 
     private MemberDto emptyMemberDto() {

@@ -238,6 +238,33 @@ public class InventoryQueryService {
         return awardQueryService.getAwardItemsForBand(teamId);
     }
 
+    // === Items by member ===
+
+    public List<UniformItem> getUniformItemsByMember(Long memberId, Long teamId) {
+        var member = memberRepository.findById(memberId)
+                .orElseThrow(() -> new MemberNotFoundException(memberId));
+        return inventoryRepository.findUniformItemsByMember(member).stream()
+                .filter(item -> item.getBand().getId().equals(teamId))
+                .toList();
+    }
+
+    public List<InstrumentItem> getInstrumentItemsByMember(Long memberId, Long teamId) {
+        var member = memberRepository.findById(memberId)
+                .orElseThrow(() -> new MemberNotFoundException(memberId));
+        return inventoryRepository.findInstrumentItemsByMember(member).stream()
+                .filter(item -> item.getBand().getId().equals(teamId))
+                .toList();
+    }
+
+    public List<AwardItem> getAwardItemsByMember(Long memberId, Long teamId) {
+        var member = memberRepository.findById(memberId)
+                .orElseThrow(() -> new MemberNotFoundException(memberId));
+        return awardQueryService.getAwardItemsForBand(teamId).stream()
+                .filter(item -> item.getAssignedMember() != null
+                        && item.getAssignedMember().getId().equals(memberId))
+                .toList();
+    }
+
     private InventoryItemDto toAwardItemDto(AwardItem item) {
         return new InventoryItemDto(
                 item.getId(), item.getName(), "AWARD",

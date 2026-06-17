@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="pl" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/layout :: head(${member.firstName} + ' ' + ${member.lastName})}"></head>
+<body>
+<nav th:replace="~{fragments/layout :: nav}"></nav>
+
+<main class="container" id="content">
+    <div id="member-detail-content">
+        <!-- Header with back link and edit button -->
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem;">
+            <div>
+                <a th:href="@{/members}" hx-target="#content" hx-swap="innerHTML transition:true"
+                   class="secondary outline" style="padding:0.3rem 0.6rem; font-size:0.85rem;">← Powrót do listy</a>
+            </div>
+            <div style="display:flex; gap:0.5rem;">
+                <button class="outline small"
+                        th:hx-get="@{/members/{id}/edit(id=${member.id})}"
+                        hx-target="#content" hx-swap="innerHTML transition:true">✏️ Edytuj</button>
+            </div>
+        </div>
+
+        <!-- Member basic info card -->
+        <article style="margin-bottom:1.5rem;">
+            <header>
+                <h2 th:text="${member.firstName} + ' ' + ${member.lastName}">Jan Kowalski</h2>
+            </header>
+            <div class="grid" style="grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap:1rem;">
+                <div>
+                    <small style="color:var(--pico-muted-color);">Data urodzenia</small>
+                    <p style="margin:0;" th:text="${#temporals.format(member.dateOfBirth, 'dd-MM-yyyy')}">01-01-1990</p>
+                </div>
+                <div>
+                    <small style="color:var(--pico-muted-color);">Wiek</small>
+                    <p style="margin:0;" th:text="${member.age}">35</p>
+                </div>
+                <div>
+                    <small style="color:var(--pico-muted-color);">Instrument</small>
+                    <p style="margin:0;" th:text="${member.instrumentName} ?: 'Brak'">Trąbka</p>
+                </div>
+                <div>
+                    <small style="color:var(--pico-muted-color);">Data dołączenia</small>
+                    <p style="margin:0;" th:text="${member.joinedDate} ? ${#temporals.format(member.joinedDate, 'dd-MM-yyyy')} : '-'">01-01-2024</p>
+                </div>
+                <div>
+                    <small style="color:var(--pico-muted-color);">E-mail</small>
+                    <p style="margin:0;" th:text="${member.email} ?: '-'">jan@email.pl</p>
+                </div>
+                <div>
+                    <small style="color:var(--pico-muted-color);">Telefon</small>
+                    <p style="margin:0;" th:text="${member.phone} ?: '-'">123456789</p>
+                </div>
+                <div>
+                    <small style="color:var(--pico-muted-color);">Status</small>
+                    <p style="margin:0;">
+                        <span th:if="${member.active}" style="color:green;">● Aktywny</span>
+                        <span th:unless="${member.active}" style="color:red;">● Nieaktywny</span>
+                    </p>
+                </div>
+                <div th:if="${member.resignedDate}">
+                    <small style="color:var(--pico-muted-color);">Data rezygnacji</small>
+                    <p style="margin:0;" th:text="${#temporals.format(member.resignedDate, 'dd-MM-yyyy')}">01-01-2025</p>
+                </div>
+            </div>
+        </article>
+
+        <!-- Assigned inventory section -->
+        <h3>📦 Przypisane rzeczy z inwentarza</h3>
+
+        <!-- Uniform items -->
+        <article style="margin-bottom:1rem;">
+            <header>
+                <h4>👔 Elementy stroju</h4>
+            </header>
+            <div th:if="${#lists.isEmpty(uniformItems)}">
+                <p style="color:var(--pico-muted-color);">Brak przypisanych elementów stroju.</p>
+            </div>
+            <table th:unless="${#lists.isEmpty(uniformItems)}" role="grid">
+                <thead>
+                    <tr>
+                        <th>Nazwa</th>
+                        <th>Opis</th>
+                        <th>Status</th>
+                        <th>Własność</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr th:each="item : ${uniformItems}">
+                        <td th:text="${item.name}">Spodnie</td>
+                        <td th:text="${item.description} ?: '-'">Czarne spodnie</td>
+                        <td>
+                            <span th:text="${item.lifecycleStatus}" class="badge">AVAILABLE</span>
+                        </td>
+                        <td th:text="${item.ownershipStatus}">OWNED</td>
+                    </tr>
+                </tbody>
+            </table>
+        </article>
+
+        <!-- Instrument items -->
+        <article style="margin-bottom:1rem;">
+            <header>
+                <h4>🎺 Instrumenty</h4>
+            </header>
+            <div th:if="${#lists.isEmpty(instrumentItems)}">
+                <p style="color:var(--pico-muted-color);">Brak przypisanych instrumentów z inwentarza.</p>
+            </div>
+            <table th:unless="${#lists.isEmpty(instrumentItems)}" role="grid">
+                <thead>
+                    <tr>
+                        <th>Nazwa</th>
+                        <th>Marka</th>
+                        <th>Nr seryjny</th>
+                        <th>Status</th>
+                        <th>Własność</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr th:each="item : ${instrumentItems}">
+                        <td th:text="${item.name}">Trąbka</td>
+                        <td th:text="${item.brand} ?: '-'">Yamaha</td>
+                        <td th:text="${item.serialNumber} ?: '-'">SN12345</td>
+                        <td>
+                            <span th:text="${item.lifecycleStatus}" class="badge">AVAILABLE</span>
+                        </td>
+                        <td th:text="${item.ownershipStatus}">OWNED</td>
+                    </tr>
+                </tbody>
+            </table>
+        </article>
+
+        <!-- Award items -->
+        <article style="margin-bottom:1rem;">
+            <header>
+                <h4>🏆 Nagrody / Odznaki</h4>
+            </header>
+            <div th:if="${#lists.isEmpty(awardItems)}">
+                <p style="color:var(--pico-muted-color);">Brak przypisanych nagród/odznak.</p>
+            </div>
+            <table th:unless="${#lists.isEmpty(awardItems)}" role="grid">
+                <thead>
+                    <tr>
+                        <th>Nazwa</th>
+                        <th>Opis</th>
+                        <th>Data przyznania</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr th:each="item : ${awardItems}">
+                        <td th:text="${item.name}">Odznaka</td>
+                        <td th:text="${item.description} ?: '-'">Odznaka honorowa</td>
+                        <td th:text="${item.dateAwarded} ? ${#temporals.format(item.dateAwarded, 'dd-MM-yyyy')} : '-'">01-01-2024</td>
+                    </tr>
+                </tbody>
+            </table>
+        </article>
+    </div>
+</main>
+
+<footer th:replace="~{fragments/layout :: footer}"></footer>
+<div th:insert="~{fragments/layout :: toast-container}"></div>
+<div th:insert="~{fragments/layout :: footer-scripts}"></div>
+</body>
+</html>

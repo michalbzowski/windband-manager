@@ -34,7 +34,10 @@
                     <tbody>
                         <tr th:each="m : ${members}">
                             <td data-label="Imię i nazwisko">
-                                <strong th:text="${m.firstName} + ' ' + ${m.lastName}">Jan Kowalski</strong>
+                                <a th:href="@{/members/{id}/detail(id=${m.id})}"
+                                   hx-target="#content" hx-swap="innerHTML transition:true"
+                                   style="text-decoration:none; color:inherit; font-weight:600;"
+                                   th:text="${m.firstName} + ' ' + ${m.lastName}">Jan Kowalski</a>
                             </td>
                             <td data-label="Wiek" th:text="${m.age}">35</td>
                             <td data-label="Instrument">
@@ -55,6 +58,9 @@
                                 <small th:if="${m.resignedDate}" th:text="${#temporals.format(m.resignedDate, 'dd-MM-yyyy')}">01-01-2025</small>
                             </td>
                             <td data-label="Akcje">
+                                <button class="outline small"
+                                        th:hx-get="@{/members/{id}/detail(id=${m.id})}"
+                                        hx-target="#content" hx-swap="innerHTML transition:true">Szczegóły</button>
                                 <button class="outline small"
                                         th:hx-get="@{/members/{id}/edit(id=${m.id})}"
                                         hx-target="#members-content" hx-swap="innerHTML transition:true">Edytuj</button>
