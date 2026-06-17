@@ -85,10 +85,14 @@ public class Member {
     }
 
     public void changeInstrument(Instrument newInstrument) {
+        // Check if the member already has this exact instrument assigned
+        boolean alreadyAssigned = instruments.stream()
+                .anyMatch(mi -> mi.getInstrument().equals(newInstrument));
+        if (alreadyAssigned) {
+            // Nothing to change — keep existing assignment to avoid duplicate key
+            return;
+        }
         // Remove all existing instrument assignments (orphanRemoval handles DB delete)
-        instruments.removeIf(mi -> mi.getInstrument().equals(newInstrument));
-        // Also remove any other existing instruments
-        List<MemberInstrument> existing = new ArrayList<>(instruments);
         instruments.clear();
         instruments.add(new MemberInstrument(this, newInstrument, true));
     }
