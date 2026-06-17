@@ -17,7 +17,7 @@ public class UniformAttributeDefRepositoryAdapter implements UniformAttributeDef
 
     @Override
     public List<UniformAttributeDef> findByBand(Band band) {
-        return springDataRepo.findByBandOrderByName(band);
+        return springDataRepo.findByBandAndActiveTrueOrderByName(band);
     }
 
     @Override

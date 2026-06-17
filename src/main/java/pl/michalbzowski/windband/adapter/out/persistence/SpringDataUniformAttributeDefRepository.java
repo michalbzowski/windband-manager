@@ -15,6 +15,7 @@ import java.util.Optional;
  * for the full explanation.
  */
 public interface SpringDataUniformAttributeDefRepository extends JpaRepository<UniformAttributeDef, Long> {
+    List<UniformAttributeDef> findByBandAndActiveTrueOrderByName(Band band);
     List<UniformAttributeDef> findByBandOrderByName(Band band);
     Optional<UniformAttributeDef> findByBandAndName(Band band, String name);
 }
