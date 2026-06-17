@@ -6,12 +6,15 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.security.oauth2.core.oidc.user.OidcUser;
 import org.springframework.web.bind.annotation.*;
 import pl.michalbzowski.windband.application.command.band.MemberAttributeCommandService;
 import pl.michalbzowski.windband.application.command.inventory.*;
 import pl.michalbzowski.windband.application.query.band.BandQueryService;
 import pl.michalbzowski.windband.application.query.band.MemberAttributeQueryService;
 import pl.michalbzowski.windband.application.query.inventory.InventoryAttributeQueryService;
+import pl.michalbzowski.windband.adapter.in.security.WindbandOidcUser;
 import pl.michalbzowski.windband.domain.band.Band;
 
 import java.util.List;
@@ -34,20 +37,36 @@ public class InventoryAttributePageController {
     private final MemberAttributeQueryService memberQueryService;
     private final BandQueryService bandQueryService;
 
-    private Band getDefaultBand() {
-        return bandQueryService.getDefaultBand();
+    private Long getActiveTeamId(OidcUser oidcUser) {
+        if (oidcUser instanceof WindbandOidcUser wu) {
+            return wu.getActiveTeamId();
+        }
+        return null;
+    }
+
+    private Band getActiveBand(OidcUser oidcUser) {
+        Long teamId = getActiveTeamId(oidcUser);
+        if (teamId == null) {
+            return null;
+        }
+        return bandQueryService.getBandById(teamId);
     }
 
     // === List all attribute defs by type ===
 
     @GetMapping
-    public String listPage(@RequestParam(defaultValue = "UNIFORM") String type, Model model) {
-        Band band = getDefaultBand();
+    public String listPage(@AuthenticationPrincipal OidcUser oidcUser, @RequestParam(defaultValue = "UNIFORM") String type, Model model) {
+        Band band = getActiveBand(oidcUser);
         model.addAttribute("type", type);
-        // Provide each list under its own name so the inventory-attributes.html template
-        // (which iterates per-type: ${uniformAttributeDefs}, ${instrumentAttributeDefs},
-        // ${orderAttributeDefs}, ${awardAttributeDefs}, ${memberAttributeDefs}) can render.
-        // Also keep `attributeDefs` for backwards compatibility with the legacy band/attribute-defs.html.
+        if (band == null) {
+            model.addAttribute("uniformAttributeDefs", List.of());
+            model.addAttribute("instrumentAttributeDefs", List.of());
+            model.addAttribute("orderAttributeDefs", List.of());
+            model.addAttribute("awardAttributeDefs", List.of());
+            model.addAttribute("memberAttributeDefs", List.of());
+            model.addAttribute("attributeDefs", List.of());
+            return "band/inventory-attributes";
+        }
         model.addAttribute("uniformAttributeDefs", queryService.getUniformAttributeDefs(band));
         model.addAttribute("instrumentAttributeDefs", queryService.getInstrumentAttributeDefs(band));
         model.addAttribute("orderAttributeDefs", queryService.getOrderAttributeDefs(band));
@@ -66,22 +85,22 @@ public class InventoryAttributePageController {
     // === New form ===
 
     @GetMapping("/new")
-    public String newForm(@RequestParam String type, Model model) {
-        Band band = getDefaultBand();
+    public String newForm(@AuthenticationPrincipal OidcUser oidcUser, @RequestParam String type, Model model) {
+        Band band = getActiveBand(oidcUser);
         model.addAttribute("type", type);
         model.addAttribute("attributeDef", new AttributeDefForm("", "BOOLEAN", false, false, 0, null, null, null));
         model.addAttribute("attributeDefId", null);
-        model.addAttribute("availableAttributes", getAttributeDefsList(type, band));
+        model.addAttribute("availableAttributes", band != null ? getAttributeDefsList(type, band) : List.of());
         return "band/inventory-attribute-form";
     }
 
     // === Edit form ===
 
     @GetMapping("/{id}/edit")
-    public String editForm(@PathVariable Long id, @RequestParam String type, Model model) {
-        Band band = getDefaultBand();
+    public String editForm(@PathVariable Long id, @AuthenticationPrincipal OidcUser oidcUser, @RequestParam String type, Model model) {
+        Band band = getActiveBand(oidcUser);
         model.addAttribute("type", type);
-        model.addAttribute("availableAttributes", getAttributeDefsList(type, band));
+        model.addAttribute("availableAttributes", band != null ? getAttributeDefsList(type, band) : List.of());
         AttributeDefForm form = switch (type) {
             case "UNIFORM" -> {
                 var def = uniformCommandService.getAttributeDefById(id);
@@ -124,8 +143,11 @@ public class InventoryAttributePageController {
     // === Create ===
 
     @PostMapping
-    public ResponseEntity<Void> create(@RequestParam String inventoryType, @ModelAttribute AttributeDefForm form) {
-        Band band = getDefaultBand();
+    public ResponseEntity<Void> create(@AuthenticationPrincipal OidcUser oidcUser, @RequestParam String inventoryType, @ModelAttribute AttributeDefForm form) {
+        Band band = getActiveBand(oidcUser);
+        if (band == null) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(null);
+        }
         try {
             switch (inventoryType) {
                 case "UNIFORM" -> uniformCommandService.createAttributeDef(band, form.getName(), form.getAttributeType(), form.isRequired(), form.isDisplayInList(), form.getDisplayOrder(), form.getOptions(), form.getDependsOnAttributeId(), form.getDependsOnValue());
