@@ -5,7 +5,7 @@
 <nav th:replace="~{fragments/layout :: nav}"></nav>
 
 <main class="container" id="content">
-    <div id="member-detail-content">
+    <div id="member-detail-content" th:fragment="member-detail-content">
         <!-- Header with back link and edit button -->
         <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem;">
             <div>

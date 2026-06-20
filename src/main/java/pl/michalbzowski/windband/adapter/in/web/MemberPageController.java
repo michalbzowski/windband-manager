@@ -96,7 +96,7 @@ public class MemberPageController {
         model.addAttribute("uniformItems", inventoryQueryService.getUniformItemsByMember(id, teamId));
         model.addAttribute("instrumentItems", inventoryQueryService.getInstrumentItemsByMember(id, teamId));
         model.addAttribute("awardItems", inventoryQueryService.getAwardItemsByMember(id, teamId));
-        return "members/detail";
+        return "members/detail :: member-detail-content";
     }
 
     private MemberDto emptyMemberDto() {
