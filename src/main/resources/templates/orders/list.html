@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="pl" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/layout :: head('Zamówienia')}"></head>
+<body>
+<nav th:replace="~{fragments/layout :: nav}"></nav>
+
+<main class="container" id="content">
+    <div id="orders-content">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem;">
+            <h2>📋 Zamówienia</h2>
+            <button class="primary small" onclick="showOrderForm()">+ Nowe zamówienie</button>
+        </div>
+
+        <!-- New order form (hidden by default) -->
+        <div id="order-form" style="display:none; margin-bottom:1rem;">
+            <article>
+                <h4>Nowe zamówienie</h4>
+                <div style="display:flex; gap:0.5rem; flex-wrap:wrap; align-items:flex-end;">
+                    <div>
+                        <label for="order-member">Członek</label>
+                        <select id="order-member">
+                            <option value="">Wybierz...</option>
+                            <option th:each="m : ${members}" th:value="${m.id}"
+                                    th:text="${m.firstName} + ' ' + ${m.lastName}">Jan Kowalski</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label for="order-type">Typ</label>
+                        <select id="order-type">
+                            <option value="UNIFORM">Stroj</option>
+                            <option value="INSTRUMENT">Instrument</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- Dynamic order attributes -->
+                <div id="order-attributes" style="margin-top:1rem;">
+                    <small style="color:var(--pico-muted-color);">Ustawienia atrybutów dostępne po wybraniu typu.</small>
+                </div>
+
+                <div style="display:flex; gap:0.5rem; margin-top:1rem;">
+                    <button class="primary small" onclick="submitOrder()">Złóż zamówienie</button>
+                    <button class="secondary small" onclick="hideOrderForm()">Anuluj</button>
+                </div>
+            </article>
+        </div>
+
+        <!-- Orders table -->
+        <table th:if="${not #lists.isEmpty(orders)}" role="grid">
+            <thead>
+                <tr>
+                    <th>#</th>
+                    <th>Członek</th>
+                    <th>Typ</th>
+                    <th>Status</th>
+                    <th>Data złożenia</th>
+                    <th>Akcje</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr th:each="order : ${orders}">
+                    <td th:text="${order.id}">1</td>
+                    <td th:text="${order.requesterName} ?: '-'">Jan Kowalski</td>
+                    <td th:text="${order.orderType}">UNIFORM</td>
+                    <td>
+                        <span class="badge" th:text="${{order.status}}"
+                              th:classappend="${order.status.name() == 'DELIVERED'} ? 'success'
+                                           : ${order.status.name() == 'CANCELLED'} ? 'danger'
+                                           : 'info'">SUBMITTED</span>
+                    </td>
+                    <td th:text="${order.createdAt}">2025-01-01</td>
+                    <td>
+                        <button class="outline small"
+                                th:onclick="'showOrderDetail(' + ${order.id} + ')'">Szczegóły</button>
+                    </td>
+                </tr>
+            </tbody>
+        </table>
+
+        <p th:if="${#lists.isEmpty(orders)}" style="color:var(--pico-muted-color);">
+            Brak zamówień.</p>
+    </div>
+</main>
+
+<footer th:replace="~{fragments/layout :: footer}"></footer>
+<div th:insert="~{fragments/layout :: toast-container}"></div>
+<div th:insert="~{fragments/layout :: footer-scripts}"></div>
+</body>
+</html>
