@@ -10,6 +10,8 @@ import org.springframework.web.bind.annotation.*;
 import pl.michalbzowski.windband.adapter.in.security.WindbandOidcUser;
 import pl.michalbzowski.windband.application.command.inventory.InventoryCommandService;
 import pl.michalbzowski.windband.application.query.inventory.InventoryQueryService;
+import pl.michalbzowski.windband.application.query.band.BandQueryService;
+import pl.michalbzowski.windband.domain.band.Band;
 import pl.michalbzowski.windband.domain.inventory.OrderStatus;
 import pl.michalbzowski.windband.domain.inventory.OwnershipStatus;
 
@@ -22,10 +24,14 @@ public class InventoryController {
 
     private final InventoryCommandService commandService;
     private final InventoryQueryService queryService;
+    private final BandQueryService bandQueryService;
 
-    private Long resolveActiveTeamId(OidcUser oidcUser) {
+    private Band resolveActiveBand(OidcUser oidcUser) {
         if (oidcUser instanceof WindbandOidcUser wu) {
-            return wu.getActiveTeamId();
+            Long teamId = wu.getActiveTeamId();
+            if (teamId != null) {
+                return bandQueryService.getBandById(teamId);
+            }
         }
         return null;
     }
@@ -94,14 +100,18 @@ public class InventoryController {
     }
 
     @PostMapping("/uniforms")
-    public ResponseEntity<?> addUniformItem(@RequestBody AddItemRequest request) {
-        var item = commandService.addUniformItem(request.getMemberId(), request.getAttributes());
+    public ResponseEntity<?> addUniformItem(@AuthenticationPrincipal OidcUser oidcUser,
+                                             @RequestBody AddItemRequest request) {
+        Band band = resolveActiveBand(oidcUser);
+        var item = commandService.addUniformItem(request.getMemberId(), request.getAttributes(), band);
         return ResponseEntity.status(HttpStatus.CREATED).body(item);
     }
 
     @PostMapping("/instruments")
-    public ResponseEntity<?> addInstrumentItem(@RequestBody AddInstrumentRequest request) {
-        var item = commandService.addInstrumentItem(request.getMemberId(), request.getAttributes());
+    public ResponseEntity<?> addInstrumentItem(@AuthenticationPrincipal OidcUser oidcUser,
+                                                @RequestBody AddInstrumentRequest request) {
+        Band band = resolveActiveBand(oidcUser);
+        var item = commandService.addInstrumentItem(request.getMemberId(), request.getAttributes(), band);
         return ResponseEntity.status(HttpStatus.CREATED).body(item);
     }
 
@@ -217,30 +227,30 @@ public class InventoryController {
 
     @GetMapping("/uniforms/{id}/history")
     public ResponseEntity<?> getUniformHistory(@PathVariable Long id, @AuthenticationPrincipal OidcUser oidcUser) {
-        Long teamId = resolveActiveTeamId(oidcUser);
-        if (teamId == null) return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
-        return ResponseEntity.ok(queryService.getHistoryByUniformItem(id, teamId));
+        Band band = resolveActiveBand(oidcUser);
+        if (band == null) return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+        return ResponseEntity.ok(queryService.getHistoryByUniformItem(id, band.getId()));
     }
 
     @GetMapping("/instruments/{id}/history")
     public ResponseEntity<?> getInstrumentHistory(@PathVariable Long id, @AuthenticationPrincipal OidcUser oidcUser) {
-        Long teamId = resolveActiveTeamId(oidcUser);
-        if (teamId == null) return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
-        return ResponseEntity.ok(queryService.getHistoryByInstrumentItem(id, teamId));
+        Band band = resolveActiveBand(oidcUser);
+        if (band == null) return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+        return ResponseEntity.ok(queryService.getHistoryByInstrumentItem(id, band.getId()));
     }
 
     @GetMapping("/members/{memberId}/assignments")
     public ResponseEntity<?> getMemberAssignments(@PathVariable Long memberId, @AuthenticationPrincipal OidcUser oidcUser) {
-        Long teamId = resolveActiveTeamId(oidcUser);
-        if (teamId == null) return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
-        return ResponseEntity.ok(queryService.getHistoryByMember(memberId, teamId));
+        Band band = resolveActiveBand(oidcUser);
+        if (band == null) return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+        return ResponseEntity.ok(queryService.getHistoryByMember(memberId, band.getId()));
     }
 
     @GetMapping("/assignments/active")
     public ResponseEntity<?> getActiveAssignments(@AuthenticationPrincipal OidcUser oidcUser) {
-        Long teamId = resolveActiveTeamId(oidcUser);
-        if (teamId == null) return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
-        return ResponseEntity.ok(queryService.getActiveAssignments(teamId));
+        Band band = resolveActiveBand(oidcUser);
+        if (band == null) return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+        return ResponseEntity.ok(queryService.getActiveAssignments(band.getId()));
     }
 
     // === Request DTOs ===

@@ -8,7 +8,6 @@ import org.springframework.transaction.annotation.Transactional;
 import pl.michalbzowski.windband.application.command.inventory.InventoryItemNotFoundException;
 import pl.michalbzowski.windband.application.command.inventory.InventoryOrderNotFoundException;
 import pl.michalbzowski.windband.application.command.member.MemberNotFoundException;
-import pl.michalbzowski.windband.adapter.in.security.WindbandOidcUser;
 import pl.michalbzowski.windband.domain.band.Band;
 import pl.michalbzowski.windband.domain.band.BandRepository;
 import pl.michalbzowski.windband.domain.inventory.AwardItem;
@@ -39,17 +38,6 @@ public class InventoryCommandService {
     private pl.michalbzowski.windband.domain.band.Band getDefaultBand() {
         return bandRepository.findById(1L)
                 .orElseThrow(() -> new IllegalStateException("Default band (id=1) not found"));
-    }
-
-    private Band getActiveBand() {
-        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
-        if (auth != null && auth.getPrincipal() instanceof WindbandOidcUser wu) {
-            Long teamId = wu.getActiveTeamId();
-            if (teamId != null) {
-                return bandRepository.findById(teamId).orElse(null);
-            }
-        }
-        return null;
     }
 
     private AppUser getCurrentUser() {
@@ -129,10 +117,11 @@ public class InventoryCommandService {
         
         // Auto-copy to inventory with attributes
         Map<String, String> attributes = attributesStringToMap(order.getAttributesJson());
+        Band band = order.getRequester().getBand();
         if (order.getOrderType() == InventoryOrderType.UNIFORM) {
-            addUniformItem(order.getRequester().getId(), attributes);
+            addUniformItem(order.getRequester().getId(), attributes, band);
         } else if (order.getOrderType() == InventoryOrderType.INSTRUMENT) {
-            addInstrumentItem(order.getRequester().getId(), attributes);
+            addInstrumentItem(order.getRequester().getId(), attributes, band);
         }
     }
 
@@ -258,11 +247,10 @@ public class InventoryCommandService {
 
     // === Add existing items directly (without order) ===
 
-    public UniformItem addUniformItem(Long memberId, Map<String, String> attributes) {
-        var band = getActiveBand();
+    public UniformItem addUniformItem(Long memberId, Map<String, String> attributes, Band band) {
         System.out.println("[DEBUG addUniformItem] band=" + (band != null ? band.getId() : "null") + " memberId=" + memberId);
         if (band == null) {
-            throw new IllegalStateException("Cannot create uniform: user has no active team");
+            throw new IllegalStateException("Cannot create uniform: band is null");
         }
         UniformItem item = UniformItem.createOwned(band); // domyślnie własny
         UniformItem saved = inventoryRepository.saveUniformItem(item);
@@ -290,10 +278,9 @@ public class InventoryCommandService {
         return saved;
     }
 
-    public InstrumentItem addInstrumentItem(Long memberId, Map<String, String> attributes) {
-        var band = getActiveBand();
+    public InstrumentItem addInstrumentItem(Long memberId, Map<String, String> attributes, Band band) {
         if (band == null) {
-            throw new IllegalStateException("Cannot create instrument: user has no active team");
+            throw new IllegalStateException("Cannot create instrument: band is null");
         }
         InstrumentItem item = InstrumentItem.createOwned(band);
         InstrumentItem saved = inventoryRepository.saveInstrumentItem(item);
