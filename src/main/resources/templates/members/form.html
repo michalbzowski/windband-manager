@@ -46,10 +46,10 @@
 
         <div class="grid">
             <label>
-                Instrument
+                Tag
                 <select name="instrumentId">
                     <option value="">Brak</option>
-                    <option th:each="inst : ${instruments}"
+                    <option th:each="inst : ${tags}"
                             th:value="${inst.getId()}"
                             th:text="${inst.getName()}"
                             th:selected="${member.instrumentId() != null && member.instrumentId() == inst.getId()}">

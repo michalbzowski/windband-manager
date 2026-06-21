@@ -62,7 +62,7 @@ public class MemberPageController {
         }
         model.addAttribute("member", emptyMemberDto());
         model.addAttribute("todayJoinedDate", LocalDate.now().toString());
-        model.addAttribute("instruments", instrumentQueryService.findAll());
+        model.addAttribute("tags", instrumentQueryService.findAll());
         Band band = bandQueryService.getBandById(teamId);
         model.addAttribute("attributeDefs", attributeQueryService.getAttributeDefsForBand(band));
         model.addAttribute("attributeValues", Map.of());
@@ -77,7 +77,7 @@ public class MemberPageController {
         }
         MemberDto dto = memberQueryService.getMemberById(id);
         model.addAttribute("member", dto);
-        model.addAttribute("instruments", instrumentQueryService.findAll());
+        model.addAttribute("tags", instrumentQueryService.findAll());
         Band band = bandQueryService.getBandById(teamId);
         model.addAttribute("attributeDefs", attributeQueryService.getAttributeDefsForBand(band));
         Member member = memberQueryService.getMemberEntityById(id);

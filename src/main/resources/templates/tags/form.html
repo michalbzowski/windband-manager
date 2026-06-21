@@ -1,0 +1,67 @@
+<div id="tags-content">
+    <h2 th:text="${instrument.id() != null ? '✏️ Edytuj tag' : '➕ Dodaj tag'}">Dodaj tag</h2>
+
+    <form id="tag-form"
+          th:attr="data-instrument-id=${instrument.id()}"
+          hx-target="#tags-content"
+          hx-swap="innerHTML transition:true">
+
+        <label>
+            Nazwa *
+            <input type="text" name="name" th:value="${instrument.name()}" required>
+        </label>
+
+        <label>
+            Opis
+            <textarea name="description" th:text="${instrument.description()}"></textarea>
+        </label>
+
+        <label>
+            Kolejność
+            <input type="number" name="sortPriority" th:value="${instrument.sortPriority()}" min="0" value="0">
+        </label>
+
+        <div style="display:flex; gap:0.5rem; margin-top:1rem;">
+            <button type="submit" class="primary"
+                    th:text="${instrument.id() != null && instrument.id() != 0 ? 'Zapisz zmiany' : 'Dodaj tag'}">Dodaj</button>
+            <button type="submit" class="secondary" name="saveAndAddAnother" value="true"
+                    th:if="${instrument.id() == null || instrument.id() == 0}">Zapisz i dodaj kolejny</button>
+            <button type="button" class="secondary"
+                    hx-get="/tags/list" hx-target="#tags-content"
+                    hx-swap="innerHTML transition:true">Anuluj</button>
+        </div>
+    </form>
+</div>
+
+<script th:inline="javascript">
+    // Guard: prevent duplicate event listeners when form is reloaded via htmx
+    if (!window._tagFormHandlerAttached) {
+        window._tagFormHandlerAttached = true;
+        document.body.addEventListener('submit', function(e) {
+            if (e.target.id === 'tag-form') {
+                e.preventDefault();
+                var form = e.target;
+                var instrumentId = form.getAttribute('data-instrument-id');
+                var url = instrumentId ? '/api/tags/' + instrumentId : '/api/tags';
+                var method = instrumentId ? 'PUT' : 'POST';
+                var formData = new FormData(form);
+                var data = {};
+                formData.forEach(function(value, key) { data[key] = value; });
+                var saveAndAddAnother = form.querySelector('button[name="saveAndAddAnother"]') &&
+                                        form.querySelector('button[name="saveAndAddAnother"]') === document.activeElement;
+
+                fetchWithToast(url, { toastMessage: 'Zapisano tag',
+                    method: method,
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify(data)
+                }).then(function() {
+                    if (saveAndAddAnother) {
+                        htmx.ajax('GET', '/tags/new', {target: '#tags-content', swap: 'innerHTML transition:true'});
+                    } else {
+                        htmx.ajax('GET', '/tags/list', {target: '#tags-content', swap: 'innerHTML transition:true'});
+                    }
+                });
+            }
+        });
+    }
+</script>

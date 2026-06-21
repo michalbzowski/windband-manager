@@ -64,7 +64,7 @@ public class MemberController {
         return ResponseEntity.ok().build();
     }
 
-    @PutMapping("/{id}/instrument")
+    @PutMapping("/{id}/tag")
     public ResponseEntity<Void> changeInstrument(@PathVariable Long id,
                                                    @RequestBody ChangeInstrumentCommand cmd) {
         cmd.setMemberId(id);
