@@ -54,74 +54,83 @@ public class KeycloakOAuth2UserService extends OidcUserService {
     public OidcUser loadUser(OidcUserRequest userRequest) throws OAuth2AuthenticationException {
         log.info("KeycloakOAuth2UserService.loadUser called for client: {}", clientId);
 
+        // Extract user info from ID Token
+        OidcIdToken idToken = userRequest.getIdToken();
+        String subjectId = idToken.getSubject();
+        String email = idToken.getEmail();
+        String username = idToken.getPreferredUsername();
+        if (username == null) {
+            username = email;
+        }
+        String firstName = idToken.getGivenName();
+        String lastName = idToken.getFamilyName();
+
         OidcUser oidcUser;
         try {
+            // Find or create AppUser first (needed for team role lookup)
+            AppUser appUser = findOrCreateAppUser(subjectId, email, username, firstName, lastName);
+
+            // Load team roles
+            var teamRoles = userTeamRoleRepository.findByUserId(appUser.getId());
+
+            // Build authorities: always ROLE_USER, plus ROLE_ADMIN if user has ADMIN role in any team
+            java.util.Set<org.springframework.security.core.authority.SimpleGrantedAuthority> authorities =
+                    new java.util.HashSet<>();
+            authorities.add(new org.springframework.security.core.authority.SimpleGrantedAuthority("ROLE_USER"));
+            boolean isAdmin = teamRoles.stream().anyMatch(r -> r.getRole().name().equals("ADMIN"));
+            if (isAdmin) {
+                authorities.add(new org.springframework.security.core.authority.SimpleGrantedAuthority("ROLE_ADMIN"));
+            }
+
             // Build OidcUser from ID Token only — skip userinfo endpoint
-            // (userinfo returns 401 behind Cloudflare Tunnel due to issuer mismatch)
-            OidcIdToken idToken = userRequest.getIdToken();
             OidcUserInfo userInfo = new OidcUserInfo(idToken.getClaims());
-            oidcUser = new DefaultOidcUser(
-                    java.util.Collections.singleton(new org.springframework.security.core.authority.SimpleGrantedAuthority("ROLE_USER")),
-                    idToken, userInfo);
+            oidcUser = new DefaultOidcUser(authorities, idToken, userInfo);
+
+            log.info("OIDC user loaded: subject={}, email={}, admin={}", oidcUser.getSubject(), oidcUser.getEmail(), isAdmin);
+
+            Long activeTeamId = teamRoles.stream()
+                    .filter(r -> r.isAdmin())
+                    .map(r -> r.getTeam().getId())
+                    .findFirst()
+                    .orElseGet(() -> teamRoles.stream()
+                            .map(r -> r.getTeam().getId())
+                            .findFirst()
+                            .orElse(null));
+
+            String activeTeamSlug = null;
+            String activeTeamRole = null;
+
+            if (activeTeamId != null) {
+                var role = teamRoles.stream()
+                        .filter(r -> r.getTeam().getId().equals(activeTeamId))
+                        .findFirst();
+                if (role.isPresent()) {
+                    activeTeamSlug = role.get().getTeam().getSlug();
+                    activeTeamRole = role.get().getRole().name();
+                }
+            }
+
+            List<Long> teamIds = teamRoles.stream()
+                    .map(r -> r.getTeam().getId())
+                    .toList();
+
+            // Build enriched OidcUser that also carries our domain data
+            return new WindbandOidcUser(
+                    oidcUser,
+                    appUser.getId(),
+                    appUser.getUsername(),
+                    email,
+                    appUser.isActive(),
+                    activeTeamId,
+                    activeTeamSlug,
+                    activeTeamRole,
+                    teamIds
+            );
         } catch (Exception e) {
             log.error("Error building OidcUser from ID Token: {}", e.getMessage(), e);
             throw new OAuth2AuthenticationException(
                     new org.springframework.security.oauth2.core.OAuth2Error("load_user_error", e.getMessage(), null), e);
         }
-        log.info("OIDC user loaded: subject={}, email={}", oidcUser.getSubject(), oidcUser.getEmail());
-        String subjectId = oidcUser.getSubject();
-        String email = oidcUser.getEmail();
-        String username = oidcUser.getPreferredUsername();
-        if (username == null) {
-            username = email;
-        }
-        String firstName = oidcUser.getGivenName();
-        String lastName = oidcUser.getFamilyName();
-
-        // Find or create AppUser
-        AppUser appUser = findOrCreateAppUser(subjectId, email, username, firstName, lastName);
-
-        // Load team roles
-        var teamRoles = userTeamRoleRepository.findByUserId(appUser.getId());
-
-        Long activeTeamId = teamRoles.stream()
-                .filter(r -> r.isAdmin())
-                .map(r -> r.getTeam().getId())
-                .findFirst()
-                .orElseGet(() -> teamRoles.stream()
-                        .map(r -> r.getTeam().getId())
-                        .findFirst()
-                        .orElse(null));
-
-        String activeTeamSlug = null;
-        String activeTeamRole = null;
-
-        if (activeTeamId != null) {
-            var role = teamRoles.stream()
-                    .filter(r -> r.getTeam().getId().equals(activeTeamId))
-                    .findFirst();
-            if (role.isPresent()) {
-                activeTeamSlug = role.get().getTeam().getSlug();
-                activeTeamRole = role.get().getRole().name();
-            }
-        }
-
-        List<Long> teamIds = teamRoles.stream()
-                .map(r -> r.getTeam().getId())
-                .toList();
-
-        // Build enriched OidcUser that also carries our domain data
-        return new WindbandOidcUser(
-                oidcUser,
-                appUser.getId(),
-                appUser.getUsername(),
-                email,
-                appUser.isActive(),
-                activeTeamId,
-                activeTeamSlug,
-                activeTeamRole,
-                teamIds
-        );
     }
 
     private AppUser findOrCreateAppUser(String subjectId, String email, String username,

@@ -82,4 +82,4 @@ superset:
   base-url: ${SUPERSET_BASE_URL:http://localhost:8088}
   public-url: ${SUPERSET_PUBLIC_URL:https://superset.michalbzowski.pl}
   username: ${SUPERSET_USERNAME:admin}
-  password: ${SUPERSET_PASSWORD:admin}}
+  password: ${SUPERSET_PASSWORD:admin}
