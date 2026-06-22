@@ -104,6 +104,11 @@ public final class SupersetApiDtos {
     }
 
     @Data
+    public static class CsrfTokenResponse {
+        private String result;
+    }
+
+    @Data
     public static class ApiTokenResponse {
         private String token;
     }

@@ -18,20 +18,19 @@
                 <span th:text="${dashboard.title}">Dashboard</span>
             </h2>
 
-            <!-- Superset embedded dashboard via iframe with guest token -->
-            <div class="dashboard-embed" th:if="${guestToken}">
-                <iframe
-                    th:src="${supersetUrl} + '/embedded/' + ${dashboard.supersetId} + '?guest_token=' + ${guestToken}"
-                    width="100%"
-                    height="800"
-                    frameborder="0"
-                    allowfullscreen
-                    style="border: 1px solid var(--pico-muted-border-color); border-radius: 8px;">
-                </iframe>
+            <!-- Loading state -->
+            <div id="dashboard-loading" class="toast-info">
+                ⏳ Ładowanie dashboardu...
             </div>
 
-            <div th:unless="${guestToken}" class="toast-error">
+            <!-- Error state (hidden by default) -->
+            <div id="dashboard-error" class="toast-error" style="display: none;">
                 Nie udało się załadować dashboardu. Spróbuj ponownie później.
+            </div>
+
+            <!-- Superset embedded dashboard container -->
+            <div id="dashboard-embed-container" style="display: none; border: 1px solid var(--pico-muted-border-color); border-radius: 8px; overflow: hidden;">
+                <div id="superset-embedded" style="width: 100%; height: 800px;"></div>
             </div>
 
             <div style="margin-top: 1rem;">
@@ -44,5 +43,66 @@
 <footer th:replace="~{fragments/layout :: footer}"></footer>
 <div th:insert="~{fragments/layout :: toast-container}"></div>
 <div th:insert="~{fragments/layout :: footer-scripts}"></div>
+
+<!-- Superset Embedded SDK -->
+<script src="https://cdn.jsdelivr.net/npm/@superset-ui/embedded-sdk@0.1.0-alpha.10/dist/index.min.js"></script>
+
+<script th:inline="javascript">
+    (function() {
+        var dashboardId = /*[[${dashboard.id}]]*/ 0;
+        var supersetUrl = /*[[${supersetUrl}]]*/ 'https://superset.michalbzowski.pl';
+        var loadingEl = document.getElementById('dashboard-loading');
+        var errorEl = document.getElementById('dashboard-error');
+        var containerEl = document.getElementById('dashboard-embed-container');
+
+        // Fetch guest token from our backend
+        fetch('/api/dashboards/' + dashboardId + '/guest-token')
+            .then(function(response) {
+                if (!response.ok) throw new Error('HTTP ' + response.status);
+                return response.json();
+            })
+            .then(function(data) {
+                if (!data.token) throw new Error('No token in response');
+
+                // Use Superset Embedded SDK to embed dashboard
+                // This handles authentication, RLS, and iframe setup
+                if (window.supersetEmbeddedSdk) {
+                    window.supersetEmbeddedSdk.embedDashboard({
+                        id: 'superset-embedded',
+                        dashboardId: String(dashboardId),
+                        supersetDomain: supersetUrl,
+                        mountPoint: document.getElementById('superset-embedded'),
+                        fetchGuestToken: function() {
+                            return Promise.resolve(data.token);
+                        },
+                        dashboardUiConfig: {
+                            hideTitle: true,
+                            hideTab: true,
+                            hideChartControls: false,
+                            filters: { expanded: false }
+                        }
+                    });
+                    loadingEl.style.display = 'none';
+                    containerEl.style.display = 'block';
+                } else {
+                    // Fallback: simple iframe with guest token in URL
+                    console.warn('Superset Embedded SDK not loaded, using iframe fallback');
+                    var iframe = document.createElement('iframe');
+                    iframe.style.width = '100%';
+                    iframe.style.height = '800px';
+                    iframe.style.border = 'none';
+                    iframe.src = supersetUrl + '/superset/dashboard/' + dashboardId + '/?standalone=true';
+                    document.getElementById('superset-embedded').appendChild(iframe);
+                    loadingEl.style.display = 'none';
+                    containerEl.style.display = 'block';
+                }
+            })
+            .catch(function(err) {
+                console.error('Dashboard load error:', err);
+                loadingEl.style.display = 'none';
+                errorEl.style.display = 'block';
+            });
+    })();
+</script>
 </body>
 </html>

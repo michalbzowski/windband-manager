@@ -93,6 +93,12 @@ public class SupersetClient {
         String token = login();
         HttpHeaders headers = authHeaders(token);
 
+        // Superset 4.1.1 requires CSRF token for POST endpoints
+        String csrfToken = fetchCsrfToken(token);
+        if (csrfToken != null) {
+            headers.set("X-CSRFToken", csrfToken);
+        }
+
         // Build guest token request with RLS
         SupersetApiDtos.GuestTokenRequest request = new SupersetApiDtos.GuestTokenRequest();
 
@@ -127,6 +133,27 @@ public class SupersetClient {
         } catch (RestClientException e) {
             log.error("Failed to generate guest token for dashboard {} band {}: {}",
                     dashboardId, bandId, e.getMessage());
+        }
+        return null;
+    }
+
+    /**
+     * Fetches CSRF token from Superset. Required for POST endpoints in Superset 4.1.1.
+     */
+    private String fetchCsrfToken(String accessToken) {
+        try {
+            HttpHeaders headers = authHeaders(accessToken);
+            ResponseEntity<SupersetApiDtos.CsrfTokenResponse> response = restTemplate.exchange(
+                    supersetBaseUrl + "/api/v1/security/csrf_token/",
+                    HttpMethod.GET,
+                    new HttpEntity<>(headers),
+                    SupersetApiDtos.CsrfTokenResponse.class
+            );
+            if (response.getBody() != null) {
+                return response.getBody().getResult();
+            }
+        } catch (RestClientException e) {
+            log.warn("Failed to fetch CSRF token: {}", e.getMessage());
         }
         return null;
     }
