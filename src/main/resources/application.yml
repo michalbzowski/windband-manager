@@ -76,4 +76,10 @@ app:
     realm: ${KEYCLOAK_REALM}
     client-id: ${KEYCLOAK_CLIENT_ID}
     client-secret: ${KEYCLOAK_CLIENT_SECRET}
-    registration-redirect-url: ${app.keycloak.url}/realms/${app.keycloak.realm}/protocol/openid-connect/registrations?client_id=${app.keycloak.client-id}&redirect_uri=${app.base-url}/register&response_type=code&scope=openid profile email}
+    registration-redirect-url: ${app.keycloak.url}/realms/${app.keycloak.realm}/protocol/openid-connect/registrations?client_id=${app.keycloak.client-id}&redirect_uri=${app.base-url}/register&response_type=code&scope=openid profile email
+
+superset:
+  base-url: ${SUPERSET_BASE_URL:http://localhost:8088}
+  public-url: ${SUPERSET_PUBLIC_URL:https://superset.michalbzowski.pl}
+  username: ${SUPERSET_USERNAME:admin}
+  password: ${SUPERSET_PASSWORD:admin}}

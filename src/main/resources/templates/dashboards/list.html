@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="pl" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/layout :: head('Dashboardy')}"></head>
+<body>
+<nav th:replace="~{fragments/layout :: nav}"></nav>
+
+<main class="container" id="content">
+    <div id="dashboards-content">
+        <h2>📊 Dashboardy</h2>
+        <p>Wybierz dashboard, aby zobaczyć statystyki swojego zespołu.</p>
+
+        <div th:if="${error != null}" class="toast-error" th:text="${error}">Błąd</div>
+
+        <div th:if="${error == null && #lists.isEmpty(dashboards)}">
+            <article>
+                <header><strong>Brak dostępnych dashboardów</strong></header>
+                <p>Administrator nie przypisał jeszcze żadnych dashboardów do Twojego zespołu.</p>
+            </article>
+        </div>
+
+        <div class="dashboard-grid" th:if="${error != null ? false : !#lists.isEmpty(dashboards)}">
+            <article th:each="dash : ${dashboards}" class="dashboard-card">
+                <header>
+                    <i th:class="'fa ' + ${dash.icon}" style="margin-right:0.5rem;"></i>
+                    <strong th:text="${dash.title}">Dashboard</strong>
+                </header>
+                <p th:if="${dash.description}" th:text="${dash.description}">Opis</p>
+                <a th:href="@{/dashboards/{id}(id=${dash.id})}" role="button" class="primary" style="width:100%;">
+                    Otwórz dashboard →
+                </a>
+            </article>
+        </div>
+    </div>
+</main>
+
+<footer th:replace="~{fragments/layout :: footer}"></footer>
+<div th:insert="~{fragments/layout :: toast-container}"></div>
+<div th:insert="~{fragments/layout :: footer-scripts}"></div>
+</body>
+</html>

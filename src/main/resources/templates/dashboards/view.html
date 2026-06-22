@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="pl" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/layout :: head('Dashboard')}"></head>
+<body>
+<nav th:replace="~{fragments/layout :: nav}"></nav>
+
+<main class="container" id="content">
+    <div id="dashboard-view-content">
+        <div th:if="${error}">
+            <h2>📊 Dashboard</h2>
+            <div class="toast-error" th:text="${error}">Błąd</div>
+            <a th:href="@{/dashboards}" role="button" class="secondary">← Powrót do listy</a>
+        </div>
+
+        <div th:unless="${error}">
+            <h2>
+                <i th:class="'fa ' + ${dashboard.icon}" style="margin-right:0.5rem;"></i>
+                <span th:text="${dashboard.title}">Dashboard</span>
+            </h2>
+
+            <!-- Superset embedded dashboard via iframe with guest token -->
+            <div class="dashboard-embed" th:if="${guestToken}">
+                <iframe
+                    th:src="${supersetUrl} + '/embedded/' + ${dashboard.supersetId} + '?guest_token=' + ${guestToken}"
+                    width="100%"
+                    height="800"
+                    frameborder="0"
+                    allowfullscreen
+                    style="border: 1px solid var(--pico-muted-border-color); border-radius: 8px;">
+                </iframe>
+            </div>
+
+            <div th:unless="${guestToken}" class="toast-error">
+                Nie udało się załadować dashboardu. Spróbuj ponownie później.
+            </div>
+
+            <div style="margin-top: 1rem;">
+                <a th:href="@{/dashboards}" role="button" class="secondary">← Powrót do listy</a>
+            </div>
+        </div>
+    </div>
+</main>
+
+<footer th:replace="~{fragments/layout :: footer}"></footer>
+<div th:insert="~{fragments/layout :: toast-container}"></div>
+<div th:insert="~{fragments/layout :: footer-scripts}"></div>
+</body>
+</html>

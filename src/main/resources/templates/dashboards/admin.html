@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="pl" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/layout :: head('Zarządzanie dashboardami')}"></head>
+<body>
+<nav th:replace="~{fragments/layout :: nav}"></nav>
+
+<main class="container" id="content">
+    <div id="admin-dashboards-content">
+        <h2>📊 Zarządzanie dashboardami</h2>
+        <p>Synchronizuj dashboardy z Superset i przypisuj je do zespołów.</p>
+
+        <!-- Sync result notification -->
+        <div id="sync-result">
+            <div th:if="${syncResult != null && syncResult.errors.isEmpty()}" class="toast-success">
+                ✓ Synchronizacja zakończona:
+                <span th:text="${syncResult.added}">0</span> nowych,
+                <span th:text="${syncResult.updated}">0</span> zaktualizowanych,
+                <span th:text="${syncResult.unchanged}">0</span> bez zmian
+                (z <span th:text="${syncResult.totalInSuperset}">0</span> w Superset)
+            </div>
+            <div th:if="${syncResult != null && !syncResult.errors.isEmpty()}" class="toast-error">
+                ⚠ Synchronizacja z błędami:
+                <ul>
+                    <li th:each="err : ${syncResult.errors}" th:text="${err}">Błąd</li>
+                </ul>
+            </div>
+        </div>
+
+        <!-- Manual sync button -->
+        <div style="margin-bottom: 1rem;">
+            <form hx-post="/admin/dashboards/sync" hx-target="#sync-result" hx-swap="innerHTML">
+                <button type="submit" class="secondary">🔄 Synchronizuj z Superset</button>
+            </form>
+        </div>
+
+        <!-- Dashboard list with band assignments -->
+        <div th:if="${#lists.isEmpty(dashboards)}">
+            <article>
+                <header><strong>Brak dashboardów</strong></header>
+                <p>Nie znaleziono żadnych dashboardów w Superset. Utwórz dashboard w Superset, a następnie kliknij "Synchronizuj".</p>
+            </article>
+        </div>
+
+        <div th:unless="${#lists.isEmpty(dashboards)}">
+            <div th:each="dash : ${dashboards}" style="margin-bottom: 1.5rem;">
+                <article>
+                    <header>
+                        <strong th:text="${dash.title}">Dashboard</strong>
+                        <small class="muted" style="margin-left:0.5rem;">(ID: <span th:text="${dash.supersetId}">0</span>)</small>
+                    </header>
+
+                    <form method="post" th:action="@{/admin/dashboards/save-assignments}">
+                        <input type="hidden" name="dashboardId" th:value="${dash.id}">
+
+                        <div class="grid" style="grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem;">
+                            <th:block th:each="band : ${bands}">
+                                <label>
+                                    <input type="checkbox"
+                                           name="bandIds"
+                                           th:value="${band.id}"
+                                           th:checked="${#lists.contains(assignedBandIds[dash.id], band.id)}">
+                                    <span th:text="${band.name}">Zespół</span>
+                                </label>
+                                <label style="margin-left: 1rem; font-size: 0.85rem;">
+                                    <input type="checkbox"
+                                           name="autoAssignBandIds"
+                                           th:value="${band.id}">
+                                    Auto-nowe
+                                </label>
+                            </th:block>
+                        </div>
+
+                        <button type="submit" class="primary" style="margin-top: 0.5rem;">Zapisz przypisania</button>
+                    </form>
+                </article>
+            </div>
+        </div>
+
+        <div style="margin-top: 1rem;">
+            <a th:href="@{/}" role="button" class="secondary">← Powrót</a>
+        </div>
+    </div>
+</main>
+
+<footer th:replace="~{fragments/layout :: footer}"></footer>
+<div th:insert="~{fragments/layout :: toast-container}"></div>
+<div th:insert="~{fragments/layout :: footer-scripts}"></div>
+</body>
+</html>

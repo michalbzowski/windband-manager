@@ -109,6 +109,7 @@ public class SecurityConfig {
                         ).permitAll()
                         // Team admin endpoints
                         .requestMatchers("/api/teams/*/admin/**").hasRole("ADMIN")
+                        .requestMatchers("/admin/**").hasRole("ADMIN")
                         // All other endpoints require authentication
                         .anyRequest().authenticated()
                 )

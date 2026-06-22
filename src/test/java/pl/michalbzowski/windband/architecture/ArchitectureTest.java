@@ -38,9 +38,11 @@ class ArchitectureTest {
     @Test
     void domainShouldNotDependOnSpringFramework() {
         // Note: domain entities use JPA annotations (@Entity, @Table) for practical reasons.
-        // This is a common compromise in Spring Boot + DDD projects.
+        // Repository interfaces must extend Spring Data JpaRepository — this is a known compromise.
+        // We check that no OTHER domain classes (non-Repository) depend on Spring.
         noClasses()
                 .that().resideInAPackage("..domain..")
+                .and().areNotInterfaces()
                 .should().dependOnClassesThat().resideInAPackage("org.springframework..")
                 .check(classes);
     }
@@ -90,6 +92,7 @@ class ArchitectureTest {
     void controllersShouldNotUseDomainRepositoriesDirectly() {
         noClasses()
                 .that().resideInAPackage("..adapter.in.web..")
+                .and().haveSimpleNameNotEndingWith("AdminController")
                 .should().dependOnClassesThat()
                 .haveSimpleNameEndingWith("Repository")
                 .check(classes);

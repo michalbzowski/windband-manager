@@ -5,11 +5,13 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import pl.michalbzowski.windband.domain.band.Band;
 import pl.michalbzowski.windband.domain.band.BandRepository;
+import pl.michalbzowski.windband.domain.user.AppUser;
 import pl.michalbzowski.windband.domain.user.AppUserRepository;
 import pl.michalbzowski.windband.domain.user.UserTeamRoleRepository;
 
 import java.util.Comparator;
 import java.util.List;
+import java.util.Optional;
 import java.util.stream.Collectors;
 
 @Service
@@ -70,6 +72,14 @@ public class TeamQueryService {
      */
     public Band getTeamById(Long teamId) {
         return bandRepository.findById(teamId).orElse(null);
+    }
+
+    public Optional<String> getBandName(Long bandId) {
+        return bandRepository.findById(bandId).map(Band::getName);
+    }
+
+    public Optional<AppUser> getAppUser(Long userId) {
+        return appUserRepository.findById(userId);
     }
 
     public record UserTeamDto(Long id, String name, String slug, String role) {}
