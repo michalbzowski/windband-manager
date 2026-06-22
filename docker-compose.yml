@@ -90,8 +90,12 @@ services:
       MAIL_PASS: ${MAIL_PASS:-}
       BASE_URL: ${BASE_URL:-https://windband.michalbzowski.pl}
       KEYCLOAK_URL: http://keycloak:8180
+      KEYCLOAK_INTERNAL_URL: keycloak:8180
       KEYCLOAK_PUBLIC_URL: http://keycloak.michalbzowski.pl
+      KEYCLOAK_AUTH_URL: keycloak.michalbzowski.pl
       KEYCLOAK_REALM: ${KEYCLOAK_REALM:-windband}
+      KEYCLOAK_CLIENT_ID: ${KEYCLOAK_CLIENT_ID:-windband-manager}
+      KEYCLOAK_CLIENT_SECRET: ${KEYCLOAK_CLIENT_SECRET:-windband-secret-key-change-in-production-2026}
 
 volumes:
   pgdata:
