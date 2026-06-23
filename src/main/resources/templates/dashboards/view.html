@@ -10,19 +10,28 @@
         flex-direction: column;
         height: calc(100vh - 120px);
         min-height: 400px;
+        position: relative;
     }
     .dashboard-fullscreen #dashboard-embed-container {
         flex: 1;
         min-height: 0;
+        position: relative;
     }
     .dashboard-fullscreen #superset-embedded {
         width: 100%;
         height: 100% !important;
+        position: absolute;
+        top: 0;
+        left: 0;
     }
     .dashboard-fullscreen iframe {
         width: 100% !important;
         height: 100% !important;
         border: none !important;
+        display: block;
+        position: absolute;
+        top: 0;
+        left: 0;
     }
 </style>
 
