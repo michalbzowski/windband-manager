@@ -44,8 +44,8 @@
 <div th:insert="~{fragments/layout :: toast-container}"></div>
 <div th:insert="~{fragments/layout :: footer-scripts}"></div>
 
-<!-- Superset Embedded SDK -->
-<script src="https://unpkg.com/@superset-ui/embedded-sdk@0.4.0/bundle/index.js"></script>
+<!-- Superset Embedded SDK (local copy to avoid CDN blocking) -->
+<script src="/js/superset-embedded-sdk.js"></script>
 
 <script th:inline="javascript">
     (function() {
