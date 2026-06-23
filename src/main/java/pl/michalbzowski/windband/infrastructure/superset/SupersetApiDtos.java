@@ -50,6 +50,7 @@ public final class SupersetApiDtos {
     @Data
     public static class DashboardEntry {
         private Integer id;
+        private String uuid;
         @JsonProperty("dashboard_title")
         private String dashboardTitle;
         private String slug;

@@ -52,7 +52,7 @@ public class SupersetGuestTokenController {
         }
 
         String bandName = teamQueryService.getBandName(bandId).orElse("band");
-        String token = syncService.getGuestToken(dashboard.getSupersetId(), bandId, bandName);
+        String token = syncService.getGuestToken(dashboard.getSupersetUuid(), bandId, bandName);
 
         if (token == null) {
             return ResponseEntity.status(503).body(Map.of("error", "Superset unavailable"));

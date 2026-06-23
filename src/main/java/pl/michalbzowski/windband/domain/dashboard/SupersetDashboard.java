@@ -25,6 +25,9 @@ public class SupersetDashboard {
     @Column(name = "superset_id", nullable = false, unique = true)
     private Integer supersetId;
 
+    @Column(name = "superset_uuid", nullable = false, unique = true, length = 36)
+    private String supersetUuid;
+
     @Column(nullable = false)
     private String title;
 
@@ -52,8 +55,9 @@ public class SupersetDashboard {
     @Column(name = "last_synced_at", nullable = false)
     private LocalDateTime lastSyncedAt;
 
-    public SupersetDashboard(Integer supersetId, String title, String slug) {
+    public SupersetDashboard(Integer supersetId, String supersetUuid, String title, String slug) {
         this.supersetId = Objects.requireNonNull(supersetId, "supersetId required");
+        this.supersetUuid = Objects.requireNonNull(supersetUuid, "supersetUuid required");
         this.title = Objects.requireNonNull(title, "title required");
         this.slug = Objects.requireNonNull(slug, "slug required");
         this.position = 0;
@@ -63,7 +67,8 @@ public class SupersetDashboard {
         this.lastSyncedAt = LocalDateTime.now();
     }
 
-    public void updateFromSuperset(String title, String slug, String description) {
+    public void updateFromSuperset(String supersetUuid, String title, String slug, String description) {
+        this.supersetUuid = Objects.requireNonNull(supersetUuid, "supersetUuid required");
         this.title = Objects.requireNonNull(title, "title required");
         this.slug = Objects.requireNonNull(slug, "slug required");
         this.description = description;

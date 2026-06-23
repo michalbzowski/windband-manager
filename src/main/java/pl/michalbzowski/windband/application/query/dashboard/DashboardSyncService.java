@@ -66,12 +66,13 @@ public class DashboardSyncService {
      * The token embeds RLS filtering so user only sees their band's data.
      */
     @Transactional(readOnly = true)
-    public String getGuestToken(int dashboardId, Long bandId, String bandName) {
-        return supersetClient.generateGuestToken(dashboardId, bandId, bandName);
+    public String getGuestToken(String dashboardUuid, Long bandId, String bandName) {
+        return supersetClient.generateGuestToken(dashboardUuid, bandId, bandName);
     }
 
     private void syncOneDashboard(SupersetApiDtos.DashboardEntry entry, DashboardSyncResult result) {
         Integer supersetId = entry.getId();
+        String supersetUuid = entry.getUuid();
         String title = entry.getDashboardTitle();
         String slug = entry.getSlug() != null ? entry.getSlug() : "dashboard-" + supersetId;
 
@@ -91,7 +92,7 @@ public class DashboardSyncService {
 
         if (existing == null) {
             // New dashboard — insert
-            SupersetDashboard dashboard = new SupersetDashboard(supersetId, title, slug);
+            SupersetDashboard dashboard = new SupersetDashboard(supersetId, supersetUuid, title, slug);
             dashboard.setActive(true);
             dashboard.setIcon("fa-chart-bar");
             dashboardRepository.save(dashboard);
@@ -101,7 +102,7 @@ public class DashboardSyncService {
             // Existing — update if changed
             boolean changed = false;
             if (!title.equals(existing.getTitle()) || !slug.equals(existing.getSlug())) {
-                existing.updateFromSuperset(title, slug, null);
+                existing.updateFromSuperset(supersetUuid, title, slug, null);
                 changed = true;
             }
             if (!existing.isActive()) {

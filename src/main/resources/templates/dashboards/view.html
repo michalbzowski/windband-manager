@@ -50,6 +50,7 @@
 <script th:inline="javascript">
     (function() {
         var dashboardId = /*[[${dashboard.id}]]*/ 0;
+        var dashboardUuid = /*[[${dashboard.supersetUuid}]]*/ '';
         var supersetUrl = /*[[${supersetUrl}]]*/ 'https://superset.michalbzowski.pl';
         var loadingEl = document.getElementById('dashboard-loading');
         var errorEl = document.getElementById('dashboard-error');
@@ -72,7 +73,7 @@
 
                     window.supersetEmbeddedSdk.embedDashboard({
                         id: 'superset-embedded',
-                        dashboardId: String(dashboardId),
+                        dashboardId: dashboardUuid,
                         supersetDomain: supersetUrl,
                         mountPoint: document.getElementById('superset-embedded'),
                         fetchGuestToken: function() {

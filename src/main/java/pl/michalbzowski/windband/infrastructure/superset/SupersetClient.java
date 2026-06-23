@@ -84,20 +84,14 @@ public class SupersetClient {
      * Generates a guest token for embedded dashboard access.
      * The token includes RLS (row-level security) clause filtering by band_id.
      *
-     * @param dashboardId the Superset dashboard ID
+     * @param dashboardUuid the Superset dashboard UUID (required by embedded SDK)
      * @param bandId the band ID to filter data by (RLS)
      * @param bandName the band name for display
      * @return JWT guest token string
      */
-    public String generateGuestToken(int dashboardId, Long bandId, String bandName) {
+    public String generateGuestToken(String dashboardUuid, Long bandId, String bandName) {
         String token = login();
         HttpHeaders headers = authHeaders(token);
-
-        // Superset 4.1.1 requires CSRF token for POST endpoints
-        String csrfToken = fetchCsrfToken(token);
-        if (csrfToken != null) {
-            headers.set("X-CSRFToken", csrfToken);
-        }
 
         // Build guest token request with RLS
         SupersetApiDtos.GuestTokenRequest request = new SupersetApiDtos.GuestTokenRequest();
@@ -107,10 +101,10 @@ public class SupersetClient {
         user.setUsername("band_" + bandId);
         request.setUser(user);
 
-        // Resource (dashboard)
+        // Resource (dashboard) — use UUID for embedded SDK
         SupersetApiDtos.GuestTokenRequest.Resource resource = new SupersetApiDtos.GuestTokenRequest.Resource();
         resource.setType("dashboard");
-        resource.setId(String.valueOf(dashboardId));
+        resource.setId(dashboardUuid);
         request.setResources(List.of(resource));
 
         // RLS rule: filter by band_id
@@ -127,12 +121,12 @@ public class SupersetClient {
             );
 
             if (response.getBody() != null && response.getBody().getToken() != null) {
-                log.info("Generated guest token for dashboard {} band {}", dashboardId, bandId);
+                log.info("Generated guest token for dashboard uuid={} band {}", dashboardUuid, bandId);
                 return response.getBody().getToken();
             }
         } catch (RestClientException e) {
-            log.error("Failed to generate guest token for dashboard {} band {}: {}",
-                    dashboardId, bandId, e.getMessage());
+            log.error("Failed to generate guest token for dashboard uuid={} band {}: {}",
+                    dashboardUuid, bandId, e.getMessage());
         }
         return null;
     }
