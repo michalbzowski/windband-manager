@@ -50,7 +50,7 @@
 <script th:inline="javascript">
     (function() {
         var dashboardId = /*[[${dashboard.id}]]*/ 0;
-        var dashboardUuid = /*[[${dashboard.supersetUuid}]]*/ '';
+        var dashboardUuid = /*[[${dashboard.embeddedUuid}]]*/ '';
         var supersetUrl = /*[[${supersetUrl}]]*/ 'https://superset.michalbzowski.pl';
         var loadingEl = document.getElementById('dashboard-loading');
         var errorEl = document.getElementById('dashboard-error');
@@ -59,6 +59,14 @@
         function initDashboard() {
             if (!window.supersetEmbeddedSdk) {
                 console.error('Superset Embedded SDK not available');
+                return;
+            }
+
+            if (!dashboardUuid) {
+                console.error('Dashboard has no embedded UUID — sync with Superset first');
+                loadingEl.style.display = 'none';
+                errorEl.style.display = 'block';
+                errorEl.textContent = 'Dashboard nie jest jeszcze gotowy. Zsynchronizuj go z Superset.';
                 return;
             }
 
@@ -72,8 +80,7 @@
                     if (!data.token) throw new Error('No token in response');
 
                     window.supersetEmbeddedSdk.embedDashboard({
-                        id: 'superset-embedded',
-                        dashboardId: dashboardUuid,
+                        id: dashboardUuid,
                         supersetDomain: supersetUrl,
                         mountPoint: document.getElementById('superset-embedded'),
                         fetchGuestToken: function() {

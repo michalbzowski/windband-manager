@@ -110,6 +110,18 @@ public final class SupersetApiDtos {
     }
 
     @Data
+    public static class EmbeddedDashboardResponse {
+        private EmbeddedDashboardResult result;
+
+        @Data
+        public static class EmbeddedDashboardResult {
+            private String uuid;
+            private String dashboardId;
+            private List<String> allowedDomains;
+        }
+    }
+
+    @Data
     public static class ApiTokenResponse {
         private String token;
     }

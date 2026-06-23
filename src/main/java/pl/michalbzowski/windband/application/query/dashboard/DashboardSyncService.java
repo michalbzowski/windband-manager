@@ -95,6 +95,11 @@ public class DashboardSyncService {
             SupersetDashboard dashboard = new SupersetDashboard(supersetId, supersetUuid, title, slug);
             dashboard.setActive(true);
             dashboard.setIcon("fa-chart-bar");
+            // Register as embedded in Superset
+            String embeddedUuid = supersetClient.registerEmbeddedDashboard(supersetId, "https://windband.michalbzowski.pl,https://localhost:8080");
+            if (embeddedUuid != null) {
+                dashboard.setEmbeddedUuid(embeddedUuid);
+            }
             dashboardRepository.save(dashboard);
             result.incrementAdded();
             log.info("Added new dashboard from Superset: '{}' (id={})", title, supersetId);
@@ -108,6 +113,15 @@ public class DashboardSyncService {
             if (!existing.isActive()) {
                 existing.setActive(true);
                 changed = true;
+            }
+            // Ensure embedded UUID is set (backfill for dashboards added before embedding was implemented)
+            if (existing.getEmbeddedUuid() == null || existing.getEmbeddedUuid().isBlank()) {
+                String embeddedUuid = supersetClient.registerEmbeddedDashboard(supersetId, "https://windband.michalbzowski.pl,https://localhost:8080");
+                if (embeddedUuid != null) {
+                    existing.setEmbeddedUuid(embeddedUuid);
+                    changed = true;
+                    log.info("Backfilled embedded UUID for dashboard {}: {}", supersetId, embeddedUuid);
+                }
             }
             if (changed) {
                 dashboardRepository.save(existing);

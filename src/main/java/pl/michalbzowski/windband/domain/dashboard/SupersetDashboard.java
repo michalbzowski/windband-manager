@@ -28,6 +28,9 @@ public class SupersetDashboard {
     @Column(name = "superset_uuid", nullable = false, unique = true, length = 36)
     private String supersetUuid;
 
+    @Column(name = "embedded_uuid", length = 36)
+    private String embeddedUuid;
+
     @Column(nullable = false)
     private String title;
 
@@ -89,5 +92,13 @@ public class SupersetDashboard {
 
     public void setIcon(String icon) {
         this.icon = icon;
+    }
+
+    public String getEmbeddedUuid() {
+        return embeddedUuid;
+    }
+
+    public void setEmbeddedUuid(String embeddedUuid) {
+        this.embeddedUuid = embeddedUuid;
     }
 }

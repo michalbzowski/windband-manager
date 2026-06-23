@@ -132,6 +132,37 @@ public class SupersetClient {
     }
 
     /**
+     * Registers a dashboard for embedded access in Superset.
+     * If already registered, returns the existing embedded UUID.
+     *
+     * @param dashboardId the Superset dashboard ID (integer)
+     * @param allowedDomains comma-separated list of allowed referrer domains
+     * @return the embedded dashboard UUID, or null on failure
+     */
+    public String registerEmbeddedDashboard(int dashboardId, String allowedDomains) {
+        String token = login();
+        HttpHeaders headers = authHeaders(token);
+
+        try {
+            ResponseEntity<SupersetApiDtos.EmbeddedDashboardResponse> response = restTemplate.exchange(
+                    supersetBaseUrl + "/api/v1/dashboard/" + dashboardId + "/embedded",
+                    HttpMethod.POST,
+                    new HttpEntity<>(Map.of("allowed_domains", allowedDomains), headers),
+                    SupersetApiDtos.EmbeddedDashboardResponse.class
+            );
+
+            if (response.getBody() != null && response.getBody().getResult() != null) {
+                String embeddedUuid = response.getBody().getResult().getUuid();
+                log.info("Registered embedded dashboard {} -> uuid={}", dashboardId, embeddedUuid);
+                return embeddedUuid;
+            }
+        } catch (RestClientException e) {
+            log.error("Failed to register embedded dashboard {}: {}", dashboardId, e.getMessage());
+        }
+        return null;
+    }
+
+    /**
      * Fetches CSRF token from Superset. Required for POST endpoints in Superset 4.1.1.
      */
     private String fetchCsrfToken(String accessToken) {
