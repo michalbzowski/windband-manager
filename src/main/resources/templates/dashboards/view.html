@@ -70,6 +70,15 @@
                 return;
             }
 
+            var mountPoint = document.getElementById('superset-embedded');
+            if (!mountPoint) {
+                console.error('Mount point #superset-embedded not found');
+                loadingEl.style.display = 'none';
+                errorEl.style.display = 'block';
+                errorEl.textContent = 'Błąd inicjalizacji dashboardu. Odśwież stronę.';
+                return;
+            }
+
             // Fetch guest token from our backend
             fetch('/api/dashboards/' + dashboardId + '/guest-token')
                 .then(function(response) {
@@ -82,7 +91,7 @@
                     window.supersetEmbeddedSdk.embedDashboard({
                         id: dashboardUuid,
                         supersetDomain: supersetUrl,
-                        mountPoint: document.getElementById('superset-embedded'),
+                        mountPoint: mountPoint,
                         fetchGuestToken: function() {
                             return Promise.resolve(data.token);
                         },
