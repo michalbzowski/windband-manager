@@ -64,10 +64,14 @@ public class DashboardSyncService {
     /**
      * Fetches guest token for a specific dashboard + band combination.
      * The token embeds RLS filtering so user only sees their band's data.
+     *
+     * @param dashboardId the Superset dashboard integer ID
+     * @param bandId the band ID to filter data by (RLS)
+     * @param bandName the band name for display (unused but kept for API compat)
      */
     @Transactional(readOnly = true)
-    public String getGuestToken(String dashboardUuid, Long bandId, String bandName) {
-        return supersetClient.generateGuestToken(dashboardUuid, bandId, bandName);
+    public String getGuestToken(int dashboardId, Long bandId, String bandName) {
+        return supersetClient.generateGuestToken(dashboardId, bandId, bandName);
     }
 
     private void syncOneDashboard(SupersetApiDtos.DashboardEntry entry, DashboardSyncResult result) {

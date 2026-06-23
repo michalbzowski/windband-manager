@@ -89,7 +89,7 @@ public class SupersetClient {
      * @param bandName the band name for display
      * @return JWT guest token string
      */
-    public String generateGuestToken(String dashboardUuid, Long bandId, String bandName) {
+    public String generateGuestToken(int dashboardId, Long bandId, String bandName) {
         String token = login();
         HttpHeaders headers = authHeaders(token);
 
@@ -101,10 +101,10 @@ public class SupersetClient {
         user.setUsername("band_" + bandId);
         request.setUser(user);
 
-        // Resource (dashboard) — use UUID for embedded SDK
+        // Resource (dashboard) — use integer ID for guest token API
         SupersetApiDtos.GuestTokenRequest.Resource resource = new SupersetApiDtos.GuestTokenRequest.Resource();
         resource.setType("dashboard");
-        resource.setId(dashboardUuid);
+        resource.setId(String.valueOf(dashboardId));
         request.setResources(List.of(resource));
 
         // RLS rule: filter by band_id
@@ -121,12 +121,12 @@ public class SupersetClient {
             );
 
             if (response.getBody() != null && response.getBody().getToken() != null) {
-                log.info("Generated guest token for dashboard uuid={} band {}", dashboardUuid, bandId);
+                log.info("Generated guest token for dashboard id={} band {}", dashboardId, bandId);
                 return response.getBody().getToken();
             }
         } catch (RestClientException e) {
-            log.error("Failed to generate guest token for dashboard uuid={} band {}: {}",
-                    dashboardUuid, bandId, e.getMessage());
+            log.error("Failed to generate guest token for dashboard id={} band {}: {}",
+                    dashboardId, bandId, e.getMessage());
         }
         return null;
     }
