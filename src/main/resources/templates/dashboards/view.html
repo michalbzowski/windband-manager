@@ -55,18 +55,21 @@
         var errorEl = document.getElementById('dashboard-error');
         var containerEl = document.getElementById('dashboard-embed-container');
 
-        // Fetch guest token from our backend
-        fetch('/api/dashboards/' + dashboardId + '/guest-token')
-            .then(function(response) {
-                if (!response.ok) throw new Error('HTTP ' + response.status);
-                return response.json();
-            })
-            .then(function(data) {
-                if (!data.token) throw new Error('No token in response');
+        function initDashboard() {
+            if (!window.supersetEmbeddedSdk) {
+                console.error('Superset Embedded SDK not available');
+                return;
+            }
 
-                // Use Superset Embedded SDK to embed dashboard
-                // This handles authentication, RLS, and iframe setup
-                if (window.supersetEmbeddedSdk) {
+            // Fetch guest token from our backend
+            fetch('/api/dashboards/' + dashboardId + '/guest-token')
+                .then(function(response) {
+                    if (!response.ok) throw new Error('HTTP ' + response.status);
+                    return response.json();
+                })
+                .then(function(data) {
+                    if (!data.token) throw new Error('No token in response');
+
                     window.supersetEmbeddedSdk.embedDashboard({
                         id: 'superset-embedded',
                         dashboardId: String(dashboardId),
@@ -84,24 +87,35 @@
                     });
                     loadingEl.style.display = 'none';
                     containerEl.style.display = 'block';
-                } else {
-                    // Fallback: simple iframe with guest token in URL
-                    console.warn('Superset Embedded SDK not loaded, using iframe fallback');
-                    var iframe = document.createElement('iframe');
-                    iframe.style.width = '100%';
-                    iframe.style.height = '800px';
-                    iframe.style.border = 'none';
-                    iframe.src = supersetUrl + '/superset/dashboard/' + dashboardId + '/?standalone=true';
-                    document.getElementById('superset-embedded').appendChild(iframe);
+                })
+                .catch(function(err) {
+                    console.error('Dashboard load error:', err);
                     loadingEl.style.display = 'none';
-                    containerEl.style.display = 'block';
+                    errorEl.style.display = 'block';
+                });
+        }
+
+        // Try immediately
+        if (window.supersetEmbeddedSdk) {
+            initDashboard();
+        } else {
+            // Wait for SDK to load
+            var checkInterval = setInterval(function() {
+                if (window.supersetEmbeddedSdk) {
+                    clearInterval(checkInterval);
+                    initDashboard();
                 }
-            })
-            .catch(function(err) {
-                console.error('Dashboard load error:', err);
-                loadingEl.style.display = 'none';
-                errorEl.style.display = 'block';
-            });
+            }, 100);
+            // Timeout after 10s
+            setTimeout(function() {
+                clearInterval(checkInterval);
+                if (!window.supersetEmbeddedSdk) {
+                    loadingEl.style.display = 'none';
+                    errorEl.style.display = 'block';
+                    errorEl.textContent = 'Nie udało się załadować SDK Superset. Sprawdź połączenie z internetem.';
+                }
+            }, 10000);
+        }
     })();
 </script>
 </body>
