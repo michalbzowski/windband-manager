@@ -255,20 +255,6 @@ nav details.dropdown ul li a:hover {
     border-top: 1px solid var(--pico-muted-border-color);
 }
 
-/* Team summary card on dashboard */
-.team-summary-card {
-    margin-bottom: 1rem;
-    padding: 0.75rem 1rem;
-    background: var(--pico-card-background-color);
-    border: 1px solid var(--pico-muted-border-color);
-    border-left: 4px solid var(--pico-primary);
-    border-radius: 8px;
-}
-
-.team-summary-card select {
-    font-family: inherit;
-}
-
 /* Toast notifications */
 #toast-container {
     position: fixed;
