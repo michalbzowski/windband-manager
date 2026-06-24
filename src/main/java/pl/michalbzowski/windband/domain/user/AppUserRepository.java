@@ -18,4 +18,8 @@ public interface AppUserRepository {
     boolean existsByEmail(String email);
 
     Optional<AppUser> findByExternalId(String externalId);
+
+    List<AppUser> findAll();
+
+    List<AppUser> findBySystemAdminTrue();
 }

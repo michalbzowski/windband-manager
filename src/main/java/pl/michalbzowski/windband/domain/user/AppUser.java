@@ -36,6 +36,9 @@ public class AppUser {
     private boolean active = true;
 
     @Column(nullable = false)
+    private boolean systemAdmin = false;
+
+    @Column(nullable = false)
     private boolean emailVerified = false;
 
     @Column(length = 128)
@@ -107,6 +110,14 @@ public class AppUser {
         return teamRoles.stream()
                 .filter(t -> t.getTeam().getId().equals(teamId))
                 .anyMatch(t -> t.getRole() == TeamRole.ADMIN);
+    }
+
+    public boolean isSystemAdmin() {
+        return systemAdmin;
+    }
+
+    public void setSystemAdmin(boolean systemAdmin) {
+        this.systemAdmin = systemAdmin;
     }
 
     public String getDisplayName() {

@@ -20,19 +20,21 @@ public class WindbandOidcUser implements OidcUser {
     private final String username;
     private final String email;
     private final boolean active;
+    private final boolean systemAdmin;
     private final Long activeTeamId;
     private final String activeTeamSlug;
     private final String activeTeamRole;
     private final List<Long> teamIds;
 
     public WindbandOidcUser(OidcUser delegate, Long userId, String username, String email,
-                            boolean active, Long activeTeamId, String activeTeamSlug,
+                            boolean active, boolean systemAdmin, Long activeTeamId, String activeTeamSlug,
                             String activeTeamRole, List<Long> teamIds) {
         this.delegate = delegate;
         this.userId = userId;
         this.username = username;
         this.email = email;
         this.active = active;
+        this.systemAdmin = systemAdmin;
         this.activeTeamId = activeTeamId;
         this.activeTeamSlug = activeTeamSlug;
         this.activeTeamRole = activeTeamRole;
@@ -51,6 +53,18 @@ public class WindbandOidcUser implements OidcUser {
 
     public boolean isAdmin() {
         return "ADMIN".equals(activeTeamRole);
+    }
+
+    public boolean isSystemAdmin() {
+        return systemAdmin;
+    }
+
+    /**
+     * Returns true if user is admin of the active team OR is system admin.
+     * Used for general admin checks (e.g., /admin/** endpoints).
+     */
+    public boolean hasAnyAdminRole() {
+        return isAdmin() || isSystemAdmin();
     }
 
     public boolean belongsToTeam(Long teamId) {

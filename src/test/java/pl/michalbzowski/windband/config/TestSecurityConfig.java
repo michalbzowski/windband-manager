@@ -121,6 +121,7 @@ public class TestSecurityConfig {
                     user.getUsername(),     // username
                     emails.getFirst(),      // email
                     true,                   // active
+                    false,                  // systemAdmin
                     1L,                     // activeTeamId — matches data.sql
                     "test-band",            // activeTeamSlug — matches data.sql
                     "ADMIN",                // activeTeamRole

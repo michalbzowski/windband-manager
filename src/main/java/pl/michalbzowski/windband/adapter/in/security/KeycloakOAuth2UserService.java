@@ -73,13 +73,17 @@ public class KeycloakOAuth2UserService extends OidcUserService {
             // Load team roles
             var teamRoles = userTeamRoleRepository.findByUserId(appUser.getId());
 
-            // Build authorities: always ROLE_USER, plus ROLE_ADMIN if user has ADMIN role in any team
+            // Build authorities: always ROLE_USER, plus ROLE_ADMIN if user has ADMIN role in any team,
+            // plus ROLE_SYSTEM_ADMIN if user is system admin
             java.util.Set<org.springframework.security.core.authority.SimpleGrantedAuthority> authorities =
                     new java.util.HashSet<>();
             authorities.add(new org.springframework.security.core.authority.SimpleGrantedAuthority("ROLE_USER"));
             boolean isAdmin = teamRoles.stream().anyMatch(r -> r.getRole().name().equals("ADMIN"));
             if (isAdmin) {
                 authorities.add(new org.springframework.security.core.authority.SimpleGrantedAuthority("ROLE_ADMIN"));
+            }
+            if (appUser.isSystemAdmin()) {
+                authorities.add(new org.springframework.security.core.authority.SimpleGrantedAuthority("ROLE_SYSTEM_ADMIN"));
             }
 
             // Build OidcUser from ID Token only — skip userinfo endpoint
@@ -121,6 +125,7 @@ public class KeycloakOAuth2UserService extends OidcUserService {
                     appUser.getUsername(),
                     email,
                     appUser.isActive(),
+                    appUser.isSystemAdmin(),
                     activeTeamId,
                     activeTeamSlug,
                     activeTeamRole,

@@ -115,6 +115,7 @@
                         <li><a th:href="@{/tags}" hx-target="#content" hx-swap="innerHTML transition:true">Tagi</a></li>
                         <li><a th:href="@{/reports}" hx-target="#content" hx-swap="innerHTML transition:true">Raporty</a></li>
                         <li><a th:href="@{/dashboards}" hx-target="#content" hx-swap="innerHTML transition:true">📊 Dashboardy</a></li>
+                        <li sec:authorize="hasAnyRole('ADMIN', 'SYSTEM_ADMIN')"><a th:href="@{/admin/dashboards}" hx-target="#content" hx-swap="innerHTML transition:true">⚙️ Zarządzanie dashboardami</a></li>
                         <li><a th:href="@{/band/inventory-attributes(type='MEMBER')}" hx-target="#content" hx-swap="innerHTML transition:true">Atrybuty</a></li>
                         <li><hr class="dropdown-divider"></li>
                         <li><a href="/register" hx-target="#content" hx-swap="innerHTML transition:true">➕ Nowy zespół</a></li>
