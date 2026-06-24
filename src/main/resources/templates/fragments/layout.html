@@ -7,18 +7,14 @@
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.min.css">
     <link rel="stylesheet" th:href="@{/css/app.css}">
     <script th:src="@{/js/htmx.min.js}"></script>
-    <!-- Global utilities: Toast, fetchWithToast. Loaded on every page so that
-         htmx-loaded fragments (forms) can use them. -->
     <script th:src="@{/js/windband-utils.js}"></script>
     <script>
-        // Ignore errors from browser extensions - they shouldn't break our code
         window.onerror = function(msg, url, line, col, error) {
             console.log('Ignored error:', msg);
             return true;
         };
         console.log('Page loaded, script starting...');
 
-        // Add JWT token to all HTMX requests
         document.addEventListener('htmx:configRequest', function(evt) {
             const name = 'JWT=';
             const decodedCookie = decodeURIComponent(document.cookie);
@@ -37,7 +33,6 @@
             }
         });
 
-        // Check JWT expiry on page load and redirect to login if expired
         (function() {
             try {
                 const name = 'JWT=';
@@ -53,83 +48,137 @@
                     }
                 }
                 if (token) {
-                    // JWT format: header.payload.signature
                     const parts = token.split('.');
                     if (parts.length === 3) {
-                        // Decode payload (second part)
                         const payload = JSON.parse(atob(parts[1]));
                         const exp = payload.exp;
                         if (exp) {
                             const now = Math.floor(Date.now() / 1000);
                             if (exp < now) {
-                                // Token expired, redirect to login
                                 window.location.href = '/login?expired=true';
                                 return;
                             }
                         }
                     }
                 }
-            } catch (e) {
-                // If any error, just continue (token might be invalid)
-            }
+            } catch (e) {}
         })();
     </script>
 </head>
 <body>
-<nav class="container-fluid" th:fragment="nav" sec:authorize="isAuthenticated()">
-        <ul>
-            <li><strong><a th:href="@{/}" style="text-decoration:none;color:inherit;">🎺 Wind Band Manager</a></strong></li>
-            <li class="nav-user-info">
-                <span class="separator">|</span>
-                <span class="team-icon">👤</span>
-                <span th:text="${#authentication.principal.wbUsername}" style="font-weight:600;">user</span>
-            </li>
-            <li class="nav-team-item">
-                <span id="nav-team-area">
-                    <select id="nav-team-select"
-                            th:if="${#lists.size(userTeams) > 1}"
-                            onchange="switchTeam(this.value)">
-                        <option th:each="team : ${userTeams}"
-                                th:value="${team.id}"
-                                th:selected="${team.id == activeTeamId}"
-                                th:text="${team.name}"></option>
-                    </select>
-                    <span id="nav-team-single" th:if="${#lists.size(userTeams) <= 1}">
-                        <span class="team-name" th:text="${activeTeamSlug ?: 'brak zespołu'}">zespół</span>
-                        <span class="team-role" th:if="${activeTeamRole}">(<span th:text="${#strings.toLowerCase(activeTeamRole)}">rola</span>)</span>
-                    </span>
-                </span>
-            </li>
-        </ul>
-        <ul>
-            <li><a th:href="@{/members}" hx-target="#content" hx-swap="innerHTML transition:true">Muzycy</a></li>
-            <li><a th:href="@{/groups}" hx-target="#content" hx-swap="innerHTML transition:true">Grupy</a></li>
-            <li><a th:href="@{/rehearsals}" hx-target="#content" hx-swap="innerHTML transition:true">Próby</a></li>
-            <li><a th:href="@{/events}" hx-target="#content" hx-swap="innerHTML transition:true">Wydarzenia</a></li>
-            <li><a th:href="@{/orders}" hx-target="#content" hx-swap="innerHTML transition:true">Zamówienia</a></li>
-            <li>
-                <details class="dropdown">
-                    <summary role="button" class="secondary outline" style="padding:0.3rem 0.6rem; font-size:0.85rem;">Więcej ▾</summary>
-                    <ul>
-                        <li><a th:href="@{/inventory}" hx-target="#content" hx-swap="innerHTML transition:true">Inwentaryzacja</a></li>
-                        <li><a th:href="@{/tags}" hx-target="#content" hx-swap="innerHTML transition:true">Tagi</a></li>
-                        <li><a th:href="@{/reports}" hx-target="#content" hx-swap="innerHTML transition:true">Raporty</a></li>
-                        <li><a th:href="@{/dashboards}" hx-target="#content" hx-swap="innerHTML transition:true">📊 Dashboardy</a></li>
-                        <li sec:authorize="hasAnyRole('ADMIN', 'SYSTEM_ADMIN')"><a th:href="@{/admin/dashboards}" hx-target="#content" hx-swap="innerHTML transition:true">⚙️ Zarządzanie dashboardami</a></li>
-                        <li><a th:href="@{/band/inventory-attributes(type='MEMBER')}" hx-target="#content" hx-swap="innerHTML transition:true">Atrybuty</a></li>
-                        <li><hr class="dropdown-divider"></li>
-                        <li><a href="/register" hx-target="#content" hx-swap="innerHTML transition:true">➕ Nowy zespół</a></li>
-                        <li><hr class="dropdown-divider"></li>
-                        <li>
-                            <form th:action="@{/api/auth/logout}" method="POST" style="display:inline;">
-                                <button type="submit" style="width:100%; text-align:left; background:none; border:none; color:var(--pico-color); padding:0.5rem 0.75rem; font-size:0.85rem; cursor:pointer;">🚪 Wyloguj</button>
-                            </form>
-                        </li>
-                    </ul>
-                </details>
-            </li>
-        </ul>
-    </nav>
+<!-- ============================================================
+     NAVIGATION — UX-optimized layout
+     Structure: [Brand] [Primary Nav] ........ [Team] [User]
+     Max 5 primary items, grouped by context
+     ============================================================ -->
+<nav class="top-nav" th:fragment="nav" sec:authorize="isAuthenticated()">
+    <div class="nav-inner">
+
+        <!-- Left: Brand + Primary Navigation -->
+        <div class="nav-left">
+            <a th:href="@{/}" class="nav-brand" aria-label="Wind Band Manager — strona główna">
+                <span class="brand-icon">🎺</span>
+                <span class="brand-text">WBM</span>
+            </a>
+
+            <ul class="nav-primary">
+                <li>
+                    <a th:href="@{/members}" hx-target="#content" hx-swap="innerHTML transition:true">
+                        <span class="nav-icon">👥</span>
+                        <span class="nav-label">Muzycy</span>
+                    </a>
+                </li>
+                <li>
+                    <a th:href="@{/rehearsals}" hx-target="#content" hx-swap="innerHTML transition:true">
+                        <span class="nav-icon">🎵</span>
+                        <span class="nav-label">Próby</span>
+                    </a>
+                </li>
+                <li>
+                    <a th:href="@{/events}" hx-target="#content" hx-swap="innerHTML transition:true">
+                        <span class="nav-icon">🎪</span>
+                        <span class="nav-label">Wydarzenia</span>
+                    </a>
+                </li>
+                <li>
+                    <a th:href="@{/inventory}" hx-target="#content" hx-swap="innerHTML transition:true">
+                        <span class="nav-icon">📦</span>
+                        <span class="nav-label">Zasoby</span>
+                    </a>
+                </li>
+                <li>
+                    <a th:href="@{/dashboards}" hx-target="#content" hx-swap="innerHTML transition:true">
+                        <span class="nav-icon">📊</span>
+                        <span class="nav-label">Dashboardy</span>
+                    </a>
+                </li>
+                <li class="nav-more" sec:authorize="hasAnyRole('ADMIN', 'SYSTEM_ADMIN')">
+                    <details class="dropdown">
+                        <summary role="button" class="secondary outline">
+                            <span class="nav-icon">⚙️</span>
+                            <span class="nav-label">Admin</span>
+                        </summary>
+                        <ul>
+                            <li><a th:href="@{/admin/dashboards}" hx-target="#content" hx-swap="innerHTML transition:true">📊 Dashboardy</a></li>
+                            <li><a th:href="@{/admin/system-admins}" hx-target="#content" hx-swap="innerHTML transition:true">👑 Administratorzy</a></li>
+                            <li><a th:href="@{/reports}" hx-target="#content" hx-swap="innerHTML transition:true">📈 Raporty</a></li>
+                            <li><a th:href="@{/tags}" hx-target="#content" hx-swap="innerHTML transition:true">🏷️ Tagi</a></li>
+                            <li><a th:href="@{/groups}" hx-target="#content" hx-swap="innerHTML transition:true">👨‍👩‍👧 Grupy</a></li>
+                            <li><a th:href="@{/band/inventory-attributes(type='MEMBER')}" hx-target="#content" hx-swap="innerHTML transition:true">📋 Atrybuty</a></li>
+                            <li><hr></li>
+                            <li><a href="/register" hx-target="#content" hx-swap="innerHTML transition:true">➕ Nowy zespół</a></li>
+                        </ul>
+                    </details>
+                </li>
+            </ul>
+        </div>
+
+        <!-- Right: Team switcher + User -->
+        <div class="nav-right">
+            <!-- Team Switcher — always visible, high prominence -->
+            <div class="team-switcher">
+                <span class="team-icon">🏠</span>
+                <select id="nav-team-select"
+                        th:if="${#lists.size(userTeams) > 1}"
+                        onchange="switchTeam(this.value)"
+                        aria-label="Zmień aktywny zespół">
+                    <option th:each="team : ${userTeams}"
+                            th:value="${team.id}"
+                            th:selected="${team.id == activeTeamId}"
+                            th:text="${team.name}"></option>
+                </select>
+                <span th:if="${#lists.size(userTeams) <= 1}" class="team-name" th:text="${activeTeamSlug ?: 'brak'}">zespół</span>
+            </div>
+
+            <!-- User menu -->
+            <details class="user-menu dropdown">
+                <summary role="button" class="user-chip">
+                    <span class="user-avatar" th:text="${#strings.substring(#authentication.principal.wbUsername, 0, 1)}">U</span>
+                    <span class="user-name" th:text="${#authentication.principal.wbUsername}">user</span>
+                </summary>
+                <ul>
+                    <li class="user-menu-header">
+                        <strong th:text="${#authentication.principal.wbUsername}">user</strong>
+                        <small th:if="${activeTeamRole}" th:text="${#strings.capitalize(activeTeamRole)}">admin</small>
+                    </li>
+                    <li><hr></li>
+                    <li><a th:href="@{/members}" hx-target="#content" hx-swap="innerHTML transition:true">👥 Muzycy</a></li>
+                    <li><a th:href="@{/rehearsals}" hx-target="#content" hx-swap="innerHTML transition:true">🎵 Próby</a></li>
+                    <li><a th:href="@{/events}" hx-target="#content" hx-swap="innerHTML transition:true">🎪 Wydarzenia</a></li>
+                    <li><a th:href="@{/inventory}" hx-target="#content" hx-swap="innerHTML transition:true">📦 Zasoby</a></li>
+                    <li><a th:href="@{/dashboards}" hx-target="#content" hx-swap="innerHTML transition:true">📊 Dashboardy</a></li>
+                    <li><hr></li>
+                    <li><a href="/register" hx-target="#content" hx-swap="innerHTML transition:true">➕ Nowy zespół</a></li>
+                    <li>
+                        <form th:action="@{/api/auth/logout}" method="POST" style="display:inline;">
+                            <button type="submit" class="logout-btn">🚪 Wyloguj</button>
+                        </form>
+                    </li>
+                </ul>
+            </details>
+        </div>
+    </div>
+</nav>
 
     <main class="container" id="content">
         <!-- treść ładowana przez HTMX -->
@@ -144,14 +193,11 @@
     </footer>
 
 <script th:fragment="footer-scripts">
-    // HTMX toast integration - reinit toast container after htmx swaps
-    // (htmx replaces DOM elements, so the cached container reference becomes stale)
     document.addEventListener('htmx:afterSwap', function(evt) {
         if (window.Toast) {
             Toast.container = null;
             Toast.init();
         }
-        // Check for response headers or data attributes for toast messages
         var target = evt.detail.target;
         if (target) {
             var toastData = target.querySelector('[data-toast]');
@@ -163,7 +209,6 @@
         }
     });
 
-    // Switch active team and reload page to update nav
     function switchTeam(teamId) {
         fetchWithToast('/api/auth/switch-team/' + teamId, {
             method: 'POST',
@@ -172,7 +217,6 @@
         })
             .then(function(resp) { return resp.json(); })
             .then(function(data) {
-                // Full page reload so the server-rendered nav reflects the new team
                 window.location.href = '/';
             })
             .catch(function(err) {
@@ -180,7 +224,6 @@
             });
     }
 
-    // Load build info
     (function() {
         console.log('Loading build info...');
         fetchWithToast('/api/auth/build-info', { credentials: 'same-origin' })
@@ -205,13 +248,13 @@
             method: 'POST',
             credentials: 'same-origin'
         })
-        .then(function(response) {
-            window.location.href = '/login';
-        })
-        .catch(function(error) {
-            console.error('Logout error:', error);
-            window.location.href = '/login';
-        });
+            .then(function(response) {
+                window.location.href = '/login';
+            })
+            .catch(function(error) {
+                console.error('Logout error:', error);
+                window.location.href = '/login';
+            });
     }
 </script>
 </body>
