@@ -74,6 +74,7 @@ services:
     extra_hosts:
       - "keycloak.michalbzowski.pl:172.17.0.1"
       - "superset.michalbzowski.pl:172.17.0.1"
+      - "superset:172.20.0.6"
     ports:
       - "8080:8080"
     environment:
@@ -95,7 +96,7 @@ services:
       KEYCLOAK_REALM: ${KEYCLOAK_REALM:-windband}
       KEYCLOAK_CLIENT_ID: ${KEYCLOAK_CLIENT_ID:-windband-manager}
       KEYCLOAK_CLIENT_SECRET: ${KEYCLOAK_CLIENT_SECRET:-windband-secret-key-change-in-production-2026}
-      SUPERSET_BASE_URL: ${SUPERSET_BASE_URL:-http://superset.michalbzowski.pl:8088}
+      SUPERSET_BASE_URL: http://superset:8088
       SUPERSET_PUBLIC_URL: ${SUPERSET_PUBLIC_URL:-https://superset.michalbzowski.pl}
       SUPERSET_USERNAME: ${SUPERSET_USERNAME:-admin}
       SUPERSET_PASSWORD: ${SUPERSET_PASSWORD:-admin}

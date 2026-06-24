@@ -1,6 +1,7 @@
 package pl.michalbzowski.windband.domain.dashboard;
 
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
@@ -20,7 +21,9 @@ public interface DashboardBandAssignmentRepository extends JpaRepository<Dashboa
     @Query("SELECT a FROM DashboardBandAssignment a WHERE a.dashboard.id = :dashboardId")
     List<DashboardBandAssignment> findAssignmentsForDashboard(@Param("dashboardId") Long dashboardId);
 
-    void deleteByDashboardIdAndBandId(Long dashboardId, Long bandId);
+    @Modifying
+    @Query("DELETE FROM DashboardBandAssignment a WHERE a.dashboard.id = :dashboardId AND a.band.id = :bandId")
+    void deleteByDashboardIdAndBandId(@Param("dashboardId") Long dashboardId, @Param("bandId") Long bandId);
 
     @Query("SELECT CASE WHEN COUNT(a) > 0 THEN true ELSE false END FROM DashboardBandAssignment a " +
            "WHERE a.dashboard.supersetId = :supersetId AND a.band.id = :bandId")

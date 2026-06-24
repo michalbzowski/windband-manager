@@ -104,7 +104,7 @@ public class DashboardAdminController {
 
         // Remove all existing assignments for this dashboard
         assignmentRepository.findByDashboardId(dashboard.getId()).forEach(a ->
-                assignmentRepository.deleteByDashboardIdAndBandId(dashboard.getId(), a.getBand().getId()));
+                assignmentService.removeAssignment(dashboard.getId(), a.getBand().getId()));
 
         // Add new assignments
         for (Long bandId : bandIds) {
