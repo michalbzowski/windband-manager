@@ -14,6 +14,7 @@ import pl.michalbzowski.windband.application.query.team.TeamQueryService;
 import pl.michalbzowski.windband.domain.band.BandRepository;
 import pl.michalbzowski.windband.domain.dashboard.DashboardBandAssignment;
 import pl.michalbzowski.windband.domain.dashboard.DashboardBandAssignmentRepository;
+import pl.michalbzowski.windband.domain.dashboard.SupersetDashboard;
 import pl.michalbzowski.windband.domain.dashboard.SupersetDashboardRepository;
 import pl.michalbzowski.windband.domain.user.AppUser;
 
@@ -86,7 +87,7 @@ public class DashboardAdminController {
     @PostMapping("/save-assignments")
     public String saveAssignments(
             @AuthenticationPrincipal OidcUser oidcUser,
-            @RequestParam Long dashboardId,
+            @RequestParam String dashboardSlug,
             @RequestParam(required = false) List<Long> bandIds,
             @RequestParam(required = false) List<Long> autoAssignBandIds) {
 
@@ -96,14 +97,19 @@ public class DashboardAdminController {
         Long userId = ((WindbandOidcUser) oidcUser).getUserId();
         AppUser user = teamQueryService.getAppUser(userId).orElse(null);
 
+        SupersetDashboard dashboard = dashboardRepository.findBySlug(dashboardSlug).orElse(null);
+        if (dashboard == null) {
+            return "redirect:/admin/dashboards";
+        }
+
         // Remove all existing assignments for this dashboard
-        assignmentRepository.findByDashboardId(dashboardId).forEach(a ->
-                assignmentRepository.deleteByDashboardIdAndBandId(dashboardId, a.getBand().getId()));
+        assignmentRepository.findByDashboardId(dashboard.getId()).forEach(a ->
+                assignmentRepository.deleteByDashboardIdAndBandId(dashboard.getId(), a.getBand().getId()));
 
         // Add new assignments
         for (Long bandId : bandIds) {
             boolean autoAssign = autoAssignBandIds.contains(bandId);
-            assignmentService.assignDashboardToBand(dashboardId, bandId, autoAssign, user);
+            assignmentService.assignDashboardToBand(dashboard.getId(), bandId, autoAssign, user);
         }
 
         return "redirect:/admin/dashboards";

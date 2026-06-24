@@ -25,7 +25,7 @@
                     <strong th:text="${dash.title}">Dashboard</strong>
                 </header>
                 <p th:if="${dash.description}" th:text="${dash.description}">Opis</p>
-                <a th:href="@{/dashboards/{id}(id=${dash.id})}" role="button" class="primary" style="width:100%;">
+                <a th:href="@{/dashboards/{slug}(slug=${dash.slug})}" role="button" class="primary" style="width:100%;">
                     Otwórz dashboard →
                 </a>
             </article>

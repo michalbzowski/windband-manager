@@ -57,11 +57,11 @@ public class DashboardController {
      * Shows a single dashboard embedded in an iframe.
      * Generates a guest token with RLS filtering by band_id.
      */
-    @GetMapping("/{id}")
+    @GetMapping("/{slug}")
     public String viewDashboard(
             @AuthenticationPrincipal OidcUser oidcUser,
             HttpSession session,
-            @PathVariable Long id,
+            @PathVariable String slug,
             Model model) {
 
         Long activeTeamId = resolveActiveTeamId(oidcUser, session);
@@ -70,7 +70,7 @@ public class DashboardController {
             return "dashboards/view";
         }
 
-        SupersetDashboard dashboard = dashboardQueryService.findById(id);
+        SupersetDashboard dashboard = dashboardQueryService.findBySlug(slug);
         if (dashboard == null) {
             model.addAttribute("error", "Dashboard nie został znaleziony");
             return "dashboards/view";

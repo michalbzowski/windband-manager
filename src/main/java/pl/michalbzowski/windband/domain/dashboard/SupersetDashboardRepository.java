@@ -11,6 +11,8 @@ public interface SupersetDashboardRepository extends JpaRepository<SupersetDashb
 
     Optional<SupersetDashboard> findBySupersetId(Integer supersetId);
 
+    Optional<SupersetDashboard> findBySlug(String slug);
+
     List<SupersetDashboard> findByActiveTrueOrderByPositionAsc();
 
     boolean existsBySupersetId(Integer supersetId);

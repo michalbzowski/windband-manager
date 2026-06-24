@@ -30,18 +30,18 @@ public class SupersetGuestTokenController {
      * Generates a guest token for a specific dashboard + band combination.
      * The token includes RLS filtering so the user only sees their band's data.
      *
-     * GET /api/dashboards/{id}/guest-token
+     * GET /api/dashboards/{slug}/guest-token
      */
-    @GetMapping("/{id}/guest-token")
+    @GetMapping("/{slug}/guest-token")
     public ResponseEntity<?> getGuestToken(
             @AuthenticationPrincipal OidcUser oidcUser,
-            @PathVariable Long id) {
+            @PathVariable String slug) {
 
         if (!(oidcUser instanceof WindbandOidcUser wu)) {
             return ResponseEntity.status(401).body(Map.of("error", "Unauthorized"));
         }
 
-        SupersetDashboard dashboard = dashboardQueryService.findById(id);
+        SupersetDashboard dashboard = dashboardQueryService.findBySlug(slug);
         if (dashboard == null || !dashboard.isActive()) {
             return ResponseEntity.status(404).body(Map.of("error", "Dashboard not found"));
         }

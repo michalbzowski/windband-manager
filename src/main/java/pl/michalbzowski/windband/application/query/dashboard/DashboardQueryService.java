@@ -23,8 +23,8 @@ public class DashboardQueryService {
         return dashboardRepository.findActiveByBandId(bandId);
     }
 
-    public SupersetDashboard findById(Long id) {
-        return dashboardRepository.findById(id).orElse(null);
+    public SupersetDashboard findBySlug(String slug) {
+        return dashboardRepository.findBySlug(slug).orElse(null);
     }
 
     public List<SupersetDashboard> findAllActive() {

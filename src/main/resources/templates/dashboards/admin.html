@@ -50,7 +50,7 @@
                     </header>
 
                     <form method="post" th:action="@{/admin/dashboards/save-assignments}">
-                        <input type="hidden" name="dashboardId" th:value="${dash.id}">
+                        <input type="hidden" name="dashboardSlug" th:value="${dash.slug}">
 
                         <div class="grid" style="grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem;">
                             <th:block th:each="band : ${bands}">
