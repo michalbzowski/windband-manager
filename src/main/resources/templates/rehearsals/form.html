@@ -70,8 +70,9 @@
                 if (saveAndAddAnother) {
                     // Clear the form and keep the user on the page
                     form.reset();
-                    // Set default date to today again
-                    var today = new Date().toISOString().split('T')[0];
+                    // Set default date to today again (local timezone, not UTC)
+                    var now = new Date();
+                    var today = now.getFullYear() + '-' + String(now.getMonth() + 1).padStart(2, '0') + '-' + String(now.getDate()).padStart(2, '0');
                     var dateInput = form.querySelector("input[name='date']");
                     if (dateInput) dateInput.value = today;
                     var startTimeInput = form.querySelector("input[name='startTime']");

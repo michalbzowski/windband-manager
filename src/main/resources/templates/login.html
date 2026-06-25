@@ -16,9 +16,27 @@
             <p style="margin:0;">Zostałeś wylogowany.</p>
         </div>
 
+        <!-- Primary: Keycloak SSO -->
         <a href="/oauth2/authorization/keycloak" class="btn btn-primary" style="width:100%; text-align:center; display:block; padding:0.75rem; background:#4f46e5; color:white; border-radius:8px; text-decoration:none; font-weight:bold;">
             🔐 Zaloguj przez Keycloak
         </a>
+
+        <hr style="margin: 1.5rem 0; border: none; border-top: 1px solid #ddd;" />
+
+        <!-- Secondary: DB login (for tests and emergency access) -->
+        <form method="post" action="/login" style="margin-top: 1rem;">
+            <div style="margin-bottom: 0.75rem;">
+                <input type="text" name="username" placeholder="Username"
+                       style="width:100%; padding:0.5rem; border:1px solid #ccc; border-radius:4px;" />
+            </div>
+            <div style="margin-bottom: 0.75rem;">
+                <input type="password" name="password" placeholder="Password"
+                       style="width:100%; padding:0.5rem; border:1px solid #ccc; border-radius:4px;" />
+            </div>
+            <button type="submit" style="width:100%; padding:0.75rem; background:#6c757d; color:white; border:none; border-radius:4px; cursor:pointer;">
+                Zaloguj (DB)
+            </button>
+        </form>
 
         <p style="margin-top:1rem; color:var(--pico-muted-color); text-align:center;">
             Nie masz konta? <a href="/register">Zarejestruj zespół</a>

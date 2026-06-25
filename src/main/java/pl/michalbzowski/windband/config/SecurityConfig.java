@@ -114,7 +114,7 @@ public class SecurityConfig {
                         .anyRequest().authenticated()
                 )
 
-                // OIDC Authorization Code Flow
+                // OIDC Authorization Code Flow (primary)
                 .oauth2Login(oauth2 -> oauth2
                         .authorizationEndpoint(auth -> auth
                                 .authorizationRequestResolver(authorizationRequestResolver())
@@ -124,6 +124,15 @@ public class SecurityConfig {
                         .userInfoEndpoint(userInfo -> userInfo
                                 .oidcUserService(keycloakOAuth2UserService)
                         )
+                )
+
+                // Form login (fallback for tests and emergency DB access)
+                .formLogin(form -> form
+                        .loginPage("/login")
+                        .loginProcessingUrl("/api/auth/login")
+                        .defaultSuccessUrl("/", true)
+                        .failureUrl("/login?error")
+                        .permitAll()
                 )
 
                 // Logout — clear session + redirect to Keycloak logout

@@ -6,7 +6,7 @@ import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
-import pl.michalbzowski.windband.domain.user.AppUserRepository;
+import pl.michalbzowski.windband.application.query.systemadmin.SystemAdminQueryService;
 
 /**
  * Serves the system admin management HTML page.
@@ -18,11 +18,11 @@ import pl.michalbzowski.windband.domain.user.AppUserRepository;
 @RequiredArgsConstructor
 public class SystemAdminPageController {
 
-    private final AppUserRepository appUserRepository;
+    private final SystemAdminQueryService systemAdminQueryService;
 
     @GetMapping
     public String systemAdminsPage(Model model) {
-        model.addAttribute("users", appUserRepository.findAll());
+        model.addAttribute("users", systemAdminQueryService.findAllUsers());
         return "admin/system-admins";
     }
 }
