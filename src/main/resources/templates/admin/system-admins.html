@@ -1,10 +1,10 @@
 <!DOCTYPE html>
-<html xmlns:th="http://www.thymeleaf.org" th:replace="~{fragments/layout :: layout(~{::title}, ~{::main})}">
-<head>
-    <title>System Admins - Wind Band Manager</title>
-</head>
+<html xmlns:th="http://www.thymeleaf.org" xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
+<head th:replace="~{fragments/layout :: head('Administratorzy systemu')}"></head>
 <body>
-    <main id="content" class="container mt-4">
+    <nav th:replace="~{fragments/layout :: nav}"></nav>
+
+    <main class="container" id="content">
         <h2>👑 System Administratorzy</h2>
         <p class="text-muted">Zarządzaj rolami SYSTEM_ADMIN. Tylko administratorzy systemu mają dostęp do tej strony.</p>
 
@@ -41,5 +41,7 @@
             </tbody>
         </table>
     </main>
+
+    <footer th:replace="~{fragments/layout :: footer}"></footer>
 </body>
 </html>

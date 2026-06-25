@@ -173,11 +173,12 @@ public class SecurityConfig {
 
     private LogoutSuccessHandler oidcLogoutSuccessHandler() {
         return (request, response, authentication) -> {
-            // Use Keycloak's end_session_endpoint without redirect_uri
-            // (Keycloak will show its own "You are logged out" page)
+            // Build absolute Keycloak logout URL
+            // keycloakPublicUrl may already include https:// or be just a hostname
+            String scheme = keycloakPublicUrl.startsWith("http") ? "" : "https://";
             String keycloakLogoutUrl = String.format(
-                    "%s/realms/%s/protocol/openid-connect/logout",
-                    keycloakPublicUrl, keycloakRealm
+                    "%s%s/realms/%s/protocol/openid-connect/logout?post_logout_redirect_uri=%s",
+                    scheme, keycloakPublicUrl, keycloakRealm, baseUrl
             );
             response.sendRedirect(keycloakLogoutUrl);
         };
