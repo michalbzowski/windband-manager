@@ -8,29 +8,19 @@
             <h2>Zaloguj się</h2>
         </hgroup>
 
-        <div id="login-error" style="display:none; background:#ffe0e0; border:1px solid #ff8080; border-radius:8px; padding:1rem; margin-bottom:1rem;" role="alert">
-            <p style="margin:0;">Nieprawidłowa nazwa użytkownika lub hasło.</p>
-        </div>
-
         <div th:if="${param.error}" style="background:#ffe0e0; border:1px solid #ff8080; border-radius:8px; padding:1rem; margin-bottom:1rem;" role="alert">
-            <p style="margin:0;">Nieprawidłowa nazwa użytkownika lub hasło.</p>
+            <p style="margin:0;">Nieprawidłowe dane logowania lub problem z uwierzytelnieniem.</p>
         </div>
 
         <div th:if="${param.logout}" style="background:#d4edda; border:1px solid #c3e6cb; border-radius:8px; padding:1rem; margin-bottom:1rem;" role="alert">
             <p style="margin:0;">Zostałeś wylogowany.</p>
         </div>
 
-        <form method="post" action="/login">
-            <label for="username">Nazwa użytkownika</label>
-            <input type="text" id="username" name="username" required autofocus>
+        <a href="/oauth2/authorization/keycloak" class="btn btn-primary" style="width:100%; text-align:center; display:block; padding:0.75rem; background:#4f46e5; color:white; border-radius:8px; text-decoration:none; font-weight:bold;">
+            🔐 Zaloguj przez Keycloak
+        </a>
 
-            <label for="password">Hasło</label>
-            <input type="password" id="password" name="password" required>
-
-            <button type="submit">Zaloguj</button>
-        </form>
-
-        <p style="margin-top:1rem; color:var(--pico-muted-color);">
+        <p style="margin-top:1rem; color:var(--pico-muted-color); text-align:center;">
             Nie masz konta? <a href="/register">Zarejestruj zespół</a>
         </p>
     </main>

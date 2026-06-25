@@ -43,7 +43,7 @@ spring:
         registration:
           keycloak:
             client-id: ${KEYCLOAK_CLIENT_ID:windband-local}
-            client-secret: ${KEYCLOAK_CLIENT_SECRET:local-secret}
+            client-secret: ${KEYCLOAK_CLIENT_SECRET}
             redirect-uri: "http://localhost:8080/login/oauth2/code/keycloak"
         provider:
           keycloak:
@@ -82,5 +82,5 @@ app:
     url: http://localhost:8180
     realm: ${KEYCLOAK_REALM:windband}
     client-id: ${KEYCLOAK_CLIENT_ID:windband-local}
-    client-secret: ${KEYCLOAK_CLIENT_SECRET:local-secret}
+    client-secret: ${KEYCLOAK_CLIENT_SECRET}
     registration-redirect-url: "http://localhost:8180/realms/${KEYCLOAK_REALM:windband}/protocol/openid-connect/registrations?client_id=${KEYCLOAK_CLIENT_ID:windband-local}&redirect_uri=http://localhost:8080/register&response_type=code&scope=openid%20profile%20email"
