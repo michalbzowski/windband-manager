@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" th:replace="~{fragments/layout :: layout(~{::title}, ~{::main})}">
+<head>
+    <title>System Admins - Wind Band Manager</title>
+</head>
+<body>
+    <main id="content" class="container mt-4">
+        <h2>👑 System Administratorzy</h2>
+        <p class="text-muted">Zarządzaj rolami SYSTEM_ADMIN. Tylko administratorzy systemu mają dostęp do tej strony.</p>
+
+        <div th:if="${#lists.isEmpty(users)}" class="alert alert-info">
+            Brak zarejestrowanych użytkowników.
+        </div>
+
+        <table th:if="${not #lists.isEmpty(users)}" class="table table-striped table-hover">
+            <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>Username</th>
+                    <th>Email</th>
+                    <th>Display Name</th>
+                    <th>Status</th>
+                    <th>SYSTEM_ADMIN</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr th:each="user : ${users}">
+                    <td th:text="${user.id}"></td>
+                    <td th:text="${user.username}"></td>
+                    <td th:text="${user.email}"></td>
+                    <td th:text="${user.displayName}"></td>
+                    <td>
+                        <span th:if="${user.active}" class="badge bg-success">Aktywny</span>
+                        <span th:unless="${user.active}" class="badge bg-secondary">Nieaktywny</span>
+                    </td>
+                    <td>
+                        <span th:if="${user.systemAdmin}" class="badge bg-danger">SYSTEM_ADMIN</span>
+                        <span th:unless="${user.systemAdmin}" class="text-muted">—</span>
+                    </td>
+                </tr>
+            </tbody>
+        </table>
+    </main>
+</body>
+</html>
