@@ -6,7 +6,7 @@ services:
     environment:
       POSTGRES_DB: keycloak
       POSTGRES_USER: keycloak
-      POSTGRES_PASSWORD: keycloak
+      POSTGRES_PASSWORD: ${KEYCLOAK_DB_PASSWORD:-keycloak}
     ports:
       - "5433:5432"
     volumes:
@@ -29,7 +29,7 @@ services:
       KC_DB: postgres
       KC_DB_URL: jdbc:postgresql://keycloak-db:5432/keycloak
       KC_DB_USERNAME: keycloak
-      KC_DB_PASSWORD: keycloak
+      KC_DB_PASSWORD: ${KEYCLOAK_DB_PASSWORD:-keycloak}
       KC_HOSTNAME: keycloak.michalbzowski.pl
       KC_HOSTNAME_STRICT: "false"
       KC_PROXY: "edge"
@@ -51,7 +51,7 @@ services:
     environment:
       POSTGRES_DB: windband
       POSTGRES_USER: windband
-      POSTGRES_PASSWORD: windband
+      POSTGRES_PASSWORD: ${WINDDB_PASSWORD:-windband}
     ports:
       - "5432:5432"
     volumes:
@@ -82,7 +82,7 @@ services:
       DB_PORT: 5432
       DB_NAME: windband
       DB_USER: windband
-      DB_PASS: windband
+      DB_PASS: ${WINDDB_PASSWORD:-windband}
       SERVER_PORT: 8080
       MAIL_HOST: ${MAIL_HOST:-smtp.gmail.com}
       MAIL_PORT: ${MAIL_PORT:-587}
@@ -98,8 +98,11 @@ services:
       KEYCLOAK_CLIENT_SECRET: ${KEYCLOAK_CLIENT_SECRET:-windband-secret-key-change-in-production-2026}
       SUPERSET_BASE_URL: http://superset:8088
       SUPERSET_PUBLIC_URL: ${SUPERSET_PUBLIC_URL:-https://superset.michalbzowski.pl}
+      SUPERSET_GUEST_TOKEN_JWT_SECRET: ${SUPERSET_GUEST_TOKEN_JWT_SECRET:-WindbandGuestToken2026!ChangeMe#VeryLongSecretForSecurity}
       SUPERSET_USERNAME: ${SUPERSET_USERNAME:-admin}
       SUPERSET_PASSWORD: ${SUPERSET_PASSWORD:-admin}
+      KEYCLOAK_SUPERSET_CLIENT_ID: ${KEYCLOAK_SUPERSET_CLIENT_ID:-superset}
+      KEYCLOAK_SUPERSET_CLIENT_SECRET: ${KEYCLOAK_SUPERSET_CLIENT_SECRET:-BlAJEoXM0wdwsXa0t4fN6daCBWoaaOkg}
 
 volumes:
   pgdata:

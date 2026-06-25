@@ -1,17 +1,26 @@
 package pl.michalbzowski.windband.infrastructure.superset;
 
+import io.jsonwebtoken.Jwts;
+import io.jsonwebtoken.SignatureAlgorithm;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.*;
+import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestClientException;
 import org.springframework.web.client.RestTemplate;
 
+import jakarta.annotation.PostConstruct;
+import java.nio.charset.StandardCharsets;
+import java.security.Key;
 import java.util.*;
+
+import javax.crypto.spec.SecretKeySpec;
 
 /**
  * Client for Superset REST API.
- * Handles authentication (login → access token → API calls) and dashboard operations.
+ * Uses Keycloak access token for API calls (Bearer auth) and generates
+ * guest tokens locally with HMAC-SHA256 (Superset-compatible JWT format).
  *
  * Superset API docs: https://superset.apache.org/docs/api/
  */
@@ -23,16 +32,31 @@ public class SupersetClient {
     private final String supersetBaseUrl;
     private final String supersetUsername;
     private final String supersetPassword;
+    private final String guestTokenJwtSecret;
+    private final String keycloakUrl;
+    private final String keycloakRealm;
+    private final String keycloakSupersetClientId;
+    private final String keycloakSupersetClientSecret;
 
     public SupersetClient(
             RestTemplate restTemplate,
             @Value("${superset.base-url:http://localhost:8088}") String supersetBaseUrl,
             @Value("${superset.username:admin}") String supersetUsername,
-            @Value("${superset.password:admin}") String supersetPassword) {
+            @Value("${superset.password:admin}") String supersetPassword,
+            @Value("${superset.guest-token-jwt-secret:WindbandGuestToken2026!ChangeMe#VeryLongSecretForSecurity}") String guestTokenJwtSecret,
+            @Value("${keycloak.url:http://keycloak:8180}") String keycloakUrl,
+            @Value("${keycloak.realm:windband}") String keycloakRealm,
+            @Value("${keycloak.superset.client.id:superset}") String keycloakSupersetClientId,
+            @Value("${keycloak.superset.client.secret:supersetsecret}") String keycloakSupersetClientSecret) {
         this.restTemplate = restTemplate;
         this.supersetBaseUrl = supersetBaseUrl.replaceAll("/$", "");
         this.supersetUsername = supersetUsername;
         this.supersetPassword = supersetPassword;
+        this.guestTokenJwtSecret = guestTokenJwtSecret;
+        this.keycloakUrl = keycloakUrl;
+        this.keycloakRealm = keycloakRealm;
+        this.keycloakSupersetClientId = keycloakSupersetClientId;
+        this.keycloakSupersetClientSecret = keycloakSupersetClientSecret;
     }
 
     /**
@@ -81,54 +105,49 @@ public class SupersetClient {
     }
 
     /**
-     * Generates a guest token for embedded dashboard access.
+     * Generates a guest token for embedded dashboard access locally.
+     * Uses HMAC-SHA256 JWT with Superset's secret — no API call needed.
      * The token includes RLS (row-level security) clause filtering by band_id.
      *
-     * @param dashboardUuid the Superset dashboard UUID (required by embedded SDK)
+     * @param dashboardId the Superset dashboard ID (integer)
      * @param bandId the band ID to filter data by (RLS)
      * @param bandName the band name for display
      * @return JWT guest token string
      */
     public String generateGuestToken(int dashboardId, Long bandId, String bandName) {
-        String token = login();
-        HttpHeaders headers = authHeaders(token);
-
-        // Build guest token request with RLS
-        SupersetApiDtos.GuestTokenRequest request = new SupersetApiDtos.GuestTokenRequest();
-
-        // User context
-        SupersetApiDtos.GuestTokenRequest.User user = new SupersetApiDtos.GuestTokenRequest.User();
-        user.setUsername("band_" + bandId);
-        request.setUser(user);
-
-        // Resource (dashboard) — use integer ID for guest token API
-        SupersetApiDtos.GuestTokenRequest.Resource resource = new SupersetApiDtos.GuestTokenRequest.Resource();
-        resource.setType("dashboard");
-        resource.setId(String.valueOf(dashboardId));
-        request.setResources(List.of(resource));
-
-        // RLS rule: filter by band_id
-        SupersetApiDtos.GuestTokenRequest.RlsRule rlsRule = new SupersetApiDtos.GuestTokenRequest.RlsRule();
-        rlsRule.setClause("band_id = " + bandId);
-        request.setRls(List.of(rlsRule));
-
         try {
-            ResponseEntity<SupersetApiDtos.GuestTokenResponse> response = restTemplate.exchange(
-                    supersetBaseUrl + "/api/v1/security/guest_token/",
-                    HttpMethod.POST,
-                    new HttpEntity<>(request, headers),
-                    SupersetApiDtos.GuestTokenResponse.class
+            Key signingKey = new SecretKeySpec(
+                    guestTokenJwtSecret.getBytes(StandardCharsets.UTF_8),
+                    "HmacSHA256"
             );
 
-            if (response.getBody() != null && response.getBody().getToken() != null) {
-                log.info("Generated guest token for dashboard id={} band {}", dashboardId, bandId);
-                return response.getBody().getToken();
-            }
-        } catch (RestClientException e) {
+            long nowSeconds = System.currentTimeMillis() / 1000;
+
+            // Build JWT with Superset-compatible guest token format
+            String jwt = Jwts.builder()
+                    .setSubject("band_" + bandId)
+                    .claim("user", Map.of("username", "band_" + bandId))
+                    .claim("resources", List.of(Map.of(
+                            "type", "dashboard",
+                            "id", String.valueOf(dashboardId)
+                    )))
+                    .claim("rls_rules", List.of(Map.of(
+                            "clause", "band_id = " + bandId
+                    )))
+                    .claim("iat", nowSeconds)
+                    .claim("exp", nowSeconds + 3600)  // 1 hour
+                    .claim("aud", supersetBaseUrl)
+                    .claim("type", "guest")
+                    .signWith(signingKey, SignatureAlgorithm.HS256)
+                    .compact();
+
+            log.info("Generated local guest token for dashboard id={} band {}", dashboardId, bandId);
+            return jwt;
+        } catch (Exception e) {
             log.error("Failed to generate guest token for dashboard id={} band {}: {}",
-                    dashboardId, bandId, e.getMessage());
+                    dashboardId, bandId, e.getMessage(), e);
+            return null;
         }
-        return null;
     }
 
     /**
@@ -197,10 +216,50 @@ public class SupersetClient {
 
     // --- Private helpers ---
 
+    @PostConstruct
+    public void init() {
+        // Initial token fetch
+        refreshKeycloakToken();
+    }
+
+    @Scheduled(fixedDelay = 50 * 60 * 1000) // Refresh every 50 minutes
+    public void refreshKeycloakToken() {
+        try {
+            HttpHeaders headers = new HttpHeaders();
+            headers.setContentType(MediaType.APPLICATION_FORM_URLENCODED);
+
+            // Use client_credentials grant (service account) to obtain a Superset-scoped token from Keycloak
+            String body = "grant_type=client_credentials" +
+                    "&client_id=" + keycloakSupersetClientId +
+                    "&client_secret=" + keycloakSupersetClientSecret;
+
+            ResponseEntity<java.util.Map> response = restTemplate.exchange(
+                    keycloakUrl + "/realms/" + keycloakRealm + "/protocol/openid-connect/token",
+                    HttpMethod.POST,
+                    new HttpEntity<>(body, headers),
+                    java.util.Map.class
+            );
+
+            if (response.getBody() != null && response.getBody().get("access_token") != null) {
+                this.keycloakAccessToken = (String) response.getBody().get("access_token");
+                log.info("Refreshed Superset API token via Keycloak");
+            }
+        } catch (Exception e) {
+            log.warn("Failed to refresh Keycloak token: {}", e.getMessage());
+        }
+    }
+
+    private volatile String keycloakAccessToken = null;
+
     /**
-     * Logs in to Superset and returns the access token.
+     * Returns the current access token, preferring Keycloak bearer if available.
      */
     private String login() {
+        // Prefer Keycloak token if available
+        if (keycloakAccessToken != null && !keycloakAccessToken.isEmpty()) {
+            return keycloakAccessToken;
+        }
+        // Fallback to DB-based login
         SupersetApiDtos.LoginRequest loginRequest = new SupersetApiDtos.LoginRequest(supersetUsername, supersetPassword);
 
         ResponseEntity<SupersetApiDtos.LoginResponse> response = restTemplate.exchange(
