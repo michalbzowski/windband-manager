@@ -5,6 +5,7 @@ COPY pom.xml .
 COPY mvnw .
 COPY .mvn .mvn
 COPY src ./src
+# Force rebuild: 2026-06-25
 RUN ./mvnw -B clean package -DskipTests
 
 FROM eclipse-temurin:21-jre-alpine
