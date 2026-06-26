@@ -13,5 +13,9 @@ public interface GroupRepository {
 
     List<Group> findAllWithMembers();
 
+    List<Group> findAllByBandId(Long bandId);
+
+    List<Group> findAllWithMembersByBandId(Long bandId);
+
     void delete(Group group);
 }

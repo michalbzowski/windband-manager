@@ -35,6 +35,16 @@ public class GroupRepositoryAdapter implements GroupRepository {
     }
 
     @Override
+    public List<Group> findAllByBandId(Long bandId) {
+        return springDataRepo.findAllByBandIdOrderByNameAsc(bandId);
+    }
+
+    @Override
+    public List<Group> findAllWithMembersByBandId(Long bandId) {
+        return springDataRepo.findAllWithMembersByBandId(bandId);
+    }
+
+    @Override
     public void delete(Group group) {
         springDataRepo.delete(group);
     }

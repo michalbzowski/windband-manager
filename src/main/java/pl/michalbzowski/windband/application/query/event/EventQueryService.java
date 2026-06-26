@@ -38,7 +38,7 @@ public class EventQueryService {
                 .orElseThrow(() -> new EventNotFoundException(id));
     }
 
-    public EventDetailDto getEventDetailById(Long id) {
+    public EventDetailDto getEventDetailById(Long id, Long bandId) {
         BandEvent event = eventRepository.findById(id)
                 .orElseThrow(() -> new EventNotFoundException(id));
         List<ParticipationDto> participationDtos = event.getParticipations().stream()
@@ -72,7 +72,7 @@ public class EventQueryService {
                         .thenComparing(ParticipationDto::memberName))
                 .toList();
 
-        List<GroupSummaryDto> groups = groupQueryService.getAllGroups().stream()
+        List<GroupSummaryDto> groups = groupQueryService.getAllGroups(bandId).stream()
                 .map(g -> new GroupSummaryDto(g.id(), g.name(), g.description(), g.memberCount()))
                 .toList();
 

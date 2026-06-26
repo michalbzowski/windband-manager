@@ -19,7 +19,14 @@ public class GroupQueryService {
     private final GroupRepository groupRepository;
 
     public List<GroupSummaryDto> getAllGroups() {
-        return groupRepository.findAllWithMembers().stream()
+        return getAllGroups(null);
+    }
+
+    public List<GroupSummaryDto> getAllGroups(Long bandId) {
+        List<Group> groups = (bandId != null)
+                ? groupRepository.findAllWithMembersByBandId(bandId)
+                : groupRepository.findAllWithMembers();
+        return groups.stream()
                 .map(g -> new GroupSummaryDto(
                         g.getId(),
                         g.getName(),

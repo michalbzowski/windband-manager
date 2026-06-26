@@ -3,6 +3,7 @@ package pl.michalbzowski.windband.application.command.member;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import pl.michalbzowski.windband.domain.band.Band;
 import pl.michalbzowski.windband.domain.member.Group;
 import pl.michalbzowski.windband.domain.member.GroupRepository;
 import pl.michalbzowski.windband.domain.member.Member;
@@ -16,8 +17,8 @@ public class GroupCommandService {
     private final GroupRepository groupRepository;
     private final MemberRepository memberRepository;
 
-    public Group createGroup(CreateGroupCommand cmd) {
-        Group group = new Group(cmd.getName(), cmd.getDescription());
+    public Group createGroup(CreateGroupCommand cmd, Band band) {
+        Group group = new Group(cmd.getName(), cmd.getDescription(), band);
         return groupRepository.save(group);
     }
 

@@ -40,7 +40,7 @@ public class EventPageController {
 
     @GetMapping("/{id}")
     public String eventDetail(@PathVariable Long id, @ModelAttribute("activeTeamId") Long activeTeamId, Model model) {
-        var eventDetail = eventQueryService.getEventDetailById(id);
+        var eventDetail = eventQueryService.getEventDetailById(id, activeTeamId);
         model.addAttribute("event", eventDetail);
         
         // Get IDs of already invited members
@@ -59,8 +59,8 @@ public class EventPageController {
     }
 
     @GetMapping("/{id}/edit")
-    public String editEventForm(@PathVariable Long id, Model model) {
-        model.addAttribute("event", eventQueryService.getEventDetailById(id));
+    public String editEventForm(@PathVariable Long id, @ModelAttribute("activeTeamId") Long activeTeamId, Model model) {
+        model.addAttribute("event", eventQueryService.getEventDetailById(id, activeTeamId));
         return "events/edit";
     }
 }

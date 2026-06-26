@@ -50,7 +50,7 @@ class GroupMemberFilterRegressionTest extends BaseIntegrationTest {
         CreateGroupCommand groupCmd = new CreateGroupCommand();
         groupCmd.setName("Test Grupa");
         groupCmd.setDescription("Test opis");
-        Group group = groupCommandService.createGroup(groupCmd);
+        Group group = groupCommandService.createGroup(groupCmd, band);
         Long groupId = group.getId();
 
         // Create two members
@@ -87,7 +87,7 @@ class GroupMemberFilterRegressionTest extends BaseIntegrationTest {
         CreateGroupCommand groupCmd = new CreateGroupCommand();
         groupCmd.setName("Test Grupa 2");
         groupCmd.setDescription("Test opis 2");
-        Group group = groupCommandService.createGroup(groupCmd);
+        Group group = groupCommandService.createGroup(groupCmd, band);
         Long groupId = group.getId();
 
         Member member1 = memberRepository.save(
