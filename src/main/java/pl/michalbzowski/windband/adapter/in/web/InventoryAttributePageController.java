@@ -37,26 +37,18 @@ public class InventoryAttributePageController {
     private final MemberAttributeQueryService memberQueryService;
     private final BandQueryService bandQueryService;
 
-    private Long getActiveTeamId(OidcUser oidcUser) {
-        if (oidcUser instanceof WindbandOidcUser wu) {
-            return wu.getActiveTeamId();
-        }
-        return null;
-    }
-
-    private Band getActiveBand(OidcUser oidcUser) {
-        Long teamId = getActiveTeamId(oidcUser);
-        if (teamId == null) {
+    private Band getActiveBand(Long activeTeamId) {
+        if (activeTeamId == null) {
             return null;
         }
-        return bandQueryService.getBandById(teamId);
+        return bandQueryService.getBandById(activeTeamId);
     }
 
     // === List all attribute defs by type ===
 
     @GetMapping
-    public String listPage(@AuthenticationPrincipal OidcUser oidcUser, @RequestParam(defaultValue = "UNIFORM") String type, Model model) {
-        Band band = getActiveBand(oidcUser);
+    public String listPage(@ModelAttribute("activeTeamId") Long activeTeamId, @RequestParam(defaultValue = "UNIFORM") String type, Model model) {
+        Band band = getActiveBand(activeTeamId);
         model.addAttribute("type", type);
         if (band == null) {
             model.addAttribute("uniformAttributeDefs", List.of());
@@ -85,8 +77,8 @@ public class InventoryAttributePageController {
     // === New form ===
 
     @GetMapping("/new")
-    public String newForm(@AuthenticationPrincipal OidcUser oidcUser, @RequestParam String type, Model model) {
-        Band band = getActiveBand(oidcUser);
+    public String newForm(@ModelAttribute("activeTeamId") Long activeTeamId, @RequestParam String type, Model model) {
+        Band band = getActiveBand(activeTeamId);
         model.addAttribute("type", type);
         model.addAttribute("attributeDef", new AttributeDefForm("", "BOOLEAN", false, false, 0, null, null, null));
         model.addAttribute("attributeDefId", null);
@@ -97,8 +89,8 @@ public class InventoryAttributePageController {
     // === Edit form ===
 
     @GetMapping("/{id}/edit")
-    public String editForm(@PathVariable Long id, @AuthenticationPrincipal OidcUser oidcUser, @RequestParam String type, Model model) {
-        Band band = getActiveBand(oidcUser);
+    public String editForm(@PathVariable Long id, @ModelAttribute("activeTeamId") Long activeTeamId, @RequestParam String type, Model model) {
+        Band band = getActiveBand(activeTeamId);
         model.addAttribute("type", type);
         model.addAttribute("availableAttributes", band != null ? getAttributeDefsList(type, band) : List.of());
         AttributeDefForm form = switch (type) {
@@ -143,8 +135,8 @@ public class InventoryAttributePageController {
     // === Create ===
 
     @PostMapping
-    public ResponseEntity<Void> create(@AuthenticationPrincipal OidcUser oidcUser, @RequestParam String inventoryType, @ModelAttribute AttributeDefForm form) {
-        Band band = getActiveBand(oidcUser);
+    public ResponseEntity<Void> create(@ModelAttribute("activeTeamId") Long activeTeamId, @RequestParam String inventoryType, @ModelAttribute AttributeDefForm form) {
+        Band band = getActiveBand(activeTeamId);
         System.out.println("[DEBUG InventoryAttributePageController.create] inventoryType=" + inventoryType + " band=" + (band != null ? band.getId() : "null") + " name=" + form.getName());
         if (band == null) {
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(null);

@@ -42,25 +42,17 @@ public class InventoryPageController {
     private final BandQueryService bandQueryService;
     private final ObjectMapper objectMapper;
 
-    private Long getActiveTeamId(OidcUser oidcUser) {
-        if (oidcUser instanceof WindbandOidcUser wu) {
-            return wu.getActiveTeamId();
-        }
-        return null;
-    }
-
-    private Band getActiveBand(OidcUser oidcUser) {
-        Long teamId = getActiveTeamId(oidcUser);
-        if (teamId == null) {
+    private Band getActiveBand(Long activeTeamId) {
+        if (activeTeamId == null) {
             return null;
         }
-        return bandQueryService.getBandById(teamId);
+        return bandQueryService.getBandById(activeTeamId);
     }
 
     @GetMapping
-    public String listPage(@AuthenticationPrincipal OidcUser oidcUser, Model model) throws JsonProcessingException {
-        Band band = getActiveBand(oidcUser);
-        Long teamId = getActiveTeamId(oidcUser);
+    public String listPage(@ModelAttribute("activeTeamId") Long activeTeamId, Model model) throws JsonProcessingException {
+        Band band = getActiveBand(activeTeamId);
+        Long teamId = activeTeamId;
 
         System.out.println("[DEBUG InventoryPageController] teamId=" + teamId + " band=" + (band != null ? band.getId() : "null"));
 
@@ -150,18 +142,17 @@ public class InventoryPageController {
     }
 
     @GetMapping("/orders")
-    public String ordersFragment(@AuthenticationPrincipal OidcUser oidcUser, Model model) {
-        Long teamId = getActiveTeamId(oidcUser);
-        model.addAttribute("orders", inventoryQueryService.getAllOrders(teamId));
-        model.addAttribute("members", memberQueryService.getAllActiveMembers(teamId));
+    public String ordersFragment(@ModelAttribute("activeTeamId") Long activeTeamId, Model model) {
+        model.addAttribute("orders", inventoryQueryService.getAllOrders(activeTeamId));
+        model.addAttribute("members", memberQueryService.getAllActiveMembers(activeTeamId));
         model.addAttribute("orderStatuses", OrderStatus.values());
         return "inventory/list :: #orders-content";
     }
 
     @GetMapping("/uniforms/fragment")
-    public String uniformsFragment(@AuthenticationPrincipal OidcUser oidcUser, Model model) {
-        Band band = getActiveBand(oidcUser);
-        Long teamId = getActiveTeamId(oidcUser);
+    public String uniformsFragment(@ModelAttribute("activeTeamId") Long activeTeamId, Model model) {
+        Band band = getActiveBand(activeTeamId);
+        Long teamId = activeTeamId;
 
         System.out.println("[DEBUG uniformsFragment] teamId=" + teamId + " band=" + (band != null ? band.getId() : "null"));
 
@@ -189,9 +180,9 @@ public class InventoryPageController {
     }
 
     @GetMapping("/instruments/fragment")
-    public String instrumentsFragment(@AuthenticationPrincipal OidcUser oidcUser, Model model) {
-        Band band = getActiveBand(oidcUser);
-        Long teamId = getActiveTeamId(oidcUser);
+    public String instrumentsFragment(@ModelAttribute("activeTeamId") Long activeTeamId, Model model) {
+        Band band = getActiveBand(activeTeamId);
+        Long teamId = activeTeamId;
         
         if (band == null) {
             model.addAttribute("instrumentItems", List.of());
@@ -217,9 +208,9 @@ public class InventoryPageController {
     }
 
     @GetMapping("/awards/fragment")
-    public String awardsFragment(@AuthenticationPrincipal OidcUser oidcUser, Model model) {
-        Band band = getActiveBand(oidcUser);
-        Long teamId = getActiveTeamId(oidcUser);
+    public String awardsFragment(@ModelAttribute("activeTeamId") Long activeTeamId, Model model) {
+        Band band = getActiveBand(activeTeamId);
+        Long teamId = activeTeamId;
 
         if (band == null) {
             model.addAttribute("awardItems", List.of());

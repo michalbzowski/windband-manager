@@ -31,54 +31,43 @@ public class MemberPageController {
     private final MemberAttributeQueryService attributeQueryService;
     private final InventoryQueryService inventoryQueryService;
 
-    private Long getActiveTeamId(OidcUser oidcUser) {
-        if (oidcUser instanceof WindbandOidcUser wu) {
-            return wu.getActiveTeamId();
-        }
-        return null;
-    }
-
     @GetMapping
-    public String listPage(@AuthenticationPrincipal OidcUser oidcUser, Model model) {
-        Long teamId = getActiveTeamId(oidcUser);
-        model.addAttribute("members", memberQueryService.getAllActiveMembers(teamId));
-        model.addAttribute("activeTeamId", teamId);
+    public String listPage(@ModelAttribute("activeTeamId") Long activeTeamId, Model model) {
+        model.addAttribute("members", memberQueryService.getAllActiveMembers(activeTeamId));
+        model.addAttribute("activeTeamId", activeTeamId);
         return "members/list";
     }
 
     @GetMapping("/list")
-    public String listFragment(@AuthenticationPrincipal OidcUser oidcUser, Model model) {
-        Long teamId = getActiveTeamId(oidcUser);
-        model.addAttribute("members", memberQueryService.getAllActiveMembers(teamId));
-        model.addAttribute("activeTeamId", teamId);
+    public String listFragment(@ModelAttribute("activeTeamId") Long activeTeamId, Model model) {
+        model.addAttribute("members", memberQueryService.getAllActiveMembers(activeTeamId));
+        model.addAttribute("activeTeamId", activeTeamId);
         return "members/list :: #members-content";
     }
 
     @GetMapping("/new")
-    public String newMemberForm(@AuthenticationPrincipal OidcUser oidcUser, Model model) {
-        Long teamId = getActiveTeamId(oidcUser);
-        if (teamId == null) {
+    public String newMemberForm(@ModelAttribute("activeTeamId") Long activeTeamId, Model model) {
+        if (activeTeamId == null) {
             return "redirect:/register";
         }
         model.addAttribute("member", emptyMemberDto());
         model.addAttribute("todayJoinedDate", LocalDate.now().toString());
         model.addAttribute("tags", instrumentQueryService.findAll());
-        Band band = bandQueryService.getBandById(teamId);
+        Band band = bandQueryService.getBandById(activeTeamId);
         model.addAttribute("attributeDefs", attributeQueryService.getAttributeDefsForBand(band));
         model.addAttribute("attributeValues", Map.of());
         return "members/form";
     }
 
     @GetMapping("/{id}/edit")
-    public String editMemberForm(@PathVariable Long id, @AuthenticationPrincipal OidcUser oidcUser, Model model) {
-        Long teamId = getActiveTeamId(oidcUser);
-        if (teamId == null) {
+    public String editMemberForm(@PathVariable Long id, @ModelAttribute("activeTeamId") Long activeTeamId, Model model) {
+        if (activeTeamId == null) {
             return "redirect:/register";
         }
         MemberDto dto = memberQueryService.getMemberById(id);
         model.addAttribute("member", dto);
         model.addAttribute("tags", instrumentQueryService.findAll());
-        Band band = bandQueryService.getBandById(teamId);
+        Band band = bandQueryService.getBandById(activeTeamId);
         model.addAttribute("attributeDefs", attributeQueryService.getAttributeDefsForBand(band));
         Member member = memberQueryService.getMemberEntityById(id);
         model.addAttribute("attributeValues", attributeQueryService.getAttributeValuesForMember(member));
@@ -86,16 +75,15 @@ public class MemberPageController {
     }
 
     @GetMapping("/{id}/detail")
-    public String memberDetail(@PathVariable Long id, @AuthenticationPrincipal OidcUser oidcUser, Model model) {
-        Long teamId = getActiveTeamId(oidcUser);
-        if (teamId == null) {
+    public String memberDetail(@PathVariable Long id, @ModelAttribute("activeTeamId") Long activeTeamId, Model model) {
+        if (activeTeamId == null) {
             return "redirect:/register";
         }
         MemberDto dto = memberQueryService.getMemberById(id);
         model.addAttribute("member", dto);
-        model.addAttribute("uniformItems", inventoryQueryService.getUniformItemsByMember(id, teamId));
-        model.addAttribute("instrumentItems", inventoryQueryService.getInstrumentItemsByMember(id, teamId));
-        model.addAttribute("awardItems", inventoryQueryService.getAwardItemsByMember(id, teamId));
+        model.addAttribute("uniformItems", inventoryQueryService.getUniformItemsByMember(id, activeTeamId));
+        model.addAttribute("instrumentItems", inventoryQueryService.getInstrumentItemsByMember(id, activeTeamId));
+        model.addAttribute("awardItems", inventoryQueryService.getAwardItemsByMember(id, activeTeamId));
         return "members/detail :: member-detail-content";
     }
 

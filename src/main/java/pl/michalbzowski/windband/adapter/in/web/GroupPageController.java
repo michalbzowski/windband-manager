@@ -32,24 +32,15 @@ public class GroupPageController {
     private final MemberQueryService memberQueryService;
     private final BandQueryService bandQueryService;
 
-    private Long getActiveTeamId(OidcUser oidcUser) {
-        if (oidcUser instanceof WindbandOidcUser wu) {
-            return wu.getActiveTeamId();
-        }
-        return null;
-    }
-
     @GetMapping
-    public String listPage(@AuthenticationPrincipal OidcUser oidcUser, Model model) {
-        Long teamId = getActiveTeamId(oidcUser);
-        model.addAttribute("groups", groupQueryService.getAllGroups(teamId));
+    public String listPage(@ModelAttribute("activeTeamId") Long activeTeamId, Model model) {
+        model.addAttribute("groups", groupQueryService.getAllGroups(activeTeamId));
         return "groups/list";
     }
 
     @GetMapping("/list")
-    public String listFragment(@AuthenticationPrincipal OidcUser oidcUser, Model model) {
-        Long teamId = getActiveTeamId(oidcUser);
-        model.addAttribute("groups", groupQueryService.getAllGroups(teamId));
+    public String listFragment(@ModelAttribute("activeTeamId") Long activeTeamId, Model model) {
+        model.addAttribute("groups", groupQueryService.getAllGroups(activeTeamId));
         return "groups/list :: #groups-content";
     }
 
@@ -59,14 +50,13 @@ public class GroupPageController {
     }
 
     @GetMapping("/{id}")
-    public String groupDetail(@PathVariable Long id, @AuthenticationPrincipal OidcUser oidcUser, Model model) {
-        Long teamId = getActiveTeamId(oidcUser);
+    public String groupDetail(@PathVariable Long id, @ModelAttribute("activeTeamId") Long activeTeamId, Model model) {
         var groupDetail = groupQueryService.getGroupDetailById(id);
         model.addAttribute("group", groupDetail);
         Set<Long> memberIdsInGroup = groupDetail.members().stream()
                 .map(GroupMemberDto::memberId)
                 .collect(Collectors.toSet());
-        List<MemberDto> availableMembers = memberQueryService.getAllActiveMembers(teamId).stream()
+        List<MemberDto> availableMembers = memberQueryService.getAllActiveMembers(activeTeamId).stream()
                 .filter(m -> !memberIdsInGroup.contains(m.id()))
                 .toList();
         model.addAttribute("members", availableMembers);
@@ -74,9 +64,8 @@ public class GroupPageController {
     }
 
     @PostMapping
-    public String createGroup(@ModelAttribute CreateGroupCommand cmd, @AuthenticationPrincipal OidcUser oidcUser) {
-        Long teamId = getActiveTeamId(oidcUser);
-        Band band = teamId != null ? bandQueryService.getBandById(teamId) : null;
+    public String createGroup(@ModelAttribute CreateGroupCommand cmd, @ModelAttribute("activeTeamId") Long activeTeamId) {
+        Band band = activeTeamId != null ? bandQueryService.getBandById(activeTeamId) : null;
         Group group = groupCommandService.createGroup(cmd, band);
         return "redirect:/groups/" + group.getId();
     }
@@ -89,16 +78,14 @@ public class GroupPageController {
 
     @PostMapping("/{groupId}/members/{memberId}/remove")
     public String removeMember(@PathVariable Long groupId, @PathVariable Long memberId,
-                               @AuthenticationPrincipal OidcUser oidcUser, Model model) {
-        Long teamId = getActiveTeamId(oidcUser);
+                               @ModelAttribute("activeTeamId") Long activeTeamId, Model model) {
         groupCommandService.removeMemberFromGroup(groupId, memberId);
-        // Return the group detail fragment for HTMX, avoiding redirect issues
         var groupDetail = groupQueryService.getGroupDetailById(groupId);
         model.addAttribute("group", groupDetail);
         Set<Long> memberIdsInGroup = groupDetail.members().stream()
                 .map(GroupMemberDto::memberId)
                 .collect(Collectors.toSet());
-        List<MemberDto> availableMembers = memberQueryService.getAllActiveMembers(teamId).stream()
+        List<MemberDto> availableMembers = memberQueryService.getAllActiveMembers(activeTeamId).stream()
                 .filter(m -> !memberIdsInGroup.contains(m.id()))
                 .toList();
         model.addAttribute("members", availableMembers);

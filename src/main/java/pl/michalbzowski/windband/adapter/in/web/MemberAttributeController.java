@@ -3,12 +3,9 @@ package pl.michalbzowski.windband.adapter.in.web;
 import lombok.Data;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.core.annotation.AuthenticationPrincipal;
-import org.springframework.security.oauth2.core.oidc.user.OidcUser;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
-import pl.michalbzowski.windband.adapter.in.security.WindbandOidcUser;
 import pl.michalbzowski.windband.application.command.band.MemberAttributeCommandService;
 import pl.michalbzowski.windband.application.command.inventory.AwardAttributeCommandService;
 import pl.michalbzowski.windband.application.command.inventory.InstrumentAttributeCommandService;
@@ -34,25 +31,17 @@ public class MemberAttributeController {
     private final InventoryAttributeQueryService inventoryQueryService;
     private final BandQueryService bandQueryService;
 
-    private Long getActiveTeamId(OidcUser oidcUser) {
-        if (oidcUser instanceof WindbandOidcUser wu) {
-            return wu.getActiveTeamId();
-        }
-        return null;
-    }
-
-    private Band getActiveBand(OidcUser oidcUser) {
-        Long teamId = getActiveTeamId(oidcUser);
-        if (teamId == null) {
+    private Band getActiveBand(Long activeTeamId) {
+        if (activeTeamId == null) {
             return null;
         }
-        return bandQueryService.getBandById(teamId);
+        return bandQueryService.getBandById(activeTeamId);
     }
 
     // --- Page endpoints (HTMX fragments) ---
 
     @GetMapping
-    public String attributesPage(@AuthenticationPrincipal OidcUser oidcUser, @RequestParam(defaultValue = "MEMBER") String type, Model model) {
+    public String attributesPage(@ModelAttribute("activeTeamId") Long activeTeamId, @RequestParam(defaultValue = "MEMBER") String type, Model model) {
         // Redirect to the canonical /band/inventory-attributes endpoint.
         // This ensures backward compatibility for any old links/bookmarks.
         return "redirect:/band/inventory-attributes?type=" + type;
@@ -62,8 +51,8 @@ public class MemberAttributeController {
     // (removed — the redirect above replaces the old inline rendering)
 
     @GetMapping("/list")
-    public String attributeList(@AuthenticationPrincipal OidcUser oidcUser, Model model) {
-        Band band = getActiveBand(oidcUser);
+    public String attributeList(@ModelAttribute("activeTeamId") Long activeTeamId, Model model) {
+        Band band = getActiveBand(activeTeamId);
         if (band == null) {
             model.addAttribute("attributeDefs", List.of());
             return "band/attribute-list";
@@ -73,16 +62,16 @@ public class MemberAttributeController {
     }
 
     @GetMapping("/new")
-    public String newAttributeForm(@AuthenticationPrincipal OidcUser oidcUser, @RequestParam(defaultValue = "MEMBER") String type, Model model) {
+    public String newAttributeForm(@ModelAttribute("activeTeamId") Long activeTeamId, @RequestParam(defaultValue = "MEMBER") String type, Model model) {
         model.addAttribute("type", type);
         model.addAttribute("attributeDef", new AttributeDefForm("", "BOOLEAN", false, false, 0, null, null, null));
         model.addAttribute("attributeDefId", null);
-        model.addAttribute("availableAttributes", getAvailableAttributes(oidcUser, type));
+        model.addAttribute("availableAttributes", getAvailableAttributes(activeTeamId, type));
         return "band/inventory-attribute-form";
     }
 
-    private List<?> getAvailableAttributes(OidcUser oidcUser, String type) {
-        Band band = getActiveBand(oidcUser);
+    private List<?> getAvailableAttributes(Long activeTeamId, String type) {
+        Band band = getActiveBand(activeTeamId);
         if (band == null) {
             return List.of();
         }
@@ -95,10 +84,10 @@ public class MemberAttributeController {
     }
 
     @GetMapping("/{id}/edit")
-    public String editAttributeForm(@PathVariable Long id, @AuthenticationPrincipal OidcUser oidcUser, @RequestParam(defaultValue = "MEMBER") String type, Model model) {
-        Band band = getActiveBand(oidcUser);
+    public String editAttributeForm(@PathVariable Long id, @ModelAttribute("activeTeamId") Long activeTeamId, @RequestParam(defaultValue = "MEMBER") String type, Model model) {
+        Band band = getActiveBand(activeTeamId);
         model.addAttribute("type", type);
-        model.addAttribute("availableAttributes", getAvailableAttributes(oidcUser, type));
+        model.addAttribute("availableAttributes", getAvailableAttributes(activeTeamId, type));
         
         String name, attrType;
         boolean required;
@@ -155,8 +144,8 @@ public class MemberAttributeController {
     }
 
     @PostMapping
-    public ResponseEntity<Void> createAttribute(@AuthenticationPrincipal OidcUser oidcUser, @RequestParam(defaultValue = "MEMBER") String type, @ModelAttribute AttributeDefForm form) {
-        Band band = getActiveBand(oidcUser);
+    public ResponseEntity<Void> createAttribute(@ModelAttribute("activeTeamId") Long activeTeamId, @RequestParam(defaultValue = "MEMBER") String type, @ModelAttribute AttributeDefForm form) {
+        Band band = getActiveBand(activeTeamId);
         if (band == null) {
             return ResponseEntity.badRequest().build();
         }

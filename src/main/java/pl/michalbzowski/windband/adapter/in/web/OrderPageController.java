@@ -1,13 +1,11 @@
 package pl.michalbzowski.windband.adapter.in.web;
 
 import lombok.RequiredArgsConstructor;
-import org.springframework.security.core.annotation.AuthenticationPrincipal;
-import org.springframework.security.oauth2.core.oidc.user.OidcUser;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.ModelAttribute;
 import org.springframework.web.bind.annotation.RequestMapping;
-import pl.michalbzowski.windband.adapter.in.security.WindbandOidcUser;
 import pl.michalbzowski.windband.application.query.inventory.InventoryQueryService;
 import pl.michalbzowski.windband.application.query.inventory.InventoryAttributeQueryService;
 import pl.michalbzowski.windband.application.query.member.MemberQueryService;
@@ -29,16 +27,9 @@ public class OrderPageController {
     private final MemberQueryService memberQueryService;
     private final BandQueryService bandQueryService;
 
-    private Long getActiveTeamId(OidcUser oidcUser) {
-        if (oidcUser instanceof WindbandOidcUser wu) {
-            return wu.getActiveTeamId();
-        }
-        return null;
-    }
-
     @GetMapping
-    public String ordersPage(@AuthenticationPrincipal OidcUser oidcUser, Model model) {
-        Long teamId = getActiveTeamId(oidcUser);
+    public String ordersPage(@ModelAttribute("activeTeamId") Long activeTeamId, Model model) {
+        Long teamId = activeTeamId;
 
         if (teamId == null) {
             model.addAttribute("orders", List.of());
