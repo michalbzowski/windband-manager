@@ -18,6 +18,7 @@ public class RehearsalCommandService {
     private final RehearsalRepository rehearsalRepository;
     private final MemberRepository memberRepository;
     private final BandRepository bandRepository;
+    private final RehearsalNotificationService notificationService;
 
     public Rehearsal scheduleRehearsal(ScheduleRehearsalCommand cmd, Long teamId) {
         System.out.println("[DEBUG] scheduleRehearsal teamId=" + teamId + " date=" + cmd.getDate() + " startTime=" + cmd.getStartTime() + " location=" + cmd.getLocation());
@@ -37,6 +38,7 @@ public class RehearsalCommandService {
         }
         Rehearsal saved = rehearsalRepository.save(rehearsal);
         System.out.println("[DEBUG] saved rehearsal id=" + saved.getId() + " location=" + saved.getLocation());
+        notificationService.notifyMembersAboutNewRehearsal(saved);
         return saved;
     }
 
@@ -46,7 +48,9 @@ public class RehearsalCommandService {
         rehearsal.updateTime(cmd.getStartTime(), cmd.getEndTime());
         rehearsal.updateLocation(cmd.getLocation());
         rehearsal.updateNotes(cmd.getNotes());
-        return rehearsalRepository.save(rehearsal);
+        Rehearsal saved = rehearsalRepository.save(rehearsal);
+        notificationService.notifyMembersAboutUpdatedRehearsal(saved);
+        return saved;
     }
 
     public void recordAttendance(RecordAttendanceCommand cmd) {

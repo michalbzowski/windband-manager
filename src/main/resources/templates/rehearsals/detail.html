@@ -5,6 +5,13 @@
         <header>
             <strong th:text="${rehearsal.date}">01.01.2025</strong>
             <span th:text="${rehearsal.startTime} + ' - ' + ${rehearsal.endTime}">18:00 - 20:00</span>
+            <span style="margin-left:0.5rem;">
+                <button class="outline small"
+                        hx-get="@{/rehearsals/{id}/notifications(id=${rehearsal.id})}"
+                        hx-target="#content"
+                        hx-swap="innerHTML transition:true"
+                        title="Zobacz szczegóły wysyłki powiadomień e-mail">📧 <span id="email-badge" th:text="'...'">...</span></button>
+            </span>
         </header>
         <p th:if="${rehearsal.location}" th:text="'Miejsce: ' + ${rehearsal.location}">Miejsce: Sala prób</p>
         <p th:if="${rehearsal.notes}" th:text="${rehearsal.notes}">Notatki</p>
@@ -110,4 +117,21 @@
             htmx.ajax('GET', '/rehearsals/' + rehearsalId, {target: '#rehearsals-content', swap: 'innerHTML transition:true'});
         });
     });
+
+    // Load email notification badge
+    (function() {
+        var rehearsalId = [[${rehearsal.id}]];
+        var badge = document.getElementById('email-badge');
+        if (!badge) return;
+        fetch('/api/rehearsals/' + rehearsalId + '/email-stats')
+            .then(function(res) { if (!res.ok) return null; return res.json(); })
+            .then(function(stats) {
+                if (!stats) {
+                    badge.textContent = '—';
+                    return;
+                }
+                badge.textContent = stats.successCount + '/' + stats.totalMembers;
+            })
+            .catch(function() { badge.textContent = '—'; });
+    })();
 </script>

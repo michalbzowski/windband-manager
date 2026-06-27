@@ -42,6 +42,11 @@
                                         th:hx-get="@{/rehearsals/{id}(id=${r.id})}"
                                         hx-target="#rehearsals-content"
                                         hx-swap="innerHTML transition:true">Szczegóły</button>
+                                <button class="outline small"
+                                        th:hx-get="@{/rehearsals/{id}/notifications(id=${r.id})}"
+                                        hx-target="#content"
+                                        hx-swap="innerHTML transition:true"
+                                        title="Powiadomienia e-mail">📧</button>
                                 <button class="outline small secondary"
                                         th:attr="data-id=${r.id}"
                                         onclick="if(confirm('Czy na pewno chcesz usunąć tę próbę?')) deleteRehearsal(this.getAttribute('data-id'))"

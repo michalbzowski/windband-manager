@@ -2,9 +2,13 @@ package pl.michalbzowski.windband.config;
 
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import org.mockito.Mockito;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.context.annotation.Primary;
 import org.springframework.context.annotation.Profile;
+import org.springframework.mail.javamail.JavaMailSender;
+import org.springframework.scheduling.annotation.EnableAsync;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
@@ -41,6 +45,7 @@ import java.util.Map;
  */
 @Configuration
 @EnableWebSecurity
+@EnableAsync
 @Profile("test")
 public class TestSecurityConfig {
 
@@ -142,6 +147,12 @@ public class TestSecurityConfig {
 
             response.sendRedirect("/");
         };
+    }
+
+    @Bean
+    @Primary
+    public JavaMailSender javaMailSender() {
+        return Mockito.mock(JavaMailSender.class);
     }
 
     @Bean

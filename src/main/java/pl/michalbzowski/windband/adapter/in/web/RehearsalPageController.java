@@ -58,4 +58,12 @@ public class RehearsalPageController {
         model.addAttribute("rehearsal", rehearsal);
         return "rehearsals/edit";
     }
+
+    @GetMapping("/{id}/notifications")
+    public String rehearsalNotifications(@PathVariable Long id, @ModelAttribute("activeTeamId") Long activeTeamId, Model model) {
+        var rehearsal = rehearsalQueryService.getRehearsalById(id);
+        model.addAttribute("rehearsal", rehearsal);
+        model.addAttribute("activeMembers", memberQueryService.getAllActiveMembers(activeTeamId));
+        return "rehearsals/notifications";
+    }
 }

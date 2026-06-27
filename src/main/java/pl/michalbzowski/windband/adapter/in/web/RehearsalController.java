@@ -9,8 +9,10 @@ import org.springframework.security.oauth2.core.oidc.user.OidcUser;
 import org.springframework.web.bind.annotation.*;
 import pl.michalbzowski.windband.adapter.in.security.WindbandOidcUser;
 import pl.michalbzowski.windband.application.command.rehearsal.RecordAttendanceCommand;
-import pl.michalbzowski.windband.application.command.rehearsal.ScheduleRehearsalCommand;
 import pl.michalbzowski.windband.application.command.rehearsal.RehearsalCommandService;
+import pl.michalbzowski.windband.application.command.rehearsal.RehearsalEmailStats;
+import pl.michalbzowski.windband.application.command.rehearsal.RehearsalNotificationService;
+import pl.michalbzowski.windband.application.command.rehearsal.ScheduleRehearsalCommand;
 import pl.michalbzowski.windband.application.query.rehearsal.RehearsalQueryService;
 import pl.michalbzowski.windband.application.query.team.TeamQueryService;
 import pl.michalbzowski.windband.domain.rehearsal.Rehearsal;
@@ -25,6 +27,7 @@ public class RehearsalController {
     private final RehearsalCommandService commandService;
     private final RehearsalQueryService queryService;
     private final TeamQueryService teamQueryService;
+    private final RehearsalNotificationService notificationService;
 
     @GetMapping
     public List<Rehearsal> getAllRehearsals(@AuthenticationPrincipal OidcUser oidcUser, HttpSession session) {
@@ -74,6 +77,15 @@ public class RehearsalController {
     public ResponseEntity<Void> deleteRehearsal(@PathVariable Long id) {
         commandService.deleteRehearsal(id);
         return ResponseEntity.noContent().build();
+    }
+
+    @GetMapping("/{id}/email-stats")
+    public ResponseEntity<RehearsalEmailStats> getEmailStats(@PathVariable Long id) {
+        RehearsalEmailStats stats = notificationService.getStats(id);
+        if (stats == null) {
+            return ResponseEntity.notFound().build();
+        }
+        return ResponseEntity.ok(stats);
     }
 
     private Long resolveActiveTeamId(OidcUser oidcUser, HttpSession session) {
