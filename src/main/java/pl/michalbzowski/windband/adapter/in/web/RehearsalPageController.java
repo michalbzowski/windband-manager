@@ -60,10 +60,14 @@ public class RehearsalPageController {
     }
 
     @GetMapping("/{id}/notifications")
-    public String rehearsalNotifications(@PathVariable Long id, @ModelAttribute("activeTeamId") Long activeTeamId, Model model) {
+    public String rehearsalNotifications(@PathVariable Long id, @ModelAttribute("activeTeamId") Long activeTeamId,
+                                         Model model, jakarta.servlet.http.HttpServletRequest request) {
         var rehearsal = rehearsalQueryService.getRehearsalById(id);
         model.addAttribute("rehearsal", rehearsal);
         model.addAttribute("activeMembers", memberQueryService.getAllActiveMembers(activeTeamId));
+        if ("true".equals(request.getHeader("HX-Request"))) {
+            return "rehearsals/notifications :: notifications-content";
+        }
         return "rehearsals/notifications";
     }
 }

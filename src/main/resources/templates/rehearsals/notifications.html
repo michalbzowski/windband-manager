@@ -5,7 +5,7 @@
 <nav th:replace="~{fragments/layout :: nav}"></nav>
 
 <main class="container" id="content">
-    <div id="notifications-content">
+    <div id="notifications-content" th:fragment="notifications-content">
         <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem;">
             <h2>📧 Powiadomienia e-mail</h2>
             <button class="outline small"
@@ -41,57 +41,57 @@
         <div id="member-email-list">
             <p>Ładowanie danych...</p>
         </div>
+
+        <script th:inline="javascript">
+            var rehearsalId = [[${rehearsal.id}]];
+
+            function loadEmailStats() {
+                fetch('/api/rehearsals/' + rehearsalId + '/email-stats')
+                    .then(function(res) {
+                        if (!res.ok) {
+                            document.getElementById('member-email-list').innerHTML =
+                                '<p>Brak danych o wysyłce. Powiadomienie mogło jeszcze nie zostać wysłane (wysyłka jest asynchroniczna).</p>';
+                            return null;
+                        }
+                        return res.json();
+                    })
+                    .then(function(stats) {
+                        if (!stats) return;
+                        document.getElementById('stat-total').textContent = stats.totalMembers;
+                        document.getElementById('stat-success').textContent = stats.successCount;
+                        document.getElementById('stat-failed').textContent = stats.failedCount;
+
+                        var html = '';
+                        if (stats.memberResults.length === 0) {
+                            html = '<p>Brak członków z zdefiniowanym adresem e-mail.</p>';
+                        } else {
+                            html = '<table role="grid"><thead><tr><th>Muzyk</th><th>Email</th><th>Status</th></tr></thead><tbody>';
+                            stats.memberResults.forEach(function(r) {
+                                var statusIcon = r.success ? '✅' : '❌';
+                                var statusColor = r.success ? 'green' : 'red';
+                                html += '<tr>';
+                                html += '<td>' + r.firstName + ' ' + r.lastName + '</td>';
+                                html += '<td style="font-family:monospace; font-size:0.85rem;">' + r.email + '</td>';
+                                html += '<td style="color:' + statusColor + '; font-weight:bold;">' + statusIcon + ' ' + (r.success ? 'Wysłany' : 'Błąd') + '</td>';
+                                html += '</tr>';
+                            });
+                            html += '</tbody></table>';
+                        }
+                        document.getElementById('member-email-list').innerHTML = html;
+                    })
+                    .catch(function(err) {
+                        document.getElementById('member-email-list').innerHTML =
+                            '<p style="color:red;">Błąd ładowania danych: ' + err.message + '</p>';
+                    });
+            }
+
+            loadEmailStats();
+        </script>
     </div>
 </main>
 
 <footer th:replace="~{fragments/layout :: footer}"></footer>
 <div th:insert="~{fragments/layout :: toast-container}"></div>
 <div th:insert="~{fragments/layout :: footer-scripts}"></div>
-
-<script th:inline="javascript">
-    var rehearsalId = [[${rehearsal.id}]];
-
-    function loadEmailStats() {
-        fetch('/api/rehearsals/' + rehearsalId + '/email-stats')
-            .then(function(res) {
-                if (!res.ok) {
-                    document.getElementById('member-email-list').innerHTML =
-                        '<p>Brak danych o wysyłce. Powiadomienie mogło jeszcze nie zostać wysłane (wysyłka jest asynchroniczna).</p>';
-                    return null;
-                }
-                return res.json();
-            })
-            .then(function(stats) {
-                if (!stats) return;
-                document.getElementById('stat-total').textContent = stats.totalMembers;
-                document.getElementById('stat-success').textContent = stats.successCount;
-                document.getElementById('stat-failed').textContent = stats.failedCount;
-
-                var html = '';
-                if (stats.memberResults.length === 0) {
-                    html = '<p>Brak członków z zdefiniowanym adresem e-mail.</p>';
-                } else {
-                    html = '<table role="grid"><thead><tr><th>Muzyk</th><th>Email</th><th>Status</th></tr></thead><tbody>';
-                    stats.memberResults.forEach(function(r) {
-                        var statusIcon = r.success ? '✅' : '❌';
-                        var statusColor = r.success ? 'green' : 'red';
-                        html += '<tr>';
-                        html += '<td th:text="' + r.firstName + ' ' + r.lastName + '">' + r.firstName + ' ' + r.lastName + '</td>';
-                        html += '<td style="font-family:monospace; font-size:0.85rem;">' + r.email + '</td>';
-                        html += '<td style="color:' + statusColor + '; font-weight:bold;">' + statusIcon + ' ' + (r.success ? 'Wysłany' : 'Błąd') + '</td>';
-                        html += '</tr>';
-                    });
-                    html += '</tbody></table>';
-                }
-                document.getElementById('member-email-list').innerHTML = html;
-            })
-            .catch(function(err) {
-                document.getElementById('member-email-list').innerHTML =
-                    '<p style="color:red;">Błąd ładowania danych: ' + err.message + '</p>';
-            });
-    }
-
-    document.addEventListener('DOMContentLoaded', loadEmailStats);
-</script>
 </body>
 </html>
