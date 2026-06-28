@@ -9,6 +9,8 @@ import pl.michalbzowski.windband.domain.band.BandRepository;
 import pl.michalbzowski.windband.domain.event.*;
 import pl.michalbzowski.windband.domain.member.Group;
 import pl.michalbzowski.windband.domain.member.GroupRepository;
+import pl.michalbzowski.windband.domain.member.Instrument;
+import pl.michalbzowski.windband.domain.member.InstrumentRepository;
 import pl.michalbzowski.windband.domain.member.Member;
 import pl.michalbzowski.windband.domain.member.MemberRepository;
 
@@ -23,6 +25,7 @@ public class EventCommandService {
     private final MemberRepository memberRepository;
     private final GroupRepository groupRepository;
     private final BandRepository bandRepository;
+    private final InstrumentRepository instrumentRepository;
 
     public BandEvent createEvent(CreateEventCommand cmd, Long teamId) {
         Band band = bandRepository.findById(teamId)
@@ -163,6 +166,25 @@ public class EventCommandService {
             if (!invitedMemberIds.contains(groupMember.getMember().getId())) {
                 event.inviteMember(groupMember.getMember());
             }
+        }
+        eventRepository.save(event);
+    }
+
+    public void updateParticipationInstrument(Long eventId, Long memberId, Long instrumentId) {
+        BandEvent event = eventRepository.findById(eventId)
+                .orElseThrow(() -> new EventNotFoundException(eventId));
+
+        EventParticipation participation = event.getParticipations().stream()
+                .filter(p -> p.getMember().getId().equals(memberId))
+                .findFirst()
+                .orElseThrow(() -> new IllegalStateException("Member not participating in this event"));
+
+        if (instrumentId != null) {
+            Instrument instrument = instrumentRepository.findById(instrumentId)
+                    .orElseThrow(() -> new IllegalArgumentException("Instrument not found: " + instrumentId));
+            participation.setInstrument(instrument);
+        } else {
+            participation.setInstrument(null);
         }
         eventRepository.save(event);
     }

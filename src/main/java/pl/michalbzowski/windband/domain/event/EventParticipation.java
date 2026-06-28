@@ -4,6 +4,7 @@ import jakarta.persistence.*;
 import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
+import pl.michalbzowski.windband.domain.member.Instrument;
 import pl.michalbzowski.windband.domain.member.Member;
 
 import java.math.BigDecimal;
@@ -28,6 +29,10 @@ public class EventParticipation {
     @JoinColumn(name = "member_id", nullable = false)
     private Member member;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "instrument_id")
+    private Instrument instrument;
+
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     private ParticipationResponse response;
@@ -47,6 +52,10 @@ public class EventParticipation {
 
     void setResponse(ParticipationResponse response) {
         this.response = response;
+    }
+
+    public void setInstrument(Instrument instrument) {
+        this.instrument = instrument;
     }
 
     public void recordPayment(BigDecimal amount) {

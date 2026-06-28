@@ -231,20 +231,19 @@
         });
     });
 
-    // Change instrument
+    // Change instrument for this event participation (not member's default)
     document.querySelectorAll('.instrument-select').forEach(function(select) {
         select.addEventListener('change', function() {
             var memberId = this.dataset.memberId;
             var instrumentId = this.value;
-            if (instrumentId) {
-                fetchWithToast('/api/members/' + memberId + '/instrument', { toastMessage: 'Zapisano instrument',
-                    method: 'PUT',
-                    headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify({memberId: parseInt(memberId), instrumentId: parseInt(instrumentId)})
-                }).then(function(res) {
-                    if (!res.ok) console.error('Failed to update instrument');
-                });
-            }
+            fetchWithToast('/api/events/' + eventId + '/participation-instrument', { toastMessage: 'Zmieniono instrument na to wydarzenie',
+                method: 'PUT',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({memberId: parseInt(memberId), instrumentId: instrumentId ? parseInt(instrumentId) : null})
+            }).then(function(res) {
+                if (!res.ok) console.error('Failed to update instrument');
+                else htmx.ajax('GET', '/events/' + eventId, {target: '#events-content', swap: 'innerHTML transition:true'});
+            });
         });
     });
 

@@ -46,7 +46,8 @@ public class EventQueryService {
                         p.getId(),
                         p.getMember().getId(),
                         p.getMember().getFirstName() + " " + p.getMember().getLastName(),
-                        p.getMember().getPrimaryInstrument().map(i -> i.getName()).orElse(null),
+                        p.getInstrument() != null ? p.getInstrument().getName()
+                            : p.getMember().getPrimaryInstrument().map(i -> i.getName()).orElse(null),
                         p.getResponse().name(),
                         p.getPaymentAmount(),
                         p.getPaymentStatus().name()

@@ -14,6 +14,7 @@ import pl.michalbzowski.windband.application.query.team.TeamQueryService;
 import pl.michalbzowski.windband.domain.event.BandEvent;
 
 import java.util.List;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/api/events")
@@ -101,6 +102,15 @@ public class EventController {
     public ResponseEntity<Void> updateEvent(@PathVariable Long id, @RequestBody UpdateEventCommand cmd) {
         cmd.setId(id);
         commandService.updateEvent(cmd);
+        return ResponseEntity.ok().build();
+    }
+
+    @PutMapping("/{id}/participation-instrument")
+    public ResponseEntity<Void> updateParticipationInstrument(@PathVariable Long id,
+                                                              @RequestBody Map<String, Long> body) {
+        Long memberId = body.get("memberId");
+        Long instrumentId = body.get("instrumentId");
+        commandService.updateParticipationInstrument(id, memberId, instrumentId);
         return ResponseEntity.ok().build();
     }
 

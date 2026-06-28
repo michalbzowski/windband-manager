@@ -63,3 +63,9 @@ VALUES ('Medal Other', 'Medal innego zespołu', 2, CURRENT_DATE);
 INSERT INTO instruments (name, description, sort_priority) VALUES ('Trąbka', 'Trąbka Bb', 1);
 INSERT INTO instruments (name, description, sort_priority) VALUES ('Bęben', 'Bęben wielki', 2);
 INSERT INTO instruments (name, description, sort_priority) VALUES ('Saksofon', 'Saksofon alt', 3);
+
+-- Member instruments (Jan plays Trąbka, Anna plays Bęben)
+INSERT INTO member_instruments (member_id, instrument_id, is_primary)
+VALUES (1, 1, true);
+INSERT INTO member_instruments (member_id, instrument_id, is_primary)
+VALUES (2, 2, true);
