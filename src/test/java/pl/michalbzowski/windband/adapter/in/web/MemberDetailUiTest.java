@@ -58,7 +58,7 @@ class MemberDetailUiTest extends UiTestBase {
         try {
             // === STEP 1: Add a member with instrument ===
             loginAndNavigateTo("/members");
-            driver.findElement(By.xpath("//button[contains(text(), 'Dodaj muzyka')]")).click();
+            driver.findElement(By.xpath("//button[contains(text(), 'Dodaj członka')]")).click();
             wait.until(ExpectedConditions.presenceOfElementLocated(By.cssSelector("#member-form")));
 
             driver.findElement(By.cssSelector("input[name='firstName']")).sendKeys(firstName);

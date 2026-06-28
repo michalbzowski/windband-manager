@@ -56,7 +56,7 @@ class UniformAttributeFormUiTest extends UiTestBase {
             ((JavascriptExecutor) driver).executeScript("arguments[0].click();", strojeTab);
             wait.until(ExpectedConditions.presenceOfElementLocated(By.cssSelector("#uniforms-content")));
 
-            // Click "Dodaj stroj"
+            // Click "Dodaj ekwipunek"
             WebElement addBtn = wait.until(ExpectedConditions.presenceOfElementLocated(
                     By.cssSelector("#uniforms-content button[onclick='showUniformForm()']")));
             ((JavascriptExecutor) driver).executeScript("arguments[0].click();", addBtn);
@@ -121,7 +121,7 @@ class UniformAttributeFormUiTest extends UiTestBase {
             ((JavascriptExecutor) driver).executeScript("arguments[0].click();", strojeTab);
             wait.until(ExpectedConditions.presenceOfElementLocated(By.cssSelector("#uniforms-content")));
 
-            // Click "Dodaj stroj"
+            // Click "Dodaj ekwipunek"
             WebElement addBtn = wait.until(ExpectedConditions.presenceOfElementLocated(
                     By.cssSelector("#uniforms-content button[onclick='showUniformForm()']")));
             ((JavascriptExecutor) driver).executeScript("arguments[0].click();", addBtn);

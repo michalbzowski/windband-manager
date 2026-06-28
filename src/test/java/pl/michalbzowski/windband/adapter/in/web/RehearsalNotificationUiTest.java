@@ -26,7 +26,7 @@ class RehearsalNotificationUiTest extends UiTestBase {
         wait.until(ExpectedConditions.presenceOfElementLocated(By.id("rehearsals-content")));
 
         // Create a rehearsal
-        var addButton = driver.findElement(By.xpath("//button[contains(text(), 'Zaplanuj próbę')]"));
+        var addButton = driver.findElement(By.xpath("//button[contains(text(), 'Zaplanuj spotkanie')]"));
         addButton.click();
 
         wait.until(ExpectedConditions.presenceOfElementLocated(By.cssSelector("#rehearsal-form")));
@@ -75,7 +75,7 @@ class RehearsalNotificationUiTest extends UiTestBase {
         loginAndNavigateTo("/rehearsals");
         wait.until(ExpectedConditions.presenceOfElementLocated(By.id("rehearsals-content")));
 
-        var addButton = driver.findElement(By.xpath("//button[contains(text(), 'Zaplanuj próbę')]"));
+        var addButton = driver.findElement(By.xpath("//button[contains(text(), 'Zaplanuj spotkanie')]"));
         addButton.click();
 
         wait.until(ExpectedConditions.presenceOfElementLocated(By.cssSelector("#rehearsal-form")));
@@ -135,7 +135,7 @@ class RehearsalNotificationUiTest extends UiTestBase {
         wait.until(ExpectedConditions.presenceOfElementLocated(By.id("rehearsals-content")));
 
         // Create a rehearsal so there's at least one row
-        var addButton = driver.findElement(By.xpath("//button[contains(text(), 'Zaplanuj próbę')]"));
+        var addButton = driver.findElement(By.xpath("//button[contains(text(), 'Zaplanuj spotkanie')]"));
         addButton.click();
 
         wait.until(ExpectedConditions.presenceOfElementLocated(By.cssSelector("#rehearsal-form")));

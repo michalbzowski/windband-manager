@@ -55,7 +55,7 @@ class MemberAddEditDateOfBirthUiTest extends UiTestBase {
         try {
             // === STEP 1: Add a member via UI with all fields including instrument ===
             loginAndNavigateTo("/members");
-            driver.findElement(By.xpath("//button[contains(text(), 'Dodaj muzyka')]")).click();
+            driver.findElement(By.xpath("//button[contains(text(), 'Dodaj członka')]")).click();
             wait.until(ExpectedConditions.presenceOfElementLocated(By.cssSelector("#member-form")));
 
             fillField("firstName", firstName);

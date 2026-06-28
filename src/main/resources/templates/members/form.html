@@ -1,5 +1,5 @@
 <div id="members-content">
-    <h2 th:text="${member.id() != null ? '✏️ Edytuj muzyka' : '➕ Dodaj muzyka'}">Dodaj muzyka</h2>
+    <h2 th:text="${member.id() != null ? '✏️ Edytuj członka' : '➕ Dodaj członka'}">Dodaj członka</h2>
 
     <form id="member-form"
           th:attr="data-member-id=${member.id()}">
@@ -123,7 +123,7 @@
         </div>
 
         <div style="display:flex; gap:0.5rem; margin-top:1rem;">
-            <button type="submit" class="primary" th:text="${member.id() != null ? 'Zapisz zmiany' : 'Dodaj muzyka'}">Dodaj</button>
+            <button type="submit" class="primary" th:text="${member.id() != null ? 'Zapisz zmiany' : 'Dodaj członka'}">Dodaj</button>
             <button type="submit" class="secondary" name="saveAndAddAnother" value="true" th:if="${member.id() == null}"
                     th:text="'Zapisz i dodaj kolejny'">Zapisz i dodaj kolejny</button>
             <button type="button" class="secondary"

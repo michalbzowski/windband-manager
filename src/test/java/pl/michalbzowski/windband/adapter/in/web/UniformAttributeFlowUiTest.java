@@ -166,7 +166,7 @@ class UniformAttributeFlowUiTest extends UiTestBase {
 
             assertThat(detailContent)
                     .as("Detail page should have uniform items section")
-                    .contains("Elementy stroju");
+                    .contains("Elementy ekwipunku");
 
             // Verify each uniform item name appears
             for (String option : UNIFORM_OPTIONS) {
@@ -187,7 +187,7 @@ class UniformAttributeFlowUiTest extends UiTestBase {
 
     private Long createMemberViaUi(WebDriverWait wait, String firstName, String lastName, String dob, Long instrumentId) {
         loginAndNavigateTo("/members");
-        driver.findElement(By.xpath("//button[contains(text(), 'Dodaj muzyka')]")).click();
+        driver.findElement(By.xpath("//button[contains(text(), 'Dodaj członka')]")).click();
         wait.until(ExpectedConditions.presenceOfElementLocated(By.cssSelector("#member-form")));
 
         driver.findElement(By.cssSelector("input[name='firstName']")).sendKeys(firstName);

@@ -18,7 +18,7 @@
                 <strong th:text="${rehearsal.date}">01.01.2025</strong>
                 <span th:text="${rehearsal.startTime} + ' - ' + ${rehearsal.endTime}">18:00 - 20:00</span>
             </header>
-            <p th:if="${rehearsal.location}" th:text="'Miejsce: ' + ${rehearsal.location}">Miejsce: Sala prób</p>
+            <p th:if="${rehearsal.location}" th:text="'Miejsce: ' + ${rehearsal.location}">Miejsce: Miejsce spotkania</p>
         </article>
 
         <div style="display:flex; gap:1rem; margin-bottom:1.5rem; flex-wrap:wrap;">
@@ -65,7 +65,7 @@
                         if (stats.memberResults.length === 0) {
                             html = '<p>Brak członków z zdefiniowanym adresem e-mail.</p>';
                         } else {
-                            html = '<table role="grid"><thead><tr><th>Muzyk</th><th>Email</th><th>Status</th></tr></thead><tbody>';
+                            html = '<table role="grid"><thead><tr><th>Członek</th><th>Email</th><th>Status</th></tr></thead><tbody>';
                             stats.memberResults.forEach(function(r) {
                                 var statusIcon = r.success ? '✅' : '❌';
                                 var statusColor = r.success ? 'green' : 'red';

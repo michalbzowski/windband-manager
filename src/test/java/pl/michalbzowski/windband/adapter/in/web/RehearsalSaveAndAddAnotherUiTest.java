@@ -29,8 +29,8 @@ class RehearsalSaveAndAddAnotherUiTest extends UiTestBase {
         loginAndNavigateTo("/rehearsals");
         wait.until(ExpectedConditions.presenceOfElementLocated(By.id("rehearsals-content")));
 
-        // Click "Zaplanuj próbę" button
-        var addButton = driver.findElement(By.xpath("//button[contains(text(), 'Zaplanuj próbę')]"));
+        // Click "Zaplanuj spotkanie" button
+        var addButton = driver.findElement(By.xpath("//button[contains(text(), 'Zaplanuj spotkanie')]"));
         addButton.click();
 
         // Wait for form to load
@@ -95,8 +95,8 @@ class RehearsalSaveAndAddAnotherUiTest extends UiTestBase {
         loginAndNavigateTo("/rehearsals");
         wait.until(ExpectedConditions.presenceOfElementLocated(By.id("rehearsals-content")));
 
-        // Click "Zaplanuj próbę" button
-        var addButton = driver.findElement(By.xpath("//button[contains(text(), 'Zaplanuj próbę')]"));
+        // Click "Zaplanuj spotkanie" button
+        var addButton = driver.findElement(By.xpath("//button[contains(text(), 'Zaplanuj spotkanie')]"));
         addButton.click();
 
         // Wait for form to load

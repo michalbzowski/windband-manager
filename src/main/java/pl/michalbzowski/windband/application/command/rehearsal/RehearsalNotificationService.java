@@ -61,7 +61,7 @@ public class RehearsalNotificationService {
             return;
         }
 
-        String subject = "Nowa próba: %s — %s".formatted(
+        String subject = "Nowe spotkanie: %s — %s".formatted(
                 band.getName(),
                 rehearsal.getDate().format(DATE_FORMAT)
         );
@@ -106,7 +106,7 @@ public class RehearsalNotificationService {
     private String buildEmailBody(Rehearsal rehearsal, Band band) {
         StringBuilder sb = new StringBuilder();
         sb.append("Cześć,\n\n");
-        sb.append("Została zaplanowana nowa próba zespołu \"").append(band.getName()).append("\".\n\n");
+        sb.append("Zaplanowano nowe spotkanie zespołu \"").append(band.getName()).append("\".\n\n");
         sb.append("📅 Data: ").append(rehearsal.getDate().format(DATE_FORMAT)).append("\n");
         sb.append("⏰ Godzina: ").append(rehearsal.getStartTime().format(TIME_FORMAT));
         if (rehearsal.getEndTime() != null) {

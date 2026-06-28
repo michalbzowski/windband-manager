@@ -117,7 +117,7 @@ class AttributeUiTest extends UiTestBase {
         driver.get(baseUrl() + "/inventory");
         wait.until(ExpectedConditions.presenceOfElementLocated(By.cssSelector("#content")));
 
-        var addUniformBtn = driver.findElement(By.xpath("//button[contains(text(), 'Dodaj stroj')]"));
+        var addUniformBtn = driver.findElement(By.xpath("//button[contains(text(), 'Dodaj ekwipunek')]"));
         addUniformBtn.click();
         wait.until(ExpectedConditions.presenceOfElementLocated(By.id("uniform-form")));
         assertThat(driver.getPageSource()).contains("Rozmiar czapki");

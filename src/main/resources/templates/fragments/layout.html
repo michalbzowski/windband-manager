@@ -3,7 +3,7 @@
 <head th:fragment="head(title)">
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title th:text="${title} + ' — Wind Band Manager'">Wind Band Manager</title>
+    <title th:text="${title} + ' — Team Manager'">Team Manager</title>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.min.css">
     <link rel="stylesheet" th:href="@{/css/app.css}">
     <script th:src="@{/js/htmx.min.js}"></script>
@@ -76,22 +76,22 @@
 
         <!-- Left: Brand + Primary Navigation -->
         <div class="nav-left">
-            <a th:href="@{/}" class="nav-brand" aria-label="Wind Band Manager — strona główna">
-                <span class="brand-icon">🎺</span>
-                <span class="brand-text">WBM</span>
+            <a th:href="@{/}" class="nav-brand" aria-label="Team Manager — strona główna">
+                <span class="brand-icon">⚡</span>
+                <span class="brand-text">TM</span>
             </a>
 
             <ul class="nav-primary">
                 <li>
                     <a th:href="@{/members}" hx-target="#content" hx-swap="innerHTML transition:true">
                         <span class="nav-icon">👥</span>
-                        <span class="nav-label">Muzycy</span>
+                        <span class="nav-label">Członkowie</span>
                     </a>
                 </li>
                 <li>
                     <a th:href="@{/rehearsals}" hx-target="#content" hx-swap="innerHTML transition:true">
                         <span class="nav-icon">🎵</span>
-                        <span class="nav-label">Próby</span>
+                        <span class="nav-label">Spotkania</span>
                     </a>
                 </li>
                 <li>
@@ -162,8 +162,8 @@
                         <small th:if="${activeTeamRole}" th:text="${#strings.capitalize(activeTeamRole)}">admin</small>
                     </li>
                     <li><hr></li>
-                    <li><a th:href="@{/members}" hx-target="#content" hx-swap="innerHTML transition:true">👥 Muzycy</a></li>
-                    <li><a th:href="@{/rehearsals}" hx-target="#content" hx-swap="innerHTML transition:true">🎵 Próby</a></li>
+                    <li><a th:href="@{/members}" hx-target="#content" hx-swap="innerHTML transition:true">👥 Członkowie</a></li>
+                    <li><a th:href="@{/rehearsals}" hx-target="#content" hx-swap="innerHTML transition:true">🎵 Spotkania</a></li>
                     <li><a th:href="@{/events}" hx-target="#content" hx-swap="innerHTML transition:true">🎪 Wydarzenia</a></li>
                     <li><a th:href="@{/inventory}" hx-target="#content" hx-swap="innerHTML transition:true">📦 Zasoby</a></li>
                     <li><a th:href="@{/dashboards}" hx-target="#content" hx-swap="innerHTML transition:true">📊 Dashboardy</a></li>
@@ -189,7 +189,7 @@
 
     <footer th:fragment="footer" class="container">
         <hr>
-        <small>Wind Band Manager &copy; 2025 Michał Bzowski | <span id="build-version">...</span></small>
+        <small>Team Manager &copy; 2025 Michał Bzowski | <span id="build-version">...</span></small>
     </footer>
 
 <script th:fragment="footer-scripts">

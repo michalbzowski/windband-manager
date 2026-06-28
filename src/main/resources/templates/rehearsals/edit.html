@@ -1,5 +1,5 @@
 <div id="rehearsals-content">
-    <h2>✏️ Edytuj próbę</h2>
+    <h2>✏️ Edytuj spotkanie</h2>
 
     <form id="rehearsal-edit-form"
           hx-target="#rehearsals-content"
@@ -23,7 +23,7 @@
             </label>
             <label>
                 Miejsce
-                <input type="text" name="location" placeholder="Sala prób, DK Psary..." th:value="${rehearsal.location}">
+                <input type="text" name="location" placeholder="Miejsce spotkania, DK Psary..." th:value="${rehearsal.location}">
             </label>
         </div>
 
@@ -56,7 +56,7 @@
 
                 var rehearsalId = [[${rehearsal.id}]];
 
-                fetchWithToast('/api/rehearsals/' + rehearsalId,{ toastMessage: 'Zapisano próbę', {
+                fetchWithToast('/api/rehearsals/' + rehearsalId,{ toastMessage: 'Zapisano spotkanie', {
                     method: 'PUT',
                     headers: {'Content-Type': 'application/json'},
                     body: JSON.stringify(data)

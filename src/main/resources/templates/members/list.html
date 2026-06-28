@@ -1,20 +1,20 @@
 <!DOCTYPE html>
 <html lang="pl" xmlns:th="http://www.thymeleaf.org">
-<head th:replace="~{fragments/layout :: head('Muzycy')}"></head>
+<head th:replace="~{fragments/layout :: head('Członkowie')}"></head>
 <body>
 <nav th:replace="~{fragments/layout :: nav}"></nav>
 
     <main class="container" id="content">
         <div id="members-content">
             <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem;">
-                <h2>👥 Muzycy</h2>
+                <h2>👥 Członkowie</h2>
                 <button hx-get="/members/new" hx-target="#members-content" hx-swap="innerHTML transition:true"
-                        class="primary">+ Dodaj muzyka</button>
+                        class="primary">+ Dodaj członka</button>
             </div>
 
             <div th:if="${#lists.isEmpty(members)}">
                 <article>
-                    <p>Brak muzyków w systemie. Dodaj pierwszego!</p>
+                    <p>Brak członeków w systemie. Dodaj pierwszego!</p>
                 </article>
             </div>
 

@@ -14,9 +14,9 @@
                 <button class="tab-btn primary" data-tab="orders"
                         onclick="switchTab('orders')">📋 Zamówienia</button>
                 <button class="tab-btn secondary" data-tab="uniforms"
-                        onclick="switchTab('uniforms')">🎖️ Stroje</button>
+                        onclick="switchTab('uniforms')">🎖️ Ekwipunek</button>
                 <button class="tab-btn secondary" data-tab="instruments"
-                        onclick="switchTab('instruments')">🎺 Instrumenty</button>
+                        onclick="switchTab('instruments')">⚡ Instrumenty</button>
                 <button class="tab-btn secondary" data-tab="awards"
                         onclick="switchTab('awards')">🏅 Odznaczenia</button>
             </div>
@@ -131,14 +131,14 @@
             <div id="tab-uniforms" style="display:none;">
                 <div id="uniforms-content">
                     <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem;">
-                        <h3>Stroje</h3>
-                        <button class="primary small" onclick="showUniformForm()">+ Dodaj stroj</button>
+                        <h3>Ekwipunek</h3>
+                        <button class="primary small" onclick="showUniformForm()">+ Dodaj ekwipunek</button>
                     </div>
 
                     <!-- Add form (hidden) -->
                     <div id="uniform-form" style="display:none; margin-bottom:1rem;">
                         <article>
-                            <h4>Nowy element stroju</h4>
+                            <h4>Nowy element ekwipunku</h4>
                             <div style="display:flex; gap:0.5rem; flex-wrap:wrap; align-items:flex-end;">
                                 <div>
                                     <label for="uni-member">Przydziel do</label>
@@ -195,7 +195,7 @@
                     </div>
 
                     <div th:if="${#lists.isEmpty(uniformItems)}">
-                        <article><p>Brak elementów stroju.</p></article>
+                        <article><p>Brak elementów ekwipunku.</p></article>
                     </div>
 
                     <table th:unless="${#lists.isEmpty(uniformItems)}" role="grid">
@@ -241,11 +241,11 @@
                     <!-- Assign modal -->
                     <div id="uni-assign-modal" style="display:none; margin-top:1rem;">
                         <article>
-                            <h4>Przydziel stroj</h4>
+                            <h4>Przydziel ekwipunek</h4>
                             <input type="hidden" id="uni-assign-item-id">
                             <div style="display:flex; gap:0.5rem; align-items:flex-end; flex-wrap:wrap;">
                                 <div>
-                                    <label for="uni-assign-member">Muzyk</label>
+                                    <label for="uni-assign-member">Członek</label>
                                     <select id="uni-assign-member">
                                         <option value="">Wybierz...</option>
                                         <option th:each="m : ${members}" th:value="${m.id}"
@@ -382,7 +382,7 @@
                             <input type="hidden" id="inst-assign-item-id">
                             <div style="display:flex; gap:0.5rem; align-items:flex-end; flex-wrap:wrap;">
                                 <div>
-                                    <label for="inst-assign-member">Muzyk</label>
+                                    <label for="inst-assign-member">Członek</label>
                                     <select id="inst-assign-member">
                                         <option value="">Wybierz...</option>
                                         <option th:each="m : ${members}" th:value="${m.id}"
@@ -518,7 +518,7 @@
                             <input type="hidden" id="award-assign-item-id">
                             <div style="display:flex; gap:0.5rem; align-items:flex-end;">
                                 <div>
-                                    <label for="award-assign-member">Muzyk</label>
+                                    <label for="award-assign-member">Członek</label>
                                     <select id="award-assign-member">
                                         <option value="">Wybierz...</option>
                                         <option th:each="m : ${members}" th:value="${m.id}"
@@ -850,14 +850,14 @@
             var itemId = document.getElementById('uni-assign-item-id').value;
             var memberId = document.getElementById('uni-assign-member').value;
             var condition = document.getElementById('uni-assign-condition').value;
-            if (!memberId) { alert('Wybierz muzyka'); return; }
+            if (!memberId) { alert('Wybierz członka'); return; }
             fetchWithToast('/api/inventory/uniforms/' + itemId + '/assign', { toastMessage: 'Uniform przydzielony', method:'POST', headers:{'Content-Type':'application/json'},
                 body: JSON.stringify({memberId: parseInt(memberId), conditionAtAssign: condition})
             }).then(function(r) { if(r.ok) { closeUniAssignModal(); refreshTab('uniforms'); } });
         }
         function closeUniAssignModal() { document.getElementById('uni-assign-modal').style.display = 'none'; }
         function returnUniform(id) {
-            if (!confirm('Zwróć stroj do magazynu?')) return;
+            if (!confirm('Zwróć ekwipunek do magazynu?')) return;
             var condition = prompt('Stan przy zwrocie (opcjonalnie):', '');
             fetchWithToast('/api/inventory/uniforms/' + id + '/return', { toastMessage: 'Uniform zwrócony', method:'POST', headers:{'Content-Type':'application/json'},
                 body: JSON.stringify({conditionAtReturn: condition})})
@@ -882,7 +882,7 @@
             var itemId = document.getElementById('inst-assign-item-id').value;
             var memberId = document.getElementById('inst-assign-member').value;
             var condition = document.getElementById('inst-assign-condition').value;
-            if (!memberId) { alert('Wybierz muzyka'); return; }
+            if (!memberId) { alert('Wybierz członka'); return; }
             fetchWithToast('/api/inventory/instruments/' + itemId + '/assign', { toastMessage: 'Instrument przydzielony', method:'POST', headers:{'Content-Type':'application/json'},
                 body: JSON.stringify({memberId: parseInt(memberId), conditionAtAssign: condition})
             }).then(function(r) { if(r.ok) { closeInstAssignModal(); refreshTab('instruments'); } });
@@ -921,7 +921,7 @@
             var html = '<article><h4>📜 Historia przypisań</h4>';
             if (!data || data.length === 0) { html += '<p>Brak historii.</p>'; }
             else {
-                html += '<table role="grid"><thead><tr><th>Muzyk</th><th>Przydzielił</th><th>Od</th><th>Do</th><th>Stan przy przydz.</th><th>Stan przy zwrot.</th><th>Status</th></tr></thead><tbody>';
+                html += '<table role="grid"><thead><tr><th>Członek</th><th>Przydzielił</th><th>Od</th><th>Do</th><th>Stan przy przydz.</th><th>Stan przy zwrot.</th><th>Status</th></tr></thead><tbody>';
                 data.forEach(function(h) {
                     html += '<tr><td>' + h.memberName + '</td><td>' +
                         (h.assignedByName || '—') + '</td><td>' + h.assignedAt + '</td><td>' +
@@ -1004,7 +1004,7 @@
         function confirmAssignAward() {
             var awardId = document.getElementById('award-assign-item-id').value;
             var memberId = document.getElementById('award-assign-member').value;
-            if (!memberId) { alert('Wybierz muzyka'); return; }
+            if (!memberId) { alert('Wybierz członka'); return; }
             fetchWithToast('/api/inventory/awards/' + awardId + '/assign', { toastMessage: 'Odznaczenie przydzielone',
                 method: 'POST',
                 headers: {'Content-Type': 'application/json'},

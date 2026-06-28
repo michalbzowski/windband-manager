@@ -28,7 +28,7 @@
                 <h4>Aktywność</h4>
                 <table role="grid">
                     <tr>
-                        <th>Liczba prób</th>
+                        <th>Liczba spotkań</th>
                         <td th:text="${report.rehearsalCount}">8</td>
                     </tr>
                     <tr>
@@ -40,7 +40,7 @@
         </div>
     </article>
 
-    <h3>Próby w tym miesiącu</h3>
+    <h3>Spotkania w tym miesiącu</h3>
     <div th:if="${#lists.isEmpty(report.rehearsals)}">
         <p>Brak prób w tym okresie.</p>
     </div>
@@ -57,7 +57,7 @@
             <tr th:each="r : ${report.rehearsals}">
                 <td th:text="${r.date}">01.01.2025</td>
                 <td th:text="${r.startTime}">18:00</td>
-                <td th:text="${r.location}">Sala prób</td>
+                <td th:text="${r.location}">Miejsce spotkania</td>
                 <td th:text="${r.presentCount} + ' / ' + ${r.attendances.size()}">12 / 15</td>
             </tr>
         </tbody>

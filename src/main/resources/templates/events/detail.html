@@ -31,8 +31,8 @@
             <select id="invite-group-select">
                 <option value="">Wybierz grupę...</option>
                 <option th:each="g : ${event.allGroups}" th:value="${g.id}"
-                        th:text="${g.name} + ' (' + ${g.memberCount} + ' muzyków)'">
-                    Sekcja dęta (5 muzyków)
+                        th:text="${g.name} + ' (' + ${g.memberCount} + ' członeków)'">
+                    Sekcja dęta (5 członeków)
                 </option>
             </select>
         </div>
@@ -41,9 +41,9 @@
 
     <div style="display:flex; gap:0.5rem; margin-bottom:1rem; align-items:flex-end;">
         <div>
-            <label for="invite-member-select">Zaproś pojedynczego muzyka</label>
+            <label for="invite-member-select">Zaproś pojedynczego członka</label>
             <select id="invite-member-select">
-                <option value="">Wybierz muzyka...</option>
+                <option value="">Wybierz członka...</option>
                 <option th:each="m : ${members}" th:value="${m.id}"
                         th:text="${m.firstName} + ' ' + ${m.lastName}">Jan Kowalski</option>
             </select>
@@ -67,7 +67,7 @@
     <table role="grid" id="participants-table">
         <thead>
             <tr>
-                <th>Muzyk</th>
+                <th>Członek</th>
                 <th>Instrument</th>
                 <th>Odpowiedź</th>
                 <th th:if="${event.paymentType == 'PAID_SPLIT'}">Wypłata</th>

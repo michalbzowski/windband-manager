@@ -69,10 +69,10 @@
         <!-- Uniform items -->
         <article style="margin-bottom:1rem;">
             <header>
-                <h4>👔 Elementy stroju</h4>
+                <h4>👔 Elementy ekwipunku</h4>
             </header>
             <div th:if="${#lists.isEmpty(uniformItems)}">
-                <p style="color:var(--pico-muted-color);">Brak przypisanych elementów stroju.</p>
+                <p style="color:var(--pico-muted-color);">Brak przypisanych elementów ekwipunku.</p>
             </div>
             <table th:unless="${#lists.isEmpty(uniformItems)}" role="grid">
                 <thead>
@@ -99,7 +99,7 @@
         <!-- Instrument items -->
         <article style="margin-bottom:1rem;">
             <header>
-                <h4>🎺 Instrumenty</h4>
+                <h4>⚡ Instrumenty</h4>
             </header>
             <div th:if="${#lists.isEmpty(instrumentItems)}">
                 <p style="color:var(--pico-muted-color);">Brak przypisanych instrumentów z inwentarza.</p>

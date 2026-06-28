@@ -9,8 +9,8 @@
 
         <!-- Responsive tabs - client-side switching like inventory view -->
         <div id="attribute-tabs" style="display:flex; gap:0.5rem; margin-bottom:1rem; border-bottom:1px solid #ddd; flex-wrap:wrap;">
-            <button class="tab-btn" th:classappend="${type == 'UNIFORM'} ? 'primary' : 'secondary'" data-tab="uniforms">🎖️ Umundurowanie</button>
-            <button class="tab-btn" th:classappend="${type == 'INSTRUMENT'} ? 'primary' : 'secondary'" data-tab="instruments">🎺 Instrumenty</button>
+            <button class="tab-btn" th:classappend="${type == 'UNIFORM'} ? 'primary' : 'secondary'" data-tab="uniforms">🎖️ Ubrania</button>
+            <button class="tab-btn" th:classappend="${type == 'INSTRUMENT'} ? 'primary' : 'secondary'" data-tab="instruments">⚡ Instrumenty</button>
             <button class="tab-btn" th:classappend="${type == 'ORDER'} ? 'primary' : 'secondary'" data-tab="orders">📋 Zamówienia</button>
             <button class="tab-btn" th:classappend="${type == 'AWARD'} ? 'primary' : 'secondary'" data-tab="awards">🏅 Odznaczenia</button>
             <button class="tab-btn" th:classappend="${type == 'MEMBER'} ? 'primary' : 'secondary'" data-tab="members">👥 Członkowie</button>
@@ -19,7 +19,7 @@
         <!-- ===== UNIFORMS TAB ===== -->
         <div id="tab-uniforms" class="attribute-tab" data-type="UNIFORM">
             <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem;">
-                <span>Umundurowanie</span>
+                <span>Ubrania</span>
                 <button class="primary small"
                         th:hx-get="@{/band/inventory-attributes/new(type='UNIFORM')}"
                         hx-target="body"

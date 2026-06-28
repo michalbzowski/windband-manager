@@ -27,8 +27,8 @@ import static org.assertj.core.api.Assertions.assertThat;
  * End-to-end UI test: full flow from attribute definition to uniform assignment.
  *
  * <p>Scenario (all via UI, no API shortcuts):
- * 1. Create SELECT attribute "Rodzaj" via "Atrybuty > Umundurowanie" form
- * 2. Go to "Inwentaryzacja > Stroje" → click "Dodaj stroj"
+ * 1. Create SELECT attribute "Rodzaj" via "Atrybuty > Ubrania" form
+ * 2. Go to "Inwentaryzacja > Ekwipunek" → click "Dodaj ekwipunek"
  * 3. Verify the attribute field appears in the form
  * 4. Fill in the attribute value and submit
  * 5. Verify the uniform appears in the list with correct attribute value
@@ -97,19 +97,19 @@ class UniformAttributeE2EFlowUiTest extends UiTestBase {
             memberId = createMemberViaUi(wait, firstName, lastName, dob, instrument.getId());
 
             // ============================================================
-            // STEP 3: Go to Inventory → Uniforms → "Dodaj stroj"
+            // STEP 3: Go to Inventory → Uniforms → "Dodaj ekwipunek"
             // ============================================================
             driver.get(baseUrl() + "/inventory");
             wait.until(ExpectedConditions.presenceOfElementLocated(By.cssSelector("#inventory-content")));
 
-            // Click "Stroje" tab
+            // Click "Ekwipunek" tab
             WebElement strojeTab = driver.findElement(By.cssSelector("button[data-tab='uniforms']"));
             ((JavascriptExecutor) driver).executeScript("arguments[0].click();", strojeTab);
             wait.until(ExpectedConditions.presenceOfElementLocated(By.cssSelector("#uniforms-content")));
 
-            // Click "+ Dodaj stroj"
+            // Click "+ Dodaj ekwipunek"
             WebElement addUniformBtn = driver.findElement(
-                    By.xpath("//div[@id='uniforms-content']//button[contains(text(), 'Dodaj stroj')]"));
+                    By.xpath("//div[@id='uniforms-content']//button[contains(text(), 'Dodaj ekwipunek')]"));
             addUniformBtn.click();
 
             // Wait for form to appear
@@ -166,7 +166,7 @@ class UniformAttributeE2EFlowUiTest extends UiTestBase {
             driver.navigate().refresh();
             wait.until(ExpectedConditions.presenceOfElementLocated(By.cssSelector("#inventory-content")));
 
-            // Click Stroje tab again
+            // Click Ekwipunek tab again
             strojeTab = driver.findElement(By.cssSelector("button[data-tab='uniforms']"));
             ((JavascriptExecutor) driver).executeScript("arguments[0].click();", strojeTab);
             wait.until(ExpectedConditions.presenceOfElementLocated(By.cssSelector("#uniforms-content")));
@@ -224,18 +224,18 @@ class UniformAttributeE2EFlowUiTest extends UiTestBase {
                     .contains(firstName + " " + lastName);
             assertThat(detailText)
                     .as("Member detail should have uniform items section")
-                    .contains("Elementy stroju");
+                    .contains("Elementy ekwipunku");
             // Note: member detail template uses item.name to display each uniform.
             // The data.sql seed has "Bluza Test" which was assigned to this member,
             // OR the E2E-created uniform will have its name shown.
             // For now verify the uniform section heading and any item name is present.
             assertThat(detailText)
                     .as("Member detail should show uniform items section heading")
-                    .contains("Elementy stroju");
+                    .contains("Elementy ekwipunku");
             // Verify at least one uniform item is listed (by checking the table has data)
             assertThat(detailText)
                     .as("Member detail should show assigned uniform item details")
-                    .doesNotContain("Brak przypisanych elementów stroju");
+                    .doesNotContain("Brak przypisanych elementów ekwipunku");
 
         } finally {
             // ============================================================
@@ -249,7 +249,7 @@ class UniformAttributeE2EFlowUiTest extends UiTestBase {
 
     private Long createMemberViaUi(WebDriverWait wait, String firstName, String lastName, String dob, Long instrumentId) {
         loginAndNavigateTo("/members");
-        driver.findElement(By.xpath("//button[contains(text(), 'Dodaj muzyka')]")).click();
+        driver.findElement(By.xpath("//button[contains(text(), 'Dodaj członka')]")).click();
         wait.until(ExpectedConditions.presenceOfElementLocated(By.cssSelector("#member-form")));
 
         driver.findElement(By.cssSelector("input[name='firstName']")).sendKeys(firstName);

@@ -16,9 +16,9 @@ class RehearsalUiTest extends UiTestBase {
     void shouldNavigateToRehearsalsAndOpenNewForm() {
         loginAndNavigateTo("/rehearsals");
 
-        assertThat(driver.getTitle()).contains("Próby");
+        assertThat(driver.getTitle()).contains("Spotkania");
 
-        var addButton = driver.findElement(By.xpath("//button[contains(text(), 'Zaplanuj próbę')]"));
+        var addButton = driver.findElement(By.xpath("//button[contains(text(), 'Zaplanuj spotkanie')]"));
         assertThat(addButton).isNotNull();
 
         addButton.click();
@@ -29,6 +29,6 @@ class RehearsalUiTest extends UiTestBase {
                 By.cssSelector("#rehearsals-content form")));
 
         var formHeading = driver.findElement(By.cssSelector("#rehearsals-content h2"));
-        assertThat(formHeading.getText()).contains("Zaplanuj próbę");
+        assertThat(formHeading.getText()).contains("Zaplanuj spotkanie");
     }
 }

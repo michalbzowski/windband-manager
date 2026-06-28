@@ -1,5 +1,5 @@
 <div id="rehearsals-content">
-    <h2>🎵 Szczegóły próby</h2>
+    <h2>🎵 Szczegóły spotkania</h2>
 
     <article>
         <header>
@@ -13,7 +13,7 @@
                         title="Zobacz szczegóły wysyłki powiadomień e-mail">📧 <span id="email-badge" th:text="'...'">...</span></button>
             </span>
         </header>
-        <p th:if="${rehearsal.location}" th:text="'Miejsce: ' + ${rehearsal.location}">Miejsce: Sala prób</p>
+        <p th:if="${rehearsal.location}" th:text="'Miejsce: ' + ${rehearsal.location}">Miejsce: Miejsce spotkania</p>
         <p th:if="${rehearsal.notes}" th:text="${rehearsal.notes}">Notatki</p>
     </article>
 
@@ -22,7 +22,7 @@
     <table role="grid">
         <thead>
             <tr>
-                <th>Muzyk</th>
+                <th>Członek</th>
                 <th>Instrument</th>
                 <th>Status</th>
             </tr>

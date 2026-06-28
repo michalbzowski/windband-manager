@@ -24,7 +24,7 @@ import static org.assertj.core.api.Assertions.assertThat;
  * <p>This test verifies:
  * <ol>
  *   <li>Navigating to the rehearsals page</li>
- *   <li>Clicking "Zaplanuj próbę" to open the form</li>
+ *   <li>Clicking "Zaplanuj spotkanie" to open the form</li>
  *   <li>Filling required fields and submitting</li>
  *   <li>Verifying the rehearsal appears in the list (toast + redirect)</li>
  * </ol>
@@ -39,8 +39,8 @@ class RehearsalSaveUiTest extends UiTestBase {
         loginAndNavigateTo("/rehearsals");
         wait.until(ExpectedConditions.presenceOfElementLocated(By.id("rehearsals-content")));
 
-        // Click "Zaplanuj próbę" button
-        var addButton = driver.findElement(By.xpath("//button[contains(text(), 'Zaplanuj próbę')]"));
+        // Click "Zaplanuj spotkanie" button
+        var addButton = driver.findElement(By.xpath("//button[contains(text(), 'Zaplanuj spotkanie')]"));
         addButton.click();
 
         // HTMX loads the form into #rehearsals-content
@@ -97,8 +97,8 @@ class RehearsalSaveUiTest extends UiTestBase {
         loginAndNavigateTo("/rehearsals");
         wait.until(ExpectedConditions.presenceOfElementLocated(By.id("rehearsals-content")));
 
-        // Click "Zaplanuj próbę" button
-        var addButton = driver.findElement(By.xpath("//button[contains(text(), 'Zaplanuj próbę')]"));
+        // Click "Zaplanuj spotkanie" button
+        var addButton = driver.findElement(By.xpath("//button[contains(text(), 'Zaplanuj spotkanie')]"));
         addButton.click();
 
         // Wait for form to load
@@ -131,6 +131,6 @@ class RehearsalSaveUiTest extends UiTestBase {
         System.out.println("[TEST] toast-container text: '" + toastText + "'");
         assertThat(toastText)
                 .as("Toast with success message should appear after saving a rehearsal")
-                .contains("Zapisano próbę");
+                .contains("Zapisano spotkanie");
     }
 }

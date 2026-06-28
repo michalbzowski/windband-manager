@@ -7,11 +7,11 @@
         <!-- ==================== FORMULARZ TWORZENIA ZESPOŁU ==================== -->
         <div id="register-step-1">
             <hgroup>
-                <h1>🎺 Wind Band Manager</h1>
+                <h1>⚡ Team Manager</h1>
                 <h2>Utwórz swój zespół</h2>
                 <p style="color:var(--pico-muted-color);">
-                    Jesteś zalogowany przez Keycloak. Teraz utwórz zespół orkiestry dętej,
-                    aby zacząć zarządzać muzykami, próbami i instrumentami.
+                    Jesteś zalogowany przez Keycloak. Teraz utwórz zespół zespołu,
+                    aby zacząć zarządzać członkami, spotkaniemi i instrumentami.
                 </p>
             </hgroup>
 
@@ -30,7 +30,7 @@
                 <article style="background:#d4edda; border:1px solid #c3e6cb; border-radius:8px; padding:1.5rem;">
                     <h3 style="color:#155724; margin-top:0;">✅ Zespół utworzony pomyślnie!</h3>
                     <p>Twój zespół <strong id="success-team-name"></strong> został utworzony.</p>
-                    <p>Możesz teraz zacząć zarządzać orkestrą.</p>
+                    <p>Możesz teraz zacząć zarządzać zespołem.</p>
                     <a href="/" role="button" class="primary" style="margin-top:1rem;">Przejdź do panelu</a>
                 </article>
             </div>
@@ -45,7 +45,7 @@
                         <label>
                             Nazwa zespołu *
                             <input type="text" id="teamName" name="teamName"
-                                   placeholder="np. Orkiestra Dęta Wojkowice Kościelne"
+                                   placeholder="np. Zespół Wojkowice Kościelne"
                                    required minlength="2" maxlength="128"
                                    oninput="generateSlug(this.value)">
                             <small>Nazwa wyświetlana w systemie (2-128 znaków)</small>

@@ -1,15 +1,15 @@
 <!DOCTYPE html>
 <html lang="pl" xmlns:th="http://www.thymeleaf.org">
-<head th:replace="~{fragments/layout :: head('Próby')}"></head>
+<head th:replace="~{fragments/layout :: head('Spotkania')}"></head>
 <body>
 <nav th:replace="~{fragments/layout :: nav}"></nav>
 
     <main class="container" id="content">
         <div id="rehearsals-content">
             <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem;">
-                <h2>🎵 Próby</h2>
+                <h2>🎵 Spotkania</h2>
                 <button hx-get="/rehearsals/new" hx-target="#rehearsals-content"
-                        hx-swap="innerHTML transition:true" class="primary">+ Zaplanuj próbę</button>
+                        hx-swap="innerHTML transition:true" class="primary">+ Zaplanuj spotkanie</button>
             </div>
 
             <div th:if="${#lists.isEmpty(rehearsals)}">
@@ -33,7 +33,7 @@
                         <tr th:each="r : ${rehearsals}">
                             <td data-label="Data" th:text="${r.date}">01.01.2025</td>
                             <td data-label="Godzina" th:text="${r.startTime}">18:00</td>
-                            <td data-label="Miejsce" th:text="${r.location}">Sala prób</td>
+                            <td data-label="Miejsce" th:text="${r.location}">Miejsce spotkania</td>
                             <td data-label="Obecność">
                                 <span th:text="${r.presentCount} + ' / ' + ${r.attendances.size()}">12 / 15</span>
                             </td>
@@ -49,7 +49,7 @@
                                         title="Powiadomienia e-mail">📧</button>
                                 <button class="outline small secondary"
                                         th:attr="data-id=${r.id}"
-                                        onclick="if(confirm('Czy na pewno chcesz usunąć tę próbę?')) deleteRehearsal(this.getAttribute('data-id'))"
+                                        onclick="if(confirm('Czy na pewno chcesz usunąć tę spotkanie?')) deleteRehearsal(this.getAttribute('data-id'))"
                                         style="margin-left:0.25rem;">Usuń</button>
                             </td>
                         </tr>
@@ -65,7 +65,7 @@
 
     <script>
         function deleteRehearsal(id) {
-            fetchWithToast('/api/rehearsals/' + id, { method: 'DELETE', toastMessage: 'Próba została usunięta' })
+            fetchWithToast('/api/rehearsals/' + id, { method: 'DELETE', toastMessage: 'Spotkanie zostało usunięte' })
                 .then(function(response) {
                     if (response.ok) {
                         htmx.ajax('GET', '/rehearsals/list', {target: '#rehearsals-content', swap: 'innerHTML transition:true'});

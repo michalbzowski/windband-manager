@@ -36,7 +36,7 @@ class MemberEditDateOfBirthUiTest extends UiTestBase {
         try {
             // === STEP 1: Add a member via UI ===
             loginAndNavigateTo("/members");
-            driver.findElement(By.xpath("//button[contains(text(), 'Dodaj muzyka')]")).click();
+            driver.findElement(By.xpath("//button[contains(text(), 'Dodaj członka')]")).click();
             wait.until(ExpectedConditions.presenceOfElementLocated(By.cssSelector("#member-form")));
 
             driver.findElement(By.cssSelector("input[name='firstName']")).sendKeys(firstName);
@@ -63,7 +63,7 @@ class MemberEditDateOfBirthUiTest extends UiTestBase {
 
             // Verify the edit form heading
             assertThat(driver.findElement(By.cssSelector("#members-content h2")).getText())
-                    .contains("Edytuj muzyka");
+                    .contains("Edytuj członka");
 
             // === STEP 3: Change only the date of birth ===
             // Use JS to set date value reliably (sendKeys on date inputs can be garbled)

@@ -70,7 +70,7 @@ class TeamIsolationRegressionUiTest extends UiTestBase {
     void inventoryUniformsDoesNotLeakOtherBand() {
         loginAndNavigateTo("/inventory");
 
-        // Click Stroje (Uniforms) tab
+        // Click Ekwipunek (Uniforms) tab
         clickJsTab("uniforms");
         waitForTabContent("tab-uniforms");
 

@@ -1,5 +1,5 @@
 <div id="rehearsals-content">
-    <h2>📅 Zaplanuj próbę</h2>
+    <h2>📅 Zaplanuj spotkanie</h2>
 
     <form id="rehearsal-form">
 
@@ -21,7 +21,7 @@
             </label>
             <label>
                 Miejsce
-                <input type="text" name="location" placeholder="Sala prób, DK Psary...">
+                <input type="text" name="location" placeholder="Miejsce spotkania, DK Psary...">
             </label>
         </div>
 
@@ -59,7 +59,7 @@
                                     form.querySelector('button[name="saveAndAddAnother"]') === document.activeElement;
 
             fetchWithToast('/api/rehearsals', {
-                toastMessage: 'Zapisano próbę',
+                toastMessage: 'Zapisano spotkanie',
                 method: 'POST',
                 headers: {'Content-Type': 'application/json'},
                 body: JSON.stringify(data)

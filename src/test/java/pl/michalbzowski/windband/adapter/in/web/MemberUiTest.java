@@ -38,9 +38,9 @@ class MemberUiTest extends UiTestBase {
     void shouldNavigateToMembersAndOpenNewForm() {
         loginAndNavigateTo("/members");
 
-        assertThat(driver.getTitle()).contains("Muzycy");
+        assertThat(driver.getTitle()).contains("Członkowie");
 
-        var addButton = driver.findElement(By.xpath("//button[contains(text(), 'Dodaj muzyka')]"));
+        var addButton = driver.findElement(By.xpath("//button[contains(text(), 'Dodaj członka')]"));
         assertThat(addButton).isNotNull();
 
         addButton.click();
@@ -49,7 +49,7 @@ class MemberUiTest extends UiTestBase {
         wait.until(ExpectedConditions.presenceOfElementLocated(By.cssSelector("#member-form")));
 
         var formHeading = driver.findElement(By.cssSelector("#members-content h2"));
-        assertThat(formHeading.getText()).contains("Dodaj muzyka");
+        assertThat(formHeading.getText()).contains("Dodaj członka");
     }
 
     /**
@@ -80,10 +80,10 @@ class MemberUiTest extends UiTestBase {
         try {
             // === STEP 1: Open the new-member form via UI ===
             loginAndNavigateTo("/members");
-            driver.findElement(By.xpath("//button[contains(text(), 'Dodaj muzyka')]")).click();
+            driver.findElement(By.xpath("//button[contains(text(), 'Dodaj członka')]")).click();
             wait.until(ExpectedConditions.presenceOfElementLocated(By.cssSelector("#member-form")));
             assertThat(driver.findElement(By.cssSelector("#members-content h2")).getText())
-                    .contains("Dodaj muzyka");
+                    .contains("Dodaj członka");
 
             // === STEP 2: Fill the form and submit ===
             fillField("firstName", firstName);
@@ -200,7 +200,7 @@ class MemberUiTest extends UiTestBase {
         try {
             // === STEP 1: Add a member via UI ===
             loginAndNavigateTo("/members");
-            driver.findElement(By.xpath("//button[contains(text(), 'Dodaj muzyka')]")).click();
+            driver.findElement(By.xpath("//button[contains(text(), 'Dodaj członka')]")).click();
             wait.until(ExpectedConditions.presenceOfElementLocated(By.cssSelector("#member-form")));
 
             fillField("firstName", firstName);
@@ -232,7 +232,7 @@ class MemberUiTest extends UiTestBase {
 
             assertThat(driver.findElement(By.cssSelector("#members-content h2")).getText())
                     .as("Edit form heading should show 'Edytuj'")
-                    .contains("Edytuj muzyka");
+                    .contains("Edytuj członka");
 
             // Verify all fields are pre-populated with the original values
             assertThat(driver.findElement(By.cssSelector("input[name='firstName']")).getAttribute("value"))

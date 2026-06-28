@@ -25,7 +25,7 @@ import static org.assertj.core.api.Assertions.assertThat;
  * <ol>
  *   <li>Opens the new-attribute view and saves a new attribute through the UI</li>
  *   <li>Verifies the attribute appears on the attributes list</li>
- *   <li>Navigates to the related entity view (e.g. "Dodaj stroj" for UNIFORM)</li>
+ *   <li>Navigates to the related entity view (e.g. "Dodaj ekwipunek" for UNIFORM)</li>
  *   <li>Verifies the newly-created attribute is visible as a dynamic field</li>
  *   <li>Saves the related entity with the attribute value set</li>
  *   <li>Re-verifies the attribute is still present (persisted with the entity)</li>
@@ -188,7 +188,7 @@ class AttributeFlowUiTest extends UiTestBase {
         // === 2. Verify on the attributes list ===
         assertAttributeVisibleOnList("UNIFORM", attrName, wait);
 
-        // === 3. Navigate to inventory, switch to Stroje tab, open "Dodaj stroj" form ===
+        // === 3. Navigate to inventory, switch to Ekwipunek tab, open "Dodaj ekwipunek" form ===
         driver.get(baseUrl() + "/inventory");
         wait.until(ExpectedConditions.presenceOfElementLocated(By.cssSelector("#inventory-content h2")));
         Thread.sleep(300);
@@ -201,7 +201,7 @@ class AttributeFlowUiTest extends UiTestBase {
         // === 4. Verify the new attribute is visible in the uniform form ===
         Thread.sleep(300);
         assertContainerHasText("#uniform-attributes", attrName,
-                "New uniform attribute '%s' must be visible in Dodaj stroj form");
+                "New uniform attribute '%s' must be visible in Dodaj ekwipunek form");
 
         // === 5. Fill the uniform form (attribute value) and submit ===
         String uniqueValue = "val" + unique;
@@ -414,12 +414,12 @@ class AttributeFlowUiTest extends UiTestBase {
         createInventoryAttributeViaUI("MEMBER", attrName, "TEXT", wait);
         assertAttributeVisibleOnList("MEMBER", attrName, wait);
 
-        // Navigate to /members, open "Dodaj muzyka" form
+        // Navigate to /members, open "Dodaj członka" form
         driver.get(baseUrl() + "/members");
         wait.until(ExpectedConditions.presenceOfElementLocated(By.cssSelector("#members-content h2")));
         // Use Selenium click (not JS) — same approach as MemberUiTest
         WebElement addMemberBtn = driver.findElement(
-                By.xpath("//button[contains(text(), 'Dodaj muzyka')]"));
+                By.xpath("//button[contains(text(), 'Dodaj członka')]"));
         addMemberBtn.click();
         wait.until(ExpectedConditions.presenceOfElementLocated(By.cssSelector("#member-form")));
 
@@ -427,7 +427,7 @@ class AttributeFlowUiTest extends UiTestBase {
         // The "Dodatkowe atrybuty" section is inside the form. Verify the new
         // attribute label is present somewhere in the form's text.
         assertContainerHasText("#member-form", attrName,
-                "New member attribute '%s' must be visible in Dodaj muzyka form");
+                "New member attribute '%s' must be visible in Dodaj członka form");
 
         // Fill required member fields + the new attribute value
         String firstName = "MemAttr" + unique;
@@ -458,21 +458,21 @@ class AttributeFlowUiTest extends UiTestBase {
         wait.until(ExpectedConditions.textToBePresentInElementLocated(
                 By.cssSelector("#members-content"), firstName));
         // Force a fresh reload of the members list to avoid htmx transition timing issues
-        // before re-clicking the "Dodaj muzyka" button.
+        // before re-clicking the "Dodaj członka" button.
         Thread.sleep(1000);
         driver.get(baseUrl() + "/members");
         wait.until(ExpectedConditions.presenceOfElementLocated(By.cssSelector("#members-content h2")));
 
         // Re-open the new member form to verify the attribute is still in it
         WebElement addMemberBtn2 = driver.findElement(
-                By.xpath("//button[contains(text(), 'Dodaj muzyka')]"));
+                By.xpath("//button[contains(text(), 'Dodaj członka')]"));
         addMemberBtn2.click();
         wait.until(ExpectedConditions.presenceOfElementLocated(By.cssSelector("#member-form")));
         Thread.sleep(400);
         String formText = (String) ((JavascriptExecutor) driver)
                 .executeScript("return document.querySelector('#member-form') ? document.querySelector('#member-form').textContent : '<FORM_NULL>';");
         assertThat(formText)
-                .as("Attribute '%s' must still be visible in Dodaj muzyka form after a member was saved", attrName)
+                .as("Attribute '%s' must still be visible in Dodaj członka form after a member was saved", attrName)
                 .contains(attrName);
     }
 

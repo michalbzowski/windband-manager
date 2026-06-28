@@ -199,7 +199,7 @@ class ToastUiTest extends UiTestBase {
         WebDriverWait wait = new WebDriverWait(driver, Duration.ofSeconds(10));
 
         // Open the new-member form
-        driver.findElement(By.xpath("//button[contains(text(), 'Dodaj muzyka')]")).click();
+        driver.findElement(By.xpath("//button[contains(text(), 'Dodaj członka')]")).click();
         wait.until(ExpectedConditions.presenceOfElementLocated(By.cssSelector("#member-form")));
 
         // Fill required fields with a unique identity

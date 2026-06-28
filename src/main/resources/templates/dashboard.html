@@ -6,7 +6,7 @@
 
     <main class="container" id="content">
         <hgroup>
-            <h1>🎺 Podsumowanie</h1>
+            <h1>⚡ Podsumowanie</h1>
         </hgroup>
 
         <!-- Stats Cards -->
@@ -23,7 +23,7 @@
             </article>
             
             <article>
-                <header>🎵 Próby</header>
+                <header>🎵 Spotkania</header>
                 <div style="text-align: center; padding: 1rem 0;">
                     <span th:text="${rehearsalsThisWeek}" style="font-size: 2.5rem; font-weight: bold;">0</span>
                     <span style="color: var(--pico-muted-color);"> tym tygodniu</span>
@@ -56,7 +56,7 @@
             </article>
             
             <article>
-                <header>🎖️ Stroje</header>
+                <header>🎖️ Ekwipunek</header>
                 <div style="text-align: center; padding: 1rem 0;">
                     <span th:text="${totalUniforms}" style="font-size: 2.5rem; font-weight: bold;">0</span>
                     <span style="color: var(--pico-muted-color);"> w inwentarzu</span>
@@ -67,7 +67,7 @@
             </article>
             
             <article>
-                <header>🎺 Instrumenty</header>
+                <header>⚡ Instrumenty</header>
                 <div style="text-align: center; padding: 1rem 0;">
                     <span th:text="${totalInstruments}" style="font-size: 2.5rem; font-weight: bold;">0</span>
                     <span style="color: var(--pico-muted-color);"> w inwentarzu</span>
@@ -83,22 +83,22 @@
         <div class="grid">
             <div>
                 <article>
-                    <header><strong>➕ Dodaj muzyka</strong></header>
-                    <p>Dodaj nowego członka do orkiestry.</p>
-                    <footer><a th:href="@{/members/new}" hx-target="#content" hx-swap="innerHTML transition:true" role="button" class="secondary outline">Nowy muzyk</a></footer>
+                    <header><strong>➕ Dodaj członka</strong></header>
+                    <p>Dodaj nowego członka do zespołu.</p>
+                    <footer><a th:href="@{/members/new}" hx-target="#content" hx-swap="innerHTML transition:true" role="button" class="secondary outline">Nowy członek</a></footer>
                 </article>
             </div>
             <div>
                 <article>
-                    <header><strong>📅 Zaplanuj próbę</strong></header>
-                    <p>Dodaj nową próbę do kalendarza.</p>
-                    <footer><a th:href="@{/rehearsals/new}" hx-target="#content" hx-swap="innerHTML transition:true" role="button" class="secondary outline">Nowa próba</a></footer>
+                    <header><strong>📅 Zaplanuj spotkanie</strong></header>
+                    <p>Dodaj nową spotkanie do kalendarza.</p>
+                    <footer><a th:href="@{/rehearsals/new}" hx-target="#content" hx-swap="innerHTML transition:true" role="button" class="secondary outline">Nowa spotkanie</a></footer>
                 </article>
             </div>
             <div>
                 <article>
                     <header><strong>📦 Nowe zamówienie</strong></header>
-                    <p>Złóż zamówienie na stroj/instrument.</p>
+                    <p>Złóż zamówienie na ekwipunek/instrument.</p>
                     <footer><a th:href="@{/inventory}" hx-target="#content" hx-swap="innerHTML transition:true" role="button" class="secondary outline">Zamówienie</a></footer>
                 </article>
             </div>

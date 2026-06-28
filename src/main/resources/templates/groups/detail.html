@@ -7,13 +7,13 @@
             <span th:text="${group.name}">Sekcja dęta</span>
         </header>
         <p th:if="${group.description}" th:text="${group.description}">Opis grupy</p>
-        <p><small th:text="'Liczba muzyków: ' + ${group.memberCount}">Liczba: 5</small></p>
+        <p><small th:text="'Liczba członeków: ' + ${group.memberCount}">Liczba: 5</small></p>
     </article>
 
     <h3>Zarządzaj członkami</h3>
     <div style="display:flex; gap:0.5rem; margin-bottom:1rem;">
         <select id="add-member-select">
-            <option value="">Wybierz muzyka...</option>
+            <option value="">Wybierz członka...</option>
             <option th:each="m : ${members}" th:value="${m.id}"
                     th:text="${m.firstName} + ' ' + ${m.lastName} + ' (' + ${m.primaryInstrument} + ')'">
                 Jan Kowalski (Trąbka)
@@ -22,17 +22,17 @@
         <button class="outline" id="add-member-btn">Dodaj</button>
     </div>
 
-    <h3>Muzycy w grupie</h3>
+    <h3>Członkowie w grupie</h3>
 
     <div th:if="${#lists.isEmpty(group.members)}">
-        <article><p>Brak muzyków w grupie.</p></article>
+        <article><p>Brak członeków w grupie.</p></article>
     </div>
 
     <div th:unless="${#lists.isEmpty(group.members)}">
         <table role="grid">
             <thead>
                 <tr>
-                    <th>Muzyk</th>
+                    <th>Członek</th>
                     <th>Instrument</th>
                     <th>Akcje</th>
                 </tr>

@@ -17,7 +17,7 @@ class InventoryUiTest extends UiTestBase {
         var heading = driver.findElement(By.cssSelector("#inventory-content h2"));
         assertThat(heading.getText()).contains("Inwentaryzacja");
 
-        var uniformHeading = driver.findElement(By.xpath("//h3[contains(text(), 'Stroje')]"));
+        var uniformHeading = driver.findElement(By.xpath("//h3[contains(text(), 'Ekwipunek')]"));
         assertThat(uniformHeading).isNotNull();
 
         var instrumentHeading = driver.findElement(By.xpath("//h3[contains(text(), 'Instrumenty')]"));
