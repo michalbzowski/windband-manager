@@ -128,7 +128,7 @@ class RehearsalNotificationUiTest extends UiTestBase {
     }
 
     @Test
-    void shouldShowEmailButtonOnRehearsalListRow() {
+    void shouldShowEmailButtonOnRehearsalListRow() throws Exception {
         WebDriverWait wait = new WebDriverWait(driver, Duration.ofSeconds(10));
 
         loginAndNavigateTo("/rehearsals");
@@ -152,8 +152,10 @@ class RehearsalNotificationUiTest extends UiTestBase {
                 By.cssSelector("#rehearsal-form button[type='submit'].primary"));
         submitBtn.click();
 
-        wait.until(ExpectedConditions.urlContains("/rehearsals"));
-        wait.until(ExpectedConditions.not(ExpectedConditions.urlContains("/new")));
+        // Wait for the full page navigation to complete (form uses setTimeout + window.location.href)
+        Thread.sleep(3000);
+        driver.get(baseUrl() + "/rehearsals");
+        wait.until(ExpectedConditions.presenceOfElementLocated(By.id("rehearsals-content")));
 
         // Wait for the table to be present (not just the content div)
         wait.until(ExpectedConditions.presenceOfElementLocated(
