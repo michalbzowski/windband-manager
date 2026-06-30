@@ -180,11 +180,16 @@
     var pendingHighlightIds = new Set();
 
     function applyHighlights() {
+        var scrolled = false;
         pendingHighlightIds.forEach(function(memberId) {
             var row = document.querySelector('#participants-table tbody tr[data-member-id="' + memberId + '"]');
             if (row) {
                 row.classList.add('highlight-row');
                 setTimeout(function() { row.classList.remove('highlight-row'); }, 3000);
+                if (!scrolled) {
+                    row.scrollIntoView({behavior: 'instant', block: 'top'});
+                    scrolled = true;
+                }
             }
         });
         pendingHighlightIds.clear();
@@ -230,11 +235,16 @@
                 // We use a one-time afterSettle handler to compute the diff
                 var handler = function(evt) {
                     if (evt.detail && evt.detail.target && evt.detail.target.id === 'events-content') {
+                        var scrolled = false;
                         document.querySelectorAll('#participants-table tbody tr[data-member-id]').forEach(function(row) {
                             var mid = parseInt(row.dataset.memberId);
                             if (!beforeIds.has(mid)) {
                                 row.classList.add('highlight-row');
                                 setTimeout(function() { row.classList.remove('highlight-row'); }, 3000);
+                                if (!scrolled) {
+                                    row.scrollIntoView({behavior: 'instant', block: 'top'});
+                                    scrolled = true;
+                                }
                             }
                         });
                         document.body.removeEventListener('htmx:afterSettle', handler);
