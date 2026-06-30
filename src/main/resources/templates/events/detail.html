@@ -75,7 +75,7 @@
             </tr>
         </thead>
         <tbody>
-            <tr th:each="p : ${event.participations}" th:data-response="${p.response}">
+            <tr th:each="p : ${event.participations}" th:data-member-id="${p.memberId}" th:data-response="${p.response}">
                 <td th:text="${p.memberName}">Jan Kowalski</td>
                 <td>
                     <select class="instrument-select"
@@ -176,11 +176,33 @@
         [[${event.participations}]].map(function(p) { return p.memberId; })
     );
 
+    // Track newly invited members for highlight animation
+    var pendingHighlightIds = new Set();
+
+    function applyHighlights() {
+        pendingHighlightIds.forEach(function(memberId) {
+            var row = document.querySelector('#participants-table tbody tr[data-member-id="' + memberId + '"]');
+            if (row) {
+                row.classList.add('highlight-row');
+                setTimeout(function() { row.classList.remove('highlight-row'); }, 3000);
+            }
+        });
+        pendingHighlightIds.clear();
+    }
+
+    // Apply highlights after HTMX reloads #events-content
+    document.body.addEventListener('htmx:afterSettle', function(evt) {
+        if (evt.detail && evt.detail.target && evt.detail.target.id === 'events-content') {
+            applyHighlights();
+        }
+    });
+
     // Invite single member
     document.getElementById('invite-btn').addEventListener('click', function() {
         var select = document.getElementById('invite-member-select');
         var memberId = parseInt(select.value);
         if (memberId) {
+            pendingHighlightIds.add(memberId);
             fetchWithToast('/api/events/' + eventId + '/invite', { toastMessage: 'Zaproszono uczestnika',
                 method: 'POST',
                 headers: {'Content-Type': 'application/json'},
@@ -196,12 +218,29 @@
         var select = document.getElementById('invite-group-select');
         var groupId = select.value;
         if (groupId) {
+            // Snapshot current member IDs to detect new ones after reload
+            var beforeIds = new Set(invitedMemberIds);
             fetchWithToast('/api/events/' + eventId + '/invite-group', { toastMessage: 'Zaproszono grupę',
                 method: 'POST',
                 headers: {'Content-Type': 'application/json'},
                 body: JSON.stringify({eventId: eventId, groupId: parseInt(groupId)})
             }).then(function() {
                 htmx.ajax('GET', '/events/' + eventId, {target: '#events-content', swap: 'innerHTML transition:true'});
+                // After reload, highlight rows that weren't in beforeIds
+                // We use a one-time afterSettle handler to compute the diff
+                var handler = function(evt) {
+                    if (evt.detail && evt.detail.target && evt.detail.target.id === 'events-content') {
+                        document.querySelectorAll('#participants-table tbody tr[data-member-id]').forEach(function(row) {
+                            var mid = parseInt(row.dataset.memberId);
+                            if (!beforeIds.has(mid)) {
+                                row.classList.add('highlight-row');
+                                setTimeout(function() { row.classList.remove('highlight-row'); }, 3000);
+                            }
+                        });
+                        document.body.removeEventListener('htmx:afterSettle', handler);
+                    }
+                };
+                document.body.addEventListener('htmx:afterSettle', handler);
             });
         }
     });

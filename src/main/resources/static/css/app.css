@@ -641,3 +641,17 @@ button.small, a.small {
     color: var(--pico-muted-color);
     font-size: 0.85rem;
 }
+
+/* Highlight newly invited member row */
+@keyframes highlight-fade {
+    0% {
+        background-color: #d4edda;
+    }
+    100% {
+        background-color: transparent;
+    }
+}
+
+tr.highlight-row > td {
+    animation: highlight-fade 3s ease-out forwards;
+}
