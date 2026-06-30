@@ -176,44 +176,30 @@
         [[${event.participations}]].map(function(p) { return p.memberId; })
     );
 
-    // Track newly invited members for highlight animation
-    var pendingHighlightIds = new Set();
-
-    function applyHighlights() {
-        var scrolled = false;
-        pendingHighlightIds.forEach(function(memberId) {
-            var row = document.querySelector('#participants-table tbody tr[data-member-id="' + memberId + '"]');
-            if (row) {
-                row.classList.add('highlight-row');
-                setTimeout(function() { row.classList.remove('highlight-row'); }, 3000);
-                if (!scrolled) {
-                    row.scrollIntoView({behavior: 'instant', block: 'top'});
-                    scrolled = true;
-                }
-            }
-        });
-        pendingHighlightIds.clear();
-    }
-
-    // Apply highlights after HTMX reloads #events-content
-    document.body.addEventListener('htmx:afterSettle', function(evt) {
-        if (evt.detail && evt.detail.target && evt.detail.target.id === 'events-content') {
-            applyHighlights();
-        }
-    });
-
     // Invite single member
     document.getElementById('invite-btn').addEventListener('click', function() {
         var select = document.getElementById('invite-member-select');
         var memberId = parseInt(select.value);
         if (memberId) {
-            pendingHighlightIds.add(memberId);
             fetchWithToast('/api/events/' + eventId + '/invite', { toastMessage: 'Zaproszono uczestnika',
                 method: 'POST',
                 headers: {'Content-Type': 'application/json'},
                 body: JSON.stringify({eventId: eventId, memberId: memberId})
             }).then(function() {
                 htmx.ajax('GET', '/events/' + eventId, {target: '#events-content', swap: 'innerHTML transition:true'});
+                // One-time handler: highlight + scroll to the newly invited member
+                var handler = function(evt) {
+                    if (evt.detail && evt.detail.target && evt.detail.target.id === 'events-content') {
+                        var row = document.querySelector('#participants-table tbody tr[data-member-id="' + memberId + '"]');
+                        if (row) {
+                            row.classList.add('highlight-row');
+                            setTimeout(function() { row.classList.remove('highlight-row'); }, 3000);
+                            row.scrollIntoView({behavior: 'instant', block: 'top'});
+                        }
+                        document.body.removeEventListener('htmx:afterSettle', handler);
+                    }
+                };
+                document.body.addEventListener('htmx:afterSettle', handler);
             });
         }
     });
