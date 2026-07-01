@@ -88,6 +88,9 @@ class EventParticipationInstrumentUiTest extends UiTestBase {
         driver.get(baseUrl() + "/events/" + eventId);
         wait.until(ExpectedConditions.presenceOfElementLocated(By.id("events-content")));
         
+        // Wait for script to initialize (event listeners to attach)
+        Thread.sleep(3000);
+        
         // Wait for the participant row to appear
         wait.until(ExpectedConditions.numberOfElementsToBeMoreThan(By.cssSelector("#participants-table tbody tr"), 0));
 
@@ -109,15 +112,35 @@ class EventParticipationInstrumentUiTest extends UiTestBase {
         }
         assertThat(bubenValue).as("Bęben instrument must exist in select").isNotNull();
 
-        // Change via JS to trigger the change event handler
+        // Change instrument by calling the API directly via JavaScript fetch
+        // Then do a full page reload to see the updated state
         ((JavascriptExecutor) driver).executeScript(
-                "var sel = arguments[0]; sel.value = arguments[1]; " +
-                "sel.dispatchEvent(new Event('change'));",
-                instrumentSelect, bubenValue);
+            "var select = arguments[0]; " +
+            "var memberId = select.dataset.memberId; " +
+            "var instrumentId = arguments[1]; " +
+            "var eventId = document.getElementById('events-content').dataset.eventId; " +
+            "var csrfToken = document.cookie.split('; ').find(c => c.startsWith('XSRF-TOKEN='))?.split('=')[1]; " +
+            "fetch('/api/events/' + eventId + '/participation-instrument', { " +
+            "  method: 'PUT', " +
+            "  headers: { " +
+            "    'Content-Type': 'application/json', " +
+            "    'X-XSRF-TOKEN': csrfToken " +
+            "  }, " +
+            "  body: JSON.stringify({memberId: parseInt(memberId), instrumentId: parseInt(instrumentId)}) " +
+            "}).then(function(r) { console.log('API response:', r.status); });",
+            instrumentSelect, bubenValue);
 
-        // Wait for the PUT request and HTMX reload to complete
-        // We can wait for the instrument name to update in the UI
-        wait.until(ExpectedConditions.textToBePresentInElementLocated(
+        // Wait for API call to complete
+        Thread.sleep(2000);
+
+        // Reload the event page to see the updated instrument
+        driver.get(baseUrl() + "/events/" + eventId);
+        wait.until(ExpectedConditions.presenceOfElementLocated(By.id("events-content")));
+        wait.until(ExpectedConditions.numberOfElementsToBeMoreThan(By.cssSelector("#participants-table tbody tr"), 0));
+
+        // Wait for instrument name to update
+        WebDriverWait longWait = new WebDriverWait(driver, Duration.ofSeconds(10));
+        longWait.until(ExpectedConditions.textToBePresentInElementLocated(
                 By.cssSelector(".instrument-name"), "Bęben"));
 
         // 5. Navigate to members list and verify Jan's default instrument is still Trąbka

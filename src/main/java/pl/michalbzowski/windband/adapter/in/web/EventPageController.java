@@ -43,6 +43,22 @@ public class EventPageController {
         var eventDetail = eventQueryService.getEventDetailById(id, activeTeamId);
         model.addAttribute("event", eventDetail);
         
+        // Computed display properties to avoid complex SpEL in template
+        String paymentTypeDisplay;
+        if ("FREE".equals(eventDetail.paymentType())) {
+            paymentTypeDisplay = "💰 Granie bezpłatne";
+        } else if ("PAID_SPLIT".equals(eventDetail.paymentType())) {
+            paymentTypeDisplay = "💰 Płatne — podział między grających";
+        } else {
+            paymentTypeDisplay = "💰 Płatne — na konto zespołu";
+        }
+        model.addAttribute("paymentTypeDisplay", paymentTypeDisplay);
+        
+        if (eventDetail.payoutPerMember() != null && "PAID_SPLIT".equals(eventDetail.paymentType())) {
+            model.addAttribute("payoutPerMemberFormatted", 
+                java.text.NumberFormat.getNumberInstance(java.util.Locale.forLanguageTag("pl")).format(eventDetail.payoutPerMember()));
+        }
+        
         // Get IDs of already invited members
         var invitedMemberIds = eventDetail.participations().stream()
                 .map(ParticipationDto::memberId)
