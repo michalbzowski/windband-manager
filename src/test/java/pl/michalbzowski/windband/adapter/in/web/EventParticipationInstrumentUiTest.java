@@ -3,11 +3,13 @@ package pl.michalbzowski.windband.adapter.in.web;
 import org.junit.jupiter.api.Test;
 import org.openqa.selenium.By;
 import org.openqa.selenium.JavascriptExecutor;
+import org.openqa.selenium.WebDriver;
 import org.openqa.selenium.support.ui.ExpectedConditions;
 import org.openqa.selenium.support.ui.WebDriverWait;
 import pl.michalbzowski.windband.UiTestBase;
 
 import java.time.Duration;
+import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -25,7 +27,7 @@ class EventParticipationInstrumentUiTest extends UiTestBase {
     void shouldChangeInstrumentPerEventWithoutAffectingMemberDefault() throws Exception {
         WebDriverWait wait = new WebDriverWait(driver, Duration.ofSeconds(10));
 
-        // 1. Create an event via API
+        // 1. Navigate to events list and create an event
         loginAndNavigateTo("/events");
         wait.until(ExpectedConditions.presenceOfElementLocated(By.id("events-content")));
 
@@ -50,22 +52,21 @@ class EventParticipationInstrumentUiTest extends UiTestBase {
         driver.get(baseUrl() + "/events");
         wait.until(ExpectedConditions.presenceOfElementLocated(By.id("events-content")));
 
-        // Click first "Szczegóły" button
+        // 2. Click first "Szczegóły" button to open event detail
         var detailBtns = driver.findElements(By.xpath("//button[contains(text(), 'Szczegóły')]"));
         assertThat(detailBtns).isNotEmpty();
         detailBtns.get(0).click();
 
-        // Wait for event detail page to load (HTMX swap)
-        Thread.sleep(2000);
-
-        // Get the event ID from the page's JS variable
-        Long eventId = (Long) ((JavascriptExecutor) driver).executeScript("return typeof eventId !== 'undefined' ? eventId : null;");
-        System.out.println("[TEST] Event ID: " + eventId);
-
-        // Wait for invite section to be present
+        // Wait for event detail page to load (HTMX swap) - wait for invite section which is part of the detail
         wait.until(ExpectedConditions.presenceOfElementLocated(By.id("invite-member-select")));
 
-        // 2. Invite the first member (Jan Kowalski) via API
+        // Get the event ID from the #events-content element's data-event-id attribute (now guaranteed to be the detail fragment)
+        String eventIdStr = (String) ((JavascriptExecutor) driver).executeScript(
+                "var el = document.getElementById('events-content'); return el ? el.dataset.eventId : null;");
+        Long eventId = eventIdStr != null ? Long.valueOf(eventIdStr) : null;
+        System.out.println("[TEST] Event ID: " + eventId);
+
+        // 3. Invite the first member (Jan Kowalski) via API
         var memberSelect = driver.findElement(By.id("invite-member-select"));
         var options = memberSelect.findElements(By.tagName("option"));
         System.out.println("[TEST] Member option count: " + options.size());
@@ -80,31 +81,23 @@ class EventParticipationInstrumentUiTest extends UiTestBase {
         }
         driver.findElement(By.id("invite-btn")).click();
 
-        // Wait for invite to complete
-        Thread.sleep(3000);
-
-        // Hard reload the event detail page (not HTMX)
-        driver.get(baseUrl() + "/events/" + eventId);
+        // Wait for invite API to complete and toast to appear
         Thread.sleep(2000);
+        
+        // Manually reload the event detail page to see the invited member (HTMX reload has server-side 500 issue)
+        driver.get(baseUrl() + "/events/" + eventId);
         wait.until(ExpectedConditions.presenceOfElementLocated(By.id("events-content")));
+        
+        // Wait for the participant row to appear
+        wait.until(ExpectedConditions.numberOfElementsToBeMoreThan(By.cssSelector("#participants-table tbody tr"), 0));
 
-        // 3. Find the instrument select for the invited member
+        // 4. Change Jan's instrument to Bęben for this event
         var instrumentSelects = driver.findElements(By.cssSelector(".instrument-select"));
         System.out.println("[TEST] Instrument select count: " + instrumentSelects.size());
 
-        // Debug: print page source around participants table
-        var participantsTable = driver.findElements(By.cssSelector("#participants-table"));
-        System.out.println("[TEST] Participants table present: " + !participantsTable.isEmpty());
+        // We expect exactly one instrument select (for the invited member)
+        assertThat(instrumentSelects).hasSize(1);
 
-        if (instrumentSelects.isEmpty()) {
-            // Page source debug
-            System.out.println("[DEBUG] Page source (first 3000 chars):");
-            System.out.println(driver.getPageSource().substring(0, Math.min(3000, driver.getPageSource().length())));
-        }
-
-        assertThat(instrumentSelects).as("There should be at least one participant with instrument select").isNotEmpty();
-
-        // 4. Change Jan's instrument to Bęben for this event
         var instrumentSelect = instrumentSelects.get(0);
         var instOptions = instrumentSelect.findElements(By.tagName("option"));
         String bubenValue = null;
@@ -122,8 +115,10 @@ class EventParticipationInstrumentUiTest extends UiTestBase {
                 "sel.dispatchEvent(new Event('change'));",
                 instrumentSelect, bubenValue);
 
-        // Wait for PUT request and HTMX reload
-        Thread.sleep(3000);
+        // Wait for the PUT request and HTMX reload to complete
+        // We can wait for the instrument name to update in the UI
+        wait.until(ExpectedConditions.textToBePresentInElementLocated(
+                By.cssSelector(".instrument-name"), "Bęben"));
 
         // 5. Navigate to members list and verify Jan's default instrument is still Trąbka
         driver.get(baseUrl() + "/members");
@@ -134,9 +129,21 @@ class EventParticipationInstrumentUiTest extends UiTestBase {
 
         String firstRowText = memberRows.get(0).getText();
         System.out.println("[TEST] First member row: " + firstRowText);
-        assertThat(firstRowText)
-                .as("Member's default instrument should remain Trąbka, not Bęben (per-event override must not affect member profile)")
-                .contains("Trąbka")
-                .doesNotContain("Bęben");
+        // Jan Kowalski should be the first member (alphabetically? but we know he is in the DB)
+        assertThat(firstRowText).contains("Jan Kowalski");
+        // His instrument should be Trąbka (the default from data.sql)
+        assertThat(firstRowText).contains("Trąbka");
+        // And should not contain Bęben (since we only changed it for the event)
+        assertThat(firstRowText).doesNotContain("Bęben");
+
+        // 6. Additionally, verify that the event participation still has Bęben
+        // Go back to the event detail page
+        driver.get(baseUrl() + "/events/" + eventId);
+        wait.until(ExpectedConditions.presenceOfElementLocated(By.id("events-content")));
+
+        // Find the instrument name for the member in the participants table
+        var participantRow = driver.findElement(By.cssSelector("#participants-table tbody tr"));
+        var participantInstrumentName = participantRow.findElement(By.cssSelector(".instrument-name")).getText();
+        assertThat(participantInstrumentName).isEqualTo("Bęben");
     }
 }

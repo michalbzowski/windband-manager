@@ -52,6 +52,8 @@ public abstract class UiTestBase {
         options.addArguments("--no-sandbox");
         options.addArguments("--disable-dev-shm-usage");
         options.addArguments("--disable-gpu");
+        // Enable browser console logging at all levels
+        options.setCapability("goog:loggingPrefs", java.util.Map.of("browser", "ALL"));
         if (browserPath != null) {
             options.setBinary(browserPath);
         }

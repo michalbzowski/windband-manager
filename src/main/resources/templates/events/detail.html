@@ -1,4 +1,9 @@
-<div id="events-content">
+<div id="events-content" 
+     th:data-event-id="${event.id}"
+     th:data-payment-type="${event.paymentType}"
+     th:data-payment-amount="${event.paymentAmount}"
+     th:data-confirmed-count="${event.confirmedCount}">
+    <script>console.log("TOP SCRIPT: Event detail fragment loaded, eventId:", document.getElementById("events-content")?.dataset.eventId);</script>
     <h2>🎪 Szczegóły wydarzenia</h2>
 
     <article>
@@ -134,19 +139,22 @@
                 hx-get="/events/list" hx-target="#events-content"
                 hx-swap="innerHTML transition:true">Powrót</button>
         <button type="button" class="outline"
-                th:attr="hx-get='/events/' + ${event.id} + '/edit'"
+                th:hx-get="'/events/' + ${event.id} + '/edit'"
                 hx-target="#events-content"
                 hx-swap="innerHTML transition:true">✏️ Edytuj</button>
         <button type="button" class="outline danger" id="delete-event-btn">🗑️ Usuń wydarzenie</button>
     </div>
 </div>
 
-<script th:inline="javascript">
-    var eventId = [[${event.id}]];
-    var paymentType = [[${event.paymentType}]];
-    var paymentAmount = [[${event.paymentAmount}]];
+<script>
+    // Initialize from DOM attributes (works after HTMX swap)
+    var container = document.getElementById('events-content');
+    var eventId = container.dataset.eventId;
+    var paymentType = container.dataset.paymentType;
+    var paymentAmount = container.dataset.paymentAmount;
+    var confirmedCount = parseInt(container.dataset.confirmedCount) || 0;
     var isPaidSplit = (paymentType === 'PAID_SPLIT');
-    var confirmedCount = [[${event.confirmedCount}]];
+    console.log("Event detail script loaded, eventId:", eventId);
 
     // Show/hide payout column based on payment type
     function updatePayoutColumns() {
@@ -185,21 +193,25 @@
     updatePayoutColumns();
     updatePayoutAmounts();
 
-    var invitedMemberIds = new Set(
-        [[${event.participations}]].map(function(p) { return p.memberId; })
-    );
+    // Get invited member IDs from existing participant rows
+    var invitedMemberIds = new Set();
+    document.querySelectorAll('#participants-table tbody tr[data-member-id]').forEach(function(row) {
+        invitedMemberIds.add(parseInt(row.dataset.memberId));
+    });
 
     // Invite single member
     document.getElementById('invite-btn').addEventListener('click', function() {
         var select = document.getElementById('invite-member-select');
         var memberId = parseInt(select.value);
+        console.log('Invite button clicked, memberId=' + memberId + ', eventId=' + eventId);
         if (memberId) {
             fetchWithToast('/api/events/' + eventId + '/invite', { toastMessage: 'Zaproszono uczestnika',
                 method: 'POST',
                 headers: {'Content-Type': 'application/json'},
                 body: JSON.stringify({eventId: eventId, memberId: memberId})
-            }).then(function() {
-                htmx.ajax('GET', '/events/' + eventId, {target: '#events-content', swap: 'innerHTML transition:true'});
+            }).then(function(response) {
+                if (!response.ok) return;
+                htmx.ajax('GET', '/events/' + eventId, {target: '#events-content', swap: 'outerHTML transition:true'});
                 // One-time handler: highlight + scroll to the newly invited member
                 var handler = function(evt) {
                     if (evt.detail && evt.detail.target && evt.detail.target.id === 'events-content') {
@@ -213,7 +225,7 @@
                     }
                 };
                 document.body.addEventListener('htmx:afterSettle', handler);
-            });
+            }).catch(function(err) { console.error('Invite error:', err); });
         }
     });
 
@@ -228,8 +240,9 @@
                 method: 'POST',
                 headers: {'Content-Type': 'application/json'},
                 body: JSON.stringify({eventId: eventId, groupId: parseInt(groupId)})
-            }).then(function() {
-                htmx.ajax('GET', '/events/' + eventId, {target: '#events-content', swap: 'innerHTML transition:true'});
+            }).then(function(response) {
+                if (!response.ok) return;
+                htmx.ajax('GET', '/events/' + eventId, {target: '#events-content', swap: 'outerHTML transition:true'});
                 // After reload, highlight rows that weren't in beforeIds
                 // We use a one-time afterSettle handler to compute the diff
                 var handler = function(evt) {
@@ -250,7 +263,7 @@
                     }
                 };
                 document.body.addEventListener('htmx:afterSettle', handler);
-            });
+            }).catch(function(err) { console.error('Invite error:', err); });
         }
     });
 
@@ -263,19 +276,19 @@
             var row = this.closest('tr');
             var payoutCell = row.querySelector('.payout-amount');
             var paymentStatusCell = row.querySelector('.payment-status-select')?.closest('td');
-            
+
             fetchWithToast('/api/events/' + eventId + '/response', { toastMessage: 'Zaktualizowano status',
                 method: 'POST',
                 headers: {'Content-Type': 'application/json'},
                 body: JSON.stringify({eventId: parseInt(eid), memberId: parseInt(mid), response: response})
-            }).then(function(res) {
-                if (!res.ok) {
+            }).then(function(response) {
+                if (!response.ok) {
                     console.error('Failed to update response');
                     return;
                 }
                 // Reload event details to update payment columns dynamically
-                htmx.ajax('GET', '/events/' + eventId, {target: '#events-content', swap: 'innerHTML transition:true'});
-            });
+                htmx.ajax('GET', '/events/' + eventId, {target: '#events-content', swap: 'outerHTML transition:true'});
+            }).catch(function(err) { console.error('Invite error:', err); });
         });
     });
 
@@ -288,10 +301,12 @@
                 method: 'PUT',
                 headers: {'Content-Type': 'application/json'},
                 body: JSON.stringify({memberId: parseInt(memberId), instrumentId: instrumentId ? parseInt(instrumentId) : null})
-            }).then(function(res) {
-                if (!res.ok) console.error('Failed to update instrument');
-                else htmx.ajax('GET', '/events/' + eventId, {target: '#events-content', swap: 'innerHTML transition:true'});
-            });
+            }).then(function(response) {
+                if (!response.ok) {
+                    console.error('Failed to update instrument');
+                    return;
+                } htmx.ajax('GET', '/events/' + eventId, {target: '#events-content', swap: 'outerHTML transition:true'});
+            }).catch(function(err) { console.error('Invite error:', err); });
         });
     });
 
@@ -352,25 +367,29 @@
                 method: 'POST',
                 headers: {'Content-Type': 'application/json'},
                 body: JSON.stringify({eventId: parseInt(eventId), memberId: parseInt(memberId), status: status})
-            }).then(function(res) {
-                if (!res.ok) console.error('Failed to update payment status');
-            });
+            }).then(function(response) {
+                if (!response.ok) {
+                    console.error('Failed to update payment status');
+                    return;
+                }
+            }).catch(function(err) { console.error('Invite error:', err); });
         });
     });
 
     // Delete event
     document.getElementById('delete-event-btn').addEventListener('click', function() {
-        var eventId = [[${event.id}]];
+        var container = document.getElementById('events-content');
+        var eventId = container.dataset.eventId;
         if (confirm('Czy na pewno chcesz usunąć to wydarzenie?')) {
             fetch('/api/events/' + eventId, {
                 method: 'DELETE'
-            }).then(function(res) {
-                if (res.ok) {
-                    htmx.ajax('GET', '/events/list', {target: '#events-content', swap: 'innerHTML transition:true'});
+            }).then(function(response) {
+                if (response.ok) {
+                    htmx.ajax('GET', '/events/list', {target: '#events-content', swap: 'outerHTML transition:true'});
                 } else {
                     alert('Nie udało się usunąć wydarzenia');
                 }
-            });
+            }).catch(function(err) { console.error('Invite error:', err); });
         }
     });
 </script>

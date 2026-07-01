@@ -86,7 +86,18 @@
         var toastMessage = originalOptions.toastMessage;
         var showSuccessToast = originalOptions.showSuccessToast !== false;
 
-        return fetch(url, options).then(function (response) {
+        // Add CSRF token header if present
+        var csrfToken = getCookie('XSRF-TOKEN');
+        console.log('fetchWithWorkflow: CSRF token from cookie:', csrfToken);
+        if (csrfToken) {
+            var headers = originalOptions.headers || {};
+            headers['X-XSRF-TOKEN'] = csrfToken;
+            originalOptions.headers = headers;
+            console.log('fetchWithWorkflow: Headers after adding CSRF:', originalOptions.headers);
+        }
+
+        return fetch(url, originalOptions).then(function (response) {
+            console.log('fetchWithWorkflow: Response status:', response.status);
             if (toastMessage) {
                 if (response.ok) {
                     if (showSuccessToast) {
@@ -101,11 +112,27 @@
             if (toastMessage) {
                 Toast.error(toastMessage + ': ' + (error.message || 'błąd sieci'));
             }
+            console.error('fetchWithWorkflow: Error:', error);
             throw error;
         });
+    }
+
+    /**
+     * Returns the value of the cookie with the given name, or null if not found.
+     */
+    function getCookie(name) {
+        var nameEQ = name + "=";
+        var ca = document.cookie.split(';');
+        for(var i=0;i < ca.length;i++) {
+            var c = ca[i];
+            while (c.charAt(0)==' ') c = c.substring(1);
+            if (c.indexOf(nameEQ) == 0) return c.substring(nameEQ.length, c.length);
+        }
+        return null;
     }
 
     // Expose globally
     global.Toast = Toast;
     global.fetchWithToast = fetchWithToast;
+    global.getCookie = getCookie;
 })(window);
