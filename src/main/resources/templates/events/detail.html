@@ -64,6 +64,15 @@
 </div>
 
 <h3>Uczestnicy</h3>
+
+    <!-- Stats summary bar -->
+    <div class="event-stats" role="status" aria-live="polite">
+        <span class="stat confirmed" title="Potwierdzeni">✅ <span th:text="${event.confirmedCount}">0</span></span>
+        <span class="stat declined" title="Nie biorą udziału">❌ <span th:text="${event.declinedCount}">0</span></span>
+        <span class="stat later" title="Dam znać później" th:if="${#lists.size(event.participations.?[response == 'LATER']) > 0}">⏳ <span th:text="${#lists.size(event.participations.?[response == 'LATER'])}">0</span></span>
+        <span class="stat no-response" title="Brak odpowiedzi">❓ <span th:text="${event.noResponseCount}">0</span></span>
+    </div>
+
     <table role="grid" id="participants-table">
         <thead>
             <tr>
@@ -76,18 +85,23 @@
         </thead>
         <tbody>
             <tr th:each="p : ${event.participations}" th:data-member-id="${p.memberId}" th:data-response="${p.response}">
-                <td th:text="${p.memberName}">Jan Kowalski</td>
-                <td>
-                    <select class="instrument-select"
-                            th:data-event-id="${event.id}"
-                            th:data-member-id="${p.memberId}">
-                        <option value="">Wybierz instrument...</option>
-                        <option th:each="inst : ${instruments}" th:value="${inst.id}"
-                                th:selected="${inst.name == p.instrumentName}"
-                                th:text="${inst.name}">Trąbka</option>
-                    </select>
+                <td th:text="${p.memberName}" data-label="Członek">Jan Kowalski</td>
+                <td data-label="Instrument">
+                    <div class="instrument-display" th:data-member-id="${p.memberId}" th:data-event-id="${event.id}">
+                        <span class="instrument-name" th:text="${p.instrumentName ? p.instrumentName : '—'}">—</span>
+                        <button type="button" class="instrument-edit-btn" title="Zmień instrument" aria-label="Zmień instrument">✏️</button>
+                        <select class="instrument-select"
+                                th:data-event-id="${event.id}"
+                                th:data-member-id="${p.memberId}"
+                                aria-label="Wybierz instrument">
+                            <option value="">—</option>
+                            <option th:each="inst : ${instruments}" th:value="${inst.id}"
+                                    th:selected="${inst.name == p.instrumentName}"
+                                    th:text="${inst.name}">Trąbka</option>
+                        </select>
+                    </div>
                 </td>
-                <td>
+                <td data-label="Odpowiedź">
                     <select class="response-select"
                             th:data-event-id="${event.id}"
                             th:data-member-id="${p.memberId}">
@@ -99,10 +113,9 @@
                 </td>
                 <td th:if="${event.paymentType == 'PAID_SPLIT'}"
                     class="payout-amount"
-                    th:text="${event.payoutPerMember != null ? #numbers.formatDecimal(event.payoutPerMember, 1, 2) : '-'}">
-                    100.00
-                </td>
-                <td th:if="${event.paymentType == 'PAID_SPLIT'}">
+                    th:text="${event.payoutPerMember != null ? #numbers.formatDecimal(event.payoutPerMember, 1, 2) : '-'}"
+                    data-label="Wypłata">100.00</td>
+                <td th:if="${event.paymentType == 'PAID_SPLIT'}" data-label="Status wypłaty">
                     <select class="payment-status-select"
                             th:if="${p.response == 'CONFIRMED'}"
                             th:data-event-id="${event.id}"
@@ -280,6 +293,53 @@
                 else htmx.ajax('GET', '/events/' + eventId, {target: '#events-content', swap: 'innerHTML transition:true'});
             });
         });
+    });
+
+    // Instrument inline edit: toggle between display name and select
+    document.querySelectorAll('.instrument-display').forEach(function(display) {
+        var nameEl = display.querySelector('.instrument-name');
+        var editBtn = display.querySelector('.instrument-edit-btn');
+        var selectEl = display.querySelector('.instrument-select');
+
+        editBtn.addEventListener('click', function(e) {
+            e.stopPropagation();
+            // Close any other open selects
+            document.querySelectorAll('.instrument-display').forEach(function(other) {
+                var otherName = other.querySelector('.instrument-name');
+                var otherBtn = other.querySelector('.instrument-edit-btn');
+                var otherSelect = other.querySelector('.instrument-select');
+                if (other !== display) {
+                    otherSelect.style.display = 'none';
+                    otherName.style.display = 'inline';
+                    otherBtn.style.display = 'inline-block';
+                }
+            });
+            nameEl.style.display = 'none';
+            editBtn.style.display = 'none';
+            selectEl.style.display = 'inline-block';
+            selectEl.focus();
+        });
+
+        // Hide select on blur or after change (change handler reloads page anyway)
+        selectEl.addEventListener('blur', function() {
+            selectEl.style.display = 'none';
+            nameEl.style.display = 'inline';
+            editBtn.style.display = 'inline-block';
+        });
+    });
+
+    // Click outside to close open instrument selects
+    document.addEventListener('click', function(e) {
+        if (!e.target.closest('.instrument-display')) {
+            document.querySelectorAll('.instrument-display').forEach(function(display) {
+                var nameEl = display.querySelector('.instrument-name');
+                var editBtn = display.querySelector('.instrument-edit-btn');
+                var selectEl = display.querySelector('.instrument-select');
+                selectEl.style.display = 'none';
+                nameEl.style.display = 'inline';
+                editBtn.style.display = 'inline-block';
+            });
+        }
     });
 
     // Payment status change

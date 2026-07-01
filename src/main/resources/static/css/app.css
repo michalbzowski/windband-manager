@@ -490,6 +490,30 @@ button.small, a.small {
     }
 }
 
+/* Highlight newly invited member row */
+@keyframes highlight-fade {
+    0% {
+        background-color: #d4edda;
+    }
+    100% {
+        background-color: transparent;
+    }
+}
+
+tr.highlight-row > td {
+    animation: highlight-fade 3s ease-out forwards;
+}
+
+/* Ensure highlight works on mobile card-style rows too */
+@media (max-width: 576px) {
+    tr.highlight-row {
+        animation: highlight-fade 3s ease-out forwards;
+    }
+    tr.highlight-row > td {
+        animation: none;
+    }
+}
+
 /* Mobile responsive tables */
 @media (max-width: 768px) {
     /* Make tables scrollable horizontally on mobile */
@@ -534,6 +558,114 @@ button.small, a.small {
             display: none;
         }
     }
+}
+
+/* Sticky table header for desktop */
+@media (min-width: 769px) {
+    table thead th {
+        position: sticky;
+        top: 0;
+        z-index: 10;
+        background: var(--pico-background-color);
+        border-bottom: 2px solid var(--pico-muted-border-color);
+    }
+    
+    /* Ensure tbody doesn't overlap sticky header on scroll */
+    table tbody tr:first-child td {
+        border-top: none;
+    }
+}
+
+/* Row coloring by response status */
+tr[data-response="CONFIRMED"] > td {
+    background-color: #e8f5e9 !important; /* light green */
+}
+tr[data-response="DECLINED"] > td {
+    background-color: #fdecea !important; /* light red */
+    opacity: 0.7;
+}
+tr[data-response="DECLINED"] > td:first-child {
+    text-decoration: line-through;
+    color: var(--pico-muted-color);
+}
+tr[data-response="LATER"] > td {
+    background-color: #fff8e1 !important; /* light amber */
+}
+tr[data-response="NO_RESPONSE"] > td {
+    background-color: #f5f5f5 !important; /* light gray */
+    color: var(--pico-muted-color);
+}
+
+/* Highlight animation takes precedence over response colors */
+tr.highlight-row > td {
+    animation: highlight-fade 3s ease-out forwards;
+}
+
+/* Stats summary bar */
+.event-stats {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+    margin-bottom: 1rem;
+    padding: 0.75rem 1rem;
+    background: var(--pico-card-background-color);
+    border: 1px solid var(--pico-muted-border-color);
+    border-radius: 8px;
+    font-size: 0.9rem;
+    font-weight: 500;
+}
+
+.event-stats .stat {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    padding: 0.25rem 0.75rem;
+    border-radius: 999px;
+    font-size: 0.8rem;
+}
+
+.event-stats .stat.confirmed { background: #e8f5e9; color: #2e7d32; }
+.event-stats .stat.declined { background: #fdecea; color: #c62828; }
+.event-stats .stat.later { background: #fff8e1; color: #f57f17; }
+.event-stats .stat.no-response { background: #f5f5f5; color: var(--pico-muted-color); }
+
+/* Instrument inline edit */
+.instrument-display {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+}
+.instrument-display .instrument-name {
+    font-weight: 500;
+}
+.instrument-display .instrument-edit-btn {
+    display: none;
+    background: none;
+    border: none;
+    cursor: pointer;
+    font-size: 0.85rem;
+    color: var(--pico-muted-color);
+    padding: 0.15rem 0.35rem;
+    border-radius: 4px;
+    transition: background 0.15s, color 0.15s;
+}
+.instrument-display:hover .instrument-edit-btn,
+.instrument-display:focus-within .instrument-edit-btn {
+    display: inline-flex;
+    background: var(--pico-primary-background);
+    color: var(--pico-primary);
+}
+.instrument-select {
+    display: none;
+}
+.instrument-display.editing .instrument-name,
+.instrument-display.editing .instrument-edit-btn {
+    display: none;
+}
+.instrument-display.editing .instrument-select {
+    display: inline-block;
+    width: auto;
+    max-width: 200px;
 }
 
 /* Responsive tabs for inventory */
