@@ -576,29 +576,21 @@ tr.highlight-row > td {
     }
 }
 
-/* Row coloring by response status */
-tr[data-response="CONFIRMED"] > td {
-    background-color: #e8f5e9 !important; /* light green */
-}
-tr[data-response="DECLINED"] > td {
-    background-color: #fdecea !important; /* light red */
-    opacity: 0.7;
-}
-tr[data-response="DECLINED"] > td:first-child {
-    text-decoration: line-through;
-    color: var(--pico-muted-color);
-}
-tr[data-response="LATER"] > td {
-    background-color: #fff8e1 !important; /* light amber */
-}
-tr[data-response="NO_RESPONSE"] > td {
-    background-color: #f5f5f5 !important; /* light gray */
-    color: var(--pico-muted-color);
+/* Row coloring by response status - REMOVED per user request for simple default colors */
+
+/* Highlight animation for newly invited member row */
+tr.highlight-row > td {
+    animation: highlight-fade 3s ease-out forwards !important;
 }
 
-/* Highlight animation takes precedence over response colors */
-tr.highlight-row > td {
-    animation: highlight-fade 3s ease-out forwards;
+/* Ensure highlight works on mobile card-style rows too */
+@media (max-width: 576px) {
+    tr.highlight-row {
+        animation: highlight-fade 3s ease-out forwards !important;
+    }
+   tr.highlight-row > td {
+        animation: none;
+    }
 }
 
 /* Stats summary bar */
