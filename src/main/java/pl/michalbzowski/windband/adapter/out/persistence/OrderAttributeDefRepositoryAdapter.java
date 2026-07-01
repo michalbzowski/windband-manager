@@ -17,7 +17,7 @@ public class OrderAttributeDefRepositoryAdapter implements OrderAttributeDefRepo
 
     @Override
     public List<OrderAttributeDef> findByBand(Band band) {
-        return springDataRepo.findByBandOrderByName(band);
+        return springDataRepo.findByBandOrderByDisplayOrder(band);
     }
 
     @Override

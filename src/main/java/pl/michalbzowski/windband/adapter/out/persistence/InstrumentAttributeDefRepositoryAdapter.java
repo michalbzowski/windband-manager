@@ -17,7 +17,7 @@ public class InstrumentAttributeDefRepositoryAdapter implements InstrumentAttrib
 
     @Override
     public List<InstrumentAttributeDef> findByBand(Band band) {
-        return springDataRepo.findByBandOrderByName(band);
+        return springDataRepo.findByBandOrderByDisplayOrder(band);
     }
 
     @Override

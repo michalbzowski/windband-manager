@@ -19,6 +19,6 @@ import java.util.Optional;
  * signatures, but is NOT extended by this SpringData interface.
  */
 public interface SpringDataInstrumentAttributeDefRepository extends JpaRepository<InstrumentAttributeDef, Long> {
-    List<InstrumentAttributeDef> findByBandOrderByName(Band band);
+    List<InstrumentAttributeDef> findByBandOrderByDisplayOrder(Band band);
     Optional<InstrumentAttributeDef> findByBandAndName(Band band, String name);
 }

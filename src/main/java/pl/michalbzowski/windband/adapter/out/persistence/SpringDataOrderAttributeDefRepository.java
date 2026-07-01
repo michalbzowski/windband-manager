@@ -15,6 +15,6 @@ import java.util.Optional;
  * for the full explanation.
  */
 public interface SpringDataOrderAttributeDefRepository extends JpaRepository<OrderAttributeDef, Long> {
-    List<OrderAttributeDef> findByBandOrderByName(Band band);
+    List<OrderAttributeDef> findByBandOrderByDisplayOrder(Band band);
     Optional<OrderAttributeDef> findByBandAndName(Band band, String name);
 }
