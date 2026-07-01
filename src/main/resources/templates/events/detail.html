@@ -341,8 +341,6 @@
         select.addEventListener('change', function() {
             var memberId = this.dataset.memberId;
             var instrumentId = this.value;
-            // Save scroll position before HTMX swap
-            var scrollY = window.scrollY;
             fetchWithToast('/api/events/' + eventId + '/participation-instrument', { toastMessage: 'Zmieniono instrument na to wydarzenie',
                 method: 'PUT',
                 headers: {'Content-Type': 'application/json'},
@@ -353,10 +351,17 @@
                     return;
                 }
                 htmx.ajax('GET', '/events/' + eventId, {target: '#events-content', swap: 'outerHTML transition:true'});
-                // Restore scroll position after swap settles
+                // Scroll to the edited member after swap settles (list may have reordered by instrument)
                 var settleHandler = function(evt) {
                     if (evt.detail && evt.detail.target && evt.detail.target.id === 'events-content') {
-                        window.scrollTo(0, scrollY);
+                        setTimeout(function() {
+                            var row = document.querySelector('#participants-table tbody tr[data-member-id="' + memberId + '"]');
+                            if (row) {
+                                row.classList.add('highlight-row');
+                                setTimeout(function() { row.classList.remove('highlight-row'); }, 2000);
+                                row.scrollIntoView({behavior: 'smooth', block: 'center'});
+                            }
+                        }, 50);
                         document.body.removeEventListener('htmx:afterSettle', settleHandler);
                     }
                 };

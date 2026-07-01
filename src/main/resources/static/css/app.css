@@ -631,7 +631,7 @@ tr.highlight-row > td {
     font-weight: 500;
 }
 .instrument-display .instrument-edit-btn {
-    display: none;
+    display: inline-flex;
     background: none;
     border: none;
     cursor: pointer;
@@ -641,9 +641,7 @@ tr.highlight-row > td {
     border-radius: 4px;
     transition: background 0.15s, color 0.15s;
 }
-.instrument-display:hover .instrument-edit-btn,
-.instrument-display:focus-within .instrument-edit-btn {
-    display: inline-flex;
+.instrument-display:hover .instrument-edit-btn {
     background: var(--pico-primary-background);
     color: var(--pico-primary);
 }
