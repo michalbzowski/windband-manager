@@ -452,4 +452,31 @@
             }).catch(function(err) { console.error('Invite error:', err); });
         }
     });
+});
+
+// Make event-stats sticky on scroll
+(function() {
+    var statsBar = document.querySelector('.event-stats');
+    var nav = document.querySelector('.top-nav');
+    if (!statsBar || !nav) return;
+
+    function updateStatsPosition() {
+        var navHeight = nav.offsetHeight;
+        var scrollY = window.scrollY;
+        if (scrollY > navHeight) {
+            statsBar.style.position = 'fixed';
+            statsBar.style.top = navHeight + 'px';
+            statsBar.style.zIndex = '100';
+            statsBar.style.width = statsBar.offsetWidth + 'px';
+        } else {
+            statsBar.style.position = '';
+            statsBar.style.top = '';
+            statsBar.style.zIndex = '';
+            statsBar.style.width = '';
+        }
+    }
+
+    window.addEventListener('scroll', updateStatsPosition, { passive: true });
+    updateStatsPosition();
+})();
 </script>
