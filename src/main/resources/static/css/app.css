@@ -384,7 +384,6 @@ button.small, a.small {
 /* Content area */
 #content {
     min-height: 60vh;
-    position: relative;
 }
 
 /* Login page centering */
