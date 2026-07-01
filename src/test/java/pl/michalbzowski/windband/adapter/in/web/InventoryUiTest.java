@@ -12,10 +12,10 @@ class InventoryUiTest extends UiTestBase {
     void shouldNavigateToInventoryAndDisplayContent() {
         loginAndNavigateTo("/inventory");
 
-        assertThat(driver.getTitle()).contains("Inwentaryzacja");
+        assertThat(driver.getTitle()).contains("Zasoby");
 
         var heading = driver.findElement(By.cssSelector("#inventory-content h2"));
-        assertThat(heading.getText()).contains("Inwentaryzacja");
+        assertThat(heading.getText()).contains("Zasoby");
 
         var uniformHeading = driver.findElement(By.xpath("//h3[contains(text(), 'Ekwipunek')]"));
         assertThat(uniformHeading).isNotNull();

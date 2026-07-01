@@ -1,13 +1,13 @@
 <!DOCTYPE html>
 <html lang="pl" xmlns:th="http://www.thymeleaf.org">
-<head th:replace="~{fragments/layout :: head('Inwentaryzacja')}"></head>
+<head th:replace="~{fragments/layout :: head('Zasoby')}"></head>
 <body>
 <nav th:replace="~{fragments/layout :: nav}"></nav>
 
     <main class="container" id="content">
         <div id="debug-info" style="display:none;" th:text="${debugInfo}"></div>
         <div id="inventory-content">
-            <h2>📦 Inwentaryzacja</h2>
+            <h2>📦 Zasoby</h2>
 
             <!-- Tabs -->
             <div id="inventory-tabs" style="display:flex; gap:0.5rem; margin-bottom:1rem; border-bottom:1px solid #ddd;">

@@ -605,6 +605,9 @@ tr.highlight-row > td {
     border-radius: 8px;
     font-size: 0.9rem;
     font-weight: 500;
+    position: sticky;
+    top: 0;
+    z-index: 10;
 }
 
 .event-stats .stat {
@@ -702,6 +705,12 @@ tr.highlight-row > td {
     
     td[style*="display:flex"] > button {
         margin: 0.125rem !important;
+    }
+
+    .response-select {
+        max-width: 120px;
+        font-size: 0.8rem;
+        padding: 0.25rem 0.5rem;
     }
 }
 

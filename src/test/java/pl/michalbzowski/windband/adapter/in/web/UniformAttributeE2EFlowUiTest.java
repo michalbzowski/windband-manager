@@ -28,7 +28,7 @@ import static org.assertj.core.api.Assertions.assertThat;
  *
  * <p>Scenario (all via UI, no API shortcuts):
  * 1. Create SELECT attribute "Rodzaj" via "Atrybuty > Ubrania" form
- * 2. Go to "Inwentaryzacja > Ekwipunek" → click "Dodaj ekwipunek"
+ * 2. Go to "Zasoby > Ekwipunek" → click "Dodaj ekwipunek"
  * 3. Verify the attribute field appears in the form
  * 4. Fill in the attribute value and submit
  * 5. Verify the uniform appears in the list with correct attribute value
