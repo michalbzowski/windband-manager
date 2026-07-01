@@ -255,16 +255,7 @@ public class InventoryCommandService {
         UniformItem item = UniformItem.createOwned(band); // domyślnie własny
         UniformItem saved = inventoryRepository.saveUniformItem(item);
 
-        // Assign to member if provided
-        if (memberId != null) {
-            var member = memberRepository.findById(memberId).orElse(null);
-            if (member != null) {
-                item.assignTo(member, LocalDate.now());
-                saved = inventoryRepository.saveUniformItem(item);
-            }
-        }
-
-        // Save attributes if provided
+        // Save attributes first (before member assignment)
         if (attributes != null && !attributes.isEmpty()) {
             for (Map.Entry<String, String> entry : attributes.entrySet()) {
                 try {
@@ -273,6 +264,15 @@ public class InventoryCommandService {
                 } catch (NumberFormatException e) {
                     // Skip invalid attribute IDs
                 }
+            }
+        }
+
+        // Assign to member if provided
+        if (memberId != null) {
+            var member = memberRepository.findById(memberId).orElse(null);
+            if (member != null) {
+                item.assignTo(member, LocalDate.now());
+                saved = inventoryRepository.saveUniformItem(item);
             }
         }
         return saved;
@@ -285,16 +285,7 @@ public class InventoryCommandService {
         InstrumentItem item = InstrumentItem.createOwned(band);
         InstrumentItem saved = inventoryRepository.saveInstrumentItem(item);
 
-        // Assign to member if provided
-        if (memberId != null) {
-            var member = memberRepository.findById(memberId).orElse(null);
-            if (member != null) {
-                item.assignTo(member, LocalDate.now());
-                saved = inventoryRepository.saveInstrumentItem(item);
-            }
-        }
-
-        // Save attributes if provided
+        // Save attributes first (before member assignment)
         if (attributes != null && !attributes.isEmpty()) {
             for (Map.Entry<String, String> entry : attributes.entrySet()) {
                 try {
@@ -305,6 +296,16 @@ public class InventoryCommandService {
                 }
             }
         }
+
+        // Assign to member if provided
+        if (memberId != null) {
+            var member = memberRepository.findById(memberId).orElse(null);
+            if (member != null) {
+                item.assignTo(member, LocalDate.now());
+                saved = inventoryRepository.saveInstrumentItem(item);
+            }
+        }
+
         return saved;
     }
 

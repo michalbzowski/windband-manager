@@ -606,7 +606,7 @@ tr.highlight-row > td {
     font-size: 0.9rem;
     font-weight: 500;
     position: sticky;
-    top: 0;
+    top: 65px;
     z-index: 10;
 }
 
