@@ -119,11 +119,12 @@ html, body {
     display: flex;
     align-items: center;
     gap: 0.35rem;
-    padding: 0.35rem 0.5rem;
+    padding: 0.3rem 0.5rem;
     border-radius: 8px;
     background: var(--pico-card-background-color);
     border: 1px solid var(--pico-muted-border-color);
     flex-shrink: 0;
+    line-height: 1;
 }
 
 .team-switcher .team-icon {
@@ -132,6 +133,7 @@ html, body {
     align-items: center;
     justify-content: center;
     flex-shrink: 0;
+    line-height: 1;
 }
 
 .team-switcher select {
@@ -281,16 +283,25 @@ html, body {
     flex-shrink: 0;
 }
 
+/* Hide default browser arrow in details summary */
 .nav-user-menu summary {
     display: flex;
     align-items: center;
     gap: 0.25rem;
-    padding: 0.25rem 0.5rem 0.25rem 0.25rem;
+    padding: 0.2rem 0.4rem 0.2rem 0.2rem;
     border-radius: 20px;
     background: var(--pico-card-background-color);
     border: 1px solid var(--pico-muted-border-color);
     cursor: pointer;
     transition: background 0.15s;
+    line-height: 1;
+    /* Hide default summary marker */
+    list-style: none;
+    -webkit-list-style: none;
+}
+
+.nav-user-menu summary::-webkit-details-marker {
+    display: none;
 }
 
 .nav-user-menu summary:hover {
