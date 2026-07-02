@@ -74,12 +74,21 @@
 <nav class="top-nav" th:fragment="nav" sec:authorize="isAuthenticated()">
     <div class="nav-inner">
 
-        <!-- Left: Brand + Primary Navigation -->
+        <!-- Left: Team Switcher (formerly brand) -->
         <div class="nav-left">
-            <a th:href="@{/}" class="nav-brand" aria-label="Team Manager — strona główna">
-                <span class="brand-icon">⚡</span>
-                <span class="brand-text">TM</span>
-            </a>
+            <div class="team-switcher" style="margin-right: 1rem;">
+                <span class="team-icon">🏠</span>
+                <select id="nav-team-select"
+                        th:if="${#lists.size(userTeams) > 1}"
+                        onchange="switchTeam(this.value)"
+                        aria-label="Zmień aktywny zespół">
+                    <option th:each="team : ${userTeams}"
+                            th:value="${team.id}"
+                            th:selected="${team.id == activeTeamId}"
+                            th:text="${team.name}"></option>
+                </select>
+                <span th:if="${#lists.size(userTeams) <= 1}" class="team-name" th:text="${activeTeamSlug ?: 'brak'}">zespół</span>
+            </div>
 
             <ul class="nav-primary">
                 <li>
@@ -112,62 +121,46 @@
                         <span class="nav-label">Dashboardy</span>
                     </a>
                 </li>
-                <li class="nav-more" sec:authorize="hasAnyRole('ADMIN', 'SYSTEM_ADMIN')">
-                    <details class="dropdown">
-                        <summary role="button" class="secondary outline">
-                            <span class="nav-icon">⚙️</span>
-                            <span class="nav-label">Admin</span>
-                        </summary>
-                        <ul>
-                            <li><a th:href="@{/admin/dashboards}" hx-target="#content" hx-swap="innerHTML transition:true">📊 Dashboardy</a></li>
-                            <li><a th:href="@{/admin/system-admins}" hx-target="#content" hx-swap="innerHTML transition:true">👑 Administratorzy</a></li>
-                            <li><a th:href="@{/reports}" hx-target="#content" hx-swap="innerHTML transition:true">📈 Raporty</a></li>
-                            <li><a th:href="@{/tags}" hx-target="#content" hx-swap="innerHTML transition:true">🏷️ Tagi</a></li>
-                            <li><a th:href="@{/groups}" hx-target="#content" hx-swap="innerHTML transition:true">👨‍👩‍👧 Grupy</a></li>
-                            <li><a th:href="@{/band/inventory-attributes(type='MEMBER')}" hx-target="#content" hx-swap="innerHTML transition:true">📋 Atrybuty</a></li>
-                            <li><hr></li>
-                            <li><a href="/register" hx-target="#content" hx-swap="innerHTML transition:true">➕ Nowy zespół</a></li>
-                        </ul>
-                    </details>
-                </li>
             </ul>
         </div>
 
-        <!-- Right: Team switcher + User -->
+        <!-- Right: Unified Menu + User -->
         <div class="nav-right">
-            <!-- Team Switcher — always visible, high prominence -->
-            <div class="team-switcher">
-                <span class="team-icon">🏠</span>
-                <select id="nav-team-select"
-                        th:if="${#lists.size(userTeams) > 1}"
-                        onchange="switchTeam(this.value)"
-                        aria-label="Zmień aktywny zespół">
-                    <option th:each="team : ${userTeams}"
-                            th:value="${team.id}"
-                            th:selected="${team.id == activeTeamId}"
-                            th:text="${team.name}"></option>
-                </select>
-                <span th:if="${#lists.size(userTeams) <= 1}" class="team-name" th:text="${activeTeamSlug ?: 'brak'}">zespół</span>
-            </div>
 
-            <!-- User menu -->
-            <details class="user-menu dropdown">
-                <summary role="button" class="user-chip">
-                    <span class="user-avatar" th:text="${#strings.substring(#authentication.principal.wbUsername, 0, 1)}">U</span>
-                    <span class="user-name" th:text="${#authentication.principal.wbUsername}">user</span>
+            <!-- Unified Menu dropdown -->
+            <details class="dropdown">
+                <summary role="button" class="secondary outline menu-btn">
+                    <span class="nav-icon">☰</span>
+                    <span class="nav-label">Menu</span>
                 </summary>
                 <ul>
-                    <li class="user-menu-header">
+                    <li class="menu-header">
                         <strong th:text="${#authentication.principal.wbUsername}">user</strong>
-                        <small th:if="${activeTeamRole}" th:text="${#strings.capitalize(activeTeamRole)}">admin</small>
+                        <small th:if="${activeTeamRole}" th:text="${#strings.capitalize(activeTeamRole)}">rola</small>
                     </li>
                     <li><hr></li>
+                    
+                    <!-- Main navigation — visible to all -->
+                    <li class="menu-section-label">Nawigacja</li>
                     <li><a th:href="@{/members}" hx-target="#content" hx-swap="innerHTML transition:true">👥 Członkowie</a></li>
                     <li><a th:href="@{/rehearsals}" hx-target="#content" hx-swap="innerHTML transition:true">🎵 Spotkania</a></li>
                     <li><a th:href="@{/events}" hx-target="#content" hx-swap="innerHTML transition:true">🎪 Wydarzenia</a></li>
                     <li><a th:href="@{/inventory}" hx-target="#content" hx-swap="innerHTML transition:true">📦 Zasoby</a></li>
                     <li><a th:href="@{/dashboards}" hx-target="#content" hx-swap="innerHTML transition:true">📊 Dashboardy</a></li>
+                    
+                    <!-- Admin section — only for ADMIN/SYSTEM_ADMIN -->
+                    <li sec:authorize="hasAnyRole('ADMIN', 'SYSTEM_ADMIN')"><hr></li>
+                    <li class="menu-section-label" sec:authorize="hasAnyRole('ADMIN', 'SYSTEM_ADMIN')">Administracja</li>
+                    <li sec:authorize="hasAnyRole('ADMIN', 'SYSTEM_ADMIN')"><a th:href="@{/admin/dashboards}" hx-target="#content" hx-swap="innerHTML transition:true">📊 Dashboardy</a></li>
+                    <li sec:authorize="hasAnyRole('ADMIN', 'SYSTEM_ADMIN')"><a th:href="@{/admin/system-admins}" hx-target="#content" hx-swap="innerHTML transition:true">👑 Administratorzy</a></li>
+                    <li sec:authorize="hasAnyRole('ADMIN', 'SYSTEM_ADMIN')"><a th:href="@{/reports}" hx-target="#content" hx-swap="innerHTML transition:true">📈 Raporty</a></li>
+                    <li sec:authorize="hasAnyRole('ADMIN', 'SYSTEM_ADMIN')"><a th:href="@{/tags}" hx-target="#content" hx-swap="innerHTML transition:true">🏷️ Tagi</a></li>
+                    <li sec:authorize="hasAnyRole('ADMIN', 'SYSTEM_ADMIN')"><a th:href="@{/groups}" hx-target="#content" hx-swap="innerHTML transition:true">👨‍👩‍👧 Grupy</a></li>
+                    <li sec:authorize="hasAnyRole('ADMIN', 'SYSTEM_ADMIN')"><a th:href="@{/band/inventory-attributes(type='MEMBER')}" hx-target="#content" hx-swap="innerHTML transition:true">📋 Atrybuty członków</a></li>
+                    
+                    <!-- Account section -->
                     <li><hr></li>
+                    <li class="menu-section-label">Konto</li>
                     <li><a href="/register" hx-target="#content" hx-swap="innerHTML transition:true">➕ Nowy zespół</a></li>
                     <li>
                         <form th:action="@{/api/auth/logout}" method="POST" style="display:inline;">
@@ -176,6 +169,9 @@
                     </li>
                 </ul>
             </details>
+
+            <!-- User avatar chip -->
+            <div class="user-chip-simple" th:text="${#strings.substring(#authentication.principal.wbUsername, 0, 1)}">U</div>
         </div>
     </div>
 </nav>

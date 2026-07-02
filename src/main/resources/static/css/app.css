@@ -227,16 +227,53 @@ html, body {
     border-top: 1px solid var(--pico-muted-border-color);
 }
 
-/* User menu header */
-.user-menu-header {
+/* Menu button */
+.menu-btn {
+    display: flex;
+    align-items: center;
+    gap: 0.35rem;
+    padding: 0.45rem 0.7rem;
+    border-radius: 6px;
+    font-size: 0.875rem;
+    font-weight: 500;
+    white-space: nowrap;
+}
+
+/* User avatar chip (without name) */
+.user-chip-simple {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    background: var(--pico-primary);
+    color: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.8rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    margin-left: 0.5rem;
+}
+
+/* Menu sections in dropdown */
+.menu-header {
     padding: 0.5rem 0.75rem;
     display: flex;
     flex-direction: column;
 }
 
-.user-menu-header small {
+.menu-header small {
     color: var(--pico-muted-color);
     font-size: 0.75rem;
+}
+
+.menu-section-label {
+    padding: 0.35rem 0.75rem 0.2rem;
+    font-size: 0.7rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--pico-muted-color);
 }
 
 .logout-btn {
@@ -264,6 +301,11 @@ html, body {
 
     .nav-label {
         display: none;
+    }
+
+    /* Always show "Menu" label - it's the main dropdown */
+    .menu-btn .nav-label {
+        display: inline;
     }
 
     .nav-icon {
