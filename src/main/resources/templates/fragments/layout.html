@@ -131,10 +131,13 @@
                     <li><a th:href="@{/events}" hx-target="#content" hx-swap="innerHTML transition:true">🎪 Wydarzenia</a></li>
 
                     <li><hr></li>
-                    <li class="menu-section-label">Organizacja</li>
+                    <li class="menu-section-label">Zarządzanie zespołem</li>
                     <li><a th:href="@{/members}" hx-target="#content" hx-swap="innerHTML transition:true">👥 Członkowie</a></li>
                     <li><a th:href="@{/groups}" hx-target="#content" hx-swap="innerHTML transition:true" sec:authorize="hasAnyRole('ADMIN', 'SYSTEM_ADMIN')">👨‍👩‍👧 Grupy</a></li>
                     <li><a th:href="@{/tags}" hx-target="#content" hx-swap="innerHTML transition:true" sec:authorize="hasAnyRole('ADMIN', 'SYSTEM_ADMIN')">🏷️ Tagi</a></li>
+
+                    <li><hr></li>
+                    <li class="menu-section-label">Magazyn</li>
                     <li><a th:href="@{/inventory}" hx-target="#content" hx-swap="innerHTML transition:true">📦 Zasoby</a></li>
 
                     <li><hr></li>
