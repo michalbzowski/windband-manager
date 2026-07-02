@@ -97,12 +97,6 @@
 
             <ul class="nav-primary">
                 <li>
-                    <a th:href="@{/members}" hx-target="#content" hx-swap="innerHTML transition:true">
-                        <span class="nav-icon">👥</span>
-                        <span class="nav-label">Członkowie</span>
-                    </a>
-                </li>
-                <li>
                     <a th:href="@{/rehearsals}" hx-target="#content" hx-swap="innerHTML transition:true">
                         <span class="nav-icon">🎵</span>
                         <span class="nav-label">Spotkania</span>
@@ -112,18 +106,6 @@
                     <a th:href="@{/events}" hx-target="#content" hx-swap="innerHTML transition:true">
                         <span class="nav-icon">🎪</span>
                         <span class="nav-label">Wydarzenia</span>
-                    </a>
-                </li>
-                <li>
-                    <a th:href="@{/inventory}" hx-target="#content" hx-swap="innerHTML transition:true">
-                        <span class="nav-icon">📦</span>
-                        <span class="nav-label">Zasoby</span>
-                    </a>
-                </li>
-                <li>
-                    <a th:href="@{/dashboards}" hx-target="#content" hx-swap="innerHTML transition:true">
-                        <span class="nav-icon">📊</span>
-                        <span class="nav-label">Dashboardy</span>
                     </a>
                 </li>
             </ul>
@@ -147,10 +129,11 @@
                     <!-- Main navigation — visible to all -->
                     <li class="menu-section-label">Nawigacja</li>
                     <li><a th:href="@{/members}" hx-target="#content" hx-swap="innerHTML transition:true">👥 Członkowie</a></li>
-                    <li><a th:href="@{/rehearsals}" hx-target="#content" hx-swap="innerHTML transition:true">🎵 Spotkania</a></li>
-                    <li><a th:href="@{/events}" hx-target="#content" hx-swap="innerHTML transition:true">🎪 Wydarzenia</a></li>
                     <li><a th:href="@{/inventory}" hx-target="#content" hx-swap="innerHTML transition:true">📦 Zasoby</a></li>
                     <li><a th:href="@{/dashboards}" hx-target="#content" hx-swap="innerHTML transition:true">📊 Dashboardy</a></li>
+                    <li><hr></li>
+                    <li><a th:href="@{/rehearsals}" hx-target="#content" hx-swap="innerHTML transition:true">🎵 Spotkania</a></li>
+                    <li><a th:href="@{/events}" hx-target="#content" hx-swap="innerHTML transition:true">🎪 Wydarzenia</a></li>
                     
                     <!-- Admin section — only for ADMIN/SYSTEM_ADMIN -->
                     <li sec:authorize="hasAnyRole('ADMIN', 'SYSTEM_ADMIN')"><hr></li>
