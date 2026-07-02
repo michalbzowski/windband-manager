@@ -116,15 +116,38 @@ html, body {
 
 /* Team switcher — prominent position */
 .team-switcher {
+    position: relative;
+    flex-shrink: 0;
+}
+
+.team-switcher-summary {
     display: flex;
     align-items: center;
-    gap: 0.45rem;
-    padding: 0.35rem 0.6rem;
-    border-radius: 8px;
+    gap: 0.55rem;
+    min-height: 2.5rem;
+    padding: 0.4rem 0.8rem;
+    border-radius: 999px;
     background: var(--pico-card-background-color);
     border: 1px solid var(--pico-muted-border-color);
-    flex-shrink: 0;
-    line-height: 1;
+    box-shadow: 0 1px 0 rgba(0, 0, 0, 0.03);
+    cursor: pointer;
+    transition: background 0.15s, border-color 0.15s, box-shadow 0.15s;
+    list-style: none;
+    -webkit-list-style: none;
+    appearance: none;
+    -webkit-appearance: none;
+}
+
+.team-switcher-summary:hover {
+    background: var(--pico-primary-background);
+    border-color: var(--pico-primary-border);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.06);
+}
+
+.team-switcher-summary::-webkit-details-marker,
+.team-switcher-summary::marker {
+    display: none;
+    content: '';
 }
 
 .team-switcher .team-icon {
@@ -137,41 +160,94 @@ html, body {
     width: 1.1rem;
 }
 
-.team-switcher select {
-    font-size: 0.85rem;
-    font-weight: 600;
-    padding: 0.15rem 0.3rem;
+.team-switcher-text {
+    display: inline-block;
+    max-width: 18rem;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-size: 0.95rem;
+    font-weight: 700;
+    line-height: 1;
+    color: var(--pico-color);
+}
+
+.team-switcher-caret {
+    font-size: 0.7rem;
+    color: var(--pico-muted-color);
+    line-height: 1;
+    transition: transform 0.15s ease;
+}
+
+.team-switcher[open] .team-switcher-caret {
+    transform: rotate(180deg);
+}
+
+.team-switcher-menu {
+    position: absolute;
+    left: 0;
+    top: calc(100% + 0.35rem);
+    z-index: 1000;
+    min-width: 100%;
+    width: max-content;
+    max-width: 24rem;
+    padding: 0.35rem;
+    border-radius: 14px;
+    border: 1px solid var(--pico-muted-border-color);
+    background: var(--pico-card-background-color);
+    box-shadow: 0 12px 28px rgba(0, 0, 0, 0.12);
+}
+
+.team-switcher-menu li {
+    list-style: none;
+}
+
+.team-switcher-item {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    padding: 0.6rem 0.75rem;
     border: none;
+    border-radius: 10px;
     background: transparent;
     color: var(--pico-color);
+    text-align: left;
     cursor: pointer;
-    max-width: 160px;
-    display: inline-flex;
-    align-items: center;
-    line-height: 1.1;
-    /* Truncate long team names with ellipsis */
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
 }
 
-.team-switcher select option {
-    /* Ensure options don't get truncated */
-    white-space: normal;
-}
-
-.team-switcher .team-name {
-    display: inline-flex;
-    align-items: center;
-    min-height: 1.5rem;
-    font-weight: 600;
-    font-size: 0.85rem;
+.team-switcher-item:hover {
+    background: var(--pico-primary-background);
     color: var(--pico-primary);
-    max-width: 160px;
-    line-height: 1;
-    white-space: nowrap;
+}
+
+.team-switcher-item.active {
+    background: var(--pico-primary-background);
+    color: var(--pico-primary);
+}
+
+.team-switcher-item-name {
+    font-size: 0.9rem;
+    font-weight: 600;
     overflow: hidden;
     text-overflow: ellipsis;
+    white-space: nowrap;
+    min-width: 0;
+    flex: 1;
+}
+
+.team-switcher-item.active .team-switcher-item-name {
+    font-weight: 700;
+}
+
+.team-switcher-item-current {
+    font-size: 0.72rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--pico-muted-color);
+    flex-shrink: 0;
 }
 
 /* User menu */

@@ -76,19 +76,24 @@
 
         <!-- Left: Team Switcher (formerly brand) -->
         <div class="nav-left">
-            <div class="team-switcher" style="margin-right: 1rem;">
-                <span class="team-icon">🏠</span>
-                <select id="nav-team-select"
-                        th:if="${#lists.size(userTeams) > 1}"
-                        onchange="switchTeam(this.value)"
-                        aria-label="Zmień aktywny zespół">
-                    <option th:each="team : ${userTeams}"
-                            th:value="${team.id}"
-                            th:selected="${team.id == activeTeamId}"
-                            th:text="${team.name}"></option>
-                </select>
-                <span th:if="${#lists.size(userTeams) <= 1}" class="team-name" th:text="${activeTeamSlug ?: 'brak'}">zespół</span>
-            </div>
+            <details class="dropdown team-switcher">
+                <summary role="button" class="team-switcher-summary" aria-label="Zmień aktywny zespół">
+                    <span class="team-icon">🏠</span>
+                    <span class="team-switcher-text" th:text="${activeTeamName ?: activeTeamSlug ?: 'brak zespołu'}">Orkiestra Dęta</span>
+                    <span th:if="${#lists.size(userTeams) > 1}" class="team-switcher-caret">▾</span>
+                </summary>
+                <ul th:if="${#lists.size(userTeams) > 1}" class="team-switcher-menu">
+                    <li th:each="team : ${userTeams}">
+                        <button type="button"
+                                class="team-switcher-item"
+                                th:classappend="${team.id == activeTeamId} ? ' active' : ''"
+                                th:attr="onclick=|switchTeam('${team.id}')|">
+                            <span class="team-switcher-item-name" th:text="${team.name}">Zespół</span>
+                            <span th:if="${team.id == activeTeamId}" class="team-switcher-item-current">Aktualny</span>
+                        </button>
+                    </li>
+                </ul>
+            </details>
 
             <ul class="nav-primary">
                 <li>

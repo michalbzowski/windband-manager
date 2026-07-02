@@ -58,6 +58,12 @@ public class TeamModelAdvice {
         return info != null ? info.slug() : null;
     }
 
+    @ModelAttribute("activeTeamName")
+    public String activeTeamName(@AuthenticationPrincipal OidcUser oidcUser, HttpSession session) {
+        TeamQueryService.UserTeamDto info = getActiveTeamInfo(oidcUser, session);
+        return info != null ? info.name() : null;
+    }
+
     @ModelAttribute("activeTeamRole")
     public String activeTeamRole(@AuthenticationPrincipal OidcUser oidcUser, HttpSession session) {
         TeamQueryService.UserTeamDto info = getActiveTeamInfo(oidcUser, session);
