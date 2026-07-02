@@ -129,9 +129,8 @@
 
             <!-- Unified Menu dropdown — user chip with dropdown -->
             <details class="dropdown nav-user-menu">
-                <summary role="button" class="secondary outline">
+                <summary role="button" class="secondary outline" aria-label="Menu użytkownika">
                     <span class="user-avatar" th:text="${#strings.substring(#authentication.principal.wbUsername, 0, 1)}">U</span>
-                    <span class="dropdown-arrow">▼</span>
                 </summary>
                 <ul>
                     <li class="menu-header">

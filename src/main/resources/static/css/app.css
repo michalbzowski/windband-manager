@@ -145,6 +145,9 @@ html, body {
     color: var(--pico-color);
     cursor: pointer;
     max-width: 140px;
+    display: inline-flex;
+    align-items: center;
+    line-height: 1.1;
     /* Truncate long team names with ellipsis */
     white-space: nowrap;
     overflow: hidden;
@@ -157,10 +160,14 @@ html, body {
 }
 
 .team-switcher .team-name {
+    display: inline-flex;
+    align-items: center;
+    min-height: 1.5rem;
     font-weight: 600;
     font-size: 0.85rem;
     color: var(--pico-primary);
     max-width: 140px;
+    line-height: 1;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
@@ -295,9 +302,15 @@ html, body {
     cursor: pointer;
     transition: background 0.15s;
     line-height: 1;
+    appearance: none;
+    -webkit-appearance: none;
     /* Hide default summary marker */
     list-style: none;
     -webkit-list-style: none;
+}
+
+.nav-user-menu summary::marker {
+    content: '';
 }
 
 .nav-user-menu summary::-webkit-details-marker {
