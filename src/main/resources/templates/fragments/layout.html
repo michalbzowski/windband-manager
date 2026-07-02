@@ -126,16 +126,16 @@
                     </li>
                     <li><hr></li>
                     
-                    <!-- Main navigation — visible to all -->
-                    <li class="menu-section-label">Nawigacja</li>
+                    <li class="menu-section-label">Najczęściej używane</li>
+                    <li><a th:href="@{/rehearsals}" hx-target="#content" hx-swap="innerHTML transition:true">🎵 Spotkania</a></li>
+                    <li><a th:href="@{/events}" hx-target="#content" hx-swap="innerHTML transition:true">🎪 Wydarzenia</a></li>
+
+                    <li><hr></li>
+                    <li class="menu-section-label">Rzadziej używane</li>
                     <li><a th:href="@{/members}" hx-target="#content" hx-swap="innerHTML transition:true">👥 Członkowie</a></li>
                     <li><a th:href="@{/inventory}" hx-target="#content" hx-swap="innerHTML transition:true">📦 Zasoby</a></li>
                     <li><a th:href="@{/dashboards}" hx-target="#content" hx-swap="innerHTML transition:true">📊 Dashboardy</a></li>
-                    <li><hr></li>
-                    <li><a th:href="@{/rehearsals}" hx-target="#content" hx-swap="innerHTML transition:true">🎵 Spotkania</a></li>
-                    <li><a th:href="@{/events}" hx-target="#content" hx-swap="innerHTML transition:true">🎪 Wydarzenia</a></li>
-                    
-                    <!-- Admin section — only for ADMIN/SYSTEM_ADMIN -->
+
                     <li sec:authorize="hasAnyRole('ADMIN', 'SYSTEM_ADMIN')"><hr></li>
                     <li class="menu-section-label" sec:authorize="hasAnyRole('ADMIN', 'SYSTEM_ADMIN')">Administracja</li>
                     <li sec:authorize="hasAnyRole('ADMIN', 'SYSTEM_ADMIN')"><a th:href="@{/admin/dashboards}" hx-target="#content" hx-swap="innerHTML transition:true">📊 Dashboardy</a></li>
@@ -144,8 +144,7 @@
                     <li sec:authorize="hasAnyRole('ADMIN', 'SYSTEM_ADMIN')"><a th:href="@{/tags}" hx-target="#content" hx-swap="innerHTML transition:true">🏷️ Tagi</a></li>
                     <li sec:authorize="hasAnyRole('ADMIN', 'SYSTEM_ADMIN')"><a th:href="@{/groups}" hx-target="#content" hx-swap="innerHTML transition:true">👨‍👩‍👧 Grupy</a></li>
                     <li sec:authorize="hasAnyRole('ADMIN', 'SYSTEM_ADMIN')"><a th:href="@{/band/inventory-attributes(type='MEMBER')}" hx-target="#content" hx-swap="innerHTML transition:true">📋 Atrybuty członków</a></li>
-                    
-                    <!-- Account section -->
+
                     <li><hr></li>
                     <li class="menu-section-label">Konto</li>
                     <li><a href="/register" hx-target="#content" hx-swap="innerHTML transition:true">➕ Nowy zespół</a></li>
