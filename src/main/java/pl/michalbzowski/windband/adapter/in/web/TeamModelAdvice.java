@@ -105,6 +105,27 @@ public class TeamModelAdvice {
     }
 
     /**
+     * Display name of the currently logged-in user — used in the top-nav second
+     * row (right-aligned pill) to show who is signed in, replacing the previous
+     * "role" badge which duplicated the active team role.
+     */
+    @ModelAttribute("currentUserName")
+    public String currentUserName(@AuthenticationPrincipal OidcUser oidcUser) {
+        if (oidcUser == null) {
+            return null;
+        }
+        // Prefer wbUsername (the app-level login) over the raw Keycloak email
+        if (oidcUser instanceof WindbandOidcUser wu && wu.getWbUsername() != null) {
+            return wu.getWbUsername();
+        }
+        String preferred = oidcUser.getPreferredUsername();
+        if (preferred != null && !preferred.isBlank()) {
+            return preferred;
+        }
+        return oidcUser.getName();
+    }
+
+    /**
      * CSS color (HSL) for the active team's avatar chip in the top-nav.
      * Returns {@code null} when the user has 0 or 1 teams — the chip then
      * uses a neutral PicoCSS variable so a single-team user doesn't get a

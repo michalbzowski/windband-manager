@@ -93,23 +93,26 @@
         </ul>
 
         <button type="button"
-                class="team-chip"
-                th:style="${activeTeamColor != null ? 'background-color:' + activeTeamColor : ''}"
-                th:attr="aria-label=|Przełącz zespół: ${activeTeamName ?: 'brak'}|"
-                onclick="openAppModal('team-modal')">
-            <span class="team-chip-letter"
-                  th:text="${activeTeamName != null ? #strings.toUpperCase(#strings.substring(activeTeamName, 0, 1)) : '?'}">O</span>
-        </button>
-
-        <button type="button"
                 class="hamburger-btn"
                 aria-label="Otwórz menu"
                 onclick="openAppModal('menu-modal')"></button>
     </div>
 
     <div class="nav-row nav-row-label" th:if="${activeTeamName}">
-        <span class="nav-team-label" th:text="${activeTeamName}">Orkiestra Dęta</span>
-        <span class="nav-team-role" th:if="${activeTeamRole}" th:text="${activeTeamRole}">ADMIN</span>
+        <button type="button"
+                class="team-chip team-chip-sm"
+                th:style="${activeTeamColor != null ? 'background-color:' + activeTeamColor : ''}"
+                th:attr="aria-label=|Przełącz zespół: ${activeTeamName ?: 'brak'}|"
+                onclick="openAppModal('team-modal')">
+            <span class="team-chip-letter"
+                  th:text="${activeTeamName != null ? #strings.toUpperCase(#strings.substring(activeTeamName, 0, 1)) : '?'}">O</span>
+        </button>
+        <button type="button"
+                class="nav-team-label"
+                th:text="${activeTeamName}"
+                th:attr="aria-label=|Przełącz zespół: ${activeTeamName ?: 'brak'}|"
+                onclick="openAppModal('team-modal')">Orkiestra Dęta</button>
+        <span class="nav-team-role" th:if="${currentUserName}" th:text="${currentUserName}">user</span>
     </div>
 
     <!-- Dialogs live inside the nav fragment so they ship with every page
