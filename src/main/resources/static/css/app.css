@@ -1,8 +1,15 @@
 /* Wind Band Manager — custom styles on top of PicoCSS */
 
-/* Prevent horizontal scrollbar from dropdown */
+/* Prevent horizontal scrollbar from dropdown / modal overflow.
+   IMPORTANT: use `clip` (not `hidden`) so position:sticky on descendants
+   still resolves against the viewport. `overflow: hidden` (and the implicit
+   overflow-y: auto it triggers) creates a scroll container, which makes
+   the sticky nav contained within <body> instead of the viewport — on some
+   browsers the nav then scrolls away with the page. The `hidden` declaration
+   is kept as a fallback for older browsers that don't recognise `clip`. */
 html, body {
     overflow-x: hidden;
+    overflow-x: clip;
     min-height: 100vh;
 }
 
@@ -22,6 +29,12 @@ html, body {
     margin-bottom: 1rem;
     /* Tiny shadow under the bar — gives the floating effect */
     box-shadow: 0 1px 0 var(--pico-muted-border-color), 0 2px 6px rgba(0,0,0,0.04);
+    /* PicoCSS resets <nav> to display:flex; justify-content:space-between.
+       That makes the two .nav-row children sit side-by-side instead of
+       stacking vertically (the team-name label ended up next to the
+       hamburger, not below it). Force a flex column here. */
+    flex-direction: column;
+    align-items: stretch;
 }
 
 /* === ROW 1: controls ============================================ */
@@ -155,6 +168,9 @@ html, body {
     transition: background 0.15s, border-color 0.15s;
     -webkit-appearance: none;
     appearance: none;
+    /* Required so the absolutely-positioned ::before icon is anchored
+       to the button rather than to the page. */
+    position: relative;
 }
 
 .hamburger-btn:hover {
@@ -167,21 +183,50 @@ html, body {
     outline-offset: 2px;
 }
 
-.hamburger-bars {
-    display: inline-flex;
-    flex-direction: column;
-    justify-content: space-between;
+/* Hamburger icon drawn with a single ::before pseudo-element and two
+   box-shadows. Earlier attempts used:
+     1. three <span>s with background-color — invisible on mobile after
+        sub-pixel anti-aliasing of 2.5-3px bars.
+     2. inline SVG with <rect fill="currentColor"> — invisible because
+        PicoCSS's button reset cascade broke the currentColor inheritance
+        through <button> → <svg> → <rect> in some browsers.
+   The ::before + box-shadow approach draws three solid horizontal bars
+   that always render at full pixel density.
+
+   Colours are pinned to explicit dark/light values rather than currentColor
+   so the icon is readable even when the host element ends up with a light
+   `color` (which happened with the SVG approach because PicoCSS's button
+   reset cascade could override it in some browsers). The values are
+   overridden for dark mode via [data-theme="dark"]. */
+.hamburger-btn::before {
+    content: "";
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
     width: 18px;
-    height: 12px;
+    height: 2.5px;
+    background-color: #1a1a1a;
+    border-radius: 2px;
+    box-shadow:
+        0 -6px 0 #1a1a1a,
+        0  6px 0 #1a1a1a;
 }
 
-.hamburger-bars > span {
-    display: block;
-    height: 2px;
-    width: 100%;
-    background: currentColor;
-    border-radius: 2px;
-    transition: transform 0.2s ease, opacity 0.2s ease;
+[data-theme="dark"] .hamburger-btn::before {
+    background-color: #e6e6e6;
+    box-shadow:
+        0 -6px 0 #e6e6e6,
+        0  6px 0 #e6e6e6;
+}
+
+@media (prefers-color-scheme: dark) {
+    .hamburger-btn::before {
+        background-color: #e6e6e6;
+        box-shadow:
+            0 -6px 0 #e6e6e6,
+            0  6px 0 #e6e6e6;
+    }
 }
 
 /* === ROW 2: team name label ===================================== */
@@ -566,9 +611,6 @@ html, body {
     .hamburger-btn {
         padding: 0 0.85rem;
         gap: 0.45rem;
-    }
-    .hamburger-bars {
-        width: 20px;
     }
     .nav-row {
         padding: 0.65rem 1.25rem;
