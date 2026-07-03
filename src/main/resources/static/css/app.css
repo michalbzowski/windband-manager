@@ -515,7 +515,14 @@ html, body {
     padding: 0.75rem 0.85rem;
     font-size: 0.95rem;
     font-weight: 500;
-    color: var(--pico-color);
+    /* Hardcoded color (not var(--pico-color)). See the comment on
+       .nav-team-label for the full explanation: PicoCSS's
+       `button, [type=button], [role=button]` selector redefines
+       --pico-color to var(--pico-primary-inverse) — white in light
+       mode — so any var(--pico-color) inside a <button> renders
+       white. The .app-modal-body li a covers <a> links, but the
+       PicoCSS rule also catches <button>, so we must hardcode. */
+    color: #1a1a1a;
     text-decoration: none;
     background: transparent;
     border: none;
@@ -524,6 +531,20 @@ html, body {
     text-align: left;
     transition: background 0.12s, color 0.12s;
     line-height: 1.3;
+}
+
+[data-theme="dark"] .app-modal-body li a,
+[data-theme="dark"] .app-modal-body li button,
+[data-theme="dark"] .app-modal-logout {
+    color: #e6e6e6;
+}
+
+@media (prefers-color-scheme: dark) {
+    .app-modal-body li a,
+    .app-modal-body li button,
+    .app-modal-logout {
+        color: #e6e6e6;
+    }
 }
 
 .app-modal-body li a:hover,
@@ -542,9 +563,20 @@ html, body {
 }
 
 .app-modal-logout {
-    /* Match the li a look exactly; form wrapper provides no chrome */
-    color: var(--pico-color);
+    /* Match the li a look exactly; form wrapper provides no chrome.
+       Color is already set on the shared rule above. */
+    color: #1a1a1a;
     font-family: inherit;
+}
+
+[data-theme="dark"] .app-modal-logout {
+    color: #e6e6e6;
+}
+
+@media (prefers-color-scheme: dark) {
+    .app-modal-logout {
+        color: #e6e6e6;
+    }
 }
 
 .app-team-list {
