@@ -7,8 +7,11 @@ html, body {
 }
 
 /* ============================================================
-   TOP NAVIGATION — UX-optimized, sticky, flat
-   Max 5 primary items + Admin dropdown + team switcher + user
+   TOP NAVIGATION — sticky 2-row layout
+   Row 1: [team chip] [primary icons] ........ [hamburger]
+   Row 2: team-name label (subtle, floating)
+   Both rows stay visible during scroll.
+   Mobile-first; icon labels re-appear from tablet portrait up.
    ============================================================ */
 .top-nav {
     position: sticky;
@@ -17,85 +20,100 @@ html, body {
     background: var(--pico-background-color);
     border-bottom: 1px solid var(--pico-muted-border-color);
     margin-bottom: 1rem;
-    overflow: visible;
+    /* Tiny shadow under the bar — gives the floating effect */
+    box-shadow: 0 1px 0 var(--pico-muted-border-color), 0 2px 6px rgba(0,0,0,0.04);
 }
 
-.nav-inner {
+/* === ROW 1: controls ============================================ */
+.nav-row {
     display: flex;
     align-items: center;
-    justify-content: space-between;
     max-width: 1400px;
     margin: 0 auto;
-    padding: 0.5rem 1rem;
-    gap: 1rem;
+    padding: 0.45rem 0.6rem;
+    gap: 0.5rem;
 }
 
-/* Left section: Brand + nav */
-.nav-left {
-    display: flex;
-    align-items: center;
-    gap: 0.75rem;
-    flex: 1;
-    min-width: 0;
+.nav-row-primary {
+    /* On mobile the chip + icons + hamburger sit in a single flex row */
+    justify-content: flex-start;
 }
 
-.nav-brand {
-    display: flex;
-    align-items: center;
-    gap: 0.4rem;
-    text-decoration: none;
-    color: inherit;
-    font-weight: 700;
-    font-size: 1.1rem;
-    padding: 0.3rem 0.6rem;
-    border-radius: 8px;
-    background: var(--pico-primary-background);
+/* === TEAM CHIP (round avatar button) =========================== */
+.team-chip {
     flex-shrink: 0;
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    border: 2px solid var(--pico-card-background-color);
+    /* background-color is set inline from activeTeamColor (HSL) */
+    background-color: var(--pico-primary);
+    color: #fff;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    font-weight: 700;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.18);
+    transition: transform 0.12s ease, box-shadow 0.12s ease;
+    padding: 0;
+    -webkit-appearance: none;
+    appearance: none;
+    line-height: 1;
 }
 
-.nav-brand:hover {
-    background: var(--pico-primary-hover-background);
+.team-chip:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 3px 8px rgba(0,0,0,0.22);
 }
 
-.brand-icon {
-    font-size: 1.3rem;
+.team-chip:focus-visible {
+    outline: 2px solid var(--pico-primary);
+    outline-offset: 2px;
 }
 
-.brand-text {
-    letter-spacing: 0.02em;
+.team-chip-letter {
+    font-size: 1.05rem;
+    line-height: 1;
+    text-shadow: 0 1px 1px rgba(0,0,0,0.15);
 }
 
-/* Primary nav list */
+/* === PRIMARY NAV (Spotkania / Wydarzenia icons) ================= */
 .nav-primary {
     display: flex;
     align-items: center;
-    gap: 0.125rem;
+    gap: 0.25rem;
     list-style: none;
     margin: 0;
     padding: 0;
+    flex: 1;
+    min-width: 0;
 }
 
 .nav-primary li {
     display: flex;
 }
 
-.nav-primary li a,
-.nav-primary li > details summary {
-    display: flex;
+.nav-primary li a {
+    display: inline-flex;
     align-items: center;
-    gap: 0.35rem;
-    padding: 0.45rem 0.7rem;
-    border-radius: 6px;
+    justify-content: center;
+    gap: 0.4rem;
+    width: 40px;
+    height: 40px;
+    border-radius: 10px;
     text-decoration: none;
     color: var(--pico-color);
-    font-size: 0.875rem;
+    font-size: 0.9rem;
     font-weight: 500;
-    transition: background 0.15s, color 0.15s;
+    background: transparent;
+    border: 1px solid transparent;
+    transition: background 0.15s, color 0.15s, border-color 0.15s;
     white-space: nowrap;
+    padding: 0;
 }
 
-.nav-primary li a:hover,
-.nav-primary li > details summary:hover {
+.nav-primary li a:hover {
     background: var(--pico-primary-background);
     color: var(--pico-primary);
 }
@@ -107,149 +125,82 @@ html, body {
 }
 
 .nav-icon {
-    font-size: 1rem;
+    font-size: 1.15rem;
     line-height: 1;
     display: inline-flex;
     align-items: center;
     justify-content: center;
 }
 
-/* Team switcher — prominent position */
-.team-switcher {
-    position: relative;
-    flex-shrink: 0;
-}
-
-.team-switcher-summary {
-    display: flex;
-    align-items: center;
-    gap: 0.55rem;
-    min-height: 2.5rem;
-    padding: 0.4rem 0.8rem;
-    border-radius: 999px;
-    background: #f8fafc !important;
-    color: #111827 !important;
-    border: 1px solid #d1d5db;
-    box-shadow: 0 1px 0 rgba(0, 0, 0, 0.03);
-    cursor: pointer;
-    transition: background 0.15s, border-color 0.15s, box-shadow 0.15s;
-    list-style: none;
-    -webkit-list-style: none;
-    appearance: none;
-    -webkit-appearance: none;
-}
-
-.team-switcher-summary,
-.team-switcher-summary * {
-    color: #111827 !important;
-    -webkit-text-fill-color: currentColor;
-}
-
-.team-switcher-summary .team-switcher-text,
-.team-switcher-summary .team-switcher-caret,
-.team-switcher-summary .team-icon {
-    color: inherit !important;
-    -webkit-text-fill-color: currentColor;
-}
-
-.team-switcher-summary .team-switcher-text {
-    display: block;
-    min-width: 0;
-    flex: 1;
-}
-
-.team-switcher-summary:hover {
-    background: var(--pico-primary-background);
-    border-color: var(--pico-primary-border);
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.06);
-}
-
-.team-switcher-summary::-webkit-details-marker,
-.team-switcher-summary::marker {
+/* Labels are hidden on mobile — icons only */
+.nav-label {
     display: none;
-    content: '';
 }
 
-.team-switcher .team-icon {
-    font-size: 1rem;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
+/* === HAMBURGER ================================================== */
+.hamburger-btn {
     flex-shrink: 0;
-    line-height: 1;
-    width: 1.1rem;
-}
-
-.team-switcher-text {
-    display: inline-block;
-    max-width: 18rem;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-    font-size: 0.95rem;
-    font-weight: 700;
-    line-height: 1;
-    color: var(--pico-color);
-}
-
-.team-switcher-caret {
-    font-size: 0.7rem;
-    color: var(--pico-muted-color);
-    line-height: 1;
-    transition: transform 0.15s ease;
-}
-
-.team-switcher[open] .team-switcher-caret {
-    transform: rotate(180deg);
-}
-
-.team-switcher-menu {
-    position: absolute;
-    left: 0;
-    top: calc(100% + 0.35rem);
-    z-index: 1000;
-    min-width: 100%;
-    width: max-content;
-    max-width: 24rem;
-    padding: 0.35rem;
-    border-radius: 14px;
+    width: 40px;
+    height: 40px;
+    border-radius: 10px;
     border: 1px solid var(--pico-muted-border-color);
     background: var(--pico-card-background-color);
-    box-shadow: 0 12px 28px rgba(0, 0, 0, 0.12);
+    color: var(--pico-color);
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+    margin-left: auto; /* push to the right edge */
+    transition: background 0.15s, border-color 0.15s;
+    -webkit-appearance: none;
+    appearance: none;
 }
 
-.team-switcher-menu li {
-    list-style: none;
+.hamburger-btn:hover {
+    background: var(--pico-primary-background);
+    border-color: var(--pico-primary-border);
 }
 
-.team-switcher-item {
+.hamburger-btn:focus-visible {
+    outline: 2px solid var(--pico-primary);
+    outline-offset: 2px;
+}
+
+.hamburger-bars {
+    display: inline-flex;
+    flex-direction: column;
+    justify-content: space-between;
+    width: 18px;
+    height: 12px;
+}
+
+.hamburger-bars > span {
+    display: block;
+    height: 2px;
     width: 100%;
+    background: currentColor;
+    border-radius: 2px;
+    transition: transform 0.2s ease, opacity 0.2s ease;
+}
+
+/* === ROW 2: team name label ===================================== */
+.nav-row-label {
+    /* Subtle band, smaller padding, full-width center on mobile */
     display: flex;
     align-items: center;
-    justify-content: space-between;
-    gap: 1rem;
-    padding: 0.6rem 0.75rem;
-    border: none;
-    border-radius: 10px;
-    background: transparent;
-    color: var(--pico-color);
-    text-align: left;
-    cursor: pointer;
+    justify-content: flex-start;
+    gap: 0.5rem;
+    padding: 0.15rem 0.7rem 0.3rem;
+    border-top: 1px solid var(--pico-muted-border-color);
+    background: var(--pico-card-background-color);
+    max-width: 1400px;
 }
 
-.team-switcher-item:hover {
-    background: var(--pico-primary-background);
-    color: var(--pico-primary);
-}
-
-.team-switcher-item.active {
-    background: var(--pico-primary-background);
-    color: var(--pico-primary);
-}
-
-.team-switcher-item-name {
-    font-size: 0.9rem;
+.nav-team-label {
+    font-size: 0.8rem;
     font-weight: 600;
+    color: var(--pico-color);
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
@@ -257,375 +208,393 @@ html, body {
     flex: 1;
 }
 
-.team-switcher-item.active .team-switcher-item-name {
-    font-weight: 700;
-}
-
-.team-switcher-item-current {
-    font-size: 0.72rem;
+.nav-team-role {
+    font-size: 0.65rem;
     font-weight: 700;
     text-transform: uppercase;
     letter-spacing: 0.04em;
     color: var(--pico-muted-color);
-    flex-shrink: 0;
-}
-
-/* User menu */
-.user-menu {
-    position: relative;
-    flex-shrink: 0;
-}
-
-.user-chip {
-    display: flex;
-    align-items: center;
-    gap: 0.4rem;
-    padding: 0.3rem 0.6rem;
-    border-radius: 20px;
-    background: var(--pico-card-background-color);
+    padding: 0.05rem 0.45rem;
     border: 1px solid var(--pico-muted-border-color);
-    cursor: pointer;
-    transition: background 0.15s;
+    border-radius: 999px;
+    flex-shrink: 0;
+    line-height: 1.4;
 }
 
-.user-chip:hover {
-    background: var(--pico-primary-background);
-}
-
-.user-avatar {
-    width: 28px;
-    height: 28px;
-    border-radius: 50%;
-    background: var(--pico-primary);
-    color: white;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 0.75rem;
-    font-weight: 700;
-    text-transform: uppercase;
-}
-
-.user-name {
-    font-size: 0.85rem;
-    font-weight: 600;
-}
-
-/* Dropdown menus (shared) */
-.top-nav details.dropdown {
-    position: relative;
-}
-
-.top-nav details.dropdown ul {
-    position: absolute;
-    top: calc(100% + 0.25rem);
-    z-index: 1000;
-    min-width: 180px;
-    box-shadow: 0 8px 24px rgba(0,0,0,0.12);
-    border: 1px solid var(--pico-muted-border-color);
-    border-radius: 8px;
-    background: var(--pico-card-background-color);
-    padding: 0.25rem 0;
-    max-height: calc(100vh - 5rem);
-    overflow-y: auto;
-}
-
-.top-nav details.dropdown ul li {
-    display: block;
-}
-
-.top-nav details.dropdown ul li a {
-    display: block;
-    padding: 0.5rem 0.75rem;
-    font-size: 0.85rem;
-    text-decoration: none;
-    color: var(--pico-color);
-}
-
-.top-nav details.dropdown ul li a:hover {
-    background: var(--pico-primary-background);
-    color: var(--pico-primary);
-}
-
-.top-nav details.dropdown ul li hr {
-    margin: 0.25rem 0;
+/* ============================================================
+   APP MODAL — fullscreen <dialog> with team list / menu sections
+   ============================================================ */
+.app-modal {
     border: none;
-    border-top: 1px solid var(--pico-muted-border-color);
+    padding: 0;
+    background: transparent;
+    color: var(--pico-color);
+    /* In modern browsers showModal() puts the dialog in the top layer;
+       we still set max sizes so older WebView fallbacks look right. */
+    max-width: 100vw;
+    max-height: 100vh;
+    width: 100vw;
+    height: 100vh;
+    margin: 0;
+    inset: 0;
 }
 
-/* Menu button */
-.menu-btn {
+.app-modal::backdrop {
+    background: rgba(0, 0, 0, 0.45);
+    backdrop-filter: blur(2px);
+    -webkit-backdrop-filter: blur(2px);
+}
+
+.app-modal[open] {
+    display: flex;
+    align-items: stretch;
+    justify-content: center;
+    animation: app-modal-fade 0.18s ease-out;
+}
+
+@keyframes app-modal-fade {
+    from { opacity: 0; transform: translateY(8px); }
+    to   { opacity: 1; transform: translateY(0); }
+}
+
+/* Fallback for browsers without <dialog> support */
+.app-modal-fallback {
+    position: fixed;
+    inset: 0;
+    z-index: 2000;
+    background: var(--pico-background-color);
+}
+
+.app-modal-content {
+    background: var(--pico-background-color);
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+    max-width: 480px;
+    height: 100%;
+    /* On desktop: cap width and let it sit as a centered sheet */
+}
+
+.app-modal-header {
     display: flex;
     align-items: center;
-    gap: 0.35rem;
-    padding: 0.45rem 0.7rem;
-    border-radius: 6px;
-    font-size: 0.875rem;
-    font-weight: 500;
+    justify-content: space-between;
+    gap: 0.75rem;
+    padding: 0.85rem 1rem;
+    border-bottom: 1px solid var(--pico-muted-border-color);
+    background: var(--pico-card-background-color);
+    position: sticky;
+    top: 0;
+    z-index: 1;
+}
+
+.app-modal-header-text {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+}
+
+.app-modal-header-text strong {
+    font-size: 1rem;
+    font-weight: 700;
+    color: var(--pico-color);
+    overflow: hidden;
+    text-overflow: ellipsis;
     white-space: nowrap;
 }
 
-/* User avatar chip (without name) */
-.user-chip-simple {
-    width: 32px;
-    height: 32px;
+.app-modal-header-text small {
+    font-size: 0.75rem;
+    color: var(--pico-muted-color);
+    margin-top: 0.1rem;
+}
+
+.app-modal-close {
+    width: 36px;
+    height: 36px;
     border-radius: 50%;
-    background: var(--pico-primary);
-    color: white;
-    display: flex;
+    border: 1px solid var(--pico-muted-border-color);
+    background: transparent;
+    color: var(--pico-color);
+    font-size: 1.4rem;
+    line-height: 1;
+    cursor: pointer;
+    display: inline-flex;
     align-items: center;
     justify-content: center;
-    font-size: 0.8rem;
+    flex-shrink: 0;
+    padding: 0;
+    transition: background 0.15s, border-color 0.15s;
+    -webkit-appearance: none;
+    appearance: none;
+}
+
+.app-modal-close:hover {
+    background: var(--pico-primary-background);
+    border-color: var(--pico-primary-border);
+    color: var(--pico-primary);
+}
+
+.app-modal-body {
+    flex: 1;
+    overflow-y: auto;
+    padding: 0.75rem 0.5rem 2rem;
+    -webkit-overflow-scrolling: touch;
+}
+
+.app-modal-section {
+    margin: 0.85rem 0.85rem 0.35rem;
+    font-size: 0.7rem;
     font-weight: 700;
     text-transform: uppercase;
-    margin-left: 0.5rem;
+    letter-spacing: 0.06em;
+    color: var(--pico-muted-color);
 }
 
-/* User menu in nav — avatar button with dropdown */
-.nav-user-menu {
-    position: relative;
-    flex-shrink: 0;
+.app-modal-body ul {
+    list-style: none;
+    margin: 0;
+    padding: 0;
 }
 
-/* Hide default browser arrow in details summary */
-.nav-user-menu summary {
+.app-modal-body li {
+    margin: 0;
+    padding: 0;
+}
+
+.app-modal-body li a,
+.app-modal-body li button,
+.app-modal-logout {
     display: flex;
     align-items: center;
-    gap: 0.25rem;
-    padding: 0.2rem 0.4rem 0.2rem 0.2rem;
-    border-radius: 20px;
-    background: var(--pico-card-background-color);
-    border: 1px solid var(--pico-muted-border-color);
+    gap: 0.6rem;
+    width: 100%;
+    padding: 0.75rem 0.85rem;
+    font-size: 0.95rem;
+    font-weight: 500;
+    color: var(--pico-color);
+    text-decoration: none;
+    background: transparent;
+    border: none;
+    border-radius: 10px;
     cursor: pointer;
-    transition: background 0.15s;
-    line-height: 1;
-    appearance: none;
-    -webkit-appearance: none;
-    /* Hide default summary marker */
-    list-style: none;
-    -webkit-list-style: none;
+    text-align: left;
+    transition: background 0.12s, color 0.12s;
+    line-height: 1.3;
 }
 
-.nav-user-menu summary::marker {
-    content: '';
-}
-
-.nav-user-menu summary::-webkit-details-marker {
-    display: none;
-}
-
-.nav-user-menu summary:hover {
+.app-modal-body li a:hover,
+.app-modal-body li a:focus-visible,
+.app-modal-body li button:hover,
+.app-modal-body li button:focus-visible {
     background: var(--pico-primary-background);
+    color: var(--pico-primary);
+    outline: none;
 }
 
-.nav-user-menu summary .user-avatar {
+.app-modal-body li a.active {
+    background: var(--pico-primary-background);
+    color: var(--pico-primary);
+    font-weight: 700;
+}
+
+.app-modal-logout {
+    /* Match the li a look exactly; form wrapper provides no chrome */
+    color: var(--pico-color);
+    font-family: inherit;
+}
+
+.app-team-list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+}
+
+.app-team-item {
+    display: flex;
+    align-items: center;
+    gap: 0.85rem;
+    width: 100%;
+    padding: 0.75rem 0.85rem;
+    margin: 0.25rem 0.5rem;
+    width: calc(100% - 1rem);
+    background: transparent;
+    border: 1px solid transparent;
+    border-radius: 12px;
+    cursor: pointer;
+    text-align: left;
+    color: var(--pico-color);
+    transition: background 0.12s, border-color 0.12s;
+    font-family: inherit;
+    font-size: inherit;
+}
+
+.app-team-item:hover,
+.app-team-item:focus-visible {
+    background: var(--pico-primary-background);
+    border-color: var(--pico-primary-border);
+    outline: none;
+}
+
+.app-team-item.active {
+    background: var(--pico-primary-background);
+    border-color: var(--pico-primary-border);
+    color: var(--pico-primary);
+    font-weight: 600;
+}
+
+.app-team-avatar {
+    flex-shrink: 0;
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    background-color: var(--pico-primary);
+    color: #fff;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 700;
+    font-size: 1.15rem;
+    text-shadow: 0 1px 1px rgba(0,0,0,0.15);
+    line-height: 1;
+}
+
+.app-team-info {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+    flex: 1;
+    gap: 0.1rem;
+}
+
+.app-team-name {
+    font-size: 1rem;
+    font-weight: 600;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    line-height: 1.2;
+}
+
+.app-team-role {
+    font-size: 0.72rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--pico-muted-color);
+    font-weight: 600;
+}
+
+.app-team-active-badge {
+    flex-shrink: 0;
     width: 28px;
     height: 28px;
     border-radius: 50%;
     background: var(--pico-primary);
-    color: white;
-    display: flex;
+    color: #fff;
+    display: inline-flex;
     align-items: center;
     justify-content: center;
-    font-size: 0.75rem;
+    font-size: 0.9rem;
     font-weight: 700;
-    text-transform: uppercase;
 }
 
-.nav-user-menu summary .dropdown-arrow {
-    font-size: 0.6rem;
+.app-team-empty {
+    margin: 1rem 0.85rem;
     color: var(--pico-muted-color);
-    transition: transform 0.15s;
+    font-size: 0.9rem;
 }
 
-.nav-user-menu[open] summary .dropdown-arrow {
-    transform: rotate(180deg);
-}
+/* ============================================================
+   RESPONSIVE — re-introduce labels and adjust spacing from
+   tablet portrait (≥ 600px) upward, then center the modal sheet
+   on tablet landscape and up.
+   ============================================================ */
 
-/* Menu sections in dropdown */
-.menu-header {
-    padding: 0.5rem 0.75rem;
-    display: flex;
-    flex-direction: column;
-}
-
-.menu-header small {
-    color: var(--pico-muted-color);
-    font-size: 0.75rem;
-}
-
-.menu-section-label {
-    padding: 0.35rem 0.75rem 0.2rem;
-    font-size: 0.7rem;
-    font-weight: 600;
-    text-transform: uppercase;
-    letter-spacing: 0.05em;
-    color: var(--pico-muted-color);
-}
-
-.logout-btn {
-    width: 100%;
-    text-align: left;
-    background: none;
-    border: none;
-    color: var(--pico-color);
-    padding: 0.5rem 0.75rem;
-    font-size: 0.85rem;
-    cursor: pointer;
-}
-
-.logout-btn:hover {
-    background: var(--pico-primary-background);
-}
-
-/* Responsive: tablet */
-@media (max-width: 1024px) {
+/* Small phones: same as default but tighten horizontal padding */
+@media (max-width: 380px) {
+    .nav-row {
+        padding: 0.4rem 0.4rem;
+        gap: 0.35rem;
+    }
+    .team-chip {
+        width: 38px;
+        height: 38px;
+    }
     .nav-primary li a,
-    .nav-primary li > details summary {
-        padding: 0.4rem 0.5rem;
-        font-size: 0.8rem;
+    .hamburger-btn {
+        width: 38px;
+        height: 38px;
     }
+}
 
+/* Tablet portrait and up (≥ 600px): show icon labels */
+@media (min-width: 600px) {
     .nav-label {
-        display: none;
-    }
-
-    /* Always show "Menu" label - it's the main dropdown */
-    .menu-btn .nav-label {
         display: inline;
     }
 
-    .nav-icon {
-        font-size: 1.1rem;
-    }
-
-    .brand-text {
-        display: none;
-    }
-}
-
-/* Responsive: mobile */
-@media (max-width: 768px) {
-    .nav-inner {
-        flex-direction: column;
-        align-items: stretch;
-        padding: 0.4rem 0.5rem;
-        gap: 0.55rem;
-    }
-
-    .nav-left,
-    .nav-right {
-        width: 100%;
-    }
-
-    .nav-left {
-        order: 1;
-        min-width: 0;
-        display: flex;
-        flex-direction: column;
-        align-items: stretch;
-        gap: 0.4rem;
-    }
-
-    .nav-right {
-        order: 2;
-        margin-left: 0;
-        display: flex;
-        justify-content: flex-end;
-    }
-
-    .team-switcher {
-        width: 100%;
-    }
-
-    .team-switcher-summary {
-        width: 100%;
-        justify-content: space-between;
-        gap: 0.4rem;
-        padding: 0.5rem 0.7rem;
-        background: #f8fafc !important;
-        color: #111827 !important;
-    }
-
-    .team-switcher-text {
-        max-width: 100%;
-        flex: 1;
-        color: #111827 !important;
-        -webkit-text-fill-color: currentColor;
-    }
-
-    .team-switcher-caret,
-    .team-switcher .team-icon {
-        color: #111827 !important;
-        -webkit-text-fill-color: currentColor;
-    }
-
-    .team-switcher-menu {
-        left: 0;
-        right: 0;
+    .nav-primary li a {
         width: auto;
-        max-width: none;
+        height: 40px;
+        padding: 0 0.85rem;
     }
 
-    .team-switcher-item {
-        width: 100%;
-    }
-
-    .team-switcher-item-name {
-        min-width: 0;
-    }
-
-    .nav-label {
-        display: inline;
-    }
-
-    .nav-primary {
-        width: 100%;
-        justify-content: flex-start;
-        flex-wrap: wrap;
-        gap: 0.35rem;
-    }
-
-    .nav-label {
-        display: inline;
-    }
-
-    .nav-primary {
-        width: 100%;
-        justify-content: flex-start;
-        flex-wrap: wrap;
-        gap: 0.35rem;
-    }
-
-    .nav-primary li {
-        flex: 1 1 calc(50% - 0.175rem);
-        min-width: 0;
-    }
-
-    .nav-primary li a,
-    .nav-primary li > details summary {
-        width: 100%;
-        justify-content: center;
-        padding: 0.5rem 0.55rem;
-        font-size: 0.85rem;
-        background: var(--pico-card-background-color);
-        border: 1px solid var(--pico-muted-border-color);
-        border-radius: 10px;
-    }
-
-    .nav-primary li a:hover,
-    .nav-primary li > details summary:hover {
-        background: var(--pico-primary-background);
-    }
-
-    .nav-icon {
-        font-size: 1rem;
-    }
-
-    .user-name {
-        display: none;
+    .nav-row {
+        padding: 0.55rem 1rem;
+        gap: 0.65rem;
     }
 }
+
+/* Tablet landscape and up (≥ 900px): widen the menu, larger tap targets */
+@media (min-width: 900px) {
+    .top-nav {
+        /* Single visual row again at desktop, label becomes the team name
+           in the chip rather than a separate row */
+    }
+    .team-chip {
+        width: 44px;
+        height: 44px;
+    }
+    .team-chip-letter {
+        font-size: 1.15rem;
+    }
+    .nav-primary li a,
+    .hamburger-btn {
+        width: auto;
+        height: 44px;
+    }
+    .hamburger-btn {
+        padding: 0 0.85rem;
+        gap: 0.45rem;
+    }
+    .hamburger-bars {
+        width: 20px;
+    }
+    .nav-row {
+        padding: 0.65rem 1.25rem;
+    }
+    .nav-team-label {
+        font-size: 0.85rem;
+    }
+}
+
+/* Desktop (≥ 1200px): modal becomes a centered sheet instead of fullscreen */
+@media (min-width: 1200px) {
+    .app-modal-content {
+        max-width: 520px;
+        height: auto;
+        max-height: calc(100vh - 4rem);
+        margin: 2rem 0;
+        border: 1px solid var(--pico-muted-border-color);
+        border-radius: 16px;
+        box-shadow: 0 24px 60px rgba(0,0,0,0.25);
+        overflow: hidden;
+    }
+    .app-modal[open] {
+        align-items: flex-start;
+    }
+}
+
 
 /* Tables responsive */
 table {

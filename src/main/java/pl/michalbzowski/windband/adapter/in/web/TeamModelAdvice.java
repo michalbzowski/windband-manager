@@ -9,6 +9,8 @@ import org.springframework.web.bind.annotation.ModelAttribute;
 import pl.michalbzowski.windband.adapter.in.security.WindbandOidcUser;
 import pl.michalbzowski.windband.application.query.team.TeamQueryService;
 
+import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
 
 /**
@@ -19,6 +21,12 @@ import java.util.List;
  *
  * Uses TeamQueryService (which is @Transactional) for all DB access to avoid
  * LazyInitializationException from accessing lazy-loaded entity proxies.
+ *
+ * Also assigns each team a deterministic, evenly-distributed HSL color so the
+ * top-nav can render a colored avatar chip per team. When the user belongs to
+ * only one team, no color is assigned (the chip falls back to a neutral color)
+ * — this avoids the visual noise of "colored avatars" when there is nothing to
+ * distinguish.
  */
 @ControllerAdvice
 @RequiredArgsConstructor
@@ -26,12 +34,38 @@ public class TeamModelAdvice {
 
     private final TeamQueryService teamQueryService;
 
+    /**
+     * View-side record — wraps the application-layer {@link TeamQueryService.UserTeamDto}
+     * and adds a CSS color used by the top-nav team switcher / team modal.
+     * The record accessors (id, name, slug, role, color) mirror the existing
+     * template usages of {@code team.id} / {@code team.name} / {@code team.role}.
+     */
+    public record TeamView(Long id, String name, String slug, String role, String color) {}
+
     @ModelAttribute("userTeams")
-    public List<?> userTeams(@AuthenticationPrincipal OidcUser oidcUser) {
-        if (oidcUser instanceof WindbandOidcUser wu) {
-            return teamQueryService.getUserTeams(wu.getUserId());
+    public List<TeamView> userTeams(@AuthenticationPrincipal OidcUser oidcUser) {
+        if (!(oidcUser instanceof WindbandOidcUser wu)) {
+            return List.of();
         }
-        return List.of();
+        var dtos = teamQueryService.getUserTeams(wu.getUserId());
+        if (dtos.isEmpty()) {
+            return List.of();
+        }
+        // Stable ordering: by name (TeamQueryService already sorts, but be defensive)
+        var sorted = dtos.stream()
+                .sorted(Comparator.comparing(TeamQueryService.UserTeamDto::name))
+                .toList();
+        List<TeamView> views = new ArrayList<>(sorted.size());
+        for (int i = 0; i < sorted.size(); i++) {
+            var dto = sorted.get(i);
+            views.add(new TeamView(
+                    dto.id(),
+                    dto.name(),
+                    dto.slug(),
+                    dto.role(),
+                    teamColor(i, sorted.size())));
+        }
+        return views;
     }
 
     @ModelAttribute("activeTeamId")
@@ -68,6 +102,43 @@ public class TeamModelAdvice {
     public String activeTeamRole(@AuthenticationPrincipal OidcUser oidcUser, HttpSession session) {
         TeamQueryService.UserTeamDto info = getActiveTeamInfo(oidcUser, session);
         return info != null ? info.role() : null;
+    }
+
+    /**
+     * CSS color (HSL) for the active team's avatar chip in the top-nav.
+     * Returns {@code null} when the user has 0 or 1 teams — the chip then
+     * uses a neutral PicoCSS variable so a single-team user doesn't get a
+     * "look how special this team is" colored circle.
+     */
+    @ModelAttribute("activeTeamColor")
+    public String activeTeamColor(@AuthenticationPrincipal OidcUser oidcUser, HttpSession session) {
+        List<TeamView> teams = userTeams(oidcUser);
+        if (teams.size() < 2) {
+            return null;
+        }
+        Long activeId = activeTeamId(oidcUser, session);
+        if (activeId == null) {
+            return null;
+        }
+        for (TeamView t : teams) {
+            if (t.id().equals(activeId)) {
+                return t.color();
+            }
+        }
+        return null;
+    }
+
+    /**
+     * Even-distribution HSL palette over {@code count} hues. Saturation 58%
+     * and lightness 50% read well in both PicoCSS light and dark themes and
+     * keep the white "first letter" inside the circle legible.
+     */
+    private static String teamColor(int index, int count) {
+        if (count <= 1) {
+            return "hsl(0, 0%, 50%)";
+        }
+        int hue = (int) Math.round((index * 360.0) / count);
+        return String.format("hsl(%d, 58%%, 50%%)", hue);
     }
 
     private TeamQueryService.UserTeamDto getActiveTeamInfo(OidcUser oidcUser, HttpSession session) {

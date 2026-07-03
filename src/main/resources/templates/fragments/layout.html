@@ -67,98 +67,144 @@
 </head>
 <body>
 <!-- ============================================================
-     NAVIGATION — UX-optimized layout
-     Structure: [Brand] [Primary Nav] ........ [Team] [User]
-     Max 5 primary items, grouped by context
+     NAVIGATION — sticky 2-row layout
+     Row 1: [team chip] [primary icons] ........ [hamburger]
+     Row 2: team-name label (subtle, floating)
+     Both rows stay visible during scroll.
+     Works at all breakpoints (mobile portrait, mobile landscape,
+     tablet, desktop) — icon labels are progressively added back in
+     from tablet portrait up.
      ============================================================ -->
 <nav class="top-nav" th:fragment="nav" sec:authorize="isAuthenticated()">
-    <div class="nav-inner">
+    <div class="nav-row nav-row-primary">
+        <button type="button"
+                class="team-chip"
+                th:style="${activeTeamColor != null ? 'background-color:' + activeTeamColor : ''}"
+                th:attr="aria-label=|Przełącz zespół: ${activeTeamName ?: 'brak'}|"
+                onclick="openAppModal('team-modal')">
+            <span class="team-chip-letter"
+                  th:text="${activeTeamName != null ? #strings.toUpperCase(#strings.substring(activeTeamName, 0, 1)) : '?'}">O</span>
+        </button>
 
-        <!-- Left: Team Switcher (formerly brand) -->
-        <div class="nav-left">
-            <details class="dropdown team-switcher">
-                <summary role="button" class="team-switcher-summary" aria-label="Zmień aktywny zespół">
-                    <span class="team-icon">🏠</span>
-                    <span class="team-switcher-text" th:text="${activeTeamName ?: activeTeamSlug ?: 'brak zespołu'}">Orkiestra Dęta</span>
-                    <span th:if="${#lists.size(userTeams) > 1}" class="team-switcher-caret">▾</span>
-                </summary>
-                <ul th:if="${#lists.size(userTeams) > 1}" class="team-switcher-menu">
-                    <li th:each="team : ${userTeams}">
-                        <button type="button"
-                                class="team-switcher-item"
-                                th:classappend="${team.id == activeTeamId} ? ' active' : ''"
-                                th:attr="onclick=|switchTeam('${team.id}')|">
-                            <span class="team-switcher-item-name" th:text="${team.name}">Zespół</span>
-                            <span th:if="${team.id == activeTeamId}" class="team-switcher-item-current">Aktualny</span>
-                        </button>
-                    </li>
-                </ul>
-            </details>
+        <ul class="nav-primary">
+            <li>
+                <a th:href="@{/rehearsals}" hx-target="#content" hx-swap="innerHTML transition:true" aria-label="Spotkania">
+                    <span class="nav-icon" aria-hidden="true">🎵</span>
+                    <span class="nav-label">Spotkania</span>
+                </a>
+            </li>
+            <li>
+                <a th:href="@{/events}" hx-target="#content" hx-swap="innerHTML transition:true" aria-label="Wydarzenia">
+                    <span class="nav-icon" aria-hidden="true">🎪</span>
+                    <span class="nav-label">Wydarzenia</span>
+                </a>
+            </li>
+        </ul>
 
-            <ul class="nav-primary">
-                <li>
-                    <a th:href="@{/rehearsals}" hx-target="#content" hx-swap="innerHTML transition:true">
-                        <span class="nav-icon">🎵</span>
-                        <span class="nav-label">Spotkania</span>
-                    </a>
-                </li>
-                <li>
-                    <a th:href="@{/events}" hx-target="#content" hx-swap="innerHTML transition:true">
-                        <span class="nav-icon">🎪</span>
-                        <span class="nav-label">Wydarzenia</span>
-                    </a>
-                </li>
-            </ul>
-        </div>
+        <button type="button"
+                class="hamburger-btn"
+                aria-label="Otwórz menu"
+                onclick="openAppModal('menu-modal')">
+            <span class="hamburger-bars" aria-hidden="true">
+                <span></span><span></span><span></span>
+            </span>
+        </button>
+    </div>
 
-        <!-- Right: Unified Menu + User -->
-        <div class="nav-right">
+    <div class="nav-row nav-row-label" th:if="${activeTeamName}">
+        <span class="nav-team-label" th:text="${activeTeamName}">Orkiestra Dęta</span>
+        <span class="nav-team-role" th:if="${activeTeamRole}" th:text="${activeTeamRole}">ADMIN</span>
+    </div>
 
-            <!-- Unified Menu dropdown — user chip with dropdown -->
-            <details class="dropdown nav-user-menu">
-                <summary role="button" class="secondary outline" aria-label="Menu użytkownika">
-                    <span class="user-avatar" th:text="${#strings.substring(#authentication.principal.wbUsername, 0, 1)}">U</span>
-                </summary>
+    <!-- Dialogs live inside the nav fragment so they ship with every page
+         that does <nav th:replace="~{fragments/layout :: nav}"/>. They are
+         pulled into the browser top-layer by .showModal() regardless of
+         their DOM position, so nesting them inside <nav> has no visual
+         side-effect. -->
+    <dialog id="menu-modal" class="app-modal" sec:authorize="isAuthenticated()">
+        <div class="app-modal-content">
+            <header class="app-modal-header">
+                <div class="app-modal-header-text">
+                    <strong th:text="${#authentication.principal.wbUsername}">user</strong>
+                    <small th:if="${activeTeamRole}" th:text="${#strings.capitalize(activeTeamRole)}">rola</small>
+                </div>
+                <button type="button" class="app-modal-close" aria-label="Zamknij" data-close>×</button>
+            </header>
+            <nav class="app-modal-body">
+                <p class="app-modal-section">Najczęściej używane</p>
                 <ul>
-                    <li class="menu-header">
-                        <strong th:text="${#authentication.principal.wbUsername}">user</strong>
-                        <small th:if="${activeTeamRole}" th:text="${#strings.capitalize(activeTeamRole)}">rola</small>
-                    </li>
-                    <li><hr></li>
-                    <li class="menu-section-label">Najczęściej używane</li>
-                    <li><a th:href="@{/rehearsals}" hx-target="#content" hx-swap="innerHTML transition:true">🎵 Spotkania</a></li>
-                    <li><a th:href="@{/events}" hx-target="#content" hx-swap="innerHTML transition:true">🎭 Wydarzenia</a></li>
+                    <li><a th:href="@{/}" hx-target="#content" hx-swap="innerHTML transition:true" data-close>🏠 Podsumowanie</a></li>
+                    <li><a th:href="@{/rehearsals}" hx-target="#content" hx-swap="innerHTML transition:true" data-close>🎵 Spotkania</a></li>
+                    <li><a th:href="@{/events}" hx-target="#content" hx-swap="innerHTML transition:true" data-close>🎭 Wydarzenia</a></li>
+                </ul>
 
-                    <li><hr></li>
-                    <li class="menu-section-label">Zarządzanie zespołem</li>
-                    <li><a th:href="@{/members}" hx-target="#content" hx-swap="innerHTML transition:true">👥 Członkowie</a></li>
-                    <li><a th:href="@{/groups}" hx-target="#content" hx-swap="innerHTML transition:true" sec:authorize="hasAnyRole('ADMIN', 'SYSTEM_ADMIN')">👥 Grupy</a></li>
-                    <li><a th:href="@{/tags}" hx-target="#content" hx-swap="innerHTML transition:true" sec:authorize="hasAnyRole('ADMIN', 'SYSTEM_ADMIN')">🏷 Tagi</a></li>
-                    <li><a th:href="@{/inventory}" hx-target="#content" hx-swap="innerHTML transition:true">📦 Zasoby</a></li>
+                <p class="app-modal-section">Zarządzanie zespołem</p>
+                <ul>
+                    <li><a th:href="@{/members}" hx-target="#content" hx-swap="innerHTML transition:true" data-close>👥 Członkowie</a></li>
+                    <li sec:authorize="hasAnyRole('ADMIN', 'SYSTEM_ADMIN')"><a th:href="@{/groups}" hx-target="#content" hx-swap="innerHTML transition:true" data-close>👥 Grupy</a></li>
+                    <li sec:authorize="hasAnyRole('ADMIN', 'SYSTEM_ADMIN')"><a th:href="@{/tags}" hx-target="#content" hx-swap="innerHTML transition:true" data-close>🏷 Tagi</a></li>
+                    <li><a th:href="@{/inventory}" hx-target="#content" hx-swap="innerHTML transition:true" data-close>📦 Zasoby</a></li>
+                </ul>
 
-                    <li><hr></li>
-                    <li class="menu-section-label">Wgląd</li>
-                    <li><a th:href="@{/dashboards}" hx-target="#content" hx-swap="innerHTML transition:true">📊 Dashboardy</a></li>
-                    <li><a th:href="@{/reports}" hx-target="#content" hx-swap="innerHTML transition:true" sec:authorize="hasAnyRole('ADMIN', 'SYSTEM_ADMIN')">📈 Raporty</a></li>
+                <p class="app-modal-section">Wgląd</p>
+                <ul>
+                    <li><a th:href="@{/dashboards}" hx-target="#content" hx-swap="innerHTML transition:true" data-close>📊 Dashboardy</a></li>
+                    <li sec:authorize="hasAnyRole('ADMIN', 'SYSTEM_ADMIN')"><a th:href="@{/reports}" hx-target="#content" hx-swap="innerHTML transition:true" data-close>📈 Raporty</a></li>
+                </ul>
 
-                    <li sec:authorize="hasAnyRole('ADMIN', 'SYSTEM_ADMIN')"><hr></li>
-                    <li class="menu-section-label" sec:authorize="hasAnyRole('ADMIN', 'SYSTEM_ADMIN')">Administracja</li>
-                    <li sec:authorize="hasAnyRole('ADMIN', 'SYSTEM_ADMIN')"><a th:href="@{/admin/dashboards}" hx-target="#content" hx-swap="innerHTML transition:true">⚙️ Dashboardy</a></li>
-                    <li sec:authorize="hasAnyRole('ADMIN', 'SYSTEM_ADMIN')"><a th:href="@{/admin/system-admins}" hx-target="#content" hx-swap="innerHTML transition:true">⚙️ Admini</a></li>
-                    <li sec:authorize="hasAnyRole('ADMIN', 'SYSTEM_ADMIN')"><a th:href="@{/band/inventory-attributes(type='MEMBER')}" hx-target="#content" hx-swap="innerHTML transition:true">⚙️ Atrybuty</a></li>
+                <p class="app-modal-section" sec:authorize="hasAnyRole('ADMIN', 'SYSTEM_ADMIN')">Administracja</p>
+                <ul sec:authorize="hasAnyRole('ADMIN', 'SYSTEM_ADMIN')">
+                    <li><a th:href="@{/admin/dashboards}" hx-target="#content" hx-swap="innerHTML transition:true" data-close>⚙️ Dashboardy</a></li>
+                    <li><a th:href="@{/admin/system-admins}" hx-target="#content" hx-swap="innerHTML transition:true" data-close>⚙️ Admini</a></li>
+                    <li><a th:href="@{/band/inventory-attributes(type='MEMBER')}" hx-target="#content" hx-swap="innerHTML transition:true" data-close>⚙️ Atrybuty</a></li>
+                </ul>
 
-                    <li><hr></li>
-                    <li class="menu-section-label">Konto</li>
-                    <li><a href="/register" hx-target="#content" hx-swap="innerHTML transition:true">➕ Nowy zespół</a></li>
+                <p class="app-modal-section">Konto</p>
+                <ul>
+                    <li><a href="/register" hx-target="#content" hx-swap="innerHTML transition:true" data-close>➕ Nowy zespół</a></li>
                     <li>
-                        <form th:action="@{/api/auth/logout}" method="POST" style="display:inline;">
-                            <button type="submit" class="logout-btn">🚪 Wyloguj</button>
+                        <form th:action="@{/api/auth/logout}" method="POST" data-close>
+                            <button type="submit" class="app-modal-logout">🚪 Wyloguj</button>
                         </form>
                     </li>
                 </ul>
-            </details>
+            </nav>
         </div>
-    </div>
+    </dialog>
+
+    <dialog id="team-modal" class="app-modal" sec:authorize="isAuthenticated()">
+        <div class="app-modal-content">
+            <header class="app-modal-header">
+                <div class="app-modal-header-text">
+                    <strong>Wybierz zespół</strong>
+                    <small th:text="${#lists.size(userTeams)} + ' dostępnych'">2 dostępnych</small>
+                </div>
+                <button type="button" class="app-modal-close" aria-label="Zamknij" data-close>×</button>
+            </header>
+            <nav class="app-modal-body">
+                <ul class="app-team-list" th:if="${#lists.size(userTeams) > 0}">
+                    <li th:each="team : ${userTeams}">
+                        <button type="button"
+                                class="app-team-item"
+                                th:classappend="${team.id == activeTeamId} ? ' active' : ''"
+                                th:attr="onclick=|switchTeam(${team.id})|">
+                            <span class="app-team-avatar"
+                                  th:style="${team.color != null ? 'background-color:' + team.color : ''}"
+                                  th:text="${#strings.toUpperCase(#strings.substring(team.name, 0, 1))}">O</span>
+                            <span class="app-team-info">
+                                <span class="app-team-name" th:text="${team.name}">Zespół</span>
+                                <span class="app-team-role" th:text="${team.role}">ADMIN</span>
+                            </span>
+                            <span th:if="${team.id == activeTeamId}" class="app-team-active-badge" aria-label="Aktualny">✓</span>
+                        </button>
+                    </li>
+                </ul>
+                <p th:if="${#lists.isEmpty(userTeams)}" class="app-team-empty">
+                    Nie należysz jeszcze do żadnego zespołu. <a href="/register" data-close>Utwórz nowy</a>.
+                </p>
+            </nav>
+        </div>
+    </dialog>
 </nav>
 
     <main class="container" id="content">
@@ -204,6 +250,65 @@
                 console.error('Switch team error:', err);
             });
     }
+
+    /**
+     * Open a fullscreen <dialog> modal. Falls back to a body class if
+     * the browser does not implement <dialog> (e.g. very old WebViews).
+     */
+    function openAppModal(id) {
+        var dlg = document.getElementById(id);
+        if (!dlg) return;
+        if (typeof dlg.showModal === 'function') {
+            dlg.showModal();
+        } else {
+            dlg.setAttribute('open', '');
+            dlg.classList.add('app-modal-fallback');
+        }
+        // Move focus to first focusable element inside for keyboard users
+        setTimeout(function() {
+            var focusable = dlg.querySelector('button, [href], input, select, textarea');
+            if (focusable) focusable.focus();
+        }, 30);
+    }
+
+    function closeAppModal(dlg) {
+        if (!dlg) return;
+        if (typeof dlg.close === 'function') {
+            dlg.close();
+        } else {
+            dlg.removeAttribute('open');
+            dlg.classList.remove('app-modal-fallback');
+        }
+    }
+
+    /**
+     * Wire up: click [data-close] → close nearest .app-modal ancestor;
+     * click on the dialog backdrop (outside .app-modal-content) → close.
+     * Re-bind on every htmx:afterSettle so the handler survives content swaps.
+     */
+    function bindModalCloseHandlers() {
+        document.querySelectorAll('.app-modal').forEach(function(dlg) {
+            if (dlg.dataset.bound === '1') return;
+            dlg.dataset.bound = '1';
+
+            // Click on dialog itself = backdrop click (event.target === dialog)
+            dlg.addEventListener('click', function(evt) {
+                if (evt.target === dlg) {
+                    closeAppModal(dlg);
+                }
+            });
+
+            // Any [data-close] inside closes the dialog
+            dlg.addEventListener('click', function(evt) {
+                var closer = evt.target.closest('[data-close]');
+                if (closer) {
+                    closeAppModal(dlg);
+                }
+            });
+        });
+    }
+    document.addEventListener('DOMContentLoaded', bindModalCloseHandlers);
+    document.addEventListener('htmx:afterSettle', bindModalCloseHandlers);
 
     (function() {
         console.log('Loading build info...');
