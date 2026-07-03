@@ -265,12 +265,22 @@ html, body {
     border-top: 1px solid var(--pico-muted-border-color);
     background: var(--pico-card-background-color);
     max-width: 1400px;
+    /* v7: tight vertical padding so row sits close to row 1.
+       The team chip was 24px tall (most of the height); without it,
+       a 0.3rem/0.15rem padding is enough. */
+    min-height: 0;
 }
 
 .nav-team-label {
     font-size: 0.8rem;
     font-weight: 600;
-    color: var(--pico-color);
+    /* Hardcoded color, not var(--pico-color). PicoCSS's <button> reset
+       (see pico.min.css rule matching `button,[type=button],[role=button]`)
+       redefines --pico-color to var(--pico-primary-inverse) — which in
+       the light theme is white, making the label invisible against the
+       white nav background. This is the same root cause as the hamburger
+       icon and modal close button visibility bugs. */
+    color: #1a1a1a;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
@@ -297,6 +307,16 @@ html, body {
     outline: 2px solid var(--pico-primary);
     outline-offset: 2px;
     border-radius: 4px;
+}
+
+[data-theme="dark"] .nav-team-label {
+    color: #e6e6e6;
+}
+
+@media (prefers-color-scheme: dark) {
+    .nav-team-label {
+        color: #e6e6e6;
+    }
 }
 
 .nav-team-role {

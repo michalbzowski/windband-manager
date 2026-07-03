@@ -99,6 +99,10 @@
     </div>
 
     <div class="nav-row nav-row-label" th:if="${activeTeamName}">
+        <!-- v7: team chip temporarily hidden per user request — testing
+             layout without the circular avatar in row 2. The label
+             button below still opens the team switcher modal. -->
+        <!--
         <button type="button"
                 class="team-chip team-chip-sm"
                 th:style="${activeTeamColor != null ? 'background-color:' + activeTeamColor : ''}"
@@ -107,6 +111,7 @@
             <span class="team-chip-letter"
                   th:text="${activeTeamName != null ? #strings.toUpperCase(#strings.substring(activeTeamName, 0, 1)) : '?'}">O</span>
         </button>
+        -->
         <button type="button"
                 class="nav-team-label"
                 th:text="${activeTeamName}"
