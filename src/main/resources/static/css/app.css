@@ -325,11 +325,16 @@ html, body {
     text-transform: uppercase;
     letter-spacing: 0.04em;
     color: var(--pico-muted-color);
-    padding: 0.05rem 0.45rem;
+    padding: 0.1rem 0.45rem;
     border: 1px solid var(--pico-muted-border-color);
     border-radius: 999px;
     flex-shrink: 0;
-    line-height: 1.4;
+    /* line-height: 1 (not 1.4) — the pill's vertical box matched the
+       label's 17px box, so flexbox's `align-items: center` aligned
+       the box centers, but the text inside the pill sat higher than
+       the label because of the extra leading. With line-height: 1
+       the pill's text baseline lines up with the label's text baseline. */
+    line-height: 1;
 }
 
 /* ============================================================
@@ -644,12 +649,21 @@ html, body {
 .app-team-item.active {
     background: var(--pico-primary-background);
     border-color: var(--pico-primary-border);
-    color: var(--pico-primary);
+    /* Inverse color, not var(--pico-primary). The background is already
+       primary (--pico-primary-background = #0172ad in light theme);
+       writing color: var(--pico-primary) here would put primary text
+       on primary background — invisible. The active row needs white
+       text to stay readable. */
+    color: var(--pico-primary-inverse);
     font-weight: 600;
 }
 
 [data-theme="dark"] .app-team-item.active {
-    color: var(--pico-primary);
+    /* In dark mode, --pico-primary-background is lighter blue and the
+       inverse (white) still reads well. The previous override set
+       var(--pico-primary) here, which in dark mode is a near-white
+       blue — also fine, but white is more consistent across themes. */
+    color: var(--pico-primary-inverse);
 }
 
 .app-team-avatar {
