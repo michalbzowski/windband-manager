@@ -73,6 +73,10 @@ html, body {
     -webkit-appearance: none;
     appearance: none;
     line-height: 1;
+    /* Push the team chip to the right edge of the nav, just before the
+       hamburger. The nav-primary sits on the left, the team chip and
+       hamburger are pinned to the right. */
+    margin-left: auto;
 }
 
 .team-chip:hover {
@@ -99,16 +103,20 @@ html, body {
     list-style: none;
     margin: 0;
     padding: 0;
-    flex: 1;
+    /* No flex: 1 here — we want the primary links to sit on the left and
+       the team chip + hamburger to be pushed to the right by margin-left:auto
+       on .team-chip. flex:1 here would consume all free space and make
+       justify-content useless. */
     min-width: 0;
 }
 
 .nav-primary li {
     display: flex;
+    align-items: center;
 }
 
 .nav-primary li a {
-    display: inline-flex;
+    display: flex;
     align-items: center;
     justify-content: center;
     gap: 0.4rem;
@@ -124,6 +132,7 @@ html, body {
     transition: background 0.15s, color 0.15s, border-color 0.15s;
     white-space: nowrap;
     padding: 0;
+    line-height: 1;
 }
 
 .nav-primary li a:hover {
@@ -164,7 +173,7 @@ html, body {
     align-items: center;
     justify-content: center;
     padding: 0;
-    margin-left: auto; /* push to the right edge */
+    margin-left: 0.4rem; /* small gap from the team chip */
     transition: background 0.15s, border-color 0.15s;
     -webkit-appearance: none;
     appearance: none;
@@ -385,6 +394,14 @@ html, body {
     overflow-y: auto;
     padding: 0.75rem 0.5rem 2rem;
     -webkit-overflow-scrolling: touch;
+    /* Defense in depth: even if someone re-wraps the body in a <nav>
+       (which PicoCSS resets to display:flex + justify-content:space-
+       between, breaking the vertical layout of sections + lists), this
+       rule forces a single-column layout. The HTML now uses <div>, but
+       we keep this here so the layout survives future refactors. */
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
 }
 
 .app-modal-section {

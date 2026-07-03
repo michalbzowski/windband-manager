@@ -77,15 +77,6 @@
      ============================================================ -->
 <nav class="top-nav" th:fragment="nav" sec:authorize="isAuthenticated()">
     <div class="nav-row nav-row-primary">
-        <button type="button"
-                class="team-chip"
-                th:style="${activeTeamColor != null ? 'background-color:' + activeTeamColor : ''}"
-                th:attr="aria-label=|Przełącz zespół: ${activeTeamName ?: 'brak'}|"
-                onclick="openAppModal('team-modal')">
-            <span class="team-chip-letter"
-                  th:text="${activeTeamName != null ? #strings.toUpperCase(#strings.substring(activeTeamName, 0, 1)) : '?'}">O</span>
-        </button>
-
         <ul class="nav-primary">
             <li>
                 <a th:href="@{/rehearsals}" hx-target="#content" hx-swap="innerHTML transition:true" aria-label="Spotkania">
@@ -100,6 +91,15 @@
                 </a>
             </li>
         </ul>
+
+        <button type="button"
+                class="team-chip"
+                th:style="${activeTeamColor != null ? 'background-color:' + activeTeamColor : ''}"
+                th:attr="aria-label=|Przełącz zespół: ${activeTeamName ?: 'brak'}|"
+                onclick="openAppModal('team-modal')">
+            <span class="team-chip-letter"
+                  th:text="${activeTeamName != null ? #strings.toUpperCase(#strings.substring(activeTeamName, 0, 1)) : '?'}">O</span>
+        </button>
 
         <button type="button"
                 class="hamburger-btn"
@@ -126,7 +126,7 @@
                 </div>
                 <button type="button" class="app-modal-close" aria-label="Zamknij" data-close>×</button>
             </header>
-            <nav class="app-modal-body">
+            <div class="app-modal-body">
                 <p class="app-modal-section">Najczęściej używane</p>
                 <ul>
                     <li><a th:href="@{/}" hx-target="#content" hx-swap="innerHTML transition:true" data-close>🏠 Podsumowanie</a></li>
@@ -164,7 +164,7 @@
                         </form>
                     </li>
                 </ul>
-            </nav>
+            </div>
         </div>
     </dialog>
 
@@ -177,7 +177,7 @@
                 </div>
                 <button type="button" class="app-modal-close" aria-label="Zamknij" data-close>×</button>
             </header>
-            <nav class="app-modal-body">
+            <div class="app-modal-body">
                 <ul class="app-team-list" th:if="${#lists.size(userTeams) > 0}">
                     <li th:each="team : ${userTeams}">
                         <button type="button"
@@ -198,7 +198,7 @@
                 <p th:if="${#lists.isEmpty(userTeams)}" class="app-team-empty">
                     Nie należysz jeszcze do żadnego zespołu. <a href="/register" data-close>Utwórz nowy</a>.
                 </p>
-            </nav>
+            </div>
         </div>
     </dialog>
 </nav>
