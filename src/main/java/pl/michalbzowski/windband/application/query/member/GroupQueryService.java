@@ -53,7 +53,8 @@ public class GroupQueryService {
                 group.getName(),
                 group.getDescription(),
                 group.getMemberCount(),
-                memberDtos
+                memberDtos,
+                group.getDynamicSource() != null
         );
     }
 }

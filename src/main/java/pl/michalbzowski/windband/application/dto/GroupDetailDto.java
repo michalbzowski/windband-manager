@@ -7,7 +7,8 @@ public record GroupDetailDto(
         String name,
         String description,
         int memberCount,
-        List<GroupMemberDto> members
+        List<GroupMemberDto> members,
+        boolean dynamic
 ) {
     public record GroupMemberDto(
             Long id,

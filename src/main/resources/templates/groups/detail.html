@@ -11,7 +11,7 @@
     </article>
 
     <h3>Zarządzaj członkami</h3>
-    <div style="display:flex; gap:0.5rem; margin-bottom:1rem;">
+    <div th:unless="${group.dynamic}" style="display:flex; gap:0.5rem; margin-bottom:1rem;">
         <select id="add-member-select">
             <option value="">Wybierz członka...</option>
             <option th:each="m : ${members}" th:value="${m.id}"
@@ -20,6 +20,11 @@
             </option>
         </select>
         <button class="outline" id="add-member-btn">Dodaj</button>
+    </div>
+
+    <div th:if="${group.dynamic}" class="dynamic-info-banner" style="margin-bottom:1rem; padding:0.75rem; background:var(--pico-card-background-color); border-radius:0.5rem; border-left: 4px solid var(--pico-primary);">
+        <strong>🔄 Grupa dynamiczna</strong>
+        <p style="margin:0.25rem 0 0;">Członkowie tej grupy są zarządzani automatycznie przez atrybut <code th:text="${group.name}">OSP</code>. Aby zmienić skład, edytuj wartość tego atrybutu u danego członka.</p>
     </div>
 
     <h3>Członkowie w grupie</h3>
@@ -42,12 +47,14 @@
                     <td th:text="${gm.memberName}">Jan Kowalski</td>
                     <td th:text="${gm.primaryInstrument}">Trąbka</td>
                     <td>
-                        <form th:action="@{'/groups/' + ${group.id} + '/members/' + ${gm.memberId} + '/remove'}"
+                        <form th:unless="${group.dynamic}"
+                              th:action="@{'/groups/' + ${group.id} + '/members/' + ${gm.memberId} + '/remove'}"
                               th:method="post"
                               hx-target="#groups-content" hx-swap="innerHTML transition:true"
                               style="display:inline;">
                             <button class="outline small secondary" type="submit">Usuń</button>
                         </form>
+                        <span th:if="${group.dynamic}" class="secondary">—</span>
                     </td>
                 </tr>
             </tbody>
@@ -55,7 +62,8 @@
     </div>
 
     <div style="display:flex; gap:0.5rem; margin-top:1rem;">
-        <form th:hx-post="@{/groups/{id}/delete(id=${group.id})}"
+        <form th:unless="${group.dynamic}"
+              th:hx-post="@{/groups/{id}/delete(id=${group.id})}"
               hx-target="#content" hx-swap="innerHTML transition:true"
               style="display:inline;"
               onsubmit="return confirm('Czy na pewno chcesz usunąć tę grupę?');">
