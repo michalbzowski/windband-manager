@@ -28,6 +28,11 @@ public class GroupCommandService {
     public void addMemberToGroup(Long groupId, Long memberId) {
         Group group = groupRepository.findById(groupId)
                 .orElseThrow(() -> new IllegalArgumentException("Group not found: " + groupId));
+        if (group.isDynamic()) {
+            throw new IllegalStateException(
+                "Nie można ręcznie dodawać członków do grupy dynamicznej '" + group.getName() + "'. " +
+                "Członkowie są zarządzani automatycznie przez atrybut '" + group.getName() + "'.");
+        }
         Member member = memberRepository.findById(memberId)
                 .orElseThrow(() -> new MemberNotFoundException(memberId));
         group.addMember(member);
@@ -37,6 +42,11 @@ public class GroupCommandService {
     public void removeMemberFromGroup(Long groupId, Long memberId) {
         Group group = groupRepository.findById(groupId)
                 .orElseThrow(() -> new IllegalArgumentException("Group not found: " + groupId));
+        if (group.isDynamic()) {
+            throw new IllegalStateException(
+                "Nie można ręcznie usuwać członków z grupy dynamicznej '" + group.getName() + "'. " +
+                "Członkowie są zarządzani automatycznie przez atrybut '" + group.getName() + "'.");
+        }
         Member member = memberRepository.findById(memberId)
                 .orElseThrow(() -> new MemberNotFoundException(memberId));
         group.removeMember(member);
