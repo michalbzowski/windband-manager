@@ -10,6 +10,8 @@ import pl.michalbzowski.windband.domain.band.MemberAttributeDef;
 import pl.michalbzowski.windband.domain.band.MemberAttributeDefRepository;
 import pl.michalbzowski.windband.domain.member.Group;
 import pl.michalbzowski.windband.domain.member.GroupRepository;
+import pl.michalbzowski.windband.domain.member.Member;
+import pl.michalbzowski.windband.domain.member.MemberRepository;
 
 import java.util.Optional;
 
@@ -22,6 +24,7 @@ class DynamicGroupSyncTest extends BaseIntegrationTest {
     @Autowired private GroupRepository groupRepository;
     @Autowired private MemberAttributeDefRepository attrDefRepo;
     @Autowired private BandRepository bandRepo;
+    @Autowired private MemberRepository memberRepository;
 
     @Test
     void creatingBooleanAttribute_spawnsDynamicGroup() {
@@ -64,6 +67,41 @@ class DynamicGroupSyncTest extends BaseIntegrationTest {
         MemberAttributeDef def = attrCmd.createAttributeDef(band, "OSP", "BOOLEAN", false, false, 0, null);
         attrCmd.updateAttributeDef(def.getId(), "OSP", "TEXT", false, false, 0, null);
         assertThat(groupRepository.findByDynamicSource(def)).isEmpty();
+    }
+
+    @Test
+    void settingValueToTrue_addsMemberToGroup() {
+        Band band = ensureBand();
+        MemberAttributeDef def = attrCmd.createAttributeDef(band, "OSP", "BOOLEAN", false, false, 0, null);
+        Member m = memberRepository.save(Member.create("Jan", "Kowalski", java.time.LocalDate.of(1990, 1, 1), band));
+        attrCmd.setAttributeValue(m.getId(), def.getId(), "true");
+
+        Group g = groupRepository.findByDynamicSource(def).orElseThrow();
+        assertThat(g.getMemberCount()).isEqualTo(1);
+        assertThat(g.getMembers().get(0).getMember().getId()).isEqualTo(m.getId());
+    }
+
+    @Test
+    void changingValueFromTrueToFalse_removesMemberFromGroup() {
+        Band band = ensureBand();
+        MemberAttributeDef def = attrCmd.createAttributeDef(band, "OSP", "BOOLEAN", false, false, 0, null);
+        Member m = memberRepository.save(Member.create("Jan", "Kowalski", java.time.LocalDate.of(1990, 1, 1), band));
+        attrCmd.setAttributeValue(m.getId(), def.getId(), "true");
+        attrCmd.setAttributeValue(m.getId(), def.getId(), "false");
+
+        Group g = groupRepository.findByDynamicSource(def).orElseThrow();
+        assertThat(g.getMemberCount()).isZero();
+    }
+
+    @Test
+    void settingValueToFalse_directly_doesNotAddMember() {
+        Band band = ensureBand();
+        MemberAttributeDef def = attrCmd.createAttributeDef(band, "OSP", "BOOLEAN", false, false, 0, null);
+        Member m = memberRepository.save(Member.create("Jan", "Kowalski", java.time.LocalDate.of(1990, 1, 1), band));
+        attrCmd.setAttributeValue(m.getId(), def.getId(), "false");
+
+        Group g = groupRepository.findByDynamicSource(def).orElseThrow();
+        assertThat(g.getMemberCount()).isZero();
     }
 
     private Band ensureBand() {

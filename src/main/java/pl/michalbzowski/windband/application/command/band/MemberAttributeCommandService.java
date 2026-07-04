@@ -82,6 +82,8 @@ public class MemberAttributeCommandService {
             attrValue.setValue(value);
         }
         attributeValueRepository.save(attrValue);
+        // Sync dynamic group membership based on the new value
+        groupCommandService.syncMemberInDynamicGroup(def, member, value);
     }
 
     public void deleteAttributeValue(Long memberId, Long attributeDefId) {
