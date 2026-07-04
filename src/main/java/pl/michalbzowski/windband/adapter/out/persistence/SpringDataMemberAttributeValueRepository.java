@@ -14,5 +14,7 @@ public interface SpringDataMemberAttributeValueRepository extends JpaRepository<
 
     List<MemberAttributeValue> findByMember(Member member);
 
+    List<MemberAttributeValue> findByAttributeDef(MemberAttributeDef attributeDef);
+
     void deleteByMember(Member member);
 }

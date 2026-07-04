@@ -26,6 +26,11 @@ public class MemberAttributeDefRepositoryAdapter implements MemberAttributeDefRe
     }
 
     @Override
+    public List<MemberAttributeDef> findAll() {
+        return springDataRepo.findAll();
+    }
+
+    @Override
     public List<MemberAttributeDef> findByBand(Band band) {
         return springDataRepo.findByBand(band);
     }

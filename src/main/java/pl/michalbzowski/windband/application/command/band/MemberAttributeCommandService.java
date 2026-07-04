@@ -9,8 +9,11 @@ import pl.michalbzowski.windband.domain.band.MemberAttributeDef;
 import pl.michalbzowski.windband.domain.band.MemberAttributeDefRepository;
 import pl.michalbzowski.windband.domain.band.MemberAttributeValue;
 import pl.michalbzowski.windband.domain.band.MemberAttributeValueRepository;
+import pl.michalbzowski.windband.domain.member.GroupRepository;
 import pl.michalbzowski.windband.domain.member.Member;
 import pl.michalbzowski.windband.domain.member.MemberRepository;
+
+import java.util.List;
 
 @Service
 @RequiredArgsConstructor
@@ -21,6 +24,7 @@ public class MemberAttributeCommandService {
     private final MemberAttributeValueRepository attributeValueRepository;
     private final MemberRepository memberRepository;
     private final GroupCommandService groupCommandService;
+    private final GroupRepository groupRepository;
 
     public MemberAttributeDef createAttributeDef(Band band, String name, String type, boolean required, boolean displayInList, int displayOrder, String options) {
         MemberAttributeDef def = MemberAttributeDef.create(band, name, type, required, displayInList, displayOrder, options);
@@ -84,6 +88,26 @@ public class MemberAttributeCommandService {
         attributeValueRepository.save(attrValue);
         // Sync dynamic group membership based on the new value
         groupCommandService.syncMemberInDynamicGroup(def, member, value);
+    }
+
+    /**
+     * Ensure that a dynamic group exists for the given BOOLEAN attribute, creating it
+     * (and syncing existing attribute values into it) if missing. No-op for non-BOOLEAN
+     * types or when a dynamic group already exists.
+     * <p>
+     * Used by the {@code DynamicGroupBackfillRunner} on application startup to migrate
+     * bands that had BOOLEAN attributes before this feature shipped. Safe to call
+     * multiple times — fully idempotent.
+     */
+    public void ensureDynamicGroupExists(MemberAttributeDef def) {
+        if (!"BOOLEAN".equals(def.getType())) return;
+        if (groupRepository.findByDynamicSource(def).isPresent()) return;
+        groupCommandService.createDynamicGroupForAttribute(def);
+        // Sync existing attribute values into the group
+        List<MemberAttributeValue> values = attributeValueRepository.findByAttributeDef(def);
+        for (MemberAttributeValue v : values) {
+            groupCommandService.syncMemberInDynamicGroup(def, v.getMember(), v.getValue());
+        }
     }
 
     public void deleteAttributeValue(Long memberId, Long attributeDefId) {

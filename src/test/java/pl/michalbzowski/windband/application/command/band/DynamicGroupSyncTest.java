@@ -104,6 +104,53 @@ class DynamicGroupSyncTest extends BaseIntegrationTest {
         assertThat(g.getMemberCount()).isZero();
     }
 
+    @Test
+    void ensureDynamicGroupExists_isIdempotent() {
+        Band band = ensureBand();
+        MemberAttributeDef def = attrCmd.createAttributeDef(band, "OSP", "BOOLEAN", false, false, 0, null);
+        // First call is no-op (group already created by createAttributeDef)
+        attrCmd.ensureDynamicGroupExists(def);
+        // Verify still exactly 1 group for this def
+        Group g1 = groupRepository.findByDynamicSource(def).orElseThrow();
+        assertThat(g1.getName()).isEqualTo("OSP");
+    }
+
+    @Test
+    void ensureDynamicGroupExists_picksUpExistingValues() {
+        Band band = ensureBand();
+        // Create attribute (group auto-spawns with no members)
+        MemberAttributeDef def = attrCmd.createAttributeDef(band, "OSP", "BOOLEAN", false, false, 0, null);
+        Member m1 = memberRepository.save(Member.create("Jan", "Kowalski", java.time.LocalDate.of(1990, 1, 1), band));
+        Member m2 = memberRepository.save(Member.create("Anna", "Nowak", java.time.LocalDate.of(1992, 5, 15), band));
+        // Set values (m1 → true, m2 → false). setAttributeValue also syncs m1 into the group.
+        attrCmd.setAttributeValue(m1.getId(), def.getId(), "true");
+        attrCmd.setAttributeValue(m2.getId(), def.getId(), "false");
+
+        // Simulate the "pre-backfill" production state: the BOOLEAN attribute exists in the
+        // DB but its dynamic group was never created. Wipe the auto-spawned group.
+        Group existing = groupRepository.findByDynamicSource(def).orElseThrow();
+        groupRepository.delete(existing);
+        groupRepository.flush();
+
+        // Run the backfill: it should re-create the dynamic group AND re-sync m1 (value="true")
+        // into it (m2 stays out, because their value is "false").
+        attrCmd.ensureDynamicGroupExists(def);
+
+        Group g = groupRepository.findByDynamicSource(def).orElseThrow();
+        assertThat(g.getName()).isEqualTo("OSP");
+        assertThat(g.getMemberCount()).isEqualTo(1);
+        assertThat(g.getMembers().get(0).getMember().getId()).isEqualTo(m1.getId());
+    }
+
+    @Test
+    void ensureDynamicGroupExists_isNoOpForTextAttribute() {
+        Band band = ensureBand();
+        MemberAttributeDef def = attrCmd.createAttributeDef(band, "Ksywka", "TEXT", false, false, 0, null);
+        // Should not throw and should not create any group
+        attrCmd.ensureDynamicGroupExists(def);
+        assertThat(groupRepository.findByDynamicSource(def)).isEmpty();
+    }
+
     private Band ensureBand() {
         return bandRepo.findById(1L).orElseGet(() -> {
             Band band = Band.create("Test Band for Dynamic Groups", "test-dynamic-groups");

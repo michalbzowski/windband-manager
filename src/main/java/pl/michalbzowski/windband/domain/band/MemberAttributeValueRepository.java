@@ -15,6 +15,8 @@ public interface MemberAttributeValueRepository {
 
     List<MemberAttributeValue> findByMember(Member member);
 
+    List<MemberAttributeValue> findByAttributeDef(MemberAttributeDef attributeDef);
+
     void delete(MemberAttributeValue value);
 
     void deleteByMember(Member member);

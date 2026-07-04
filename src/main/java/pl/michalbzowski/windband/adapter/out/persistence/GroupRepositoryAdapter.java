@@ -54,4 +54,9 @@ public class GroupRepositoryAdapter implements GroupRepository {
     public void delete(Group group) {
         springDataRepo.delete(group);
     }
+
+    @Override
+    public void flush() {
+        springDataRepo.flush();
+    }
 }

@@ -37,6 +37,11 @@ public class MemberAttributeValueRepositoryAdapter implements MemberAttributeVal
     }
 
     @Override
+    public List<MemberAttributeValue> findByAttributeDef(MemberAttributeDef attributeDef) {
+        return springDataRepo.findByAttributeDef(attributeDef);
+    }
+
+    @Override
     public void delete(MemberAttributeValue value) {
         springDataRepo.delete(value);
     }

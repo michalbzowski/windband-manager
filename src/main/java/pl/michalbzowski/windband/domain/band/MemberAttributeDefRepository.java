@@ -9,6 +9,8 @@ public interface MemberAttributeDefRepository {
 
     Optional<MemberAttributeDef> findById(Long id);
 
+    List<MemberAttributeDef> findAll();
+
     List<MemberAttributeDef> findByBand(Band band);
 
     List<MemberAttributeDef> findByBandOrderByDisplayOrderAsc(Band band);

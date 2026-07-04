@@ -22,4 +22,6 @@ public interface GroupRepository {
     Optional<Group> findByDynamicSource(MemberAttributeDef source);
 
     void delete(Group group);
+
+    void flush();
 }
