@@ -3,6 +3,7 @@ package pl.michalbzowski.windband.application.command.band;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import pl.michalbzowski.windband.application.command.member.GroupCommandService;
 import pl.michalbzowski.windband.domain.band.Band;
 import pl.michalbzowski.windband.domain.band.MemberAttributeDef;
 import pl.michalbzowski.windband.domain.band.MemberAttributeDefRepository;
@@ -19,22 +20,45 @@ public class MemberAttributeCommandService {
     private final MemberAttributeDefRepository attributeDefRepository;
     private final MemberAttributeValueRepository attributeValueRepository;
     private final MemberRepository memberRepository;
+    private final GroupCommandService groupCommandService;
 
     public MemberAttributeDef createAttributeDef(Band band, String name, String type, boolean required, boolean displayInList, int displayOrder, String options) {
         MemberAttributeDef def = MemberAttributeDef.create(band, name, type, required, displayInList, displayOrder, options);
-        return attributeDefRepository.save(def);
+        MemberAttributeDef saved = attributeDefRepository.save(def);
+        // Spawn dynamic group for BOOLEAN attributes (no-op for other types).
+        if ("BOOLEAN".equals(type)) {
+            groupCommandService.createDynamicGroupForAttribute(saved);
+        }
+        return saved;
     }
 
     public MemberAttributeDef updateAttributeDef(Long id, String name, String type, boolean required, boolean displayInList, int displayOrder, String options) {
         MemberAttributeDef def = attributeDefRepository.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("AttributeDef not found: " + id));
+        String oldType = def.getType();
+        String oldName = def.getName();
         def.update(name, type, required, displayInList, displayOrder, options);
-        return attributeDefRepository.save(def);
+        MemberAttributeDef saved = attributeDefRepository.save(def);
+        // Dynamic group sync
+        if ("BOOLEAN".equals(oldType) && !"BOOLEAN".equals(type)) {
+            // Type changed AWAY from BOOLEAN → delete the dynamic group
+            groupCommandService.deleteDynamicGroup(saved);
+        } else if (!"BOOLEAN".equals(oldType) && "BOOLEAN".equals(type)) {
+            // Type changed TO BOOLEAN → create the dynamic group
+            groupCommandService.createDynamicGroupForAttribute(saved);
+        } else if ("BOOLEAN".equals(type) && !oldName.equals(name)) {
+            // Still BOOLEAN, but name changed → rename
+            groupCommandService.renameDynamicGroup(saved);
+        }
+        return saved;
     }
 
     public void deleteAttributeDef(Long id) {
         MemberAttributeDef def = attributeDefRepository.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("AttributeDef not found: " + id));
+        // Drop the dynamic group (if any) BEFORE deleting the def, to break the FK.
+        // deleteDynamicGroup is a no-op when no dynamic group exists, so safe to always call.
+        groupCommandService.deleteDynamicGroup(def);
         attributeDefRepository.delete(def);
     }
 
