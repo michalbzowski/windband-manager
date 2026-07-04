@@ -61,6 +61,27 @@ Zapewnić, że AI-asystent (lub programista) generuje kod zgodny z architekturą
 - **Thymeleaf `th:attr` gotcha**: when multiple `th:attr` attributes appear on the same element, **only the LAST one is honored** — earlier ones are silently dropped. Always merge into a single comma-separated form: `th:attr="data-a=${val1},data-b=${val2}"`. Symptom: HTMX/SPA behavior breaks with no Thymeleaf error, only Selenium timeout on missing element.
 - **Renaming a dynamic group's name via raw SQL or direct `Group.setName()` is a footgun**: the next `ensureDynamicGroupExists` won't re-sync the name from the source attribute. Always rename through `MemberAttributeCommandService.updateAttributeDef` (which calls `GroupCommandService.renameDynamicGroup`). ArchUnit should enforce this — see `ArchitectureTest.java`.
 
+### 1.7 Transaction Propagation — The Backfill Footgun (2026-07-04 incident)
+
+**The bug**: `DynamicGroupBackfillRunner.run()` was annotated `@Transactional` and wrapped the entire loop in a single transaction. When a BOOLEAN attribute with name "Gość" tried to create a dynamic group and a manual group with the same name already existed, the INSERT raised `DataIntegrityViolationException` on the UNIQUE constraint (`band_id`, `name`). In PostgreSQL this marks the whole transaction as "aborted" — every subsequent SQL statement (including the next attribute's INSERT) fails with "current transaction is aborted, commands ignored until end of transaction block", then Hibernate throws `AssertionFailure: null id in Group entry (don't flush the Session after an exception occurs)`, then Spring throws `UnexpectedRollbackException` on commit. The application context never starts.
+
+**The fix has two parts**:
+
+1. **No outer `@Transactional` on the runner loop.** Each `ensureDynamicGroupExists(def)` call runs in its own transaction (via the class-level `@Transactional` on `MemberAttributeCommandService`); the runner's `try/catch` contains any failure to that single attribute's transaction. The next attribute gets a brand-new transaction.
+
+2. **Name-collision resolution in `createDynamicGroupForAttribute`.** Detect the collision BEFORE attempting the INSERT (via `existsByNameAndBandId`) and append a numeric suffix: "Gość" → "Gość (2)" → "Gość (3)". This keeps the manual group and the dynamic group both alive.
+
+**Do NOT use `REQUIRES_NEW` for "per-iteration isolation"**. We tried this and it backfired in two ways:
+- The new transaction's session cannot see entities that are flushed-but-not-committed in the caller's session. Inserting a child row with FK to a parent row that lives in the caller's session → foreign-key violation.
+- Tests that wrap the call in `@Transactional` then deadlocked when Hibernate tried to attach a detached entity from the outer session to the inner session.
+
+The correct semantic is **default `REQUIRED` propagation**: the dynamic-group insert joins the caller's transaction so the parent def and the child group are atomic (commit together or rollback together). For the backfill runner, "the caller's transaction" is the per-attribute transaction started by `MemberAttributeCommandService.ensureDynamicGroupExists`, which gives us per-attribute isolation without any explicit `REQUIRES_NEW`.
+
+**Diagnostic checklist when the app fails to start with a `JpaSystemException` or `UnexpectedRollbackException` on the first DB write after startup**:
+1. Read the FIRST exception in the chain — usually a `DataIntegrityViolationException` or a UNIQUE/FK violation.
+2. Trace back to the `@Transactional` method that wrapped it.
+3. Ask: "Is this method called in a loop? If so, the loop body and the loop's try/catch are likely both inside a single transaction. The fix is to remove the outer `@Transactional` and rely on per-call class-level `@Transactional` for isolation."
+
 ---
 
 ## 2. Sensors (Czujniki) — feedback po wygenerowaniu kodu

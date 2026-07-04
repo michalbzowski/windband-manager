@@ -22,4 +22,9 @@ public interface SpringDataGroupRepository extends JpaRepository<Group, Long> {
     List<Group> findAllWithMembersByBandId(@Param("bandId") Long bandId);
 
     Optional<Group> findByDynamicSource(MemberAttributeDef source);
+
+    // Explicit @Query because the derived-name form (existsByNameAndBandId) would
+    // generate `WHERE band = ?` (entity comparison) and fail — we need `WHERE band.id = ?`.
+    @Query("SELECT COUNT(g) > 0 FROM Group g WHERE g.name = :name AND g.band.id = :bandId")
+    boolean existsByNameAndBandId(@Param("name") String name, @Param("bandId") Long bandId);
 }

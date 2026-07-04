@@ -51,6 +51,11 @@ public class GroupRepositoryAdapter implements GroupRepository {
     }
 
     @Override
+    public boolean existsByNameAndBandId(String name, Long bandId) {
+        return springDataRepo.existsByNameAndBandId(name, bandId);
+    }
+
+    @Override
     public void delete(Group group) {
         springDataRepo.delete(group);
     }

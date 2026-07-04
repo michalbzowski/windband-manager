@@ -21,6 +21,14 @@ public interface GroupRepository {
 
     Optional<Group> findByDynamicSource(MemberAttributeDef source);
 
+    /**
+     * True iff there is already a group with the given (band, name) pair. Used to
+     * resolve name collisions BEFORE attempting an INSERT (so we can pick a
+     * non-conflicting name like "Foo (2)" without relying on a DB exception that
+     * would poison the surrounding transaction).
+     */
+    boolean existsByNameAndBandId(String name, Long bandId);
+
     void delete(Group group);
 
     void flush();

@@ -1,6 +1,7 @@
 package pl.michalbzowski.windband.application.command.member;
 
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import pl.michalbzowski.windband.domain.band.Band;
@@ -15,6 +16,7 @@ import java.util.Optional;
 @Service
 @RequiredArgsConstructor
 @Transactional
+@Slf4j
 public class GroupCommandService {
 
     private final GroupRepository groupRepository;
@@ -60,20 +62,70 @@ public class GroupCommandService {
     }
 
     /**
-     * Create the dynamic group backed by the given BOOLEAN attribute.
-     * Idempotent: if a group already exists for this attribute, returns it.
+     * Create the dynamic group backed by the given BOOLEAN attribute. Idempotent.
+     * <p>
+     * Joins the caller's transaction (default REQUIRED propagation) so the attribute
+     * def and the dynamic group are committed atomically. This is the right semantics
+     * for both flows:
+     * <ul>
+     *   <li><b>User-initiated {@code createAttributeDef}:</b> the def and the dynamic
+     *       group are persisted in the same outer transaction (started by the class-level
+     *       {@code @Transactional} on {@code MemberAttributeCommandService}). If the
+     *       group insert fails, the def insert also rolls back — no orphan attributes.</li>
+     *   <li><b>Backfill runner:</b> the runner has NO outer transaction of its own, so
+     *       each call to {@code ensureDynamicGroupExists} starts a fresh transaction
+     *       (via its class-level {@code @Transactional}). The runner's {@code try/catch}
+     *       loop then contains any failure to that single attribute's transaction;
+     *       the next attribute gets a brand-new transaction. This was the production
+     *       bug (2026-07-04): wrapping the whole loop in one transaction meant one
+     *       name collision poisoned all subsequent attributes.</li>
+     * </ul>
+     * <p>
+     * Earlier iterations of this method used {@code REQUIRES_NEW} for hard isolation.
+     * That backfired in two ways: (a) a foreign-key violation when the parent def was
+     * flushed-but-not-committed in the caller's session; (b) tests that wrap methods
+     * in {@code @Transactional} ran into session-attach issues. Joining the caller's
+     * transaction is the correct default here.
+     * <p>
+     * On a name collision with a manual group, append a numeric suffix: "Gość" → "Gość (2)"
+     * → "Gość (3)" … This keeps the dynamic group's name recognisable to the user
+     * (better UX than a generic "dynamic_Gość" prefix).
      */
     public Group createDynamicGroupForAttribute(MemberAttributeDef def) {
-        return groupRepository.findByDynamicSource(def).orElseGet(() -> {
-            String desiredName = def.getName();
-            Band band = def.getBand();
-            try {
-                return groupRepository.save(Group.createDynamic(desiredName, band, def));
-            } catch (org.springframework.dao.DataIntegrityViolationException e) {
-                // Name collision with a manual group — prefix to keep both.
-                return groupRepository.save(Group.createDynamic("dynamic_" + desiredName, band, def));
+        Optional<Group> existing = groupRepository.findByDynamicSource(def);
+        if (existing.isPresent()) {
+            return existing.get();
+        }
+        String baseName = def.getName();
+        Band band = def.getBand();
+        String resolvedName = resolveNameCollision(baseName, band);
+        if (!resolvedName.equals(baseName)) {
+            log.warn("[dynamic-groups] Name collision for attribute '{}' (band {}): a manual group already uses that name. " +
+                    "Creating dynamic group as '{}' instead.", baseName, band.getId(), resolvedName);
+        }
+        return groupRepository.save(Group.createDynamic(resolvedName, band, def));
+    }
+
+    /**
+     * If a group with the given name already exists in the band, append " (2)", " (3)", …
+     * until a free name is found. Bounded by MAX_SUFFIX_ATTEMPTS so we never loop forever
+     * on a fully-saturated namespace.
+     */
+    private String resolveNameCollision(String baseName, Band band) {
+        Long bandId = band.getId();
+        if (!groupRepository.existsByNameAndBandId(baseName, bandId)) {
+            return baseName;
+        }
+        final int MAX_SUFFIX_ATTEMPTS = 1000;
+        for (int i = 2; i <= MAX_SUFFIX_ATTEMPTS + 1; i++) {
+            String candidate = baseName + " (" + i + ")";
+            if (!groupRepository.existsByNameAndBandId(candidate, bandId)) {
+                return candidate;
             }
-        });
+        }
+        log.error("[dynamic-groups] Could not find a free group name for base '{}' in band {} after {} attempts. " +
+                "Falling back to UUID suffix to avoid blocking startup.", baseName, bandId, MAX_SUFFIX_ATTEMPTS);
+        return baseName + " (" + java.util.UUID.randomUUID() + ")";
     }
 
     /**
@@ -81,6 +133,9 @@ public class GroupCommandService {
      *  - if value == "true" and member not in group → add
      *  - if value != "true" and member in group → remove
      * No-op if the attribute has no dynamic group, or is not BOOLEAN.
+     * Joins the caller's transaction (default REQUIRED) — see
+     * {@link #createDynamicGroupForAttribute} for why this is preferred over
+     * REQUIRES_NEW here.
      */
     public void syncMemberInDynamicGroup(MemberAttributeDef def, Member member, String newValue) {
         if (!"BOOLEAN".equals(def.getType())) return;

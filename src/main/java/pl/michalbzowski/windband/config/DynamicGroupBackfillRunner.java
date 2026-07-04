@@ -6,7 +6,6 @@ import org.springframework.boot.ApplicationArguments;
 import org.springframework.boot.ApplicationRunner;
 import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Component;
-import org.springframework.transaction.annotation.Transactional;
 import pl.michalbzowski.windband.application.command.band.MemberAttributeCommandService;
 import pl.michalbzowski.windband.domain.band.MemberAttributeDef;
 import pl.michalbzowski.windband.domain.band.MemberAttributeDefRepository;
@@ -22,9 +21,18 @@ import java.util.List;
  * attribute will have its dynamic group, so subsequent restarts are no-ops
  * ({@code ensureDynamicGroupExists} is idempotent).
  * <p>
- * Profile-gated with {@code !test} to keep the test data set deterministic —
- * tests build attributes explicitly via {@code createAttributeDef} and the
- * runner would otherwise race with the test's own assertions.
+ * <b>Transaction boundary:</b> deliberately NOT marked {@code @Transactional}.
+ * Each call to {@code ensureDynamicGroupExists} runs in its own REQUIRES_NEW
+ * transaction (configured on {@code GroupCommandService.createDynamicGroupForAttribute}),
+ * so a single attribute that fails — for example, due to an unexpected DB conflict —
+ * is logged and skipped without aborting startup or poisoning other attributes'
+ * transactions. Wrapping the whole loop in one transaction would cascade one
+ * attribute's failure into a Hibernate {@code AssertionFailure} and crash the app
+ * (see production incident 2026-07-04).
+ * <p>
+ * Profile-gated with {@code !test} to keep the test data set deterministic — tests
+ * build attributes explicitly via {@code createAttributeDef} and the runner would
+ * otherwise race with the test's own assertions.
  */
 @Component
 @Profile("!test")
@@ -36,18 +44,28 @@ public class DynamicGroupBackfillRunner implements ApplicationRunner {
     private final MemberAttributeCommandService memberAttributeCommandService;
 
     @Override
-    @Transactional
     public void run(ApplicationArguments args) {
         List<MemberAttributeDef> allBoolean = attributeDefRepository.findAll().stream()
                 .filter(d -> "BOOLEAN".equals(d.getType()))
                 .toList();
         log.info("[backfill] Found {} BOOLEAN member attributes; ensuring dynamic groups", allBoolean.size());
+
+        int succeeded = 0;
+        int failed = 0;
         for (MemberAttributeDef def : allBoolean) {
             try {
+                // ensureDynamicGroupExists → groupCommandService.createDynamicGroupForAttribute
+                // → runs in its own REQUIRES_NEW transaction. A failure here is isolated to
+                // this attribute; the outer runner has no transaction of its own to poison.
                 memberAttributeCommandService.ensureDynamicGroupExists(def);
+                succeeded++;
             } catch (Exception e) {
-                log.error("[backfill] Failed to ensure dynamic group for attribute {}: {}", def.getId(), e.getMessage(), e);
+                failed++;
+                log.error("[backfill] Failed to ensure dynamic group for attribute {} ({}): {}",
+                        def.getId(), def.getName(), e.getMessage(), e);
             }
         }
+        log.info("[backfill] Done. succeeded={}, failed={}, total={}",
+                succeeded, failed, allBoolean.size());
     }
 }

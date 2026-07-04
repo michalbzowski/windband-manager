@@ -553,6 +553,8 @@ NEVER use `read_file`'s content directly as `old_string` in `patch()`. The displ
 - V16: Add superset UUID
 - V17: Add embedded UUID
 - V21: Add `dynamic_source_id` to `member_groups` (FK → `member_attribute_defs`, ON DELETE CASCADE, UNIQUE 1:1). Backfill handled by `DynamicGroupBackfillRunner` on app startup (skipped in `test` profile).
+  - **Name-collision handling** (2026-07-04 incident): when a BOOLEAN attribute's name collides with an existing manual group in the same band, the dynamic group is created with a numeric suffix (`"Gość"` → `"Gość (2)"` → `"Gość (3)"`). This keeps the manual group untouched while the dynamic group still gets created. See `GroupCommandService.resolveNameCollision` and `AI_HARNESS.md` § 1.7.
+  - **Backfill runner** has NO outer `@Transactional` — per-attribute isolation comes from `MemberAttributeCommandService.ensureDynamicGroupExists`'s class-level transaction, contained by the runner's per-iteration `try/catch`. Wrapping the loop in one transaction (the original 2026-07-04 bug) cascades one attribute's failure into a startup crash.
 
 ## Build & Deploy
 
