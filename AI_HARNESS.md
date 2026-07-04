@@ -18,6 +18,7 @@ Zapewnić, że AI-asystent (lub programista) generuje kod zgodny z architekturą
 - **Adapter layer** — klasy `@Component` implementujące interfejsy domain, delegujące do Spring Data.
 - **Application layer** — command/query services. Command services otrzymują Band jako parametr (NIE czytają samodzielnie — ArchUnit enforced).
 - **ArchUnit** — testy architektury w `ArchitectureTest.java` wymuszają zależności między warstwami.
+- **Dynamic groups are a domain invariant**: never manually insert/update `member_groups.dynamic_source_id` for an attribute-backed group. All changes flow through `MemberAttributeCommandService` (which calls `GroupCommandService.createDynamicGroupForAttribute` / `syncMemberInDynamicGroup` / `renameDynamicGroup` / `deleteDynamicGroup`). UI/API must reject manual edits.
 
 ### 1.2 HTMX + Thymeleaf
 
@@ -58,6 +59,7 @@ Zapewnić, że AI-asystent (lub programista) generuje kod zgodny z architekturą
 - `patch()` tool: NIGDY nie używaj `read_file` content jako `old_string` (prefix `N|`).
 - Po patchowaniu `.py` w kontenerach → czyść `__pyc`.
 - **Thymeleaf `th:attr` gotcha**: when multiple `th:attr` attributes appear on the same element, **only the LAST one is honored** — earlier ones are silently dropped. Always merge into a single comma-separated form: `th:attr="data-a=${val1},data-b=${val2}"`. Symptom: HTMX/SPA behavior breaks with no Thymeleaf error, only Selenium timeout on missing element.
+- **Renaming a dynamic group's name via raw SQL or direct `Group.setName()` is a footgun**: the next `ensureDynamicGroupExists` won't re-sync the name from the source attribute. Always rename through `MemberAttributeCommandService.updateAttributeDef` (which calls `GroupCommandService.renameDynamicGroup`). ArchUnit should enforce this — see `ArchitectureTest.java`.
 
 ---
 

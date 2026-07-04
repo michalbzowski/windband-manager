@@ -146,6 +146,7 @@ windband-manager/
 - **MemberInstrument** (member_instruments): member + instrument + isPrimary. Equals/hashCode on member+instrument.
 - **Group** (member_groups): name (unique), description. Has `members` (OneToMany GroupMember, orphanRemoval).
 - **GroupMember** (group_members): group + member
+- **Group ↔ MemberAttributeDef (dynamic)**: A `Group` whose `dynamicSource` field is non-null is a "dynamic" group: it is auto-created for every `MemberAttributeDef` of type `BOOLEAN`, members are auto-added when their attribute value is `"true"`, and the group follows the attribute's name/type through rename/delete/type-change. Manual add/remove via the UI or API is rejected with 409 Conflict.
 
 #### Rehearsal Context
 - **Rehearsal** (rehearsals): date, startTime, endTime, location, notes, band (ManyToOne EAGER). Has `attendances` (OneToMany Attendance, orphanRemoval, EAGER).
@@ -239,6 +240,8 @@ All repository interfaces are in `domain/` packages. They define ALL methods —
 | POST | /api/groups/{groupId}/members/{memberId} | Add member to group |
 | DELETE | /api/groups/{groupId}/members/{memberId} | Remove member from group |
 | DELETE | /api/groups/{id} | Delete group |
+
+**Dynamic groups**: `POST /api/groups/{id}/members/{memberId}` and `DELETE /api/groups/{id}/members/{memberId}` return **409 Conflict** when the group is dynamic (auto-managed). The UI hides these buttons for dynamic groups, but the API is the authoritative gate. To add/remove a member from a dynamic group, change the member's attribute value via `POST /api/bands/{bandId}/attribute-defs/{attrId}/members/{memberId}`.
 
 #### /api/rehearsals — RehearsalController
 | Method | Path | Description |
@@ -531,7 +534,7 @@ NEVER use `read_file`'s content directly as `old_string` in `patch()`. The displ
 
 ## Database Migrations
 
-17 Flyway migrations (V1-V17):
+21 Flyway migrations (V1-V17, V21):
 - V1: Initial schema
 - V2: Add band
 - V3: Add member attributes
@@ -549,6 +552,7 @@ NEVER use `read_file`'s content directly as `old_string` in `patch()`. The displ
 - V15: Superset dashboard management
 - V16: Add superset UUID
 - V17: Add embedded UUID
+- V21: Add `dynamic_source_id` to `member_groups` (FK → `member_attribute_defs`, ON DELETE CASCADE, UNIQUE 1:1). Backfill handled by `DynamicGroupBackfillRunner` on app startup (skipped in `test` profile).
 
 ## Build & Deploy
 
