@@ -30,7 +30,10 @@
                     </thead>
                     <tbody>
                         <tr th:each="g : ${groups}">
-                            <td><strong th:text="${g.name}">Sekcja dęta</strong></td>
+                            <td>
+                                <strong th:text="${g.name}">Sekcja dęta</strong>
+                                <span th:if="${g.dynamic}" class="dynamic-badge" title="Grupa zarządzana automatycznie na podstawie atrybutu">🔄 dynamiczna</span>
+                            </td>
                             <td th:text="${g.description}">Trąbki, skrzydlówki</td>
                             <td th:text="${g.memberCount}">5</td>
                             <td>

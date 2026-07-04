@@ -1293,3 +1293,15 @@ tr.highlight-row > td {
 tr.highlight-row > td {
     animation: highlight-fade 3s ease-out forwards;
 }
+
+/* Badge for dynamic (system-managed) groups on the group list */
+.dynamic-badge {
+    display: inline-block;
+    margin-left: 0.5rem;
+    padding: 0.1rem 0.4rem;
+    font-size: 0.75rem;
+    background: var(--pico-secondary-background);
+    color: var(--pico-secondary-inverse);
+    border-radius: 0.25rem;
+    vertical-align: middle;
+}
