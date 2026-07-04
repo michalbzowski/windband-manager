@@ -19,7 +19,7 @@
             </div>
 
             <div th:unless="${#lists.isEmpty(members)}">
-                <table role="grid">
+                <table role="grid" id="members-table">
                     <thead>
                         <tr>
                             <th>Imię i nazwisko</th>
@@ -32,7 +32,7 @@
                         </tr>
                     </thead>
                     <tbody>
-                        <tr th:each="m : ${members}">
+                        <tr th:each="m : ${members}" th:attr="data-member-id=${m.id}">
                             <td data-label="Imię i nazwisko">
                                 <a th:href="@{/members/{id}/detail(id=${m.id})}"
                                    hx-target="#content" hx-swap="innerHTML transition:true"

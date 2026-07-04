@@ -2,7 +2,8 @@
     <h2 th:text="${member.id() != null ? '✏️ Edytuj członka' : '➕ Dodaj członka'}">Dodaj członka</h2>
 
     <form id="member-form"
-          th:attr="data-member-id=${member.id()}">
+          th:attr="data-member-id=${member.id()}"
+          th:attr="data-active-team-id=${activeTeamId}">
 
         <div class="grid">
             <label>
@@ -142,6 +143,7 @@
                 e.preventDefault();
                 var form = e.target;
                 var memberId = form.getAttribute('data-member-id');
+                var activeTeamId = form.getAttribute('data-active-team-id');
                 var url = memberId ? '/api/members/' + memberId : '/api/members';
                 var method = memberId ? 'PUT' : 'POST';
                 var formData = new FormData(form);
@@ -149,7 +151,7 @@
                 formData.forEach(function(value, key) { data[key] = value; });
                 data.active = formData.has('active');
                 // Check if "Zapisz i dodaj kolejny" button was clicked
-                var saveAndAddAnother = form.querySelector('button[name="saveAndAddAnother"]') && 
+                var saveAndAddAnother = form.querySelector('button[name="saveAndAddAnother"]') &&
                                         form.querySelector('button[name="saveAndAddAnother"]') === document.activeElement;
                 if (data.instrumentId === '') delete data.instrumentId;
                 if (data.dateOfBirth === '') delete data.dateOfBirth;
@@ -190,14 +192,30 @@
                                 });
                                 value = checked.join(';');
                             }
-                            var attrUrl = '/api/bands/1/attribute-defs/' + attrId + '/members/' + memberId;
-                            attrPromises.push(fetchWithToast(attrUrl, { toastMessage: 'Zapisano atrybut',
+                            // Use activeTeamId instead of hardcoded band ID
+                            var attrUrl = '/api/bands/' + activeTeamId + '/attribute-defs/' + attrId + '/members/' + memberId;
+                            attrPromises.push(fetch(attrUrl, {
                                 method: 'POST',
                                 headers: {'Content-Type': 'application/json'},
                                 body: JSON.stringify({value: value})
                             }));
                         });
                         Promise.all(attrPromises).then(function() {
+                            // Reload member list and scroll/highlight the edited member
+                            var handler = function(evt) {
+                                if (evt.detail && evt.detail.target && evt.detail.target.id === 'members-content') {
+                                    setTimeout(function() {
+                                        var row = document.querySelector('#members-table tbody tr[data-member-id="' + memberId + '"]');
+                                        if (row) {
+                                            row.classList.add('highlight-row');
+                                            setTimeout(function() { row.classList.remove('highlight-row'); }, 3000);
+                                            row.scrollIntoView({behavior: 'smooth', block: 'center'});
+                                        }
+                                    }, 50);
+                                    document.body.removeEventListener('htmx:afterSettle', handler);
+                                }
+                            };
+                            document.body.addEventListener('htmx:afterSettle', handler);
                             htmx.ajax('GET', '/members/list', {target: '#members-content', swap: 'innerHTML transition:true'});
                         });
                     } else if (saveAndAddAnother) {
