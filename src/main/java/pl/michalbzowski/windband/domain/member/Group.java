@@ -5,6 +5,7 @@ import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import pl.michalbzowski.windband.domain.band.Band;
+import pl.michalbzowski.windband.domain.band.MemberAttributeDef;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -27,6 +28,10 @@ public class Group {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "band_id", nullable = false)
     private Band band;
+
+    @OneToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "dynamic_source_id", unique = true)
+    private MemberAttributeDef dynamicSource;
 
     @OneToMany(mappedBy = "group", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<GroupMember> members = new ArrayList<>();
@@ -52,5 +57,15 @@ public class Group {
 
     public int getMemberCount() {
         return members.size();
+    }
+
+    public boolean isDynamic() {
+        return dynamicSource != null;
+    }
+
+    public static Group createDynamic(String name, Band band, MemberAttributeDef source) {
+        Group g = new Group(name, "Grupa dynamiczna na podstawie atrybutu " + name, band);
+        g.dynamicSource = source;
+        return g;
     }
 }
