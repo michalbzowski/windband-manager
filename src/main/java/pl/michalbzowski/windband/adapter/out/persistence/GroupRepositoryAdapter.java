@@ -2,6 +2,7 @@ package pl.michalbzowski.windband.adapter.out.persistence;
 
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
+import pl.michalbzowski.windband.domain.band.MemberAttributeDef;
 import pl.michalbzowski.windband.domain.member.Group;
 import pl.michalbzowski.windband.domain.member.GroupRepository;
 
@@ -42,6 +43,11 @@ public class GroupRepositoryAdapter implements GroupRepository {
     @Override
     public List<Group> findAllWithMembersByBandId(Long bandId) {
         return springDataRepo.findAllWithMembersByBandId(bandId);
+    }
+
+    @Override
+    public Optional<Group> findByDynamicSource(MemberAttributeDef source) {
+        return springDataRepo.findByDynamicSource(source);
     }
 
     @Override
