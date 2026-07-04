@@ -74,7 +74,7 @@ public class EventQueryService {
                 .toList();
 
         List<GroupSummaryDto> groups = groupQueryService.getAllGroups(bandId).stream()
-                .map(g -> new GroupSummaryDto(g.id(), g.name(), g.description(), g.memberCount()))
+                .map(g -> new GroupSummaryDto(g.id(), g.name(), g.description(), g.memberCount(), g.dynamic()))
                 .toList();
 
         // Calculate instrument summary from confirmed participants

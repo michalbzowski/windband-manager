@@ -68,4 +68,10 @@ public class Group {
         g.dynamicSource = source;
         return g;
     }
+
+    /** Public: driven by GroupCommandService for dynamic-group rename (cross-package call). */
+    public void renameForDynamicSource(String newName) {
+        this.name = newName;
+        this.description = "Grupa dynamiczna na podstawie atrybutu " + newName;
+    }
 }

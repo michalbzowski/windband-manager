@@ -4,5 +4,6 @@ public record GroupSummaryDto(
         Long id,
         String name,
         String description,
-        int memberCount
+        int memberCount,
+        boolean dynamic
 ) {}

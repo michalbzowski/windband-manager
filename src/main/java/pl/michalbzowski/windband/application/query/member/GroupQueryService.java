@@ -31,7 +31,8 @@ public class GroupQueryService {
                         g.getId(),
                         g.getName(),
                         g.getDescription(),
-                        g.getMemberCount()
+                        g.getMemberCount(),
+                        g.getDynamicSource() != null   // NEW: 5th arg
                 ))
                 .toList();
     }
