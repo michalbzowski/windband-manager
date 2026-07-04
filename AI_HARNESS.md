@@ -57,6 +57,7 @@ Zapewnić, że AI-asystent (lub programista) generuje kod zgodny z architekturą
 - `HX-Redirect + hx-swap="none"` nie działa w Selenium → `driver.get()`.
 - `patch()` tool: NIGDY nie używaj `read_file` content jako `old_string` (prefix `N|`).
 - Po patchowaniu `.py` w kontenerach → czyść `__pyc`.
+- **Thymeleaf `th:attr` gotcha**: when multiple `th:attr` attributes appear on the same element, **only the LAST one is honored** — earlier ones are silently dropped. Always merge into a single comma-separated form: `th:attr="data-a=${val1},data-b=${val2}"`. Symptom: HTMX/SPA behavior breaks with no Thymeleaf error, only Selenium timeout on missing element.
 
 ---
 
