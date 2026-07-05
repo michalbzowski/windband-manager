@@ -26,6 +26,7 @@ public class EventCommandService {
     private final GroupRepository groupRepository;
     private final BandRepository bandRepository;
     private final InstrumentRepository instrumentRepository;
+    private final NotificationCommandService notificationCommandService;
 
     public BandEvent createEvent(CreateEventCommand cmd, Long teamId) {
         Band band = bandRepository.findById(teamId)
@@ -57,6 +58,9 @@ public class EventCommandService {
                 .orElseThrow(() -> new MemberNotFoundException(cmd.getMemberId()));
         event.inviteMember(member);
         eventRepository.save(event);
+
+        // Create invitation record for automated notifications
+        notificationCommandService.createInvitation(cmd.getEventId(), cmd.getMemberId());
     }
 
     public void recordResponse(RecordResponseCommand cmd) {
@@ -168,6 +172,9 @@ public class EventCommandService {
             }
         }
         eventRepository.save(event);
+
+        // Create invitation records for all newly invited members
+        notificationCommandService.createInvitationsForEvent(cmd.getEventId());
     }
 
     public void updateParticipationInstrument(Long eventId, Long memberId, Long instrumentId) {
