@@ -75,6 +75,14 @@ public class BrevoApiChannel implements Channel {
         }
 
         try {
+            // Log egress IP for debugging
+            try {
+                String egressIp = restTemplate.getForObject("https://api.ipify.org", String.class);
+                System.out.println("[BrevoApiChannel] Egress IP: " + egressIp);
+            } catch (Exception ipEx) {
+                System.out.println("[BrevoApiChannel] Could not detect egress IP: " + ipEx.getMessage());
+            }
+
             String htmlContent = buildEmailHtml(invitation, event, member);
 
             ObjectNode body = objectMapper.createObjectNode();
