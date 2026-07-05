@@ -7,6 +7,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.oauth2.core.oidc.user.OidcUser;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.client.RestTemplate;
 import pl.michalbzowski.windband.adapter.in.security.WindbandOidcUser;
 import pl.michalbzowski.windband.application.command.event.*;
 import pl.michalbzowski.windband.application.query.event.EventQueryService;
@@ -25,6 +26,7 @@ public class EventController {
     private final EventQueryService queryService;
     private final TeamQueryService teamQueryService;
     private final NotificationSender notificationSender;
+    private final RestTemplate restTemplate;
 
     @GetMapping
     public List<BandEvent> getAllEvents(@AuthenticationPrincipal OidcUser oidcUser, HttpSession session) {
@@ -126,6 +128,16 @@ public class EventController {
     public ResponseEntity<Map<String, Integer>> sendInvitationsToAll(@PathVariable Long id) {
         int sent = notificationSender.sendToAll(id);
         return ResponseEntity.ok(Map.of("sent", sent));
+    }
+
+    @GetMapping("/debug/ip")
+    public ResponseEntity<Map<String, String>> debugIp() {
+        try {
+            String ip = restTemplate.getForObject("https://api.ipify.org", String.class);
+            return ResponseEntity.ok(Map.of("ip", ip != null ? ip : "unknown"));
+        } catch (Exception e) {
+            return ResponseEntity.ok(Map.of("error", e.getMessage()));
+        }
     }
 
     private Long resolveActiveTeamId(OidcUser oidcUser, HttpSession session) {
