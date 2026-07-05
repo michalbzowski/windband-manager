@@ -56,6 +56,12 @@
         <button class="outline" id="invite-btn">Zaproś</button>
     </div>
 
+    <h3>📧 Wyślij zaproszenia</h3>
+    <div style="display:flex; gap:0.5rem; margin-bottom:1rem; align-items:center;">
+        <button class="primary" id="send-all-btn">📧 Wyślij do wszystkich</button>
+        <span id="send-all-result" style="font-size:0.9rem;"></span>
+    </div>
+
     <h3>Podsumowanie - ile osób gra na każdym instrumencie</h3>
 <div style="display: flex; flex-wrap: wrap; gap: 1rem; margin-bottom: 1rem;">
     <div th:each="inst : ${event.instrumentSummary}" 
@@ -84,6 +90,8 @@
                 <th>Członek</th>
                 <th>Instrument</th>
                 <th>Odpowiedź</th>
+                <th>Status wysyłki</th>
+                <th>Akcja</th>
                 <th th:if="${event.paymentType == 'PAID_SPLIT'}">Wypłata</th>
                 <th th:if="${event.paymentType == 'PAID_SPLIT'}">Status wypłaty</th>
             </tr>
@@ -117,6 +125,25 @@
                         <option value="LATER">⏳ Dam znać później</option>
                         <option value="NO_RESPONSE">❓ Brak odpowiedzi</option>
                     </select>
+                </td>
+                <td data-label="Status wysyłki">
+                    <span class="invitation-status" th:data-member-id="${p.memberId}" th:data-status="${p.invitationStatus}">
+                        <span th:if="${p.invitationStatus == 'NOT_SENT'}" style="color:var(--pico-muted-color);">📭 Nie wysłano</span>
+                        <span th:if="${p.invitationStatus == 'QUEUED'}" style="color:var(--pico-primary);">⏳ W kolejce</span>
+                        <span th:if="${p.invitationStatus == 'SENT'}" style="color:#2fb344;">✅ Wysłano</span>
+                        <span th:if="${p.invitationStatus == 'FAILED'}" style="color:#dc3545;">❌ Błąd wysyłki</span>
+                    </span>
+                </td>
+                <td data-label="Akcja">
+                    <button class="outline send-btn"
+                            th:data-member-id="${p.memberId}"
+                            th:data-event-id="${event.id}"
+                            th:data-status="${p.invitationStatus}"
+                            th:data-has-email="${p.memberEmail != null and !p.memberEmail.isEmpty()}"
+                            th:title="${p.memberEmail != null and !p.memberEmail.isEmpty()} ? 'Wyślij zaproszenie na ' + ${p.memberEmail} : 'Brak adresu email'"
+                            th:disabled="${p.invitationStatus == 'SENT' or p.memberEmail == null or p.memberEmail.isEmpty()}">
+                        📧 Wyślij
+                    </button>
                 </td>
                 <td th:if="${event.paymentType == 'PAID_SPLIT'}"
                     class="payout-amount"
@@ -449,9 +476,65 @@
                 } else {
                     alert('Nie udało się usunąć wydarzenia');
                 }
-            }).catch(function(err) { console.error('Invite error:', err); });
+            }).catch(function(err) { console.error('Delete error:', err); });
         }
     });
+
+    // Send invitation to single member
+    document.querySelectorAll('.send-btn').forEach(function(btn) {
+        btn.addEventListener('click', function() {
+            var eid = this.dataset.eventId;
+            var mid = this.dataset.memberId;
+            var status = this.dataset.status;
+            
+            // Don't send if already sent
+            if (status === 'SENT') return;
+            
+            fetchWithToast('/api/events/' + eid + '/send/' + mid, {
+                toastMessage: 'Wysłano zaproszenie',
+                method: 'POST'
+            }).then(function(response) {
+                if (response.ok) {
+                    // Reload the event detail page to show updated status
+                    htmx.ajax('GET', '/events/' + eid, {target: '#events-content', swap: 'outerHTML transition:true'});
+                }
+            }).catch(function(err) { console.error('Send error:', err); });
+        });
+    });
+
+    // Send invitations to all members
+    var sendAllBtn = document.getElementById('send-all-btn');
+    if (sendAllBtn) {
+        sendAllBtn.addEventListener('click', function() {
+            var eid = document.getElementById('events-content').dataset.eventId;
+            var resultSpan = document.getElementById('send-all-result');
+            
+            this.disabled = true;
+            resultSpan.textContent = 'Wysyłanie...';
+            
+            fetchWithToast('/api/events/' + eid + '/send-all', {
+                toastMessage: 'Wysłano zaproszenia',
+                method: 'POST'
+            }).then(function(response) {
+                if (response.ok) {
+                    response.json().then(function(data) {
+                        resultSpan.textContent = '✅ Wysłano ' + data.sent + ' zaproszeń';
+                    });
+                    // Reload to show updated statuses
+                    setTimeout(function() {
+                        htmx.ajax('GET', '/events/' + eid, {target: '#events-content', swap: 'outerHTML transition:true'});
+                    }, 1000);
+                } else {
+                    resultSpan.textContent = '❌ Błąd wysyłki';
+                    sendAllBtn.disabled = false;
+                }
+            }).catch(function(err) {
+                console.error('Send all error:', err);
+                resultSpan.textContent = '❌ Błąd wysyłki';
+                sendAllBtn.disabled = false;
+            });
+        });
+    }
 </script>
 <script>
 // Sticky stats bar - runs after main script

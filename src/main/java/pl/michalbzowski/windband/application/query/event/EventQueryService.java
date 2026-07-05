@@ -10,7 +10,9 @@ import pl.michalbzowski.windband.application.dto.EventDetailDto.ParticipationDto
 import pl.michalbzowski.windband.application.dto.GroupSummaryDto;
 import pl.michalbzowski.windband.application.query.member.GroupQueryService;
 import pl.michalbzowski.windband.domain.event.BandEvent;
+import pl.michalbzowski.windband.domain.event.EventInvitationRepository;
 import pl.michalbzowski.windband.domain.event.EventRepository;
+import pl.michalbzowski.windband.domain.event.NotificationStatus;
 import pl.michalbzowski.windband.domain.member.InstrumentRepository;
 
 import java.time.LocalDate;
@@ -25,12 +27,15 @@ public class EventQueryService {
     private final EventRepository eventRepository;
     private final GroupQueryService groupQueryService;
     private final InstrumentRepository instrumentRepository;
+    private final EventInvitationRepository invitationRepository;
 
     public EventQueryService(EventRepository eventRepository, GroupQueryService groupQueryService, 
-                             InstrumentRepository instrumentRepository) {
+                             InstrumentRepository instrumentRepository,
+                             EventInvitationRepository invitationRepository) {
         this.eventRepository = eventRepository;
         this.groupQueryService = groupQueryService;
         this.instrumentRepository = instrumentRepository;
+        this.invitationRepository = invitationRepository;
     }
 
     public BandEvent getEventById(Long id) {
@@ -41,17 +46,38 @@ public class EventQueryService {
     public EventDetailDto getEventDetailById(Long id, Long bandId) {
         BandEvent event = eventRepository.findById(id)
                 .orElseThrow(() -> new EventNotFoundException(id));
+
+        // Load invitation statuses for this event
+        var invitations = invitationRepository.findByEventId(id);
+        var invitationStatusByMember = new java.util.HashMap<Long, String>();
+        var memberHasEmail = new java.util.HashMap<Long, Boolean>();
+        for (var inv : invitations) {
+            invitationStatusByMember.put(inv.getMember().getId(), inv.getStatus().name());
+            memberHasEmail.put(inv.getMember().getId(), inv.getMember().getEmail() != null);
+        }
+
         List<ParticipationDto> participationDtos = event.getParticipations().stream()
-                .map(p -> new ParticipationDto(
-                        p.getId(),
-                        p.getMember().getId(),
-                        p.getMember().getFirstName() + " " + p.getMember().getLastName(),
-                        p.getInstrument() != null ? p.getInstrument().getName()
-                            : p.getMember().getPrimaryInstrument().map(i -> i.getName()).orElse(null),
-                        p.getResponse().name(),
-                        p.getPaymentAmount(),
-                        p.getPaymentStatus().name()
-                ))
+                .map(p -> {
+                    Long memberId = p.getMember().getId();
+                    String invStatus = invitationStatusByMember.getOrDefault(memberId, "NOT_SENT");
+                    boolean hasEmail = p.getMember().getEmail() != null && !p.getMember().getEmail().isBlank();
+                    // If member has no email, mark as FAILED (can't send)
+                    if (!hasEmail && "NOT_SENT".equals(invStatus)) {
+                        invStatus = "FAILED";
+                    }
+                    return new ParticipationDto(
+                            p.getId(),
+                            memberId,
+                            p.getMember().getFirstName() + " " + p.getMember().getLastName(),
+                            p.getMember().getEmail(),
+                            p.getInstrument() != null ? p.getInstrument().getName()
+                                : p.getMember().getPrimaryInstrument().map(i -> i.getName()).orElse(null),
+                            p.getResponse().name(),
+                            p.getPaymentAmount(),
+                            p.getPaymentStatus().name(),
+                            invStatus
+                    );
+                })
                 .toList();
 
         // Build instrument priority map (lower number = higher priority)

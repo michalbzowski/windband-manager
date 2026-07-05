@@ -67,7 +67,8 @@ public class TestSecurityConfig {
                                 "/images/**",
                                 "/webjars/**",
                                 "/favicon.ico",
-                                "/error"
+                                "/error",
+                                "/public/**"
                         ).permitAll()
                         .anyRequest().authenticated()
                 )

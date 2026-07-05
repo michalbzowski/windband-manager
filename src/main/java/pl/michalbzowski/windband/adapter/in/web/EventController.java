@@ -24,6 +24,7 @@ public class EventController {
     private final EventCommandService commandService;
     private final EventQueryService queryService;
     private final TeamQueryService teamQueryService;
+    private final NotificationSender notificationSender;
 
     @GetMapping
     public List<BandEvent> getAllEvents(@AuthenticationPrincipal OidcUser oidcUser, HttpSession session) {
@@ -112,6 +113,19 @@ public class EventController {
         Long instrumentId = body.get("instrumentId");
         commandService.updateParticipationInstrument(id, memberId, instrumentId);
         return ResponseEntity.ok().build();
+    }
+
+    @PostMapping("/{id}/send/{memberId}")
+    public ResponseEntity<Void> sendInvitationToMember(@PathVariable Long id,
+                                                       @PathVariable Long memberId) {
+        notificationSender.sendToMember(id, memberId);
+        return ResponseEntity.ok().build();
+    }
+
+    @PostMapping("/{id}/send-all")
+    public ResponseEntity<Map<String, Integer>> sendInvitationsToAll(@PathVariable Long id) {
+        int sent = notificationSender.sendToAll(id);
+        return ResponseEntity.ok(Map.of("sent", sent));
     }
 
     private Long resolveActiveTeamId(OidcUser oidcUser, HttpSession session) {

@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="pl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title th:text="${event.eventName} + ' — Zaproszenie'">Zaproszenie na wydarzenie</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.min.css">
+    <style>
+        body {
+            display: flex;
+            justify-content: center;
+            align-items: flex-start;
+            min-height: 100vh;
+            padding: 1rem;
+            background: var(--pico-background-color);
+        }
+        main {
+            max-width: 600px;
+            width: 100%;
+            margin-top: 2rem;
+        }
+        .response-btn {
+            font-size: 1.1rem;
+            padding: 1rem 1.5rem;
+            margin: 0.25rem;
+            flex: 1;
+        }
+        .response-buttons {
+            display: flex;
+            gap: 0.5rem;
+            flex-wrap: wrap;
+            justify-content: center;
+            margin: 1.5rem 0;
+        }
+        .response-confirmed {
+            background: var(--pico-ins-color);
+            color: white;
+            padding: 1rem;
+            border-radius: 8px;
+            text-align: center;
+            margin: 1rem 0;
+            font-size: 1.2rem;
+            font-weight: bold;
+        }
+        .response-display {
+            text-align: center;
+            padding: 1rem;
+            font-size: 1.3rem;
+            margin: 1rem 0;
+            border: 2px solid var(--pico-primary);
+            border-radius: 8px;
+            background: var(--pico-card-background-color);
+        }
+        .member-info {
+            background: var(--pico-card-background-color);
+            border: 1px solid var(--pico-muted-border-color);
+            border-radius: 8px;
+            padding: 1rem;
+            margin: 1rem 0;
+        }
+        .member-info h4 {
+            margin-top: 0;
+        }
+        .instrument-tag {
+            display: inline-block;
+            background: var(--pico-primary);
+            color: white;
+            padding: 0.25rem 0.75rem;
+            border-radius: 4px;
+            font-weight: bold;
+        }
+        .success-banner {
+            background: #2fb344;
+            color: white;
+            padding: 1rem;
+            border-radius: 8px;
+            text-align: center;
+            margin: 1rem 0;
+            font-size: 1.1rem;
+        }
+        .payment-info {
+            font-size: 0.95rem;
+            color: var(--pico-muted-color);
+        }
+        footer {
+            text-align: center;
+            margin-top: 2rem;
+            color: var(--pico-muted-color);
+            font-size: 0.85rem;
+        }
+    </style>
+</head>
+<body>
+    <main>
+        <!-- Success banner after submitting response -->
+        <div class="success-banner" th:if="${responseSubmitted}">
+            ✅ Dziękujemy! Twoja odpowiedź została zapisana.<br>
+            <strong th:text="'Wybrana odpowiedź: ' + ${responseLabel}"></strong>
+        </div>
+
+        <!-- Event header -->
+        <article>
+            <header>
+                <h2 th:text="${event.eventName}">Nazwa wydarzenia</h2>
+            </header>
+
+            <p>
+                <strong>📅 Data:</strong>
+                <span th:text="${#temporals.format(event.eventDate, 'dd.MM.yyyy')}">01.01.2025</span>
+            </p>
+            <p th:if="${event.eventTime}">
+                <strong>🕐 Godzina:</strong>
+                <span th:text="${#temporals.format(event.eventTime, 'HH:mm')}">18:00</span>
+            </p>
+            <p th:if="${event.location}">
+                <strong>📍 Miejsce:</strong>
+                <span th:text="${event.location}">Rynek</span>
+            </p>
+            <p>
+                <strong>🎭 Typ:</strong>
+                <span th:text="${event.eventType}">CONCERT</span>
+            </p>
+            <p th:text="${event.paymentTypeDisplay}">💰 Granie bezpłatne</p>
+            <p th:if="${event.paymentAmount != null and event.paymentType != 'FREE'}"
+               th:text="'Kwota: ' + ${#numbers.formatDecimal(event.paymentAmount, 1, 2)} + ' PLN'">
+                Kwota: 500.00 PLN
+            </p>
+            <p th:if="${event.notes}" th:text="${event.notes}">Notatki</p>
+        </article>
+
+        <!-- Member info (verification) -->
+        <div class="member-info">
+            <h4>👤 Twoje dane</h4>
+            <p><strong>Imię i nazwisko:</strong> <span th:text="${event.memberName}">Jan Kowalski</span></p>
+            <p><strong>Email:</strong> <span th:text="${event.memberEmail}">jan@example.com</span></p>
+            <p th:if="${event.instrumentName}">
+                <strong>Twój instrument:</strong>
+                <span class="instrument-tag" th:text="${event.instrumentName}">Trąbka</span>
+            </p>
+            <p th:unless="${event.instrumentName}">
+                <strong>Twój instrument:</strong> — (nie określono)
+            </p>
+        </div>
+
+        <!-- Current response display -->
+        <div th:if="${event.alreadyResponded}" class="response-display">
+            <strong>Twoja obecna odpowiedź:</strong><br>
+            <span th:if="${event.currentResponse == 'CONFIRMED'}" style="font-size:1.5rem;">✅ Będę!</span>
+            <span th:if="${event.currentResponse == 'DECLINED'}" style="font-size:1.5rem;">❌ Nie będę</span>
+            <span th:if="${event.currentResponse == 'LATER'}" style="font-size:1.5rem;">⏳ Dam znać później</span>
+            <br>
+            <small>Możesz zmienić swoją odpowiedź poniżej.</small>
+        </div>
+
+        <!-- Response buttons -->
+        <h3 style="text-align:center;">Czy będziesz na wydarzeniu?</h3>
+        <div class="response-buttons">
+            <form th:action="@{/public/events/{token}/response(token=${event.token})}"
+                  method="post" style="display:inline;">
+                <input type="hidden" name="response" value="CONFIRMED">
+                <button type="submit" class="primary response-btn">✅ Będę</button>
+            </form>
+            <form th:action="@{/public/events/{token}/response(token=${event.token})}"
+                  method="post" style="display:inline;">
+                <input type="hidden" name="response" value="DECLINED">
+                <button type="submit" class="secondary response-btn">❌ Nie będę</button>
+            </form>
+            <form th:action="@{/public/events/{token}/response(token=${event.token})}"
+                  method="post" style="display:inline;">
+                <input type="hidden" name="response" value="LATER">
+                <button type="submit" class="outline response-btn">⏳ Dam znać później</button>
+            </form>
+        </div>
+
+        <footer>
+            <p>Wiadomość wygenerowana przez system zarządzania zespołem.</p>
+        </footer>
+    </main>
+</body>
+</html>

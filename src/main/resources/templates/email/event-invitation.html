@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="pl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+</head>
+<body style="margin:0; padding:0; background-color:#f4f4f4; font-family: Arial, Helvetica, sans-serif;">
+    <table role="presentation" style="width:100%; max-width:600px; margin:0 auto; background-color:#ffffff; border-collapse:collapse;">
+        <!-- Header -->
+        <tr>
+            <td style="padding:2rem; background-color:#1a73e8; color:white; text-align:center;">
+                <h1 style="margin:0; font-size:1.5rem;">🎪 Zaproszenie na wydarzenie</h1>
+            </td>
+        </tr>
+
+        <!-- Event details -->
+        <tr>
+            <td style="padding:2rem;">
+                <h2 style="margin:0 0 1rem 0; color:#1a73e8;" th:text="${eventName}">Nazwa wydarzenia</h2>
+
+                <table role="presentation" style="width:100%; border-collapse:collapse;">
+                    <tr>
+                        <td style="padding:0.5rem 0; color:#666;">📅 Data:</td>
+                        <td style="padding:0.5rem 0; font-weight:bold;" th:text="${eventDate}">01.01.2025</td>
+                    </tr>
+                    <tr>
+                        <td style="padding:0.5rem 0; color:#666;">🕐 Godzina:</td>
+                        <td style="padding:0.5rem 0; font-weight:bold;" th:text="${eventTime} ?: '—'">18:00</td>
+                    </tr>
+                    <tr>
+                        <td style="padding:0.5rem 0; color:#666;">📍 Miejsce:</td>
+                        <td style="padding:0.5rem 0; font-weight:bold;" th:text="${eventLocation} ?: '—'">Rynek</td>
+                    </tr>
+                    <tr>
+                        <td style="padding:0.5rem 0; color:#666;">🎭 Typ:</td>
+                        <td style="padding:0.5rem 0; font-weight:bold;" th:text="${eventType}">CONCERT</td>
+                    </tr>
+                    <tr>
+                        <td style="padding:0.5rem 0; color:#666;">💰 Płatność:</td>
+                        <td style="padding:0.5rem 0; font-weight:bold;" th:text="${paymentTypeDisplay}">Bezpłatne</td>
+                    </tr>
+                    <tr th:if="${paymentAmount != null and paymentType != 'FREE'}">
+                        <td style="padding:0.5rem 0; color:#666;">Kwota:</td>
+                        <td style="padding:0.5rem 0; font-weight:bold;" th:text="${paymentAmount} + ' PLN'">500 PLN</td>
+                    </tr>
+                </table>
+
+                <!-- Notes -->
+                <div th:if="${notes}" style="margin:1rem 0; padding:1rem; background-color:#fff3cd; border-radius:4px;">
+                    <strong>📝 Dodatkowe informacje:</strong><br>
+                    <span th:text="${notes}">Notatki</span>
+                </div>
+
+                <!-- Recipient info -->
+                <div style="margin:1.5rem 0; padding:1rem; background-color:#f0f8ff; border-radius:4px; border:1px solid #cce5ff;">
+                    <strong>👤 Zaproszenie dla:</strong><br>
+                    <span th:text="${memberName}">Jan Kowalski</span><br>
+                    <span style="color:#666; font-size:0.9rem;" th:text="${memberEmail}">jan@example.com</span>
+                </div>
+
+                <!-- Instrument (tag) -->
+                <div th:if="${instrumentName}" style="margin:1rem 0; padding:0.75rem; background-color:#e8f5e9; border-radius:4px; text-align:center;">
+                    <strong>Twój instrument:</strong>
+                    <span style="font-size:1.1rem; font-weight:bold; color:#2e7d32;" th:text="${instrumentName}">Trąbka</span>
+                </div>
+            </td>
+        </tr>
+
+        <!-- Response buttons -->
+        <tr>
+            <td style="padding:1rem 2rem 2rem; text-align:center;">
+                <p style="font-size:1.1rem; font-weight:bold; margin-bottom:1.5rem;">Czy będziesz na wydarzeniu?</p>
+
+                <table role="presentation" style="width:100%; border-collapse:collapse;">
+                    <tr>
+                        <td style="padding:0.25rem; text-align:center;">
+                            <a th:href="${confirmUrl}"
+                               style="display:block; padding:1rem; background-color:#2fb344; color:white; text-decoration:none; border-radius:6px; font-size:1rem; font-weight:bold;">
+                                ✅ Będę
+                            </a>
+                        </td>
+                        <td style="padding:0.25rem; text-align:center;">
+                            <a th:href="${declineUrl}"
+                               style="display:block; padding:1rem; background-color:#dc3545; color:white; text-decoration:none; border-radius:6px; font-size:1rem; font-weight:bold;">
+                                ❌ Nie będę
+                            </a>
+                        </td>
+                        <td style="padding:0.25rem; text-align:center;">
+                            <a th:href="${laterUrl}"
+                               style="display:block; padding:1rem; background-color:#6c757d; color:white; text-decoration:none; border-radius:6px; font-size:1rem; font-weight:bold;">
+                                ⏳ Dam znać później
+                            </a>
+                        </td>
+                    </tr>
+                </table>
+
+                <p style="margin-top:1.5rem; font-size:0.85rem; color:#999;">
+                    <a th:href="${eventUrl}" style="color:#1a73e8;">Kliknij tutaj</a>, aby zobaczyć więcej szczegółów w aplikacji.
+                </p>
+            </td>
+        </tr>
+
+        <!-- Footer -->
+        <tr>
+            <td style="padding:1.5rem; background-color:#f8f9fa; text-align:center; font-size:0.8rem; color:#999;">
+                <p style="margin:0;">Wiadomość wygenerowana automatycznie przez system zarządzania zespołem.</p>
+                <p style="margin:0.5rem 0 0;">Nie odpowiadaj na tę wiadomość.</p>
+            </td>
+        </tr>
+    </table>
+</body>
+</html>

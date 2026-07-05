@@ -4,6 +4,8 @@ import jakarta.persistence.*;
 import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
+import org.hibernate.annotations.OnDelete;
+import org.hibernate.annotations.OnDeleteAction;
 import pl.michalbzowski.windband.domain.member.Member;
 
 import java.time.LocalDateTime;
@@ -25,10 +27,12 @@ public class EventInvitation {
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "event_id", nullable = false)
+    @OnDelete(action = OnDeleteAction.CASCADE)
     private BandEvent bandEvent;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "member_id", nullable = false)
+    @OnDelete(action = OnDeleteAction.CASCADE)
     private Member member;
 
     @Column(nullable = false, length = 36)

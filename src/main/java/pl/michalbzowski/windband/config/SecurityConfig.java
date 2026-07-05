@@ -105,7 +105,8 @@ public class SecurityConfig {
                                 "/swagger-ui.html",
                                 "/v3/api-docs/**",
                                 "/api/auth/build-info",
-                                "/api/auth/debug-dns"
+                                "/api/auth/debug-dns",
+                                "/public/**"
                         ).permitAll()
                         // Team admin endpoints
                         .requestMatchers("/api/teams/*/admin/**").hasRole("ADMIN")

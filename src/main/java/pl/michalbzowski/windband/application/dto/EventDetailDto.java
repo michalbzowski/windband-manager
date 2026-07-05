@@ -27,10 +27,12 @@ public record EventDetailDto(
             Long id,
             Long memberId,
             String memberName,
+            String memberEmail,
             String instrumentName,
             String response,
             BigDecimal paymentAmount,
-            String paymentStatus
+            String paymentStatus,
+            String invitationStatus
     ) {}
 
     public record InstrumentCountDto(
