@@ -25,10 +25,10 @@ spring:
     cache: false
 
   mail:
-    host: ${MAIL_HOST}
-    port: ${MAIL_PORT}
-    username: ${MAIL_USER}
-    password: ${MAIL_PASS}
+    host: ${MAIL_HOST:smtp-relay.brevo.com}
+    port: ${MAIL_PORT:587}
+    username: ${MAIL_USER:}
+    password: ${MAIL_PASS:}
     properties:
       mail:
         smtp:
@@ -84,3 +84,6 @@ superset:
   public-url: ${SUPERSET_PUBLIC_URL:https://superset.michalbzowski.pl}
   username: ${SUPERSET_USERNAME:admin}
   password: ${SUPERSET_PASSWORD:admin}
+
+brevo:
+  api-key: ${BREVO_API_KEY:}
