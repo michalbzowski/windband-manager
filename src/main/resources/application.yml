@@ -71,6 +71,7 @@ logging:
 
 app:
   base-url: ${BASE_URL}
+  mail-from: ${MAIL_FROM:windband@localhost}
   keycloak:
     url: https://${KEYCLOAK_PUBLIC_URL}
     realm: ${KEYCLOAK_REALM}

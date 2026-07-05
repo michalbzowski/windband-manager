@@ -23,13 +23,16 @@ public class EmailChannel implements Channel {
     private final JavaMailSender mailSender;
     private final SpringTemplateEngine templateEngine;
     private final String baseUrl;
+    private final String fromAddress;
 
     public EmailChannel(JavaMailSender mailSender,
                         SpringTemplateEngine templateEngine,
-                        @Value("${app.base-url:http://localhost:8080}") String baseUrl) {
+                        @Value("${app.base-url:http://localhost:8080}") String baseUrl,
+                        @Value("${app.mail-from:windband@localhost}") String fromAddress) {
         this.mailSender = mailSender;
         this.templateEngine = templateEngine;
         this.baseUrl = baseUrl;
+        this.fromAddress = fromAddress;
     }
 
     @Override
@@ -92,12 +95,17 @@ public class EmailChannel implements Channel {
             MimeMessage message = mailSender.createMimeMessage();
             MimeMessageHelper helper = new MimeMessageHelper(message, true, "UTF-8");
             helper.setTo(member.getEmail());
+            helper.setFrom(fromAddress);
             helper.setSubject("Zaproszenie: " + event.getName() + " — "
                     + event.getDate().format(dateFormatter));
             helper.setText(htmlContent, true);
 
             mailSender.send(message);
         } catch (Exception e) {
+            System.err.println("[EmailChannel] SMTP error for " + member.getEmail() + ": " + e.getMessage());
+            if (e.getCause() != null) {
+                System.err.println("[EmailChannel] Cause: " + e.getCause().getMessage());
+            }
             throw new ChannelException("Failed to send email to " + member.getEmail(), e);
         }
     }
