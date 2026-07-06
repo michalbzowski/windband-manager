@@ -1,9 +1,9 @@
 <div id="events-content">
     <h2>🎪 Edytuj wydarzenie</h2>
 
-    <form id="event-edit-form">
+    <form id="event-edit-form" onsubmit="return handleEditFormSubmit(event)">
 
-        <input type="hidden" name="id" th:value="${event.id}">
+         <input type="hidden" name="id" th:value="${event.id}">
 
         <label>
             Nazwa wydarzenia *
@@ -84,46 +84,42 @@
         </div>
     </form>
     <script th:inline="javascript">
-    // Guard: prevent duplicate event listeners when form is reloaded via htmx
-    if (!window._eventEditFormHandlerAttached) {
-        window._eventEditFormHandlerAttached = true;
-        console.log('[EDIT FORM] Attaching submit handler');
-        document.body.addEventListener('submit', function(e) {
-            console.log('[EDIT FORM] Submit event fired, target:', e.target.tagName, e.target.id);
-            if (e.target.tagName === 'FORM' && e.target.id === 'event-edit-form') {
-                e.preventDefault();
-                var form = e.target;
-                var formData = new FormData(form);
-                var data = {};
-                formData.forEach(function(value, key) { data[key] = value; });
-                console.log('[EDIT FORM] Form data collected:', JSON.stringify(data));
+    function handleEditFormSubmit(event) {
+        console.log('[EDIT FORM] onsubmit fired');
+        event.preventDefault();
+        var form = document.getElementById('event-edit-form');
+        var formData = new FormData(form);
+        var data = {};
+        formData.forEach(function(value, key) { data[key] = value; });
+        console.log('[EDIT FORM] Form data:', JSON.stringify(data));
 
-                // Convert id to number
-                data.id = parseInt(data.id);
-                if (data.paymentAmount) {
-                    data.paymentAmount = parseFloat(data.paymentAmount);
-                } else {
-                    data.paymentAmount = null;
-                }
-                console.log('[EDIT FORM] Sending PUT with:', JSON.stringify(data));
+        data.id = parseInt(data.id);
+        if (data.paymentAmount) {
+            data.paymentAmount = parseFloat(data.paymentAmount);
+        } else {
+            data.paymentAmount = null;
+        }
+        console.log('[EDIT FORM] Sending PUT:', JSON.stringify(data));
 
-                fetch('/api/events/' + data.id, {
-                    method: 'PUT',
-                    headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify(data)
-                }).then(function(res) {
-                    console.log('[EDIT FORM] PUT response status:', res.status);
-                    if (res.ok) {
-                        htmx.ajax('GET', '/events/' + data.id, {target: '#events-content', swap: 'innerHTML transition:true'});
-                    } else {
-                        alert('Nie udało się zapisać zmian');
-                    }
-                }).catch(function(err) {
-                    console.error('[EDIT FORM] Fetch error:', err);
-                    alert('Błąd sieci: ' + err.message);
+        fetch('/api/events/' + data.id, {
+            method: 'PUT',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify(data)
+        }).then(function(res) {
+            console.log('[EDIT FORM] PUT status:', res.status);
+            if (res.ok) {
+                htmx.ajax('GET', '/events/' + data.id, {target: '#events-content', swap: 'innerHTML transition:true'});
+            } else {
+                return res.text().then(function(t) {
+                    console.error('[EDIT FORM] PUT error body:', t);
+                    alert('Nie udało się zapisać zmian: ' + res.status);
                 });
             }
+        }).catch(function(err) {
+            console.error('[EDIT FORM] Fetch error:', err);
+            alert('Błąd sieci: ' + err.message);
         });
+        return false;
     }
-</script>
+    </script>
 </div>
