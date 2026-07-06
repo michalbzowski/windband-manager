@@ -1,9 +1,7 @@
 <div id="events-content">
     <h2>🎪 Edytuj wydarzenie</h2>
 
-    <form id="event-edit-form"
-          hx-target="#events-content"
-          hx-swap="innerHTML transition:true">
+    <form id="event-edit-form">
 
         <input type="hidden" name="id" th:value="${event.id}">
 
@@ -91,8 +89,8 @@
         window._eventEditFormHandlerAttached = true;
         console.log('[EDIT FORM] Attaching submit handler');
         document.body.addEventListener('submit', function(e) {
-            console.log('[EDIT FORM] Submit event fired, target.id:', e.target.id);
-            if (e.target.id === 'event-edit-form') {
+            console.log('[EDIT FORM] Submit event fired, target:', e.target.tagName, e.target.id);
+            if (e.target.tagName === 'FORM' && e.target.id === 'event-edit-form') {
                 e.preventDefault();
                 var form = e.target;
                 var formData = new FormData(form);
