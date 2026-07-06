@@ -82,11 +82,9 @@
                     hx-swap="innerHTML transition:true">Anuluj</button>
         </div>
     </form>
-</div>
-
-<script th:inline="javascript">
-    // Show/hide payment amount field based on payment type
-    (function() {
+    <script th:inline="javascript">
+        // Show/hide payment amount field based on payment type
+        (function() {
         var paymentSelect = document.getElementById('payment-type-select');
         var amountLabel = document.getElementById('payment-amount-label');
         function toggleAmount() {
@@ -129,3 +127,4 @@
         });
     }
 </script>
+</div>

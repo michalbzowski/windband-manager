@@ -79,25 +79,26 @@
 
         <div style="display:flex; gap:0.5rem; margin-top:1rem;">
             <button type="submit" class="primary">Zapisz zmiany</button>
-            <button type="button" class="secondary"
-                    th:attr="hx-get='/events/' + ${event.id}"
-                    hx-target="#events-content"
-                    hx-swap="innerHTML transition:true">Anuluj</button>
+        <button type="button" class="secondary"
+                th:attr="hx-get='/events/' + ${event.id}"
+                hx-target="#events-content"
+                hx-swap="innerHTML transition:true">Anuluj</button>
         </div>
     </form>
-</div>
-
-<script th:inline="javascript">
+    <script th:inline="javascript">
     // Guard: prevent duplicate event listeners when form is reloaded via htmx
     if (!window._eventEditFormHandlerAttached) {
         window._eventEditFormHandlerAttached = true;
+        console.log('[EDIT FORM] Attaching submit handler');
         document.body.addEventListener('submit', function(e) {
+            console.log('[EDIT FORM] Submit event fired, target.id:', e.target.id);
             if (e.target.id === 'event-edit-form') {
                 e.preventDefault();
                 var form = e.target;
                 var formData = new FormData(form);
                 var data = {};
                 formData.forEach(function(value, key) { data[key] = value; });
+                console.log('[EDIT FORM] Form data collected:', JSON.stringify(data));
 
                 // Convert id to number
                 data.id = parseInt(data.id);
@@ -106,19 +107,25 @@
                 } else {
                     data.paymentAmount = null;
                 }
+                console.log('[EDIT FORM] Sending PUT with:', JSON.stringify(data));
 
                 fetch('/api/events/' + data.id, {
                     method: 'PUT',
                     headers: {'Content-Type': 'application/json'},
                     body: JSON.stringify(data)
                 }).then(function(res) {
+                    console.log('[EDIT FORM] PUT response status:', res.status);
                     if (res.ok) {
                         htmx.ajax('GET', '/events/' + data.id, {target: '#events-content', swap: 'innerHTML transition:true'});
                     } else {
                         alert('Nie udało się zapisać zmian');
                     }
+                }).catch(function(err) {
+                    console.error('[EDIT FORM] Fetch error:', err);
+                    alert('Błąd sieci: ' + err.message);
                 });
             }
         });
     }
 </script>
+</div>
