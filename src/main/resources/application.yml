@@ -26,7 +26,7 @@ spring:
 
   mail:
     host: ${MAIL_HOST:smtp-relay.brevo.com}
-    port: ${MAIL_PORT:465}
+    port: ${MAIL_PORT:587}
     username: ${MAIL_USER:}
     password: ${MAIL_PASS:}
     properties:
@@ -34,8 +34,6 @@ spring:
         smtp:
           auth: true
           starttls:
-            enable: false
-          ssl:
             enable: true
 
   security:
@@ -87,5 +85,5 @@ superset:
   username: ${SUPERSET_USERNAME:admin}
   password: ${SUPERSET_PASSWORD:admin}
 
-brevo:
-  api-key: ${BREVO_API_KEY:}
+sendgrid:
+  api-key: ${SENDGRID_API_KEY:}
