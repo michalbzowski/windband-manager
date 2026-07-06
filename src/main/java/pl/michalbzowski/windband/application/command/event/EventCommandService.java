@@ -153,6 +153,10 @@ public class EventCommandService {
         }
         
         eventRepository.save(event);
+
+        // Reset all SENT invitations so previously notified members
+        // get re-sent on next sendToAll — each update unlocks one resend
+        notificationCommandService.resetSentForEvent(cmd.getId());
     }
 
     public void inviteGroup(InviteGroupCommand cmd) {

@@ -132,4 +132,24 @@ public class NotificationCommandService {
     public List<EventInvitation> getInvitationsForEvent(Long eventId) {
         return invitationRepository.findByEventId(eventId);
     }
+
+    /**
+     * Resets all SENT invitations for an event back to NOT_SENT,
+     * allowing them to be re-sent on the next sendToAll.
+     * Only affects invitations in SENT status — FAILED, NOT_SENT, QUEUED are left unchanged.
+     *
+     * @return the number of invitations reset
+     */
+    public int resetSentForEvent(Long eventId) {
+        var invitations = invitationRepository.findByEventId(eventId);
+        int count = 0;
+        for (EventInvitation invitation : invitations) {
+            if (invitation.isSent()) {
+                invitation.markForResend();
+                invitationRepository.save(invitation);
+                count++;
+            }
+        }
+        return count;
+    }
 }

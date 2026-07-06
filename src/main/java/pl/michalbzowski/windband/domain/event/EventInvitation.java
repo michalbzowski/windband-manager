@@ -74,6 +74,19 @@ public class EventInvitation {
         this.sentAt = LocalDateTime.now();
     }
 
+    /**
+     * Resets a SENT invitation back to NOT_SENT, allowing it to be re-sent.
+     * Only works if the invitation was previously sent — no-op otherwise.
+     * Used when an event is updated and previously notified members
+     * should receive an update notification.
+     */
+    public void markForResend() {
+        if (status == NotificationStatus.SENT) {
+            this.status = NotificationStatus.NOT_SENT;
+            this.sentAt = null;
+        }
+    }
+
     public void markFailed() {
         this.status = NotificationStatus.FAILED;
     }
