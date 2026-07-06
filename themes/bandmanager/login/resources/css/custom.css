@@ -1,0 +1,367 @@
+/* Band Manager — Keycloak theme custom styles
+   Built on top of PicoCSS v2, matching the main app's design system.
+   Primary color: #7c3aed (violet/purple)
+   Background: dark gradient (#0f0f1a → #1a1a2e)
+*/
+
+/* ── PicoCSS variable overrides (branding) ────────────────────── */
+:root {
+    --pico-primary: #7c3aed;
+    --pico-primary-rgb: 124, 58, 237;
+    --pico-primary-focus: #6d28d9;
+    --pico-primary-inverse: #ffffff;
+    --pico-primary-background: rgba(124, 58, 237, 0.12);
+    --pico-primary-background-rgb: 124, 58, 237;
+    --pico-primary-border: #6d28d9;
+    --pico-primary-border-rgb: 109, 40, 217;
+
+    --pico-background-color: #0f0f1a;
+    --pico-background-color-rgb: 15, 15, 26;
+    --pico-color: #e2e8f0;
+    --pico-color-rgb: 226, 232, 240;
+
+    --pico-card-background-color: #1a1a2e;
+    --pico-card-background-color-rgb: 26, 26, 46;
+    --pico-card-border-color: rgba(124, 58, 237, 0.25);
+    --pico-card-border-radius: 12px;
+
+    --pico-muted-border-color: rgba(124, 58, 237, 0.15);
+    --pico-muted-border-color-rgb: 124, 58, 237;
+    --pico-muted-color: #94a3b8;
+    --pico-muted-color-rgb: 148, 163, 184;
+
+    --pico-form-element-background-color: #16162a;
+    --pico-form-element-background-color-rgb: 22, 22, 42;
+    --pico-form-element-border-color: rgba(124, 58, 237, 0.4);
+    --pico-form-element-border-color-rgb: 124, 58, 237;
+    --pico-form-element-color: #e2e8f0;
+    --pico-form-element-placeholder-color: #64748b;
+}
+
+/* ── Body: dark gradient background ───────────────────────────── */
+body {
+    background: linear-gradient(135deg, #0f0f1a 0%, #1a1a2e 50%, #0f0f1a 100%);
+    min-height: 100vh;
+    display: flex;
+    align-items: stretch;
+}
+
+/* override PicoCSS body defaults */
+body::before {
+    display: none !important;
+}
+
+/* ── Login card ───────────────────────────────────────────────── */
+.login-card {
+    width: 100%;
+    max-width: 400px;
+    margin: 3rem auto;
+    padding: 2rem 1.5rem;
+    background: var(--pico-card-background-color);
+    border: 1px solid var(--pico-card-border-color);
+    border-radius: var(--pico-card-border-radius);
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+}
+
+/* ── Branding header ──────────────────────────────────────────── */
+.brand-header {
+    text-align: center;
+    margin-bottom: 1.5rem;
+}
+
+.brand-header h1 {
+    color: var(--pico-primary);
+    font-size: 1.75rem;
+    font-weight: 800;
+    margin-bottom: 0.25rem;
+    letter-spacing: -0.02em;
+}
+
+.brand-header .brand-subtitle {
+    color: var(--pico-muted-color);
+    font-size: 0.9rem;
+    margin: 0;
+}
+
+/* ── Section title (h2 inside card) ───────────────────────────── */
+.login-card h2 {
+    color: var(--pico-color);
+    font-size: 1.15rem;
+    font-weight: 700;
+    margin: 0 0 1.25rem;
+    text-align: center;
+}
+
+/* ── Form elements ────────────────────────────────────────────── */
+/* Match the main app's form feel */
+input[type="text"],
+input[type="password"],
+input[type="email"],
+input[type="number"],
+select,
+textarea {
+    background-color: var(--pico-form-element-background-color) !important;
+    border-color: var(--pico-form-element-border-color) !important;
+    color: var(--pico-form-element-color) !important;
+    border-radius: 8px !important;
+    padding: 0.65rem 0.75rem !important;
+    font-size: 0.95rem !important;
+    transition: border-color 0.15s, box-shadow 0.15s !important;
+}
+
+input:focus,
+select:focus,
+textarea:focus {
+    border-color: var(--pico-primary) !important;
+    box-shadow: 0 0 0 3px rgba(124, 58, 237, 0.2) !important;
+    outline: none !important;
+}
+
+input::placeholder,
+textarea::placeholder {
+    color: var(--pico-form-element-placeholder-color) !important;
+}
+
+/* Labels — explicit dark color (same defence-in-depth as app.css) */
+label,
+.pico-label {
+    color: #e2e8f0 !important;
+    font-weight: 600;
+    font-size: 0.9rem;
+    margin-bottom: 0.35rem;
+}
+
+/* ── Buttons ──────────────────────────────────────────────────── */
+/* Primary button: full-width, matching app's purple */
+button.primary,
+input[type="submit"].primary,
+a.primary {
+    background-color: var(--pico-primary) !important;
+    color: var(--pico-primary-inverse) !important;
+    border: 1px solid var(--pico-primary-border) !important;
+    border-radius: 8px !important;
+    padding: 0.7rem 1.25rem !important;
+    font-size: 0.95rem !important;
+    font-weight: 700 !important;
+    cursor: pointer !important;
+    transition: background-color 0.15s, border-color 0.15s, transform 0.1s !important;
+    text-decoration: none !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    gap: 0.4rem !important;
+    width: 100% !important;
+    line-height: 1.4 !important;
+}
+
+button.primary:hover,
+input[type="submit"].primary:hover,
+a.primary:hover {
+    background-color: var(--pico-primary-focus) !important;
+    border-color: var(--pico-primary-focus) !important;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(124, 58, 237, 0.3);
+}
+
+button.primary:active,
+input[type="submit"].primary:active {
+    transform: translateY(0);
+}
+
+/* Secondary / outline button */
+button.secondary,
+a.secondary {
+    background-color: transparent !important;
+    color: var(--pico-primary) !important;
+    border: 1px solid var(--pico-primary-border) !important;
+    border-radius: 8px !important;
+    padding: 0.6rem 1rem !important;
+    font-size: 0.9rem !important;
+    font-weight: 600 !important;
+    cursor: pointer !important;
+    text-decoration: none !important;
+}
+
+button.secondary:hover,
+a.secondary:hover {
+    background-color: var(--pico-primary-background) !important;
+}
+
+/* Disabled state */
+button:disabled,
+button[disabled] {
+    opacity: 0.55 !important;
+    cursor: not-allowed !important;
+    transform: none !important;
+}
+
+/* ── Checkbox ─────────────────────────────────────────────────── */
+input[type="checkbox"] {
+    accent-color: var(--pico-primary) !important;
+    width: 1.1rem !important;
+    height: 1.1rem !important;
+    vertical-align: middle !important;
+    margin-right: 0.4rem !important;
+}
+
+label input[type="checkbox"] {
+    margin-right: 0.4rem;
+}
+
+/* ── Alert / message boxes ────────────────────────────────────── */
+/* Error messages — match the main app's red tone */
+[role="alert"],
+.alert-error,
+.error-msg,
+.kc-form-error {
+    background-color: rgba(239, 68, 68, 0.08) !important;
+    border: 1px solid rgba(239, 68, 68, 0.3) !important;
+    border-radius: 8px !important;
+    padding: 0.75rem 1rem !important;
+    margin-bottom: 1rem !important;
+    color: #fca5a5 !important;
+    font-size: 0.875rem !important;
+    line-height: 1.5 !important;
+}
+
+.alert-error h3,
+.error-msg h3 {
+    color: #fca5a5 !important;
+    margin: 0 0 0.25rem 0 !important;
+    font-size: 0.9rem !important;
+    font-weight: 700 !important;
+}
+
+/* Success messages */
+.alert-success,
+.success-msg {
+    background-color: rgba(34, 197, 94, 0.08) !important;
+    border: 1px solid rgba(34, 197, 94, 0.3) !important;
+    border-radius: 8px !important;
+    padding: 0.75rem 1rem !important;
+    margin-bottom: 1rem !important;
+    color: #86efac !important;
+    font-size: 0.875rem !important;
+}
+
+/* Warning messages */
+.alert-warning,
+.warning-msg {
+    background-color: rgba(234, 179, 8, 0.08) !important;
+    border: 1px solid rgba(234, 179, 8, 0.3) !important;
+    border-radius: 8px !important;
+    padding: 0.75rem 1rem !important;
+    margin-bottom: 1rem !important;
+    color: #fde68a !important;
+    font-size: 0.875rem !important;
+}
+
+/* ── Info callout ─────────────────────────────────────────────── */
+.info-box {
+    background-color: rgba(124, 58, 237, 0.08) !important;
+    border: 1px solid rgba(124, 58, 237, 0.25) !important;
+    border-radius: 8px !important;
+    padding: 0.75rem 1rem !important;
+    margin-bottom: 1rem !important;
+    color: #c4b5fd !important;
+    font-size: 0.875rem !important;
+}
+
+/* ── Links ────────────────────────────────────────────────────── */
+a {
+    color: var(--pico-primary) !important;
+    text-decoration: underline !important;
+    transition: color 0.12s !important;
+}
+
+a:hover {
+    color: var(--pico-primary-focus) !important;
+}
+
+/* ── Separator ────────────────────────────────────────────────── */
+hr {
+    border: none !important;
+    border-top: 1px solid var(--pico-muted-border-color) !important;
+    margin: 1.25rem 0 !important;
+}
+
+/* ── Locale switcher ──────────────────────────────────────────── */
+.locale-selector {
+    text-align: center;
+    margin-top: 1.25rem;
+    padding-top: 1rem;
+    border-top: 1px solid var(--pico-muted-border-color);
+}
+
+.locale-selector a {
+    display: inline-block;
+    padding: 0.3rem 0.75rem;
+    margin: 0.15rem;
+    border-radius: 6px;
+    font-size: 0.85rem;
+    font-weight: 500;
+}
+
+/* ── Footer ───────────────────────────────────────────────────── */
+.login-footer {
+    text-align: center;
+    margin-top: 2rem;
+    padding-top: 1rem;
+    border-top: 1px solid var(--pico-muted-border-color);
+    color: var(--pico-muted-color);
+    font-size: 0.8rem;
+}
+
+/* ── Remember me row ──────────────────────────────────────────── */
+.remember-me-row {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin-bottom: 1rem;
+}
+
+.remember-me-row label {
+    font-weight: 400;
+    font-size: 0.9rem;
+    color: var(--pico-muted-color) !important;
+    cursor: pointer;
+}
+
+/* ── Credential select (OTP device) ───────────────────────────── */
+select {
+    background-color: var(--pico-form-element-background-color) !important;
+    border-color: var(--pico-form-element-border-color) !important;
+    color: var(--pico-form-element-color) !important;
+    border-radius: 8px !important;
+    padding: 0.6rem 0.75rem !important;
+    font-size: 0.95rem !important;
+    cursor: pointer;
+}
+
+/* ── Responsive ───────────────────────────────────────────────── */
+@media (max-width: 480px) {
+    .login-card {
+        margin: 1.5rem 0.75rem;
+        padding: 1.25rem 1rem;
+    }
+
+    .brand-header h1 {
+        font-size: 1.4rem;
+    }
+}
+
+/* ── Animation on load ────────────────────────────────────────── */
+@keyframes card-fade-in {
+    from {
+        opacity: 0;
+        transform: translateY(8px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.login-card {
+    animation: card-fade-in 0.25s ease-out;
+}

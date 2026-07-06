@@ -38,6 +38,9 @@ services:
       KC_HTTP_PORT: 8180
     ports:
       - "8180:8180"
+    volumes:
+      # Motyw Keycloaka — hot-reload w trybie development
+      - ./themes:/opt/keycloak/themes:ro
     healthcheck:
       test: ["CMD-SHELL", "wget -qO- http://localhost:8180/health/ready 2>/dev/null || exit 0"]
       interval: 15s
