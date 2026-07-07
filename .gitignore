@@ -4,4 +4,7 @@
 *.env
 !.env.example
 
-BOOT-INF/
+/BOOT-INF/
+
+# --- Keycloak theme build output ---
+themes/bandmanager/target/

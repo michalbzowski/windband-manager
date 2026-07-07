@@ -1,0 +1,86 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Band Manager — Keycloak Theme JAR
+
+  Budowanie:
+    cd themes/bandmanager
+    mvn clean package
+
+  Wynik: target/bandmanager-keycloak-theme.jar
+  Wdrożenie: wrzuć JAR do $KEYCLOAK_HOME/providers/ i restartuj Keycloaka.
+
+  Plik pom.xml jest niezależny od głównego projektu (bez parent),
+  więc budowanie motywu nie wymaga Spring Boot / Lombok / Docker-java.
+-->
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <groupId>pl.michalbzowski</groupId>
+    <artifactId>bandmanager-keycloak-theme</artifactId>
+    <version>1.0.0-SNAPSHOT</version>
+    <packaging>jar</packaging>
+    <name>Band Manager Keycloak Theme</name>
+    <description>Custom Keycloak login theme for Band Manager — PicoCSS + branding</description>
+
+    <properties>
+        <maven.compiler.source>17</maven.compiler.source>
+        <maven.compiler.target>17</maven.compiler.target>
+        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+    </properties>
+
+    <!-- Brak zależności — to JAR zasobów (FreeMarker + CSS) -->
+
+    <build>
+        <!--
+            Katalog źródłowy: login/ (relatywny do tego pom.xml).
+            Zawiera: theme.properties, *.ftl, resources/css/*
+
+            Wynikowy JAR:
+              themes/bandmanager/login/
+                theme.properties
+                login.ftl
+                login-otp.ftl
+                error.ftl
+                resources/css/pico.min.css
+                resources/css/custom.css
+        -->
+        <resources>
+            <resource>
+                <directory>${project.basedir}/login</directory>
+                <targetPath>themes/bandmanager/login</targetPath>
+                <includes>
+                    <include>**/*</include>
+                </includes>
+            </resource>
+        </resources>
+
+        <plugins>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-jar-plugin</artifactId>
+                <version>3.4.1</version>
+                <configuration>
+                    <finalName>bandmanager-keycloak-theme</finalName>
+                    <!-- Nie dodaj META-INF/MANIFEST.MF — Keycloak nie wymaga -->
+                    <archive>
+                        <addMavenDescriptor>false</addMavenDescriptor>
+                    </archive>
+                </configuration>
+            </plugin>
+
+            <!-- Wyłącz domyślne zasoby (src/main/resources) — nie używamy ich -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-resources-plugin</artifactId>
+                <version>3.3.1</version>
+                <configuration>
+                    <nonFilteredFileExtensions>
+                        <nonFilteredFileExtension>css</nonFilteredFileExtension>
+                    </nonFilteredFileExtensions>
+                </configuration>
+            </plugin>
+        </plugins>
+    </build>
+</project>
