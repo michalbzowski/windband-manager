@@ -40,7 +40,7 @@
                                 <button class="outline small secondary"
                                         th:hx-delete="@{/api/tags/{id}(id=${inst.getId()})}"
                                         hx-confirm="Czy na pewno chcesz usunąć ten tag?"
-                                        hx-on::after-request="htmx.ajax('GET', '/tags/list', {target: '#tags-content', swap: 'innerHTML transition:true'})">Usuń</button>
+                                        hx-on::after-request="if (event.detail.successful) { htmx.ajax('GET', '/tags/list', {target: '#tags-content', swap: 'innerHTML transition:true'}); } else if (event.detail.xhr && event.detail.xhr.status === 409) { showTagDeleteBlockedDialog(event.detail.xhr); }">Usuń</button>
                             </td>
                         </tr>
                     </tbody>
@@ -49,8 +49,71 @@
         </div>
     </main>
 
-        <footer th:replace="~{fragments/layout :: footer}"></footer>
+    <dialog id="tag-delete-blocked-modal" class="app-modal">
+        <div class="app-modal-content">
+            <header class="app-modal-header">
+                <div class="app-modal-header-text">
+                    <strong>Nie można usunąć tagu</strong>
+                    <small id="tag-delete-blocked-subtitle">Tag jest przypisany do członków zespołu</small>
+                </div>
+                <button type="button" class="app-modal-close" aria-label="Zamknij" data-close>×</button>
+            </header>
+            <div class="app-modal-body">
+                <p id="tag-delete-blocked-message"></p>
+                <div id="tag-delete-blocked-members-wrap" style="display:none; margin-top:0.75rem;">
+                    <p><strong>Przypisany do:</strong></p>
+                    <ul id="tag-delete-blocked-members"></ul>
+                </div>
+                <div style="margin-top:1rem; display:flex; justify-content:flex-end;">
+                    <button type="button" class="primary" data-close>OK</button>
+                </div>
+            </div>
+        </div>
+    </dialog>
+
+    <footer th:replace="~{fragments/layout :: footer}"></footer>
     <div th:insert="~{fragments/layout :: toast-container}"></div>
-<div th:insert="~{fragments/layout :: footer-scripts}"></div>
+    <div th:insert="~{fragments/layout :: footer-scripts}"></div>
+
+<script>
+    function showTagDeleteBlockedDialog(xhr) {
+        var payload = {};
+        try {
+            payload = JSON.parse(xhr.responseText || '{}');
+        } catch (e) {
+            payload = {};
+        }
+
+        var modal = document.getElementById('tag-delete-blocked-modal');
+        var message = document.getElementById('tag-delete-blocked-message');
+        var membersWrap = document.getElementById('tag-delete-blocked-members-wrap');
+        var membersList = document.getElementById('tag-delete-blocked-members');
+
+        var instrumentName = payload.instrumentName || 'ten tag';
+        var memberNames = Array.isArray(payload.memberNames) ? payload.memberNames : [];
+
+        message.textContent = memberNames.length > 0
+            ? 'Tag "' + instrumentName + '" jest przypisany do następujących osób:'
+            : 'Tag "' + instrumentName + '" jest przypisany do członka zespołu.';
+
+        membersList.innerHTML = '';
+        if (memberNames.length > 0) {
+            memberNames.forEach(function(name) {
+                var li = document.createElement('li');
+                li.textContent = name;
+                membersList.appendChild(li);
+            });
+            membersWrap.style.display = 'block';
+        } else {
+            membersWrap.style.display = 'none';
+        }
+
+        if (modal && typeof modal.showModal === 'function') {
+            modal.showModal();
+        } else if (modal) {
+            modal.setAttribute('open', '');
+        }
+    }
+</script>
 </body>
 </html>

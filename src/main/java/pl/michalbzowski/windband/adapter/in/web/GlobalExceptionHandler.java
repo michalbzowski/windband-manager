@@ -6,10 +6,12 @@ import org.springframework.web.bind.annotation.ControllerAdvice;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import pl.michalbzowski.windband.application.command.event.EventNotFoundException;
 import pl.michalbzowski.windband.application.command.inventory.InventoryItemNotFoundException;
+import pl.michalbzowski.windband.application.command.member.InstrumentCommandService.InstrumentInUseException;
 import pl.michalbzowski.windband.application.command.member.MemberNotFoundException;
 import pl.michalbzowski.windband.application.command.rehearsal.RehearsalNotFoundException;
 
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.Map;
 
 @ControllerAdvice
@@ -37,6 +39,17 @@ public class GlobalExceptionHandler {
     public ResponseEntity<Map<String, Object>> handleNotFound(InventoryItemNotFoundException ex) {
         return ResponseEntity.status(HttpStatus.NOT_FOUND)
                 .body(errorBody(ex.getMessage()));
+    }
+
+    @ExceptionHandler(InstrumentInUseException.class)
+    public ResponseEntity<Map<String, Object>> handleInstrumentInUse(InstrumentInUseException ex) {
+        return ResponseEntity.status(HttpStatus.CONFLICT)
+                .body(Map.of(
+                        "timestamp", LocalDateTime.now().toString(),
+                        "error", ex.getMessage(),
+                        "instrumentName", ex.getInstrumentName(),
+                        "memberNames", ex.getMemberNames()
+                ));
     }
 
     @ExceptionHandler(IllegalStateException.class)

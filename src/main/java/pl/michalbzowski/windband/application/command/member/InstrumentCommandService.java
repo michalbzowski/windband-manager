@@ -7,9 +7,11 @@ import pl.michalbzowski.windband.domain.band.Band;
 import pl.michalbzowski.windband.domain.band.BandRepository;
 import pl.michalbzowski.windband.domain.member.Instrument;
 import pl.michalbzowski.windband.domain.member.InstrumentRepository;
+import pl.michalbzowski.windband.domain.member.Member;
 import pl.michalbzowski.windband.domain.member.MemberRepository;
 
 import java.util.List;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -71,14 +73,40 @@ public class InstrumentCommandService {
 
     public void deleteInstrument(Long id, Long teamId) {
         Instrument instrument = resolveVisibleInstrument(id, teamId);
-        if (!memberRepository.findByInstrument(instrument).isEmpty()) {
-            throw new IllegalStateException(INSTRUMENT_IN_USE_MESSAGE);
+        List<Member> assignedMembers = memberRepository.findByInstrument(instrument);
+        if (!assignedMembers.isEmpty()) {
+            throw new InstrumentInUseException(instrument.getName(), assignedMembers.stream()
+                    .map(this::formatMemberName)
+                    .collect(Collectors.toList()));
         }
         instrumentRepository.delete(instrument);
     }
 
     public void deleteInstrumentIfUnused(Long id, Long teamId) {
         deleteInstrument(id, teamId);
+    }
+
+    private String formatMemberName(Member member) {
+        return member.getFirstName() + " " + member.getLastName();
+    }
+
+    public static class InstrumentInUseException extends IllegalStateException {
+        private final String instrumentName;
+        private final List<String> memberNames;
+
+        public InstrumentInUseException(String instrumentName, List<String> memberNames) {
+            super("Cannot delete instrument '" + instrumentName + "' because it is assigned to members");
+            this.instrumentName = instrumentName;
+            this.memberNames = List.copyOf(memberNames);
+        }
+
+        public String getInstrumentName() {
+            return instrumentName;
+        }
+
+        public List<String> getMemberNames() {
+            return memberNames;
+        }
     }
 
     public List<Instrument> getAllInstruments() {
