@@ -37,6 +37,9 @@
             Katalog źródłowy: login/ (relatywny do tego pom.xml).
             Zawiera: theme.properties, *.ftl, resources/css/*
 
+            Dodatkowo src/main/resources/META-INF/keycloak-themes.json
+            rejestruje theme w Keycloak, żeby pojawił się w dropdownie.
+
             Wynikowy JAR:
               themes/bandmanager/login/
                 theme.properties
@@ -45,11 +48,18 @@
                 error.ftl
                 resources/css/pico.min.css
                 resources/css/custom.css
+              META-INF/keycloak-themes.json
         -->
         <resources>
             <resource>
                 <directory>${project.basedir}/login</directory>
                 <targetPath>themes/bandmanager/login</targetPath>
+                <includes>
+                    <include>**/*</include>
+                </includes>
+            </resource>
+            <resource>
+                <directory>${project.basedir}/src/main/resources</directory>
                 <includes>
                     <include>**/*</include>
                 </includes>

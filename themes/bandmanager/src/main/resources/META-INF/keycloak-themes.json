@@ -1,0 +1,8 @@
+{
+  "themes": [
+    {
+      "name": "bandmanager",
+      "types": ["login"]
+    }
+  ]
+}
