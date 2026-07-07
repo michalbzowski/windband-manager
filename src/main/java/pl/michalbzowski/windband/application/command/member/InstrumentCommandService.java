@@ -7,6 +7,7 @@ import pl.michalbzowski.windband.domain.band.Band;
 import pl.michalbzowski.windband.domain.band.BandRepository;
 import pl.michalbzowski.windband.domain.member.Instrument;
 import pl.michalbzowski.windband.domain.member.InstrumentRepository;
+import pl.michalbzowski.windband.domain.member.MemberRepository;
 
 import java.util.List;
 
@@ -17,6 +18,10 @@ public class InstrumentCommandService {
 
     private final InstrumentRepository instrumentRepository;
     private final BandRepository bandRepository;
+    private final MemberRepository memberRepository;
+
+    private static final String INSTRUMENT_IN_USE_MESSAGE = "Cannot delete instrument that is assigned to one or more members";
+
 
     public Instrument createInstrument(String name, String description, Integer sortPriority) {
         return createInstrument(name, description, sortPriority, null);
@@ -66,7 +71,14 @@ public class InstrumentCommandService {
 
     public void deleteInstrument(Long id, Long teamId) {
         Instrument instrument = resolveVisibleInstrument(id, teamId);
-        instrumentRepository.save(instrument);
+        if (!memberRepository.findByInstrument(instrument).isEmpty()) {
+            throw new IllegalStateException(INSTRUMENT_IN_USE_MESSAGE);
+        }
+        instrumentRepository.delete(instrument);
+    }
+
+    public void deleteInstrumentIfUnused(Long id, Long teamId) {
+        deleteInstrument(id, teamId);
     }
 
     public List<Instrument> getAllInstruments() {

@@ -20,6 +20,11 @@ public class InstrumentRepositoryAdapter implements InstrumentRepository {
     }
 
     @Override
+    public void delete(Instrument instrument) {
+        springDataRepo.delete(instrument);
+    }
+
+    @Override
     public Optional<Instrument> findById(Long id) {
         return springDataRepo.findById(id);
     }

@@ -7,6 +7,8 @@ public interface InstrumentRepository {
 
     Instrument save(Instrument instrument);
 
+    void delete(Instrument instrument);
+
     Optional<Instrument> findById(Long id);
 
     List<Instrument> findAll();
