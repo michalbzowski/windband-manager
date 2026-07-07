@@ -52,6 +52,13 @@
         -->
         <resources>
             <resource>
+                <directory>${project.basedir}</directory>
+                <includes>
+                    <include>theme.properties</include>
+                </includes>
+                <targetPath>themes/bandmanager</targetPath>
+            </resource>
+            <resource>
                 <directory>${project.basedir}/login</directory>
                 <targetPath>themes/bandmanager/login</targetPath>
                 <includes>
