@@ -2,8 +2,9 @@
   Band Manager — Keycloak Login Theme
   Matches the main application's visual identity (purple accent, dark background, PicoCSS).
 -->
+<#assign htmlLang = (locale.currentLanguageTag)!"pl">
 <!DOCTYPE html>
-<html lang="${locale.locale}">
+<html lang="${htmlLang}">
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">

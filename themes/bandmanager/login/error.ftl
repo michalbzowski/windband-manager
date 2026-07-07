@@ -2,8 +2,9 @@
   Band Manager — Keycloak Error Theme
   Shown when an authentication error occurs.
 -->
+<#assign htmlLang = (locale.currentLanguageTag)!"pl">
 <!DOCTYPE html>
-<html lang="${locale.locale}">
+<html lang="${htmlLang}">
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
