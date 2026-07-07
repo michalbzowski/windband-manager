@@ -4,109 +4,429 @@
 <body>
 <nav th:replace="~{fragments/layout :: nav}"></nav>
 
-    <main class="container" id="content">
-        <hgroup>
-            <h1>⚡ Podsumowanie</h1>
-        </hgroup>
+<main class="container" id="content">
+    <section class="dashboard-hero">
+        <div class="dashboard-hero-copy">
+            <p class="dashboard-kicker">Podsumowanie</p>
+            <h1>Najbliższe wydarzenia i próby</h1>
+            <p>Widok pokazuje to, co nadchodzi najwcześniej — bez szumu, z szybkim przejściem do szczegółów.</p>
+        </div>
+        <div class="dashboard-hero-meta">
+            <article>
+                <header>📅 Nadchodzące</header>
+                <strong th:text="${upcomingItemsCount}">0</strong>
+                <span>pozycje w widoku</span>
+            </article>
+        </div>
+    </section>
 
-        <!-- Stats Cards -->
-        <div class="grid">
+    <section class="dashboard-upcoming">
+        <div class="section-head">
+            <div>
+                <p class="dashboard-kicker">W najbliższym czasie</p>
+                <h2>5 nadchodzących pozycji</h2>
+            </div>
+            <a th:href="@{/events}" hx-target="#content" hx-swap="innerHTML transition:true" class="secondary outline">Zobacz wszystkie wydarzenia</a>
+        </div>
+
+        <div th:if="${#lists.isEmpty(upcomingItems)}" class="empty-state">
+            <article>
+                <p>Brak nadchodzących wydarzeń i prób. Dodaj pierwsze wpisy, aby zobaczyć je tutaj.</p>
+            </article>
+        </div>
+
+        <div th:unless="${#lists.isEmpty(upcomingItems)}" class="upcoming-list">
+            <a th:each="item : ${upcomingItems}" th:href="@{${item.href}}" class="upcoming-card" hx-target="#content" hx-swap="innerHTML transition:true">
+                <div class="upcoming-card-icon" th:text="${item.icon}">🎵</div>
+                <div class="upcoming-card-body">
+                    <div class="upcoming-card-topline">
+                        <h3 th:text="${item.title}">Nazwa</h3>
+                        <span th:text="${item.badge}">Jutro</span>
+                    </div>
+                    <p th:text="${item.subtitle}">Opis</p>
+                    <div class="upcoming-card-meta">
+                        <span th:text="${#temporals.format(item.date, 'dd.MM.yyyy')}">12.07.2026</span>
+                        <span th:if="${item.startTime != null}" th:text="${#temporals.format(item.startTime, 'HH:mm')}">18:00</span>
+                    </div>
+                </div>
+                <div class="upcoming-card-arrow">→</div>
+            </a>
+        </div>
+    </section>
+
+    <section class="dashboard-stats">
+        <div class="stat-grid">
             <article>
                 <header>👥 Członkowie</header>
-                <div style="text-align: center; padding: 1rem 0;">
-                    <span th:text="${activeMembers}" style="font-size: 2.5rem; font-weight: bold;">0</span>
-                    <span style="color: var(--pico-muted-color);"> aktywnych</span>
+                <div class="stat-value-row">
+                    <span th:text="${activeMembers}">0</span>
+                    <small>aktywnych</small>
                 </div>
                 <footer th:if="${totalMembers > activeMembers}">
                     + <span th:text="${totalMembers - activeMembers}">0</span> nieaktywnych
                 </footer>
             </article>
-            
+
             <article>
-                <header>🎵 Spotkania</header>
-                <div style="text-align: center; padding: 1rem 0;">
-                    <span th:text="${rehearsalsThisWeek}" style="font-size: 2.5rem; font-weight: bold;">0</span>
-                    <span style="color: var(--pico-muted-color);"> tym tygodniu</span>
+                <header>🎵 Próby</header>
+                <div class="stat-value-row">
+                    <span th:text="${rehearsalsThisWeek}">0</span>
+                    <small>tym tygodniu</small>
                 </div>
                 <footer>
                     <a th:href="@{/rehearsals}" hx-target="#content" hx-swap="innerHTML transition:true">Zobacz wszystkie</a>
                 </footer>
             </article>
-            
+
             <article>
                 <header>🎪 Wydarzenia</header>
-                <div style="text-align: center; padding: 1rem 0;">
-                    <span th:text="${upcomingEvents}" style="font-size: 2.5rem; font-weight: bold;">0</span>
-                    <span style="color: var(--pico-muted-color);"> nadchodzących</span>
+                <div class="stat-value-row">
+                    <span th:text="${upcomingEvents}">0</span>
+                    <small>nadchodzących</small>
                 </div>
                 <footer>
                     <a th:href="@{/events}" hx-target="#content" hx-swap="innerHTML transition:true">Zobacz wszystkie</a>
                 </footer>
             </article>
-            
+
             <article>
                 <header>📦 Zamówienia</header>
-                <div style="text-align: center; padding: 1rem 0;">
-                    <span th:text="${activeOrders}" style="font-size: 2.5rem; font-weight: bold;">0</span>
-                    <span style="color: var(--pico-muted-color);"> aktywnych</span>
+                <div class="stat-value-row">
+                    <span th:text="${activeOrders}">0</span>
+                    <small>aktywnych</small>
                 </div>
                 <footer>
                     <a th:href="@{/inventory}" hx-target="#content" hx-swap="innerHTML transition:true">Zobacz wszystkie</a>
                 </footer>
             </article>
-            
+
             <article>
                 <header>🎖️ Ekwipunek</header>
-                <div style="text-align: center; padding: 1rem 0;">
-                    <span th:text="${totalUniforms}" style="font-size: 2.5rem; font-weight: bold;">0</span>
-                    <span style="color: var(--pico-muted-color);"> w inwentarzu</span>
+                <div class="stat-value-row">
+                    <span th:text="${totalUniforms}">0</span>
+                    <small>w inwentarzu</small>
                 </div>
                 <footer>
                     <a th:href="@{/inventory}" hx-target="#content" hx-swap="innerHTML transition:true">Zobacz inwentaryzację</a>
                 </footer>
             </article>
-            
+
             <article>
                 <header>⚡ Instrumenty</header>
-                <div style="text-align: center; padding: 1rem 0;">
-                    <span th:text="${totalInstruments}" style="font-size: 2.5rem; font-weight: bold;">0</span>
-                    <span style="color: var(--pico-muted-color);"> w inwentarzu</span>
+                <div class="stat-value-row">
+                    <span th:text="${totalInstruments}">0</span>
+                    <small>w inwentarzu</small>
                 </div>
                 <footer>
                     <a th:href="@{/inventory}" hx-target="#content" hx-swap="innerHTML transition:true">Zobacz inwentaryzację</a>
                 </footer>
             </article>
         </div>
+    </section>
 
-        <!-- Quick Links -->
+    <section class="dashboard-links">
         <h3>Szybkie linki</h3>
-        <div class="grid">
-            <div>
-                <article>
-                    <header><strong>➕ Dodaj członka</strong></header>
-                    <p>Dodaj nowego członka do zespołu.</p>
-                    <footer><a th:href="@{/members/new}" hx-target="#content" hx-swap="innerHTML transition:true" role="button" class="secondary outline">Nowy członek</a></footer>
-                </article>
-            </div>
-            <div>
-                <article>
-                    <header><strong>📅 Zaplanuj spotkanie</strong></header>
-                    <p>Dodaj nową spotkanie do kalendarza.</p>
-                    <footer><a th:href="@{/rehearsals/new}" hx-target="#content" hx-swap="innerHTML transition:true" role="button" class="secondary outline">Nowa spotkanie</a></footer>
-                </article>
-            </div>
-            <div>
-                <article>
-                    <header><strong>📦 Nowe zamówienie</strong></header>
-                    <p>Złóż zamówienie na ekwipunek/instrument.</p>
-                    <footer><a th:href="@{/inventory}" hx-target="#content" hx-swap="innerHTML transition:true" role="button" class="secondary outline">Zamówienie</a></footer>
-                </article>
-            </div>
+        <div class="quick-grid">
+            <article>
+                <header><strong>➕ Dodaj członka</strong></header>
+                <p>Dodaj nowego członka do zespołu.</p>
+                <footer><a th:href="@{/members/new}" hx-target="#content" hx-swap="innerHTML transition:true" role="button" class="secondary outline">Nowy członek</a></footer>
+            </article>
+            <article>
+                <header><strong>📅 Zaplanuj spotkanie</strong></header>
+                <p>Dodaj nową próbę do kalendarza.</p>
+                <footer><a th:href="@{/rehearsals/new}" hx-target="#content" hx-swap="innerHTML transition:true" role="button" class="secondary outline">Nowa próba</a></footer>
+            </article>
+            <article>
+                <header><strong>📦 Nowe zamówienie</strong></header>
+                <p>Złóż zamówienie na ekwipunek lub instrument.</p>
+                <footer><a th:href="@{/inventory}" hx-target="#content" hx-swap="innerHTML transition:true" role="button" class="secondary outline">Zamówienie</a></footer>
+            </article>
         </div>
-    </main>
+    </section>
+</main>
 
-   <footer th:replace="~{fragments/layout :: footer}"></footer>
-    <div th:insert="~{fragments/layout :: toast-container}"></div>
+<footer th:replace="~{fragments/layout :: footer}"></footer>
+<div th:insert="~{fragments/layout :: toast-container}"></div>
 <div th:insert="~{fragments/layout :: footer-scripts}"></div>
+
+<style>
+    .dashboard-hero {
+        display: grid;
+        grid-template-columns: minmax(0, 1.5fr) minmax(280px, 0.9fr);
+        gap: 1rem;
+        align-items: stretch;
+        margin: 0 0 1.5rem;
+    }
+
+    .dashboard-hero-copy,
+    .dashboard-hero-meta article,
+    .upcoming-card,
+    .stat-grid article,
+    .quick-grid article {
+        background: var(--pico-card-background-color, var(--pico-card-sectioning-background-color));
+        border: 1px solid var(--pico-card-border-color, var(--pico-muted-border-color));
+        border-radius: 18px;
+        box-shadow: var(--pico-card-box-shadow, none);
+    }
+
+    .dashboard-hero-copy {
+        padding: 1.5rem;
+    }
+
+    .dashboard-kicker {
+        margin: 0 0 0.5rem;
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+        color: var(--pico-muted-color);
+        font-size: 0.8rem;
+        font-weight: 600;
+    }
+
+    .dashboard-hero h1,
+    .section-head h2,
+    .dashboard-links h3 {
+        margin: 0;
+    }
+
+    .dashboard-hero h1 {
+        font-size: clamp(2rem, 4vw, 3rem);
+        line-height: 1.05;
+        margin-bottom: 0.75rem;
+    }
+
+    .dashboard-hero p {
+        color: var(--pico-muted-color);
+        margin: 0;
+        max-width: 60ch;
+    }
+
+    .dashboard-hero-meta article {
+        padding: 1.25rem;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        gap: 0.35rem;
+    }
+
+    .dashboard-hero-meta strong {
+        font-size: clamp(2.5rem, 8vw, 4rem);
+        line-height: 1;
+        font-weight: 700;
+    }
+
+    .dashboard-hero-meta span,
+    .upcoming-card p,
+    .upcoming-card-meta,
+    .stat-value-row small,
+    .quick-grid p {
+        color: var(--pico-muted-color);
+    }
+
+    .dashboard-upcoming {
+        margin-bottom: 1.75rem;
+    }
+
+    .section-head {
+        display: flex;
+        align-items: end;
+        justify-content: space-between;
+        gap: 1rem;
+        margin-bottom: 1rem;
+    }
+
+    .section-head h2 {
+        font-size: clamp(1.35rem, 2.5vw, 2rem);
+    }
+
+    .upcoming-list {
+        display: grid;
+        gap: 0.75rem;
+    }
+
+    .upcoming-card {
+        display: grid;
+        grid-template-columns: auto minmax(0, 1fr) auto;
+        gap: 0.9rem;
+        align-items: center;
+        padding: 1rem 1rem;
+        text-decoration: none;
+        color: inherit;
+        transition: transform 0.15s ease, border-color 0.15s ease, background 0.15s ease;
+    }
+
+    .upcoming-card:hover {
+        transform: translateY(-1px);
+        border-color: var(--pico-primary);
+    }
+
+    .upcoming-card-icon {
+        width: 2.75rem;
+        height: 2.75rem;
+        border-radius: 999px;
+        display: grid;
+        place-items: center;
+        background: color-mix(in srgb, var(--pico-primary) 12%, transparent);
+        font-size: 1.1rem;
+        flex: none;
+    }
+
+    .upcoming-card-body {
+        min-width: 0;
+    }
+
+    .upcoming-card-topline {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 1rem;
+        margin-bottom: 0.25rem;
+    }
+
+    .upcoming-card-topline h3 {
+        margin: 0;
+        font-size: 1rem;
+        font-weight: 650;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+
+    .upcoming-card-topline span {
+        flex: none;
+        font-size: 0.8rem;
+        font-weight: 600;
+        color: var(--pico-primary);
+        background: color-mix(in srgb, var(--pico-primary) 12%, transparent);
+        padding: 0.2rem 0.55rem;
+        border-radius: 999px;
+        white-space: nowrap;
+    }
+
+    .upcoming-card p {
+        margin: 0 0 0.35rem;
+        font-size: 0.95rem;
+    }
+
+    .upcoming-card-meta {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.6rem;
+        font-size: 0.82rem;
+    }
+
+    .upcoming-card-arrow {
+        color: var(--pico-muted-color);
+        font-size: 1.25rem;
+        padding-inline-start: 0.25rem;
+    }
+
+    .stat-grid {
+        display: grid;
+        grid-template-columns: repeat(6, minmax(0, 1fr));
+        gap: 0.75rem;
+        margin-bottom: 1.75rem;
+    }
+
+    .stat-grid article {
+        padding: 1rem;
+        min-height: 150px;
+        display: flex;
+        flex-direction: column;
+        justify-content: space-between;
+    }
+
+    .stat-value-row {
+        display: flex;
+        align-items: baseline;
+        gap: 0.45rem;
+        margin: 0.75rem 0;
+    }
+
+    .stat-value-row span {
+        font-size: clamp(1.9rem, 5vw, 2.8rem);
+        font-weight: 700;
+        line-height: 1;
+    }
+
+    .dashboard-links {
+        margin-bottom: 0.75rem;
+    }
+
+    .dashboard-links h3 {
+        margin-bottom: 1rem;
+    }
+
+    .quick-grid {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 0.75rem;
+    }
+
+    .quick-grid article {
+        padding: 1rem;
+    }
+
+    .quick-grid p {
+        margin: 0.5rem 0 1rem;
+    }
+
+    @media (max-width: 1100px) {
+        .stat-grid {
+            grid-template-columns: repeat(3, minmax(0, 1fr));
+        }
+        .quick-grid {
+            grid-template-columns: 1fr;
+        }
+    }
+
+    @media (max-width: 768px) {
+        .dashboard-hero,
+        .section-head {
+            grid-template-columns: 1fr;
+            display: grid;
+        }
+
+        .section-head {
+            align-items: start;
+        }
+
+        .upcoming-card {
+            grid-template-columns: auto minmax(0, 1fr);
+        }
+
+        .upcoming-card-arrow {
+            display: none;
+        }
+
+        .upcoming-card-topline {
+            flex-direction: column;
+            align-items: flex-start;
+            gap: 0.4rem;
+        }
+
+        .stat-grid {
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
+    }
+
+    @media (max-width: 560px) {
+        .stat-grid {
+            grid-template-columns: 1fr;
+        }
+
+        .dashboard-hero-copy,
+        .dashboard-hero-meta article,
+        .upcoming-card,
+        .stat-grid article,
+        .quick-grid article {
+            border-radius: 16px;
+        }
+
+        .upcoming-card {
+            padding: 0.9rem;
+        }
+    }
+</style>
 </body>
 </html>
