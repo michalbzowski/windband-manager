@@ -3,7 +3,10 @@ package pl.michalbzowski.windband.adapter.in.web;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
-import org.springframework.web.bind.annotation.*;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.ModelAttribute;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.RequestMapping;
 import pl.michalbzowski.windband.application.command.member.InstrumentCommandService;
 import pl.michalbzowski.windband.application.query.instrument.InstrumentQueryService;
 import pl.michalbzowski.windband.domain.member.Instrument;
@@ -19,15 +22,15 @@ public class InstrumentPageController {
     private final InstrumentQueryService instrumentQueryService;
 
     @GetMapping
-    public String listPage(Model model) {
-        List<Instrument> instruments = instrumentQueryService.findAll();
+    public String listPage(@ModelAttribute("activeTeamId") Long activeTeamId, Model model) {
+        List<Instrument> instruments = instrumentQueryService.findAll(activeTeamId);
         model.addAttribute("instruments", instruments);
         return "instruments/list";
     }
 
     @GetMapping("/list")
-    public String listFragment(Model model) {
-        List<Instrument> instruments = instrumentQueryService.findAll();
+    public String listFragment(@ModelAttribute("activeTeamId") Long activeTeamId, Model model) {
+        List<Instrument> instruments = instrumentQueryService.findAll(activeTeamId);
         model.addAttribute("instruments", instruments);
         return "instruments/list :: #instruments-content";
     }
@@ -39,8 +42,8 @@ public class InstrumentPageController {
     }
 
     @GetMapping("/{id}/edit")
-    public String editInstrumentForm(@PathVariable Long id, Model model) {
-        Instrument instrument = instrumentCommandService.getInstrumentById(id);
+    public String editInstrumentForm(@PathVariable Long id, @ModelAttribute("activeTeamId") Long activeTeamId, Model model) {
+        Instrument instrument = instrumentCommandService.getInstrumentById(id, activeTeamId);
         model.addAttribute("instrument", new InstrumentForm(instrument.getId(), instrument.getName(), instrument.getDescription(), instrument.getSortPriority()));
         return "instruments/form";
     }

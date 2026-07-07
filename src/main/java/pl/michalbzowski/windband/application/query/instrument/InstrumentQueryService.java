@@ -16,6 +16,13 @@ public class InstrumentQueryService {
     private final InstrumentRepository instrumentRepository;
 
     public List<Instrument> findAll() {
+        return findAll(null);
+    }
+
+    public List<Instrument> findAll(Long teamId) {
+        if (teamId != null) {
+            return instrumentRepository.findAllOrderBySortPriorityByBandId(teamId);
+        }
         return instrumentRepository.findAllOrderBySortPriority();
     }
 }

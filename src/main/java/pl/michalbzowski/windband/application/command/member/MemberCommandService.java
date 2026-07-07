@@ -36,8 +36,10 @@ public class MemberCommandService {
         member = memberRepository.save(member);
 
         if (cmd.getInstrumentId() != null) {
-            Instrument instrument = instrumentRepository.findById(cmd.getInstrumentId())
-                    .orElseThrow(() -> new IllegalArgumentException("Instrument not found: " + cmd.getInstrumentId()));
+            Instrument instrument = instrumentRepository.findByIdAndBandId(cmd.getInstrumentId(), band.getId())
+                    .orElseGet(() -> instrumentRepository.findById(cmd.getInstrumentId())
+                            .filter(i -> i.getBand() == null)
+                            .orElseThrow(() -> new IllegalArgumentException("Instrument not found: " + cmd.getInstrumentId())));
             member.addInstrument(instrument, true);
             member = memberRepository.save(member);
         }
@@ -61,8 +63,10 @@ public class MemberCommandService {
             member.setResignedDate(null);
         }
         if (cmd.getInstrumentId() != null) {
-            Instrument instrument = instrumentRepository.findById(cmd.getInstrumentId())
-                    .orElseThrow(() -> new IllegalArgumentException("Instrument not found: " + cmd.getInstrumentId()));
+            Instrument instrument = instrumentRepository.findByIdAndBandId(cmd.getInstrumentId(), member.getBand().getId())
+                    .orElseGet(() -> instrumentRepository.findById(cmd.getInstrumentId())
+                            .filter(i -> i.getBand() == null)
+                            .orElseThrow(() -> new IllegalArgumentException("Instrument not found: " + cmd.getInstrumentId())));
             member.changeInstrument(instrument);
         }
         return memberRepository.saveAndFlush(member);
@@ -72,11 +76,15 @@ public class MemberCommandService {
         Member member = memberRepository.findById(cmd.getMemberId())
                 .orElseThrow(() -> new MemberNotFoundException(cmd.getMemberId()));
 
-        Instrument instrument = instrumentRepository.findByName(cmd.getInstrumentName())
-                .orElseGet(() -> {
-                    Instrument newInst = Instrument.create(cmd.getInstrumentName());
-                    return instrumentRepository.save(newInst);
-                });
+        Instrument instrument = instrumentRepository.findByNameAndBandId(cmd.getInstrumentName(), member.getBand().getId())
+                .orElseGet(() -> instrumentRepository.findByName(cmd.getInstrumentName())
+                        .filter(i -> i.getBand() == null)
+                        .orElseGet(() -> instrumentRepository.save(Instrument.create(cmd.getInstrumentName(), member.getBand()))));
+
+        if (instrument.getBand() == null) {
+            instrument.assignBand(member.getBand());
+            instrument = instrumentRepository.save(instrument);
+        }
 
         member.addInstrument(instrument, cmd.isPrimary());
         memberRepository.save(member);
@@ -86,8 +94,15 @@ public class MemberCommandService {
         Member member = memberRepository.findById(cmd.getMemberId())
                 .orElseThrow(() -> new MemberNotFoundException(cmd.getMemberId()));
 
-        Instrument instrument = instrumentRepository.findById(cmd.getInstrumentId())
-                .orElseThrow(() -> new IllegalArgumentException("Instrument not found: " + cmd.getInstrumentId()));
+        Instrument instrument = instrumentRepository.findByIdAndBandId(cmd.getInstrumentId(), member.getBand().getId())
+                .orElseGet(() -> instrumentRepository.findById(cmd.getInstrumentId())
+                        .filter(i -> i.getBand() == null)
+                        .orElseThrow(() -> new IllegalArgumentException("Instrument not found: " + cmd.getInstrumentId())));
+
+        if (instrument.getBand() == null) {
+            instrument.assignBand(member.getBand());
+            instrument = instrumentRepository.save(instrument);
+        }
 
         member.changeInstrument(instrument);
         memberRepository.save(member);

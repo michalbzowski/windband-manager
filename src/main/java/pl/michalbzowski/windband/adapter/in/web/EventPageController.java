@@ -70,7 +70,7 @@ public class EventPageController {
                 .collect(java.util.stream.Collectors.toList());
         
         model.addAttribute("members", availableMembers);
-        model.addAttribute("instruments", instrumentQueryService.findAll());
+        model.addAttribute("instruments", instrumentQueryService.findAll(activeTeamId));
         return "events/detail";
     }
 

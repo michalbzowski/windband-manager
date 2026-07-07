@@ -35,7 +35,22 @@ public class InstrumentRepositoryAdapter implements InstrumentRepository {
     }
 
     @Override
+    public List<Instrument> findAllOrderBySortPriorityByBandId(Long bandId) {
+        return springDataRepo.findAllByBandIdOrderBySortPriorityAsc(bandId);
+    }
+
+    @Override
     public Optional<Instrument> findByName(String name) {
         return springDataRepo.findByName(name);
+    }
+
+    @Override
+    public Optional<Instrument> findByNameAndBandId(String name, Long bandId) {
+        return springDataRepo.findByNameAndBandId(name, bandId);
+    }
+
+    @Override
+    public Optional<Instrument> findByIdAndBandId(Long id, Long bandId) {
+        return springDataRepo.findByIdAndBandId(id, bandId);
     }
 }

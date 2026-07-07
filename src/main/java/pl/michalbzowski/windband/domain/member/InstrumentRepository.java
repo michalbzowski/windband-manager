@@ -13,5 +13,11 @@ public interface InstrumentRepository {
 
     List<Instrument> findAllOrderBySortPriority();
 
+    List<Instrument> findAllOrderBySortPriorityByBandId(Long bandId);
+
     Optional<Instrument> findByName(String name);
+
+    Optional<Instrument> findByNameAndBandId(String name, Long bandId);
+
+    Optional<Instrument> findByIdAndBandId(Long id, Long bandId);
 }

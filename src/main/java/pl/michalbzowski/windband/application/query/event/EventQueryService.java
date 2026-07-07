@@ -81,7 +81,9 @@ public class EventQueryService {
                 .toList();
 
         // Build instrument priority map (lower number = higher priority)
-        var instrumentPriorities = instrumentRepository.findAllOrderBySortPriority().stream()
+        var instrumentPriorities = (bandId != null
+                ? instrumentRepository.findAllOrderBySortPriorityByBandId(bandId)
+                : instrumentRepository.findAllOrderBySortPriority()).stream()
                 .collect(java.util.stream.Collectors.toMap(
                         pl.michalbzowski.windband.domain.member.Instrument::getName,
                         pl.michalbzowski.windband.domain.member.Instrument::getSortPriority,

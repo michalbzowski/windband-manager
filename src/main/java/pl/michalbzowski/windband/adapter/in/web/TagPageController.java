@@ -19,15 +19,15 @@ public class TagPageController {
     private final InstrumentQueryService instrumentQueryService;
 
     @GetMapping
-    public String listPage(Model model) {
-        List<Instrument> instruments = instrumentQueryService.findAll();
+    public String listPage(@ModelAttribute("activeTeamId") Long activeTeamId, Model model) {
+        List<Instrument> instruments = instrumentQueryService.findAll(activeTeamId);
         model.addAttribute("instruments", instruments);
         return "tags/list";
     }
 
     @GetMapping("/list")
-    public String listFragment(Model model) {
-        List<Instrument> instruments = instrumentQueryService.findAll();
+    public String listFragment(@ModelAttribute("activeTeamId") Long activeTeamId, Model model) {
+        List<Instrument> instruments = instrumentQueryService.findAll(activeTeamId);
         model.addAttribute("instruments", instruments);
         return "tags/list :: #tags-content";
     }
@@ -39,8 +39,8 @@ public class TagPageController {
     }
 
     @GetMapping("/{id}/edit")
-    public String editInstrumentForm(@PathVariable Long id, Model model) {
-        Instrument instrument = instrumentCommandService.getInstrumentById(id);
+    public String editInstrumentForm(@PathVariable Long id, @ModelAttribute("activeTeamId") Long activeTeamId, Model model) {
+        Instrument instrument = instrumentCommandService.getInstrumentById(id, activeTeamId);
         model.addAttribute("instrument", new InstrumentForm(instrument.getId(), instrument.getName(), instrument.getDescription(), instrument.getSortPriority()));
         return "tags/form";
     }
