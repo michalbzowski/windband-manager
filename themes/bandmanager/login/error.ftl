@@ -25,7 +25,7 @@
 
     <#if error?has_content>
         <div class="alert-error" role="alert">
-            <p>${msg('${error}')}</p>
+            <p>${msg(error)}</p>
         </div>
     </#if>
 

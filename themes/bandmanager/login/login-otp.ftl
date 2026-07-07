@@ -24,13 +24,13 @@
 
     <#if auth.hasAuthenticationExecution && auth.authenticationExecution.helpText?has_content>
         <div class="info-box" role="status">
-            <span>${msg('${auth.authenticationExecution.helpText}')}</span>
+            <span>${msg(auth.authenticationExecution.helpText)}</span>
         </div>
     </#if>
 
     <#if message?has_content && message.type == 'error'>
         <div class="alert-error" role="alert">
-            <p>${msg('${message.summary}')}</p>
+            <p>${msg(message.summary)}</p>
         </div>
     </#if>
 
