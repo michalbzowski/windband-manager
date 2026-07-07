@@ -21,6 +21,9 @@ import org.springframework.security.oauth2.client.web.DefaultOAuth2Authorization
 import org.springframework.security.oauth2.client.web.OAuth2AuthorizationRequestResolver;
 import org.springframework.security.oauth2.core.endpoint.OAuth2AuthorizationRequest;
 
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
+
 @Configuration
 @EnableWebSecurity
 @Profile("!test")
@@ -187,8 +190,12 @@ public class SecurityConfig {
             // keycloakPublicUrl may already include https:// or be just a hostname
             String scheme = keycloakPublicUrl.startsWith("http") ? "" : "https://";
             String keycloakLogoutUrl = String.format(
-                    "%s%s/realms/%s/protocol/openid-connect/logout?post_logout_redirect_uri=%s",
-                    scheme, keycloakPublicUrl, keycloakRealm, baseUrl
+                    "%s%s/realms/%s/protocol/openid-connect/logout?client_id=%s&post_logout_redirect_uri=%s",
+                    scheme,
+                    keycloakPublicUrl,
+                    keycloakRealm,
+                    URLEncoder.encode("windband-manager", StandardCharsets.UTF_8),
+                    URLEncoder.encode(baseUrl, StandardCharsets.UTF_8)
             );
             response.sendRedirect(keycloakLogoutUrl);
         };

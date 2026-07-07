@@ -9,7 +9,6 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Band Manager — Błąd</title>
-    <link rel="stylesheet" href="${url.resourcesCommonPath}/node_modules/patternfly/patternfly/patternfly.min.css">
     <link rel="stylesheet" href="${url.resourcesPath}/css/pico.min.css">
     <link rel="stylesheet" href="${url.resourcesPath}/css/custom.css">
 </head>
