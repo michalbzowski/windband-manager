@@ -66,6 +66,13 @@
                 </includes>
             </resource>
             <resource>
+                <directory>${project.basedir}</directory>
+                <includes>
+                    <include>theme.properties</include>
+                </includes>
+                <targetPath>themes/bandmanager</targetPath>
+            </resource>
+            <resource>
                 <directory>${project.basedir}/src/main/resources</directory>
                 <includes>
                     <include>**/*</include>
