@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>Witaj w zespole!</title>
+</head>
+<body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
+    <div style="background-color: #f8f9fa; padding: 20px; border-radius: 8px;">
+        <h2 style="color: #2c3e50;">Witaj, <span th:text="${memberName}">Jan Kowalski</span>!</h2>
+        <p>
+            Zostałeś/aś dodany/a do zespołu <strong th:text="${teamName}">Nieznany zespół</strong>
+            przez <strong th:text="${addedBy}">administratora</strong> w dniu <th:text="${date}">dd.mm.rrrr</th>.
+        </p>
+        <p>
+            Aby otrzymywać powiadomienia o wydarzeniach, wiadomościach od zarządzającego oraz podsumowaniach inwentaryzacji,
+            prosimy o ustalenie swoich preferencji dotyczących komunikacji.
+        </p>
+        <p style="text-align: center;">
+            <a th:href="${consentLink}"
+               style="background-color: #3498db; color: white; padding: 12px 24px; text-decoration: none; border-radius: 4px; display: inline-block;">
+                Zarządzaj zgody na komunikację
+            </a>
+        </p>
+        <hr style="border: none; border-top: 1px solid #eee; margin: 20px 0;">
+        <p style="font-size: 0.9em; color: #7f8c8d;">
+            Link jest ważny bezterminowo i pozwala zmienić wybory w dowolnym momencie.<br>
+            Jeśli nie chcesz otrzymywać żadnych wiadomości, możesz je wszystkie wyłączyć na stronie preferencji.
+        </p>
+        <p style="font-size: 0.9em; color: #7f8c8d;">
+            W przyszłości planujemy również powiadomienia przez inne komunikatory (np. WhatsApp, Messenger),
+            które będą wymagały osobnych zgód.
+        </p>
+        <p style="font-size: 0.9em; color: #7f8c8d;">
+            Pozdrawiamy,<br>
+            Zespół Band Manager
+        </p>
+    </div>
+</body>
+</html>

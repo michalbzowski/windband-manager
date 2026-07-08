@@ -3,11 +3,14 @@ package pl.michalbzowski.windband.application.command.member;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import pl.michalbzowski.windband.domain.band.Band;
-import pl.michalbzowski.windband.domain.band.BandRepository;
-import pl.michalbzowski.windband.domain.member.*;
+import pl.michalbzowski.windband.adapter.in.security.WindbandOidcUser;
+import pl.michalbazarowski.windband.application.command.member.MemberWelcomeService;
+import pl.michalbazarowski.windband.domain.band.Band;
+import pl.michalbazarowski.windband.domain.band.BandRepository;
+import pl.michalbazarowski.windband.domain.member.*;
 
 import java.time.LocalDate;
+import java.util.Objects;
 
 @Service
 @RequiredArgsConstructor
@@ -17,8 +20,9 @@ public class MemberCommandService {
     private final MemberRepository memberRepository;
     private final InstrumentRepository instrumentRepository;
     private final BandRepository bandRepository;
+    private final MemberWelcomeService memberWelcomeService;
 
-    public Member createMember(CreateMemberCommand cmd, Long teamId) {
+    public Member createMember(CreateMemberCommand cmd, Long teamId, WindbandOidcUser currentUser) {
         Band band = bandRepository.findById(teamId)
                 .orElseThrow(() -> new IllegalStateException("Band not found: " + teamId));
         Member member = Member.create(
@@ -44,10 +48,13 @@ public class MemberCommandService {
             member = memberRepository.save(member);
         }
 
+        // Send welcome email if needed
+        memberWelcomeService.sendWelcomeIfNeeded(member, currentUser);
+
         return member;
     }
 
-    public Member updateMember(UpdateMemberCommand cmd) {
+    public Member updateMember(UpdateMemberCommand cmd, WindbandOidcUser currentUser) {
         Member member = memberRepository.findById(cmd.getMemberId())
                 .orElseThrow(() -> new MemberNotFoundException(cmd.getMemberId()));
         member.update(cmd.getFirstName(), cmd.getLastName(), cmd.getDateOfBirth(), cmd.isActive());
@@ -69,7 +76,12 @@ public class MemberCommandService {
                             .orElseThrow(() -> new IllegalArgumentException("Instrument not found: " + cmd.getInstrumentId())));
             member.changeInstrument(instrument);
         }
-        return memberRepository.saveAndFlush(member);
+        member = memberRepository.saveAndFlush(member);
+
+        // Send welcome email if needed (only on update if email changed or first time)
+        memberWelcomeService.sendWelcomeIfNeeded(member, currentUser);
+
+        return member;
     }
 
     public void assignInstrument(AssignInstrumentCommand cmd) {

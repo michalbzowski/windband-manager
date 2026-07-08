@@ -44,21 +44,24 @@ public class MemberController {
                                                   @AuthenticationPrincipal OidcUser oidcUser,
                                                   HttpSession session) {
         Long activeTeamId = resolveActiveTeamId(oidcUser, session);
-        var member = commandService.createMember(cmd, activeTeamId);
+        var member = commandService.createMember(cmd, activeTeamId, oidcUser instanceof WindbandOidcUser ? (WindbandOidcUser) oidcUser : null);
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(queryService.getMemberById(member.getId()));
     }
 
     @PutMapping("/{id}")
-    public MemberDto updateMember(@PathVariable Long id, @RequestBody UpdateMemberCommand cmd) {
+    public MemberDto updateMember(@PathVariable Long id, @RequestBody UpdateMemberCommand cmd,
+                                  @AuthenticationPrincipal OidcUser oidcUser,
+                                  HttpSession session) {
         cmd.setMemberId(id);
-        var member = commandService.updateMember(cmd);
+        // teamId not needed for update but we still need to resolve for security? updateMember doesn't need teamId.
+        var member = commandService.updateMember(cmd, oidcUser instanceof WindbandOidcUser ? (WindbandOidcUser) oidcUser : null);
         return queryService.getMemberById(member.getId());
     }
 
     @PostMapping("/{id}/instruments")
     public ResponseEntity<Void> assignInstrument(@PathVariable Long id,
-                                                  @RequestBody AssignInstrumentCommand cmd) {
+                                                 @RequestBody AssignInstrumentCommand cmd) {
         cmd.setMemberId(id);
         commandService.assignInstrument(cmd);
         return ResponseEntity.ok().build();
@@ -66,7 +69,7 @@ public class MemberController {
 
     @PutMapping("/{id}/tag")
     public ResponseEntity<Void> changeInstrument(@PathVariable Long id,
-                                                   @RequestBody ChangeInstrumentCommand cmd) {
+                                                 @RequestBody ChangeInstrumentCommand cmd) {
         cmd.setMemberId(id);
         commandService.changeInstrument(cmd);
         return ResponseEntity.ok().build();
