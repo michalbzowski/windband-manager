@@ -6,6 +6,7 @@ import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
 import pl.michalbzowski.windband.adapter.out.persistence.member.ConsentSpringDataRepository;
 import pl.michalbzowski.windband.adapter.out.persistence.member.ConsentTokenSpringDataRepository;
+import pl.michalbzowski.windband.domain.member.Consent;
 import pl.michalbzowski.windband.domain.member.ConsentType;
 import pl.michalbzowski.windband.domain.member.Member;
 import pl.michalbzowski.windband.domain.member.ConsentToken;
@@ -70,8 +71,20 @@ public class ConsentController {
 
         consentRepository.findByMemberAndConsentType(member, type)
                 .ifPresentOrElse(
-                        consent -> consent.setGranted(grant),
-                        () -> consentRepository.save(new Consent(member, type, grant))
+                        consent -> {
+                            if (grant) {
+                                consent.grant();
+                            } else {
+                                consent.deny();
+                            }
+                        },
+                        () -> {
+                            Consent newConsent = Consent.create(member, type);
+                            if (grant) {
+                                newConsent.grant();
+                            }
+                            consentRepository.save(newConsent);
+                        }
                 );
         return "redirect:/consent?token=" + token + "&saved=true";
     }

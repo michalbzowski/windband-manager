@@ -4,10 +4,10 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import pl.michalbzowski.windband.adapter.in.security.WindbandOidcUser;
-import pl.michalbazarowski.windband.application.command.member.MemberWelcomeService;
-import pl.michalbazarowski.windband.domain.band.Band;
-import pl.michalbazarowski.windband.domain.band.BandRepository;
-import pl.michalbazarowski.windband.domain.member.*;
+import pl.michalbzowski.windband.application.service.MemberWelcomeService;
+import pl.michalbzowski.windband.domain.band.Band;
+import pl.michalbzowski.windband.domain.band.BandRepository;
+import pl.michalbzowski.windband.domain.member.*;
 
 import java.time.LocalDate;
 import java.util.Objects;

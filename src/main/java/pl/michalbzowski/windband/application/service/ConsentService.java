@@ -5,10 +5,11 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import pl.michalbzowski.windband.adapter.out.persistence.member.ConsentSpringDataRepository;
-import pl.michalbazarder.windband.adapter.out.persistence.member.ConsentTokenSpringDataRepository;
-import pl.michalbazarder.windband.domain.member.Consent;
-import pl.michalbazarder.windband.domain.member.ConsentToken;
-import pl.michalbazarder.windband.domain.member.Member;
+import pl.michalbzowski.windband.adapter.out.persistence.member.ConsentTokenSpringDataRepository;
+import pl.michalbzowski.windband.domain.member.Consent;
+import pl.michalbzowski.windband.domain.member.ConsentToken;
+import pl.michalbzowski.windband.domain.member.Member;
+import pl.michalbzowski.windband.domain.member.ConsentType;
 
 import java.util.List;
 import java.util.Optional;
@@ -37,13 +38,13 @@ public class ConsentService {
 
         Consent consent = consentRepository.findByMemberAndConsentType(member, type)
                 .orElseGet(() -> {
-                    Consent c = new Consent(member, type, false);
+                    Consent c = Consent.create(member, type);
                     return consentRepository.save(c);
                 });
         if (granted) {
             consent.grant();
         } else {
-            consent.deny();
+            consent.deny(); // optional, as default is false
         }
         consentRepository.save(consent);
     }

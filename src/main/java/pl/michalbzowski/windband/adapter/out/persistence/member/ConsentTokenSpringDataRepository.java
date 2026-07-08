@@ -4,6 +4,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Repository;
 import pl.michalbzowski.windband.domain.member.ConsentToken;
 import pl.michalbzowski.windband.domain.member.ConsentTokenRepository;
+import pl.michalbzowski.windband.domain.member.Member;
 
 import java.util.Optional;
 import java.util.UUID;
@@ -22,6 +23,11 @@ public class ConsentTokenSpringDataRepository implements ConsentTokenRepository 
     @Override
     public Optional<ConsentToken> findByToken(UUID token) {
         return jpaRepository.findByToken(token);
+    }
+
+    @Override
+    public Optional<ConsentToken> findByMember(Member member) {
+        return jpaRepository.findByMember(member);
     }
 
     @Override

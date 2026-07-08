@@ -6,9 +6,11 @@ import pl.michalbzowski.windband.domain.member.Consent;
 import pl.michalbzowski.windband.domain.member.ConsentType;
 import pl.michalbzowski.windband.domain.member.Member;
 
+import java.util.List;
 import java.util.Optional;
 
 @Repository
 public interface ConsentJpaRepository extends JpaRepository<Consent, Long> {
     Optional<Consent> findByMemberAndConsentType(Member member, ConsentType consentType);
+    List<Consent> findByMember(Member member);
 }

@@ -4,8 +4,10 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Repository;
 import pl.michalbzowski.windband.domain.member.Consent;
 import pl.michalbzowski.windband.domain.member.ConsentRepository;
+import pl.michalbzowski.windband.domain.member.ConsentType;
 import pl.michalbzowski.windband.domain.member.Member;
 
+import java.util.List;
 import java.util.Optional;
 
 @Repository
@@ -22,6 +24,11 @@ public class ConsentSpringDataRepository implements ConsentRepository {
     @Override
     public Optional<Consent> findByMemberAndConsentType(Member member, ConsentType consentType) {
         return jpaRepository.findByMemberAndConsentType(member, consentType);
+    }
+
+    @Override
+    public List<Consent> findByMember(Member member) {
+        return jpaRepository.findByMember(member);
     }
 
     @Override
