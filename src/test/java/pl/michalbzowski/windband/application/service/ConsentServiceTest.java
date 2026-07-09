@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
+import pl.michalbzowski.windband.domain.member.ConsentToken;
 
 import java.util.Optional;
 import java.util.UUID;
@@ -65,7 +66,7 @@ class ConsentServiceTest {
     void shouldUpdateExistingConsentToGranted() {
         // given
         UUID token = UUID.randomUUID();
-        Consent existingConsent = new Consent(member, type);
+        Consent existingConsent = Consent.create(member, type);
         existingConsent.deny(); // initially denied
         when(tokenRepository.findByToken(token)).thenReturn(Optional.of(mock(ConsentToken.class)));
         when(consentRepository.findByMemberAndConsentType(member, type)).thenReturn(Optional.of(existingConsent));
@@ -111,7 +112,7 @@ class ConsentServiceTest {
     @Test
     void shouldReturnTrueWhenConsentGranted() {
         // given
-        Consent consent = new Consent(member, type);
+        Consent consent = Consent.create(member, type);
         consent.grant();
         when(consentRepository.findByMemberAndConsentType(member, type)).thenReturn(Optional.of(consent));
 
@@ -125,7 +126,7 @@ class ConsentServiceTest {
     @Test
     void shouldReturnFalseWhenConsentDenied() {
         // given
-        Consent consent = new Consent(member, type);
+        Consent consent = Consent.create(member, type);
         consent.deny();
         when(consentRepository.findByMemberAndConsentType(member, type)).thenReturn(Optional.of(consent));
 

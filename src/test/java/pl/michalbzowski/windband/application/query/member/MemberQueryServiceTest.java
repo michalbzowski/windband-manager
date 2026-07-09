@@ -55,6 +55,6 @@ class MemberQueryServiceTest extends BaseIntegrationTest {
         cmd.setFirstName(firstName);
         cmd.setLastName(lastName);
         cmd.setDateOfBirth(dob);
-        return commandService.createMember(cmd, 1L);
+        return commandService.createMember(cmd, 1L, null);
     }
 }

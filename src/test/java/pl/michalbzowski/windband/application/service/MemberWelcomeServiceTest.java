@@ -2,6 +2,7 @@ package pl.michalbzowski.windband.application.service;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
+import pl.michalbzowski.windband.domain.member.Consent;
 
 import jakarta.mail.MessagingException;
 import jakarta.mail.internet.MimeMessage;
@@ -53,7 +54,9 @@ class MemberWelcomeServiceTest {
     @BeforeEach
     void setUp() {
         // Initialize service with constructor args
-        welcomeService = new MemberWelcomeService(mailSender, templateEngine, consentRepository, tokenRepository, BASE_URL, FROM);
+        welcomeService = new MemberWelcomeService(mailSender, templateEngine, consentRepository, tokenRepository);
+    org.springframework.test.util.ReflectionTestUtils.setField(welcomeService, "baseUrl", BASE_URL);
+    org.springframework.test.util.ReflectionTestUtils.setField(welcomeService, "fromAddress", FROM);
 
         member = mock(Member.class);
         when(member.getEmail()).thenReturn("user@example.com");
@@ -63,7 +66,7 @@ class MemberWelcomeServiceTest {
         when(member.getBand().getName()).thenReturn("Test Band");
 
         currentUser = mock(WindbandOidcUser.class);
-        when(currentUser.getUsername()).thenReturn("admin");
+        when(currentUser.getWbUsername()).thenReturn("admin");
     }
 
     @Test
@@ -107,7 +110,7 @@ class MemberWelcomeServiceTest {
     @Test
     void shouldNotResendConsentRowsIfAlreadyExist() throws MessagingException {
         // given
-        Consent existing = new Consent(member, ConsentType.EVENTS);
+        Consent existing = Consent.create(member, ConsentType.EVENTS);
         existing.grant();
         when(consentRepository.findByMemberAndConsentType(member, ConsentType.EVENTS))
                 .thenReturn(Optional.of(existing));

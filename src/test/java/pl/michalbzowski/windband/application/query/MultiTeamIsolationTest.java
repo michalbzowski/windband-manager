@@ -76,14 +76,14 @@ class MultiTeamIsolationTest extends BaseIntegrationTest {
         cmd.setFirstName("Anna");
         cmd.setLastName("Zespół1");
         cmd.setDateOfBirth(LocalDate.of(1990, 1, 1));
-        memberCommandService.createMember(cmd, band1Id);
+        memberCommandService.createMember(cmd, band1Id, null);
 
         // And: a member in band 2
         CreateMemberCommand cmd2 = new CreateMemberCommand();
         cmd2.setFirstName("Bartek");
         cmd2.setLastName("Zespół2");
         cmd2.setDateOfBirth(LocalDate.of(1990, 1, 1));
-        memberCommandService.createMember(cmd2, band2Id);
+        memberCommandService.createMember(cmd2, band2Id, null);
 
         // When: query members of band 1
         var band1Members = memberQueryService.getAllActiveMembers(band1Id);
@@ -111,7 +111,7 @@ class MultiTeamIsolationTest extends BaseIntegrationTest {
         cmd.setDateOfBirth(LocalDate.of(1990, 1, 1));
 
         // When/Then: creating a member with null teamId throws an exception
-        assertThatThrownBy(() -> memberCommandService.createMember(cmd, null))
+        assertThatThrownBy(() -> memberCommandService.createMember(cmd, null, null))
                 .isInstanceOf(Exception.class);
     }
 
@@ -239,7 +239,7 @@ class MultiTeamIsolationTest extends BaseIntegrationTest {
         m1.setFirstName("M1");
         m1.setLastName("Band1");
         m1.setDateOfBirth(LocalDate.of(1990, 1, 1));
-        memberCommandService.createMember(m1, band1Id);
+        memberCommandService.createMember(m1, band1Id, null);
 
         ScheduleRehearsalCommand r1 = new ScheduleRehearsalCommand();
         r1.setDate(LocalDate.of(2025, 6, 1));
@@ -251,7 +251,7 @@ class MultiTeamIsolationTest extends BaseIntegrationTest {
         m2.setFirstName("M2");
         m2.setLastName("Band2");
         m2.setDateOfBirth(LocalDate.of(1990, 1, 1));
-        memberCommandService.createMember(m2, band2Id);
+        memberCommandService.createMember(m2, band2Id, null);
 
         // Then: each team sees only its own data
         assertThat(memberQueryService.getAllActiveMembers(band1Id))

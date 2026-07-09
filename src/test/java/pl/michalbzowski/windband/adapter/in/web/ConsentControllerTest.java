@@ -46,13 +46,13 @@ class ConsentControllerTest {
         // when
         mockMvc.perform(get("/consent")
                 .param("token", token))
-                .thenExpect(status().isOk())
-                .thenExpect(view().name("consent"))
-                .thenExpect(model().attributeExists("token"))
-                .thenExpect(model().attributeExists("memberName"))
-                .thenExpect(model().attributeExists("teamName"))
-                .thenExpect(model().attributeExists("consentTypes"))
-                .thenExpect(model().attributeExists("consentMap"));
+                .andExpect(status().isOk())
+                .andExpect(view().name("consent"))
+                .andExpect(model().attributeExists("token"))
+                .andExpect(model().attributeExists("memberName"))
+                .andExpect(model().attributeExists("teamName"))
+                .andExpect(model().attributeExists("consentTypes"))
+                .andExpect(model().attributeExists("consentMap"));
     }
 
     @Test
@@ -64,7 +64,7 @@ class ConsentControllerTest {
         // when/then
         mockMvc.perform(get("/consent")
                 .param("token", token))
-                .thenExpect(status().isBadRequest());
+                .andExpect(status().isBadRequest());
     }
 
     @Test
@@ -79,8 +79,8 @@ class ConsentControllerTest {
                 .param("token", token)
                 .param("type", type)
                 .param("grant", String.valueOf(grant)))
-                .thenExpect(status().is3xxRedirection())
-                .thenExpect(header().string("Location", contains("/consent?token=" + token + "&saved=true")));
+                .andExpect(status().is3xxRedirection())
+                .andExpect(header().string("Location", contains("/consent?token=" + token + "&saved=true")));
 
         // then
         verify(consentService).updateConsents(eq(UUID.fromString(token)), eq(ConsentType.EVENTS), eq(true));
