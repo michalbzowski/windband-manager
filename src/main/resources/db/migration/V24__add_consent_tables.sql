@@ -1,6 +1,6 @@
--- V24__add_consent_tables.sql
+-- V24__add_consent_tables.sql (PostgreSQL)
 CREATE TABLE member_consents (
-    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    id BIGSERIAL PRIMARY KEY,
     member_id BIGINT NOT NULL,
     consent_type VARCHAR(30) NOT NULL,
     granted BOOLEAN NOT NULL,
@@ -10,8 +10,8 @@ CREATE TABLE member_consents (
 );
 
 CREATE TABLE member_consent_tokens (
-    id BINARY(16) PRIMARY KEY,
-    token BINARY(16) NOT NULL UNIQUE,
+    id UUID PRIMARY KEY,
+    token UUID NOT NULL UNIQUE,
     member_id BIGINT NOT NULL,
     created_at TIMESTAMP NOT NULL,
     expires_at TIMESTAMP NULL,
