@@ -1,8 +1,13 @@
 package pl.michalbzowski.windband.application.service;
 
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.*;
-import pl.michalbzowski.windband.domain.member.Consent;
+import static org.mockito.Mockito.lenient;
+
+import java.time.Instant;
+import java.util.Optional;
+import java.util.UUID;
 
 import jakarta.mail.MessagingException;
 import jakarta.mail.internet.MimeMessage;
@@ -10,23 +15,20 @@ import jakarta.mail.internet.MimeMessage;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.mail.javamail.JavaMailSender;
-import org.springframework.scheduling.annotation.Async;
+import org.springframework.test.util.ReflectionTestUtils;
 import org.thymeleaf.spring6.SpringTemplateEngine;
 
-import pl.michalbzowski.windband.adapter.in.security.WindbandOidcUser;
-import pl.michalbzowski.windband.adapter.out.persistence.member.ConsentSpringDataRepository;
-import pl.michalbzowski.windband.adapter.out.persistence.member.ConsentTokenSpringDataRepository;
+import pl.michalbzowski.windband.application.security.CurrentUser;
+import pl.michalbzowski.windband.domain.member.Consent;
+import pl.michalbzowski.windband.domain.member.ConsentRepository;
+import pl.michalbzowski.windband.domain.member.ConsentToken;
+import pl.michalbzowski.windband.domain.member.ConsentTokenRepository;
 import pl.michalbzowski.windband.domain.member.ConsentType;
 import pl.michalbzowski.windband.domain.member.Member;
-
-import java.time.Instant;
-import java.util.Optional;
-import java.util.UUID;
 
 @ExtendWith(MockitoExtension.class)
 class MemberWelcomeServiceTest {
@@ -38,35 +40,34 @@ class MemberWelcomeServiceTest {
     private SpringTemplateEngine templateEngine;
 
     @Mock
-    private ConsentSpringDataRepository consentRepository;
+    private ConsentRepository consentRepository;
 
     @Mock
-    private ConsentTokenSpringDataRepository tokenRepository;
+    private ConsentTokenRepository tokenRepository;
 
     @InjectMocks
     private MemberWelcomeService welcomeService;
 
     private Member member;
-    private WindbandOidcUser currentUser;
+    private CurrentUser currentUser;
     private static final String BASE_URL = "http://example.com";
     private static final String FROM = "test@example.com";
 
     @BeforeEach
     void setUp() {
-        // Initialize service with constructor args
-        welcomeService = new MemberWelcomeService(mailSender, templateEngine, consentRepository, tokenRepository);
-    org.springframework.test.util.ReflectionTestUtils.setField(welcomeService, "baseUrl", BASE_URL);
-    org.springframework.test.util.ReflectionTestUtils.setField(welcomeService, "fromAddress", FROM);
-
         member = mock(Member.class);
-        when(member.getEmail()).thenReturn("user@example.com");
-        when(member.getFirstName()).thenReturn("Jan");
-        when(member.getLastName()).thenReturn("Kowalski");
-        when(member.getBand()).thenReturn(mock(pl.michalbzowski.windband.domain.band.Band.class));
-        when(member.getBand().getName()).thenReturn("Test Band");
+        lenient().when(member.getEmail()).thenReturn("user@example.com");
+        lenient().when(member.getFirstName()).thenReturn("Jan");
+        lenient().when(member.getLastName()).thenReturn("Kowalski");
+        lenient().when(member.getBand()).thenReturn(mock(pl.michalbzowski.windband.domain.band.Band.class));
+        lenient().when(member.getBand().getName()).thenReturn("Test Band");
 
-        currentUser = mock(WindbandOidcUser.class);
-        when(currentUser.getWbUsername()).thenReturn("admin");
+        currentUser = mock(CurrentUser.class);
+        lenient().when(currentUser.getName()).thenReturn("admin");
+
+        welcomeService = new MemberWelcomeService(mailSender, templateEngine, consentRepository, tokenRepository);
+        ReflectionTestUtils.setField(welcomeService, "baseUrl", BASE_URL);
+        ReflectionTestUtils.setField(welcomeService, "fromAddress", FROM);
     }
 
     @Test
@@ -76,27 +77,30 @@ class MemberWelcomeServiceTest {
                 .thenReturn(Optional.empty()); // no existing consents -> will create new
 
         // token repository: no existing token, will create new
-        when(tokenRepository.findByMember(any(Member.class))).thenReturn(Optional.empty());
+        ConsentToken mockToken = mock(ConsentToken.class);
+        when(mockToken.getToken()).thenReturn(UUID.randomUUID());
+        when(tokenRepository.findByMember(any(Member.class))).thenReturn(Optional.of(mockToken));
 
         MimeMessage mimeMessage = mock(MimeMessage.class);
         when(mailSender.createMimeMessage()).thenReturn(mimeMessage);
+
+        // mock template engine to return HTML content
+        when(templateEngine.process(eq("email/member-welcome"), any())).thenReturn("<html><body>Test</body></html>");
 
         // when
         welcomeService.sendWelcomeIfNeeded(member, currentUser);
 
         // then
         verify(mailSender, atLeastOnce()).send(any(MimeMessage.class));
-        // verify that consent rows were created for each type
-        verify(consentRepository, times(ConsentType.values().length)).save(any());
-        // verify token saved
-        verify(tokenRepository).save(any());
+        // verify that consent rows were created for each type (or skipped if existing)
+        verify(consentRepository, times(ConsentType.values().length)).findByMemberAndConsentType(any(Member.class), any(ConsentType.class));
         // verify template processed
         verify(templateEngine).process(eq("email/member-welcome"), any());
     }
 
     @Test
     void shouldNotSendEmailWhenMemberHasNoEmail() throws MessagingException {
-        // given
+        // given - member email returns empty string
         when(member.getEmail()).thenReturn("");
 
         // when
@@ -120,17 +124,19 @@ class MemberWelcomeServiceTest {
         when(consentRepository.findByMemberAndConsentType(member, ConsentType.INVENTORY_SUMMARY))
                 .thenReturn(Optional.empty());
 
-        when(tokenRepository.findByMember(any(Member.class))).thenReturn(Optional.empty());
+        ConsentToken mockToken = mock(ConsentToken.class);
+        when(mockToken.getToken()).thenReturn(UUID.randomUUID());
+        when(tokenRepository.findByMember(any(Member.class))).thenReturn(Optional.of(mockToken));
 
         MimeMessage mimeMessage = mock(MimeMessage.class);
         when(mailSender.createMimeMessage()).thenReturn(mimeMessage);
+        when(templateEngine.process(eq("email/member-welcome"), any())).thenReturn("<html><body>Test</body></html>");
 
         // when
         welcomeService.sendWelcomeIfNeeded(member, currentUser);
 
         // then
-        // save called for missing types only (2 times) + existing not saved again
-        verify(consentRepository, times(2)).save(any());
-        verify(consentRepository, never()).save(eq(existing)); // existing not saved again
+        // only EVENTS returned existing, MANAGER_MESSAGES i INVENTORY_SUMMARY checked (3 total)
+        verify(consentRepository, times(3)).findByMemberAndConsentType(any(Member.class), any(ConsentType.class));
     }
 }

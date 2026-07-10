@@ -3,7 +3,7 @@ package pl.michalbzowski.windband.application.command.member;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import pl.michalbzowski.windband.adapter.in.security.WindbandOidcUser;
+import pl.michalbzowski.windband.application.security.CurrentUser;
 import pl.michalbzowski.windband.application.service.MemberWelcomeService;
 import pl.michalbzowski.windband.domain.band.Band;
 import pl.michalbzowski.windband.domain.band.BandRepository;
@@ -22,7 +22,7 @@ public class MemberCommandService {
     private final BandRepository bandRepository;
     private final MemberWelcomeService memberWelcomeService;
 
-    public Member createMember(CreateMemberCommand cmd, Long teamId, WindbandOidcUser currentUser) {
+    public Member createMember(CreateMemberCommand cmd, Long teamId, CurrentUser currentUser) {
         Band band = bandRepository.findById(teamId)
                 .orElseThrow(() -> new IllegalStateException("Band not found: " + teamId));
         Member member = Member.create(
@@ -54,7 +54,7 @@ public class MemberCommandService {
         return member;
     }
 
-    public Member updateMember(UpdateMemberCommand cmd, WindbandOidcUser currentUser) {
+    public Member updateMember(UpdateMemberCommand cmd, CurrentUser currentUser) {
         Member member = memberRepository.findById(cmd.getMemberId())
                 .orElseThrow(() -> new MemberNotFoundException(cmd.getMemberId()));
         member.update(cmd.getFirstName(), cmd.getLastName(), cmd.getDateOfBirth(), cmd.isActive());

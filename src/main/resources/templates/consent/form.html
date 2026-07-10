@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <title th:text="${'Zgody dla ' + memberName}">Zgody</title>
+    <meta charset="UTF-8"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1"/>
+    <link rel="stylesheet" href="/css/pico.min.css" th:href="@{/css/pico.min.css}"/>
+    <style>
+        .container { max-width: 800px; margin: 2rem auto; }
+        .consent-item { margin: 1rem 0; padding: 1rem; border: 1px solid #eee; border-radius: 4px; }
+        .consent-label { font-weight: bold; margin-bottom: 0.5rem; display: block; }
+        .toggle { display: inline-block; margin-left: 1rem; }
+        .saved { color: green; font-weight: bold; margin-top: 1rem; }
+    </style>
+</head>
+<body>
+<nav class="container">
+    <strong>Band Manager</strong>
+    <ul>
+        <li><li>
+    </ul>
+</nav>
+
+<main class="container">
+    <h1>Ustaw zgody na komunikację</h1>
+    <p>Cześć, <span th:text="${memberName}">Jan Kowalski</span>!</p>
+    <p>Zostałeś/aś dodany/a do zespołu <strong th:text="${teamName}">Nieznany zespół</strong>.</p>
+    <p>Wybierz, jakiego rodzaju wiadomości chcesz otrzymywać:</p>
+
+    <form th:action="@{/consent}" method="post">
+        <input type="hidden" name="token" th:value="${token}"/>
+        <div th:each="type : ${consentTypes}">
+            <div class="consent-item">
+                <label class="consent-label">
+                    <input type="checkbox"
+                           name="type"
+                           th:value="${type}"
+                           th:checked="${consentMap.get(type)}"
+                           onchange="this.form.submit()"/>
+                    <span th:text="${displayNames.get(type)}">Typ</span>
+                </label>
+                <input type="hidden" name="grant" th:value=""/>
+            </div>
+        </div>
+    </form>
+
+    <div th:if="${param.saved}" class="saved">Zmiany zapisane!</div>
+</main>
+
+</body>
+</html>

@@ -4,8 +4,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
-import pl.michalbzowski.windband.adapter.out.persistence.member.ConsentSpringDataRepository;
-import pl.michalbzowski.windband.adapter.out.persistence.member.ConsentTokenSpringDataRepository;
+import pl.michalbzowski.windband.application.service.ConsentService;
 import pl.michalbzowski.windband.domain.member.Consent;
 import pl.michalbzowski.windband.domain.member.ConsentType;
 import pl.michalbzowski.windband.domain.member.Member;
@@ -20,17 +19,12 @@ import java.util.UUID;
 @RequestMapping("/consent")
 public class ConsentController {
 
-    private final ConsentTokenSpringDataRepository tokenRepository;
-    private final ConsentSpringDataRepository consentRepository;
+    private final ConsentService consentService;
 
     @GetMapping
     public String showConsentPage(@RequestParam("token") UUID token, Model model) {
         // Find token
-        var tokenOpt = tokenRepository.findByToken(token);
-        if (tokenOpt.isEmpty()) {
-            return "error/404"; // not found
-        }
-        var consentToken = tokenOpt.get();
+        ConsentToken consentToken = consentService.getConsentTokenByToken(token);
         Member member = consentToken.getMember();
         model.addAttribute("memberName", member.getFirstName() + " " + member.getLastName());
         model.addAttribute("teamName", member.getBand() != null ? member.getBand().getName() : "Nieznany zespół");
@@ -39,11 +33,7 @@ public class ConsentController {
         // Build consent map
         Map<ConsentType, Boolean> consentMap = new EnumMap<>(ConsentType.class);
         for (ConsentType type : ConsentType.values()) {
-            consentRepository.findByMemberAndConsentType(member, type)
-                    .ifPresentOrElse(
-                            c -> consentMap.put(type, c.isGranted()),
-                            () -> consentMap.put(type, false) // default false
-                    );
+            consentMap.put(type, consentService.isConsentGranted(member, type));
         }
         model.addAttribute("consentMap", consentMap);
         model.addAttribute("consentTypes", ConsentType.values());
@@ -55,37 +45,14 @@ public class ConsentController {
                 ConsentType.INVENTORY_SUMMARY, "Podsumowania inwentaryzacji"
         ));
 
-        return "consent";
+        return "consent/form";
     }
 
     @PostMapping
     public String updateConsent(@RequestParam("token") UUID token,
                                 @RequestParam("type") ConsentType type,
                                 @RequestParam("grant") boolean grant) {
-        var tokenOpt = tokenRepository.findByToken(token);
-        if (tokenOpt.isEmpty()) {
-            return "error/404";
-        }
-        var consentToken = tokenOpt.get();
-        Member member = consentToken.getMember();
-
-        consentRepository.findByMemberAndConsentType(member, type)
-                .ifPresentOrElse(
-                        consent -> {
-                            if (grant) {
-                                consent.grant();
-                            } else {
-                                consent.deny();
-                            }
-                        },
-                        () -> {
-                            Consent newConsent = Consent.create(member, type);
-                            if (grant) {
-                                newConsent.grant();
-                            }
-                            consentRepository.save(newConsent);
-                        }
-                );
+        consentService.updateConsents(token, type, grant);
         return "redirect:/consent?token=" + token + "&saved=true";
     }
 }

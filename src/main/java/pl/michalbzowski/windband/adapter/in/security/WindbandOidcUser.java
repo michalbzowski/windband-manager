@@ -4,6 +4,7 @@ import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.oauth2.core.oidc.OidcIdToken;
 import org.springframework.security.oauth2.core.oidc.OidcUserInfo;
 import org.springframework.security.oauth2.core.oidc.user.OidcUser;
+import pl.michalbzowski.windband.application.security.CurrentUser;
 
 import java.util.Collection;
 import java.util.List;
@@ -13,7 +14,7 @@ import java.util.Map;
  * Enriched OIDC user that wraps a standard OidcUser
  * and adds windband-manager domain data (team info on it).
  */
-public class WindbandOidcUser implements OidcUser {
+public class WindbandOidcUser implements OidcUser, CurrentUser {
 
     private final OidcUser delegate;
     private final Long userId;
@@ -62,6 +63,7 @@ public class WindbandOidcUser implements OidcUser {
     /**
      * Returns true if user is admin of the active team OR is system admin.
      * Used for general admin checks (e.g., /admin/** endpoints).
+     *
      */
     public boolean hasAnyAdminRole() {
         return isAdmin() || isSystemAdmin();
@@ -72,10 +74,21 @@ public class WindbandOidcUser implements OidcUser {
     }
 
     // === Delegate OidcUser methods ===
-    @Override public Map<String, Object> getClaims() { return delegate.getClaims(); }
-    @Override public OidcUserInfo getUserInfo() { return delegate.getUserInfo(); }
-    @Override public OidcIdToken getIdToken() { return delegate.getIdToken(); }
-    @Override public Map<String, Object> getAttributes() { return delegate.getAttributes(); }
-    @Override public Collection<? extends GrantedAuthority> getAuthorities() { return delegate.getAuthorities(); }
-    @Override public String getName() { return delegate.getName(); }
+    @Override
+    public Map<String, Object> getClaims() { return delegate.getClaims(); }
+
+    @Override
+    public OidcUserInfo getUserInfo() { return delegate.getUserInfo(); }
+
+    @Override
+    public OidcIdToken getIdToken() { return delegate.getIdToken(); }
+
+    @Override
+    public Map<String, Object> getAttributes() { return delegate.getAttributes(); }
+
+    @Override
+    public Collection<? extends GrantedAuthority> getAuthorities() { return delegate.getAuthorities(); }
+
+    @Override
+    public String getName() { return delegate.getName(); }
 }

@@ -1,7 +1,7 @@
 package pl.michalbzowski.windband.application.service;
 
-import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.mail.javamail.MimeMessageHelper;
 import org.springframework.scheduling.annotation.Async;
@@ -10,27 +10,24 @@ import org.thymeleaf.context.Context;
 import org.thymeleaf.spring6.SpringTemplateEngine;
 
 import jakarta.mail.MessagingException;
-import jakarta.mail.internet.MimeMessage;
 import java.time.LocalDate;
 import java.time.Instant;
-import java.util.UUID;
 
-import pl.michalbzowski.windband.adapter.in.security.WindbandOidcUser;
-import pl.michalbzowski.windband.adapter.out.persistence.member.ConsentSpringDataRepository;
-import pl.michalbzowski.windband.adapter.out.persistence.member.ConsentTokenSpringDataRepository;
+import pl.michalbzowski.windband.application.security.CurrentUser;
 import pl.michalbzowski.windband.domain.member.Consent;
+import pl.michalbzowski.windband.domain.member.ConsentRepository;
 import pl.michalbzowski.windband.domain.member.ConsentToken;
+import pl.michalbzowski.windband.domain.member.ConsentTokenRepository;
 import pl.michalbzowski.windband.domain.member.ConsentType;
 import pl.michalbzowski.windband.domain.member.Member;
 
-import org.springframework.beans.factory.annotation.Value;
 @Service
 @Slf4j
 public class MemberWelcomeService {
     private final JavaMailSender mailSender;
     private final SpringTemplateEngine templateEngine;
-    private final ConsentSpringDataRepository consentRepository;
-    private final ConsentTokenSpringDataRepository consentTokenRepository;
+    private final ConsentRepository consentRepository;
+    private final ConsentTokenRepository consentTokenRepository;
     @Value("${app.base-url:http://localhost:8080}")
     private String baseUrl;
     @Value("${app.mail-from:windband@localhost}")
@@ -38,8 +35,8 @@ public class MemberWelcomeService {
 
     public MemberWelcomeService(JavaMailSender mailSender,
                                 SpringTemplateEngine templateEngine,
-                                ConsentSpringDataRepository consentRepository,
-                                ConsentTokenSpringDataRepository consentTokenRepository) {
+                                ConsentRepository consentRepository,
+                                ConsentTokenRepository consentTokenRepository) {
         this.mailSender = mailSender;
         this.templateEngine = templateEngine;
         this.consentRepository = consentRepository;
@@ -47,7 +44,7 @@ public class MemberWelcomeService {
     }
 
     @Async
-    public void sendWelcomeIfNeeded(Member member, WindbandOidcUser currentUser) {
+    public void sendWelcomeIfNeeded(Member member, CurrentUser currentUser) {
         if (member.getEmail() == null || member.getEmail().isBlank()) {
             return;
         }
@@ -80,7 +77,7 @@ public class MemberWelcomeService {
             context.setVariable("memberName", member.getFirstName() + " " + member.getLastName());
             context.setVariable("teamName", member.getBand() != null ? member.getBand().getName() : "unknown team");
             context.setVariable("addedBy", currentUser != null ? currentUser.getName() : "unknown");
-            context.setVariable("date", java.time.LocalDate.now());
+            context.setVariable("date", LocalDate.now());
             context.setVariable("consentLink", consentLink);
             context.setVariable("supportEmail", "kontakt@bandmanager.pl");
 

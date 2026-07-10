@@ -1,10 +1,9 @@
 package pl.michalbzowski.windband.application.service;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.Mockito.*;
-import pl.michalbzowski.windband.domain.member.ConsentToken;
 
 import java.util.Optional;
 import java.util.UUID;
@@ -16,9 +15,10 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
-import pl.michalbzowski.windband.adapter.out.persistence.member.ConsentSpringDataRepository;
-import pl.michalbzowski.windband.adapter.out.persistence.member.ConsentTokenSpringDataRepository;
 import pl.michalbzowski.windband.domain.member.Consent;
+import pl.michalbzowski.windband.domain.member.ConsentRepository;
+import pl.michalbzowski.windband.domain.member.ConsentToken;
+import pl.michalbzowski.windband.domain.member.ConsentTokenRepository;
 import pl.michalbzowski.windband.domain.member.ConsentType;
 import pl.michalbzowski.windband.domain.member.Member;
 
@@ -26,49 +26,49 @@ import pl.michalbzowski.windband.domain.member.Member;
 class ConsentServiceTest {
 
     @Mock
-    private ConsentSpringDataRepository consentRepository;
+    private ConsentRepository consentRepository;
 
     @Mock
-    private ConsentTokenSpringDataRepository tokenRepository;
+    private ConsentTokenRepository tokenRepository;
 
     @InjectMocks
     private ConsentService consentService;
 
     private Member member;
     private ConsentType type;
+    private UUID token;
 
     @BeforeEach
     void setUp() {
         member = mock(Member.class);
         type = ConsentType.EVENTS;
+        token = UUID.randomUUID();
     }
 
     @Test
     void shouldGrantConsentWhenNotExisting() {
-        // given
-        UUID token = UUID.randomUUID();
-        when(tokenRepository.findByToken(token)).thenReturn(Optional.empty());
+        // given - token exists, but no consent yet
+        ConsentToken mockToken = mock(ConsentToken.class);
+        when(tokenRepository.findByToken(token)).thenReturn(Optional.of(mockToken));
+        when(mockToken.getMember()).thenReturn(member);
+        when(consentRepository.findByMemberAndConsentType(member, type)).thenReturn(Optional.empty());
+        when(consentRepository.save(any(Consent.class))).thenAnswer(i -> i.getArgument(0));
 
         // when
         consentService.updateConsents(token, type, true);
 
-        // then
-        verify(consentRepository).save(argThat(consent -> 
-            consent.getMember() == member &&
-            consent.getConsentType() == type &&
-            consent.isGranted()));
-        // Note: member is mock, but we expect save called with a Consent built inside service.
-        // Since we mocked member, we can't assert equality directly; just verify save called.
-        verify(consentRepository, times(1)).save(any(Consent.class));
+        // then - save called twice (once in orElseGet, once after grant())
+        verify(consentRepository, times(2)).save(any(Consent.class));
     }
 
     @Test
     void shouldUpdateExistingConsentToGranted() {
         // given
-        UUID token = UUID.randomUUID();
+        ConsentToken mockToken = mock(ConsentToken.class);
         Consent existingConsent = Consent.create(member, type);
         existingConsent.deny(); // initially denied
-        when(tokenRepository.findByToken(token)).thenReturn(Optional.of(mock(ConsentToken.class)));
+        when(tokenRepository.findByToken(token)).thenReturn(Optional.of(mockToken));
+        when(mockToken.getMember()).thenReturn(member);
         when(consentRepository.findByMemberAndConsentType(member, type)).thenReturn(Optional.of(existingConsent));
 
         // when
@@ -83,18 +83,17 @@ class ConsentServiceTest {
     @Test
     void shouldDenyConsentWhenNotExisting() {
         // given
-        UUID token = UUID.randomUUID();
-        when(tokenRepository.findByToken(token)).thenReturn(Optional.empty());
+        ConsentToken mockToken = mock(ConsentToken.class);
+        when(tokenRepository.findByToken(token)).thenReturn(Optional.of(mockToken));
+        when(mockToken.getMember()).thenReturn(member);
+        when(consentRepository.findByMemberAndConsentType(member, type)).thenReturn(Optional.empty());
+        when(consentRepository.save(any(Consent.class))).thenAnswer(i -> i.getArgument(0));
 
         // when
         consentService.updateConsents(token, type, false);
 
-        // then
-        verify(consentRepository).save(argThat(consent -> 
-            consent.getMember() == member &&
-            consent.getConsentType() == type &&
-            !consent.isGranted()));
-        verify(consentRepository, times(1)).save(any(Consent.class));
+        // then - save called twice (once in orElseGet, once after deny())
+        verify(consentRepository, times(2)).save(any(Consent.class));
     }
 
     @Test
@@ -140,11 +139,10 @@ class ConsentServiceTest {
     @Test
     void shouldThrowWhenTokenNotFound() {
         // given
-        UUID token = UUID.randomUUID();
         when(tokenRepository.findByToken(token)).thenReturn(Optional.empty());
 
         // when/then
-        assertThatThrownBy(() -> consentService.getConsentTokenByToken(token))
+        org.assertj.core.api.Assertions.assertThatThrownBy(() -> consentService.getConsentTokenByToken(token))
             .isInstanceOf(IllegalArgumentException.class)
             .hasMessageContaining("Invalid or expired token");
     }

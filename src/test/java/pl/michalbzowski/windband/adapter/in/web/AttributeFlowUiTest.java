@@ -74,6 +74,12 @@ class AttributeFlowUiTest extends UiTestBase {
     @org.springframework.beans.factory.annotation.Autowired
     private pl.michalbzowski.windband.domain.band.BandRepository bandRepo;
 
+    @org.springframework.beans.factory.annotation.Autowired
+    private pl.michalbzowski.windband.domain.member.ConsentTokenRepository consentTokenRepo;
+
+    @org.springframework.beans.factory.annotation.Autowired
+    private pl.michalbzowski.windband.domain.member.ConsentRepository consentRepo;
+
     private String unique;
     private Set<Long> uniformIdsBefore;
     private Set<Long> instrumentIdsBefore;
@@ -168,6 +174,15 @@ class AttributeFlowUiTest extends UiTestBase {
     }
 
     private void deleteNewMembers(Set<Long> before) {
+        // First delete consent tokens (FK constraint: member_consent_tokens.member_id -> members.id)
+        memberRepo.findAllActive().stream()
+                .filter(m -> !before.contains(m.getId()))
+                .forEach(m -> {
+                    consentTokenRepo.findByMember(m).ifPresent(consentTokenRepo::delete);
+                    // Also delete any consent entries for this member
+                    consentRepo.findByMember(m).forEach(consentRepo::delete);
+                });
+        // Then delete members
         memberRepo.findAllActive().stream()
                 .filter(m -> !before.contains(m.getId()))
                 .forEach(memberRepo::delete);

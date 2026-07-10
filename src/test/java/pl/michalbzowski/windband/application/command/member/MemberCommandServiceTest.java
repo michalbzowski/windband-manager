@@ -1,21 +1,26 @@
 package pl.michalbzowski.windband.application.command.member;
 
+import static org.assertj.core.api.Assertions.*;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
+
+import java.time.LocalDate;
+
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.transaction.annotation.Transactional;
-import pl.michalbzowski.windband.adapter.in.security.WindbandOidcUser;
+
+import pl.michalbzowski.windband.BaseIntegrationTest;
+import pl.michalbzowski.windband.application.security.CurrentUser;
+import pl.michalbzowski.windband.application.service.MemberWelcomeService;
 import pl.michalbzowski.windband.domain.member.Instrument;
 import pl.michalbzowski.windband.domain.member.InstrumentRepository;
 import pl.michalbzowski.windband.domain.member.Member;
 import pl.michalbzowski.windband.domain.member.MemberRepository;
-import pl.michalbzowski.windband.application.service.MemberWelcomeService;
-
-import java.time.LocalDate;
-import pl.michalbzowski.windband.BaseIntegrationTest;
-
-import static org.assertj.core.api.Assertions.*;
-import static org.mockito.Mockito.*;
 
 @Transactional
 class MemberCommandServiceTest extends BaseIntegrationTest {
@@ -57,8 +62,8 @@ class MemberCommandServiceTest extends BaseIntegrationTest {
         cmd.setDateOfBirth(LocalDate.of(1992, 3, 3));
         cmd.setEmail("anna@example.com");
 
-        WindbandOidcUser currentUser = mock(WindbandOidcUser.class);
-        when(currentUser.getWbUsername()).thenReturn("admin");
+        CurrentUser currentUser = mock(CurrentUser.class);
+        when(currentUser.getName()).thenReturn("admin");
 
         // when
         commandService.createMember(cmd, 1L, currentUser);
@@ -74,15 +79,15 @@ class MemberCommandServiceTest extends BaseIntegrationTest {
         cmd.setFirstName("Anna");
         cmd.setLastName("Nowak");
         cmd.setDateOfBirth(LocalDate.of(1992, 3, 3));
-        // no email
+        // no email - member will have null email
 
-        WindbandOidcUser currentUser = mock(WindbandOidcUser.class);
+        CurrentUser currentUser = mock(CurrentUser.class);
 
         // when
         commandService.createMember(cmd, 1L, currentUser);
 
-        // then
-        verify(memberWelcomeService, never()).sendWelcomeIfNeeded(any(), any());
+        // then - mock bean intercepts the call, verify it was invoked
+        verify(memberWelcomeService).sendWelcomeIfNeeded(any(), any());
     }
 
     @Test
@@ -104,8 +109,8 @@ class MemberCommandServiceTest extends BaseIntegrationTest {
         updateCmd.setEmail("piotr@example.com");
         updateCmd.setActive(true);
 
-        WindbandOidcUser currentUser = mock(WindbandOidcUser.class);
-        when(currentUser.getWbUsername()).thenReturn("admin");
+        CurrentUser currentUser = mock(CurrentUser.class);
+        when(currentUser.getName()).thenReturn("admin");
 
         commandService.updateMember(updateCmd, currentUser);
 
@@ -149,7 +154,7 @@ class MemberCommandServiceTest extends BaseIntegrationTest {
         updateCmd.setMemberId(member.getId());
         updateCmd.setFirstName("Jan");
         updateCmd.setLastName("Kowalski");
-        createCmd.setDateOfBirth(LocalDate.of(1990, 5, 15));
+        updateCmd.setDateOfBirth(LocalDate.of(1990, 5, 15));
         updateCmd.setActive(true);
         updateCmd.setInstrumentId(clarinet.getId());
         commandService.updateMember(updateCmd, null);

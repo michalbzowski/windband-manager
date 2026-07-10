@@ -4,12 +4,12 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import pl.michalbzowski.windband.adapter.out.persistence.member.ConsentSpringDataRepository;
-import pl.michalbzowski.windband.adapter.out.persistence.member.ConsentTokenSpringDataRepository;
 import pl.michalbzowski.windband.domain.member.Consent;
+import pl.michalbzowski.windband.domain.member.ConsentRepository;
 import pl.michalbzowski.windband.domain.member.ConsentToken;
-import pl.michalbzowski.windband.domain.member.Member;
+import pl.michalbzowski.windband.domain.member.ConsentTokenRepository;
 import pl.michalbzowski.windband.domain.member.ConsentType;
+import pl.michalbzowski.windband.domain.member.Member;
 
 import java.util.List;
 import java.util.Optional;
@@ -21,8 +21,8 @@ import java.util.stream.Collectors;
 @Slf4j
 public class ConsentService {
 
-    private final ConsentSpringDataRepository consentRepository;
-    private final ConsentTokenSpringDataRepository consentTokenRepository;
+    private final ConsentRepository consentRepository;
+    private final ConsentTokenRepository consentTokenRepository;
 
     @Transactional(readOnly = true)
     public ConsentToken getConsentTokenByToken(UUID token) {
