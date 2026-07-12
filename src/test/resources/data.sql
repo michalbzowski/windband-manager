@@ -25,16 +25,16 @@ INSERT INTO user_team_roles (user_id, team_id, role, assigned_at, invitation_acc
 VALUES (2, 2, 'ADMIN', CURRENT_TIMESTAMP, true, CURRENT_TIMESTAMP);
 
 -- Members for Test Band (band_id=1)
-INSERT INTO members (first_name, last_name, date_of_birth, email, phone, active, joined_date, band_id)
-VALUES ('Jan', 'Kowalski', '1990-05-15', 'jan@test.com', '123456789', true, CURRENT_DATE, 1);
-INSERT INTO members (first_name, last_name, date_of_birth, email, phone, active, joined_date, band_id)
-VALUES ('Anna', 'Nowak', '1985-03-20', 'anna@test.com', '987654321', true, CURRENT_DATE, 1);
+INSERT INTO members (first_name, last_name, date_of_birth, email, phone, active, joined_date, email_consent_given, band_id)
+VALUES ('Jan', 'Kowalski', '1990-05-15', 'jan@test.com', '123456789', true, CURRENT_DATE, false, 1);
+INSERT INTO members (first_name, last_name, date_of_birth, email, phone, active, joined_date, email_consent_given, band_id)
+VALUES ('Anna', 'Nowak', '1985-03-20', 'anna@test.com', '987654321', true, CURRENT_DATE, false, 1);
 
 -- Members for Other Band (band_id=2) — must NOT appear in Test Band views
-INSERT INTO members (first_name, last_name, date_of_birth, email, phone, active, joined_date, band_id)
-VALUES ('Piotr', 'Zalewski', '1992-07-10', 'piotr@other.com', '111222333', true, CURRENT_DATE, 2);
-INSERT INTO members (first_name, last_name, date_of_birth, email, phone, active, joined_date, band_id)
-VALUES ('Maria', 'Wojcik', '1988-11-25', 'maria@other.com', '444555666', true, CURRENT_DATE, 2);
+INSERT INTO members (first_name, last_name, date_of_birth, email, phone, active, joined_date, email_consent_given, band_id)
+VALUES ('Piotr', 'Zalewski', '1992-07-10', 'piotr@other.com', '111222333', true, CURRENT_DATE, false, 2);
+INSERT INTO members (first_name, last_name, date_of_birth, email, phone, active, joined_date, email_consent_given, band_id)
+VALUES ('Maria', 'Wojcik', '1988-11-25', 'maria@other.com', '444555666', true, CURRENT_DATE, false, 2);
 
 -- Groups for Test Band (band_id=1)
 INSERT INTO member_groups (name, description, band_id) VALUES ('Trąbki', 'Trębacze', 1);
