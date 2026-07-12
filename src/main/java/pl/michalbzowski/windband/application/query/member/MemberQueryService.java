@@ -132,7 +132,8 @@ public class MemberQueryService {
                 m.getJoinedDate(),
                 m.getResignedDate(),
                 m.getPrimaryInstrument().map(inst -> inst.getId()).orElse(null),
-                m.getPrimaryInstrument().map(inst -> inst.getName()).orElse(null)
+                m.getPrimaryInstrument().map(inst -> inst.getName()).orElse(null),
+                m.isEmailConsentGiven()
         );
     }
 }

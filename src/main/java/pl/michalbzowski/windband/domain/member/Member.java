@@ -39,6 +39,9 @@ public class Member {
 
     private LocalDate resignedDate;
 
+    @Column(nullable = false)
+    private boolean emailConsentGiven = false;
+
     @OneToMany(mappedBy = "member", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<MemberInstrument> instruments = new ArrayList<>();
 
@@ -59,9 +62,10 @@ public class Member {
         return new Member(firstName, lastName, dateOfBirth, band);
     }
 
-    public void updateContact(String email, String phone) {
+    public void updateContact(String email, String phone, boolean emailConsentGiven) {
         this.email = email;
         this.phone = phone;
+        this.emailConsentGiven = emailConsentGiven;
     }
 
     public void update(String firstName, String lastName, LocalDate dateOfBirth, boolean active) {
@@ -133,5 +137,9 @@ public class Member {
 
     public int getAge() {
         return LocalDate.now().getYear() - dateOfBirth.getYear();
+    }
+
+    public void updateEmailConsent(boolean emailConsentGiven) {
+        this.emailConsentGiven = emailConsentGiven;
     }
 }

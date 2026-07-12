@@ -19,5 +19,7 @@ public record MemberDto(
         LocalDate joinedDate,
         LocalDate resignedDate,
         Long instrumentId,
-        String instrumentName
-) {}
+        String instrumentName,
+        boolean emailConsentGiven
+) {
+}

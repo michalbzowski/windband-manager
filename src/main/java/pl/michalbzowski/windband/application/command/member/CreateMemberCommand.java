@@ -13,4 +13,5 @@ public class CreateMemberCommand {
     private String email;
     private String phone;
     private Long instrumentId;
+    private boolean emailConsentGiven;
 }

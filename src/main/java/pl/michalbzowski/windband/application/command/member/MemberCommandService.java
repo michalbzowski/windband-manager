@@ -35,7 +35,7 @@ public class MemberCommandService {
             member.setJoinedDate(cmd.getJoinedDate());
         }
         if (cmd.getEmail() != null || cmd.getPhone() != null) {
-            member.updateContact(cmd.getEmail(), cmd.getPhone());
+            member.updateContact(cmd.getEmail(), cmd.getPhone(), cmd.isEmailConsentGiven());
         }
         member = memberRepository.save(member);
 
@@ -58,7 +58,7 @@ public class MemberCommandService {
         Member member = memberRepository.findById(cmd.getMemberId())
                 .orElseThrow(() -> new MemberNotFoundException(cmd.getMemberId()));
         member.update(cmd.getFirstName(), cmd.getLastName(), cmd.getDateOfBirth(), cmd.isActive());
-        member.updateContact(cmd.getEmail(), cmd.getPhone());
+        member.updateContact(cmd.getEmail(), cmd.getPhone(), cmd.isEmailConsentGiven());
         if (cmd.getJoinedDate() != null) {
             member.setJoinedDate(cmd.getJoinedDate());
         }

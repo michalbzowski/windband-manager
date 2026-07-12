@@ -1,0 +1,1 @@
+alter table members add column email_consent_given boolean not null default false;
