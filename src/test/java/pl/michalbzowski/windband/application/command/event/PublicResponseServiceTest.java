@@ -178,7 +178,7 @@ class PublicResponseServiceTest extends BaseIntegrationTest {
 
     private Member createMember(String firstName, String lastName) {
         Member member = Member.create(firstName, lastName, LocalDate.of(1990, 1, 1), band);
-        member.updateContact(firstName.toLowerCase() + "@test.com", null);
+        member.updateContact(firstName.toLowerCase() + "@test.com", null, false);
         return memberRepository.save(member);
     }
 }

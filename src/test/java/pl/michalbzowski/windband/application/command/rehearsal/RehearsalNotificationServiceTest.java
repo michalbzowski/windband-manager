@@ -46,11 +46,11 @@ class RehearsalNotificationServiceTest {
 
         Member jan = Member.create("Jan", "Kowalski", LocalDate.of(1990, 5, 15), band);
         ReflectionTestUtils.setField(jan, "id", 1L);
-        jan.updateContact("jan@test.com", "123456789");
+        jan.updateContact("jan@test.com", "123456789", false, false);
 
         Member anna = Member.create("Anna", "Nowak", LocalDate.of(1985, 3, 20), band);
         ReflectionTestUtils.setField(anna, "id", 2L);
-        anna.updateContact("anna@test.com", "987654321");
+        anna.updateContact("anna@test.com", "987654321", false, false);
 
         when(memberRepository.findAllActiveByBandId(1L)).thenReturn(List.of(jan, anna));
 
@@ -91,7 +91,7 @@ class RehearsalNotificationServiceTest {
 
         Member withEmail = Member.create("Z", "Emilem", LocalDate.of(1991, 1, 1), band);
         ReflectionTestUtils.setField(withEmail, "id", 2L);
-        withEmail.updateContact("mailem@test.com", null);
+        withEmail.updateContact("mailem@test.com", null, false, false);
 
         when(memberRepository.findAllActiveByBandId(1L)).thenReturn(List.of(noEmail, withEmail));
 
@@ -119,11 +119,11 @@ class RehearsalNotificationServiceTest {
 
         Member m1 = Member.create("Jan", "Kowalski", LocalDate.of(1990, 5, 15), band);
         ReflectionTestUtils.setField(m1, "id", 1L);
-        m1.updateContact("jan@test.com", null);
+        m1.updateContact("jan@test.com", null, false, false);
 
         Member m2 = Member.create("Anna", "Nowak", LocalDate.of(1985, 3, 20), band);
         ReflectionTestUtils.setField(m2, "id", 2L);
-        m2.updateContact("anna@test.com", null);
+        m2.updateContact("anna@test.com", null, false, false);
 
         when(memberRepository.findAllActiveByBandId(1L)).thenReturn(List.of(m1, m2));
 
@@ -152,7 +152,7 @@ class RehearsalNotificationServiceTest {
 
         Member m1 = Member.create("Jan", "Kowalski", LocalDate.of(1990, 5, 15), band);
         ReflectionTestUtils.setField(m1, "id", 1L);
-        m1.updateContact("jan@test.com", null);
+        m1.updateContact("jan@test.com", null, false, false);
 
         when(memberRepository.findAllActiveByBandId(1L)).thenReturn(List.of(m1));
 

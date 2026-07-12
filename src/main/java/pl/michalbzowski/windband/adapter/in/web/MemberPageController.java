@@ -89,6 +89,6 @@ public class MemberPageController {
 
     private MemberDto emptyMemberDto() {
         return new MemberDto(null, "", "", null, 0, false, false,
-                "", "", true, "", List.of(), null, null, null, null);
+                "", "", true, "", List.of(), null, null, null, null, false);
     }
 }
