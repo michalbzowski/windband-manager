@@ -1,1 +1,230 @@
-1|<div id=\"members-content\">\n     2|    <h2 th:text=\"${member.id() != null ? '✏️ Edytuj członka' : '➕ Dodaj członka'}\">Dodaj członka</h2>\n     3|\n     4|    <form id=\"member-form\"\n     5|          th:attr=\"data-member-id=${member.id()},data-active-team-id=${activeTeamId}\">\n     6|\n     7|        <div class=\"grid\">\n     8|            <label>\n     9|                Imię *\n    10|                <input type=\"text\" name=\"firstName\" th:value=\"${member.firstName()}\" required>\n    11|            </label>\n    12|            <label>\n    13|                Nazwisko *\n    14|                <input type=\"text\" name=\"lastName\" th:value=\"${member.lastName()}\" required>\n    15|            </label>\n    16|        </div>\n     17|\n     18|        <div class=\"grid\">\n     19|            <label>\n    20|                Data urodzenia *\n    21|                <input type=\"date\" name=\"dateOfBirth\" th:value=\"${member.dateOfBirth()}\" required>\n    22|            </label>\n    23|            <label>\n    24|                Data dołączenia\n    25|                <input type=\"date\" name=\"joinedDate\" th:value=\"${member.joinedDate() != null ? member.joinedDate() : todayJoinedDate}\">\n    26|            </label>\n    27|        </div>\n     28|\n     29|        <div class=\"grid\" th:if=\"${member.id() != null}\">\n    30|            <label>\n    31|                Data rezygnacji\n    32|                <input type=\"date\" name=\"resignedDate\" th:value=\"${member.resignedDate()}\">\n    33|
+<div id="members-content">
+    <h2 th:text="${member.id() != null ? '✏️ Edytuj członka' : '➕ Dodaj członka'}">Dodaj członka</h2>
+
+    <form id="member-form"
+          th:attr="data-member-id=${member.id()},data-active-team-id=${activeTeamId}">
+
+        <div class="grid">
+            <label>
+                Imię *
+                <input type="text" name="firstName" th:value="${member.firstName()}" required>
+            </label>
+            <label>
+                Nazwisko *
+                <input type="text" name="lastName" th:value="${member.lastName()}" required>
+            </label>
+        </div>
+
+        <div class="grid">
+            <label>
+                Data urodzenia *
+                <input type="date" name="dateOfBirth" th:value="${member.dateOfBirth()}" required>
+            </label>
+            <label>
+                Data dołączenia
+                <input type="date" name="joinedDate" th:value="${member.joinedDate() != null ? member.joinedDate() : todayJoinedDate}">
+            </label>
+        </div>
+
+        <div class="grid" th:if="${member.id() != null}">
+            <label>
+                Data rezygnacji
+                <input type="date" name="resignedDate" th:value="${member.resignedDate()}">
+            </label>
+        </div>
+
+        <div class="grid">
+            <label>
+                E-mail
+                <input type="email" name="email" th:value="${member.email()}">
+            </label>
+            <label>
+                Telefon
+                <input type="tel" name="phone" th:value="${member.phone()}">
+            </label>
+        </div>
+
+        <div class="grid">
+            <label>
+                Tag
+                <select name="instrumentId">
+                    <option value="">Brak</option>
+                    <option th:each="inst : ${tags}"
+                            th:value="${inst.getId()}"
+                            th:text="${inst.getName()}"
+                            th:selected="${member.instrumentId() != null && member.instrumentId() == inst.getId()}">
+                    </option>
+                </select>
+            </label>
+        </div>
+
+        <label th:if="${member.id() != null}">
+            <input type="checkbox" name="active" th:checked="${member.active()}">
+            Aktywny
+        </label>
+
+        <!-- Dynamic attributes -->
+        <div th:if="${attributeDefs != null && !attributeDefs.isEmpty()}" style="margin-top:1rem;">
+            <h4>Dodatkowe atrybuty</h4>
+            <div th:each="attrDef : ${attributeDefs}" class="grid">
+                <!-- BOOLEAN -->
+                <label th:if="${attrDef.type == 'BOOLEAN'}">
+                    <input type="checkbox" th:name="'attr_' + ${attrDef.id}"
+                           th:checked="${attributeValues != null && attributeValues.get(attrDef.id) == 'true'}"
+                           th:value="${attrDef.name}">
+                    <span th:text="${attrDef.name}">Atrybut</span>
+                </label>
+                <!-- TEXT -->
+                <label th:if="${attrDef.type == 'TEXT'}">
+                    <span th:text="${attrDef.name}">Atrybut</span>
+                    <input type="text" th:name="'attr_' + ${attrDef.id}"
+                           th:value="${attributeValues != null ? attributeValues.get(attrDef.id) : ''}">
+                </label>
+                <!-- NUMBER -->
+                <label th:if="${attrDef.type == 'NUMBER'}">
+                    <span th:text="${attrDef.name}">Atrybut</span>
+                    <input type="number" th:name="'attr_' + ${attrDef.id}"
+                           th:value="${attributeValues != null ? attributeValues.get(attrDef.id) : ''}"
+                           step="any">
+                </label>
+                <!-- DATE -->
+                <label th:if="${attrDef.type == 'DATE'}">
+                    <span th:text="${attrDef.name}">Atrybut</span>
+                    <input type="date" th:name="'attr_' + ${attrDef.id}"
+                           th:value="${attributeValues != null ? attributeValues.get(attrDef.id) : ''}">
+                </label>
+                <!-- SELECT -->
+                <label th:if="${attrDef.type == 'SELECT'}">
+                    <span th:text="${attrDef.name}">Atrybut</span>
+                    <select th:name="'attr_' + ${attrDef.id}">
+                        <option value="">— wybierz —</option>
+                        <option th:each="opt : ${attrDef.options != null ? #strings.arraySplit(attrDef.options, ',') : #strings.arraySplit('', ',')}"
+                                th:value="${#strings.trim(opt)}"
+                                th:text="${#strings.trim(opt)}"
+                                th:selected="${attributeValues != null && attributeValues.get(attrDef.id) != null && #strings.equals(attributeValues.get(attrDef.id), #strings.trim(opt))}">
+                        </option>
+                    </select>
+                </label>
+                <!-- MULTI_SELECT -->
+                <div th:if="${attrDef.type == 'MULTI_SELECT' and attrDef.options != null}">
+                    <span th:text="${attrDef.name}">Atrybut</span>
+                    <div th:each="opt : ${#strings.arraySplit(attrDef.options, ',')}"
+                         style="display:inline-block; margin-right:0.5rem;">
+                        <label>
+                            <input type="checkbox"
+                                   th:name="'attr_' + ${attrDef.id}"
+                                   th:value="${#strings.trim(opt)}"
+                                   th:checked="${attributeValues != null && attributeValues.get(attrDef.id) != null && #strings.contains(attributeValues.get(attrDef.id), #strings.trim(opt))}">
+                            <span th:text="${#strings.trim(opt)}" style="font-size:0.9rem;"></span>
+                        </label>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div style="display:flex; gap:0.5rem; margin-top:1rem;">
+            <button type="submit" class="primary" th:text="${member.id() != null ? 'Zapisz zmiany' : 'Dodaj członka'}">Dodaj</button>
+            <button type="submit" class="secondary" name="saveAndAddAnother" value="true" th:if="${member.id() == null}"
+                    th:text="'Zapisz i dodaj kolejny'">Zapisz i dodaj kolejny</button>
+            <button type="button" class="secondary"
+                    hx-get="/members/list" hx-target="#members-content"
+                    hx-swap="innerHTML transition:true">Anuluj</button>
+        </div>
+    </form>
+</div>
+
+<script th:inline="javascript">
+    // Guard: prevent duplicate event listeners when form is reloaded via htmx
+    if (!window._memberFormHandlerAttached) {
+        window._memberFormHandlerAttached = true;
+        document.body.addEventListener('submit', function(e) {
+            if (e.target.id === 'member-form') {
+                e.preventDefault();
+                var form = e.target;
+                var memberId = form.getAttribute('data-member-id');
+                var activeTeamId = form.getAttribute('data-active-team-id');
+                var url = memberId ? '/api/members/' + memberId : '/api/members';
+                var method = memberId ? 'PUT' : 'POST';
+                var formData = new FormData(form);
+                var data = {};
+                formData.forEach(function(value, key) { data[key] = value; });
+                data.active = formData.has('active');
+                // Check if "Zapisz i dodaj kolejny" button was clicked
+                var saveAndAddAnother = form.querySelector('button[name="saveAndAddAnother"]') &&
+                                        form.querySelector('button[name="saveAndAddAnother"]') === document.activeElement;
+                if (data.instrumentId === '') delete data.instrumentId;
+                if (data.dateOfBirth === '') delete data.dateOfBirth;
+                if (data.joinedDate === '') delete data.joinedDate;
+                if (data.resignedDate === '') delete data.resignedDate;
+
+                fetchWithToast(url, { toastMessage: 'Zapisano członka',
+                    method: method,
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify(data)
+                }).then(function(resp) {
+                // Save dynamic attributes only for existing members
+                    if (memberId) {
+                        var attrPromises = [];
+                        // Group attribute inputs by attr ID to handle multi-select checkboxes
+                        var attrGroups = {};
+                        var allAttrInputs = form.querySelectorAll('[name^="attr_"]');
+                        allAttrInputs.forEach(function(input) {
+                            var attrId = input.name.replace('attr_', '');
+                            if (!attrGroups[attrId]) attrGroups[attrId] = [];
+                            attrGroups[attrId].push(input);
+                        });
+                        Object.keys(attrGroups).forEach(function(attrId) {
+                            var inputs = attrGroups[attrId];
+                            var value;
+                            if (inputs.length === 1) {
+                                var input = inputs[0];
+                                if (input.type === 'checkbox') {
+                                    value = input.checked ? 'true' : 'false';
+                                } else {
+                                    value = input.value;
+                                }
+                            } else {
+                                // Multi-select: join checked values with semicolon
+                                var checked = [];
+                                inputs.forEach(function(input) {
+                                    if (input.checked) checked.push(input.value);
+                                });
+                                value = checked.join(';');
+                            }
+                            // Use activeTeamId instead of hardcoded band ID
+                            var attrUrl = '/api/bands/' + activeTeamId + '/attribute-defs/' + attrId + '/members/' + memberId;
+                            attrPromises.push(fetch(attrUrl, {
+                                method: 'POST',
+                                headers: {'Content-Type': 'application/json'},
+                                body: JSON.stringify({value: value})
+                            }));
+                        });
+                        Promise.all(attrPromises).then(function() {
+                            // Reload member list and scroll/highlight the edited member
+                            var handler = function(evt) {
+                                if (evt.detail && evt.detail.target && evt.detail.target.id === 'members-content') {
+                                    setTimeout(function() {
+                                        var row = document.querySelector('#members-table tbody tr[data-member-id="' + memberId + '"]');
+                                        if (row) {
+                                            row.classList.add('highlight-row');
+                                            setTimeout(function() { row.classList.remove('highlight-row'); }, 3000);
+                                            row.scrollIntoView({behavior: 'smooth', block: 'center'});
+                                        }
+                                    }, 50);
+                                    document.body.removeEventListener('htmx:afterSettle', handler);
+                                }
+                            };
+                            document.body.addEventListener('htmx:afterSettle', handler);
+                            htmx.ajax('GET', '/members/list', {target: '#members-content', swap: 'innerHTML transition:true'});
+                        });
+                    } else if (saveAndAddAnother) {
+                        // Reload the form for adding another member
+                        htmx.ajax('GET', '/members/new', {target: '#members-content', swap: 'innerHTML transition:true'});
+                    } else {
+                        htmx.ajax('GET', '/members/list', {target: '#members-content', swap: 'innerHTML transition:true'});
+                    }
+                });
+            }
+        });
+    }
+</script>
