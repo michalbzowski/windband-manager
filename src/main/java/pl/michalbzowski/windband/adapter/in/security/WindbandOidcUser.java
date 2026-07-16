@@ -91,4 +91,16 @@ public class WindbandOidcUser implements OidcUser, CurrentUser {
 
     @Override
     public String getName() { return delegate.getName(); }
+
+    @Override
+    public String getDisplayName() {
+        Map<String, Object> claims = delegate.getAttributes();
+        String given = claims != null ? (String) claims.get("given_name") : null;
+        String family = claims != null ? (String) claims.get("family_name") : null;
+        if ((given == null || given.isBlank()) && (family == null || family.isBlank())) {
+            return username != null ? username : getName();
+        }
+        String displayName = ((given != null ? given : "") + " " + (family != null ? family : "")).trim();
+        return displayName.isBlank() ? (username != null ? username : getName()) : displayName;
+    }
 }

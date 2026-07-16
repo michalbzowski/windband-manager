@@ -58,6 +58,7 @@ public class SendGridEmailSender implements EmailSender {
 
             ObjectNode from = body.putObject("from");
             from.put("email", fromAddress);
+            from.put("name", "Band Manager");
 
             body.put("subject", subject);
             body.putArray("content")

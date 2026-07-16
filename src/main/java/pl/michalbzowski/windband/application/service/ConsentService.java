@@ -11,7 +11,9 @@ import pl.michalbzowski.windband.domain.member.ConsentTokenRepository;
 import pl.michalbzowski.windband.domain.member.ConsentType;
 import pl.michalbzowski.windband.domain.member.Member;
 
+import java.util.EnumMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.stream.Collectors;
@@ -28,6 +30,25 @@ public class ConsentService {
     public ConsentToken getConsentTokenByToken(UUID token) {
         return consentTokenRepository.findByToken(token)
                 .orElseThrow(() -> new IllegalArgumentException("Invalid or expired token"));
+    }
+
+    /**
+     * Loads everything the consent page needs in a single transaction, so the controller
+     * never touches lazy associations (member.getBand()) outside a Hibernate session.
+     */
+    @Transactional(readOnly = true)
+    public ConsentPageData getConsentPageData(UUID token) {
+        ConsentToken consentToken = consentTokenRepository.findByToken(token)
+                .orElseThrow(() -> new IllegalArgumentException("Invalid or expired token"));
+        Member member = consentToken.getMember();
+        String memberName = member.getFirstName() + " " + member.getLastName();
+        String teamName = member.getBand() != null ? member.getBand().getName() : "Nieznany zespół";
+
+        Map<ConsentType, Boolean> consentMap = new EnumMap<>(ConsentType.class);
+        for (ConsentType type : ConsentType.values()) {
+            consentMap.put(type, isConsentGranted(member, type));
+        }
+        return new ConsentPageData(memberName, teamName, token, consentMap);
     }
 
     @Transactional

@@ -10,6 +10,7 @@ import org.thymeleaf.spring6.SpringTemplateEngine;
 
 import java.time.Instant;
 import java.time.LocalDate;
+import java.time.format.DateTimeFormatter;
 
 import pl.michalbzowski.windband.application.security.CurrentUser;
 import pl.michalbzowski.windband.domain.member.Consent;
@@ -87,8 +88,8 @@ public class MemberWelcomeService {
             Context context = new Context();
             context.setVariable("memberName", member.getFirstName() + " " + member.getLastName());
             context.setVariable("teamName", teamName != null ? teamName : "unknown team");
-            context.setVariable("addedBy", currentUser != null ? currentUser.getName() : "unknown");
-            context.setVariable("date", LocalDate.now());
+            context.setVariable("addedBy", currentUser != null ? currentUser.getDisplayName() : "unknown");
+            context.setVariable("date", LocalDate.now().format(DateTimeFormatter.ofPattern("dd.MM.yyyy")));
             context.setVariable("consentLink", consentLink);
             context.setVariable("supportEmail", "kontakt@bandmanager.pl");
 

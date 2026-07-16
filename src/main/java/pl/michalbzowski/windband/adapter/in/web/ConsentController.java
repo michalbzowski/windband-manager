@@ -5,10 +5,9 @@ import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
 import pl.michalbzowski.windband.application.service.ConsentService;
+import pl.michalbzowski.windband.application.service.ConsentPageData;
 import pl.michalbzowski.windband.domain.member.Consent;
 import pl.michalbzowski.windband.domain.member.ConsentType;
-import pl.michalbzowski.windband.domain.member.Member;
-import pl.michalbzowski.windband.domain.member.ConsentToken;
 
 import java.util.EnumMap;
 import java.util.Map;
@@ -23,19 +22,11 @@ public class ConsentController {
 
     @GetMapping
     public String showConsentPage(@RequestParam("token") UUID token, Model model) {
-        // Find token
-        ConsentToken consentToken = consentService.getConsentTokenByToken(token);
-        Member member = consentToken.getMember();
-        model.addAttribute("memberName", member.getFirstName() + " " + member.getLastName());
-        model.addAttribute("teamName", member.getBand() != null ? member.getBand().getName() : "Nieznany zespół");
-        model.addAttribute("token", token);
-
-        // Build consent map
-        Map<ConsentType, Boolean> consentMap = new EnumMap<>(ConsentType.class);
-        for (ConsentType type : ConsentType.values()) {
-            consentMap.put(type, consentService.isConsentGranted(member, type));
-        }
-        model.addAttribute("consentMap", consentMap);
+        ConsentPageData data = consentService.getConsentPageData(token);
+        model.addAttribute("memberName", data.memberName());
+        model.addAttribute("teamName", data.teamName());
+        model.addAttribute("token", data.token());
+        model.addAttribute("consentMap", data.consentMap());
         model.addAttribute("consentTypes", ConsentType.values());
 
         // Provide display names (could use enum method)

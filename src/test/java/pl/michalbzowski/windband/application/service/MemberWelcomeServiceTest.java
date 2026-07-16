@@ -66,6 +66,7 @@ class MemberWelcomeServiceTest {
 
         currentUser = mock(CurrentUser.class);
         lenient().when(currentUser.getName()).thenReturn("admin");
+        lenient().when(currentUser.getDisplayName()).thenReturn("Admin User");
 
         welcomeService = new MemberWelcomeService(emailSender, templateEngine, consentRepository, tokenRepository);
         ReflectionTestUtils.setField(welcomeService, "baseUrl", BASE_URL);
