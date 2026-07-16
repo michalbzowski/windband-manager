@@ -55,12 +55,14 @@ class MemberWelcomeServiceTest {
 
     @BeforeEach
     void setUp() {
+        // given
         member = mock(Member.class);
         lenient().when(member.getEmail()).thenReturn("user@example.com");
         lenient().when(member.getFirstName()).thenReturn("Jan");
         lenient().when(member.getLastName()).thenReturn("Kowalski");
-        lenient().when(member.getBand()).thenReturn(mock(pl.michalbzowski.windband.domain.band.Band.class));
-        lenient().when(member.getBand().getName()).thenReturn("Test Band");
+        // NOTE: member.getBand() must NOT be touched by sendWelcomeIfNeeded — the real
+        // production path passes a detached entity with a lazy band proxy and no session.
+        // The service now receives teamName as a String, so getBand() should never be called.
 
         currentUser = mock(CurrentUser.class);
         lenient().when(currentUser.getName()).thenReturn("admin");
@@ -88,7 +90,7 @@ class MemberWelcomeServiceTest {
         when(templateEngine.process(eq("email/member-welcome"), any())).thenReturn("<html><body>Test</body></html>");
 
         // when
-        welcomeService.sendWelcomeIfNeeded(member, currentUser);
+        welcomeService.sendWelcomeIfNeeded(member, "Test Band", currentUser);
 
         // then
         verify(mailSender, atLeastOnce()).send(any(MimeMessage.class));
@@ -96,6 +98,8 @@ class MemberWelcomeServiceTest {
         verify(consentRepository, times(ConsentType.values().length)).findByMemberAndConsentType(any(Member.class), any(ConsentType.class));
         // verify template processed
         verify(templateEngine).process(eq("email/member-welcome"), any());
+        // CRITICAL: must not touch the lazy band association (would fail with no Session)
+        verify(member, never()).getBand();
     }
 
     @Test
@@ -104,7 +108,7 @@ class MemberWelcomeServiceTest {
         when(member.getEmail()).thenReturn("");
 
         // when
-        welcomeService.sendWelcomeIfNeeded(member, currentUser);
+        welcomeService.sendWelcomeIfNeeded(member, "Test Band", currentUser);
 
         // then
         verify(mailSender, never()).send(any(MimeMessage.class));
@@ -133,10 +137,65 @@ class MemberWelcomeServiceTest {
         when(templateEngine.process(eq("email/member-welcome"), any())).thenReturn("<html><body>Test</body></html>");
 
         // when
-        welcomeService.sendWelcomeIfNeeded(member, currentUser);
+        welcomeService.sendWelcomeIfNeeded(member, "Test Band", currentUser);
 
         // then
         // only EVENTS returned existing, MANAGER_MESSAGES i INVENTORY_SUMMARY checked (3 total)
         verify(consentRepository, times(3)).findByMemberAndConsentType(any(Member.class), any(ConsentType.class));
+    }
+
+    /**
+     * Reproduces the production bug: sendWelcomeIfNeeded runs in an async thread with NO
+     * Hibernate session, so a lazy member.getBand() would throw LazyInitializationException.
+     * The service must rely solely on the pre-resolved teamName String and never touch getBand().
+     */
+    @Test
+    void shouldSendEmailWithoutTouchingLazyBandAssociation() throws MessagingException {
+        // given - getBand() simulates a detached lazy proxy with no session.
+        // lenient() because the whole point is that the service must NOT call getBand().
+        lenient().when(member.getBand()).thenThrow(new RuntimeException(
+                "could not initialize proxy [pl.michalbzowski.windband.domain.band.Band#2] - no Session"));
+
+        when(consentRepository.findByMemberAndConsentType(any(Member.class), any(ConsentType.class)))
+                .thenReturn(Optional.empty());
+
+        ConsentToken mockToken = mock(ConsentToken.class);
+        when(mockToken.getToken()).thenReturn(UUID.randomUUID());
+        when(tokenRepository.findByMember(any(Member.class))).thenReturn(Optional.of(mockToken));
+
+        MimeMessage mimeMessage = mock(MimeMessage.class);
+        when(mailSender.createMimeMessage()).thenReturn(mimeMessage);
+        when(templateEngine.process(eq("email/member-welcome"), any())).thenReturn("<html><body>Test</body></html>");
+
+        // when / then - must NOT propagate the LazyInitializationException from getBand()
+        welcomeService.sendWelcomeIfNeeded(member, "Resolved Band Name", currentUser);
+
+        verify(mailSender, atLeastOnce()).send(any(MimeMessage.class));
+        verify(member, never()).getBand();
+    }
+
+    @Test
+    void shouldUseProvidedTeamNameWhenBandIsNull() throws MessagingException {
+        // given - no band at all, but teamName provided explicitly.
+        // lenient() because the service must not call getBand() (uses teamName String instead).
+        lenient().when(member.getBand()).thenReturn(null);
+
+        when(consentRepository.findByMemberAndConsentType(any(Member.class), any(ConsentType.class)))
+                .thenReturn(Optional.empty());
+
+        ConsentToken mockToken = mock(ConsentToken.class);
+        when(mockToken.getToken()).thenReturn(UUID.randomUUID());
+        when(tokenRepository.findByMember(any(Member.class))).thenReturn(Optional.of(mockToken));
+
+        MimeMessage mimeMessage = mock(MimeMessage.class);
+        when(mailSender.createMimeMessage()).thenReturn(mimeMessage);
+        when(templateEngine.process(eq("email/member-welcome"), any())).thenReturn("<html><body>Test</body></html>");
+
+        // when
+        welcomeService.sendWelcomeIfNeeded(member, "Explicit Team", currentUser);
+
+        // then - template processed with the provided team name, no band access
+        verify(mailSender, atLeastOnce()).send(any(MimeMessage.class));
+        verify(member, never()).getBand();
     }
 }

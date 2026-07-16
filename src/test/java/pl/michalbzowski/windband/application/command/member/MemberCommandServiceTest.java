@@ -69,7 +69,7 @@ class MemberCommandServiceTest extends BaseIntegrationTest {
         commandService.createMember(cmd, 1L, currentUser);
 
         // then
-        verify(memberWelcomeService).sendWelcomeIfNeeded(any(), eq(currentUser));
+        verify(memberWelcomeService).sendWelcomeIfNeeded(any(), any(), eq(currentUser));
     }
 
     @Test
@@ -87,7 +87,7 @@ class MemberCommandServiceTest extends BaseIntegrationTest {
         commandService.createMember(cmd, 1L, currentUser);
 
         // then - mock bean intercepts the call, verify it was invoked
-        verify(memberWelcomeService).sendWelcomeIfNeeded(any(), any());
+        verify(memberWelcomeService).sendWelcomeIfNeeded(any(), any(), any());
     }
 
     @Test
@@ -115,7 +115,7 @@ class MemberCommandServiceTest extends BaseIntegrationTest {
         commandService.updateMember(updateCmd, currentUser);
 
         // then
-        verify(memberWelcomeService).sendWelcomeIfNeeded(any(), eq(currentUser));
+        verify(memberWelcomeService).sendWelcomeIfNeeded(any(), any(), eq(currentUser));
     }
 
     // existing tests below...

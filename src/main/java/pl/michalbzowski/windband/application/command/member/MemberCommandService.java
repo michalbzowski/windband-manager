@@ -49,7 +49,7 @@ public class MemberCommandService {
         }
 
         // Send welcome email if needed
-        memberWelcomeService.sendWelcomeIfNeeded(member, currentUser);
+        memberWelcomeService.sendWelcomeIfNeeded(member, band.getName(), currentUser);
 
         return member;
     }
@@ -78,8 +78,12 @@ public class MemberCommandService {
         }
         member = memberRepository.saveAndFlush(member);
 
+        // Resolve team name BEFORE leaving the transaction (member.getBand() is lazy and
+        // the welcome email runs in an async thread with no Hibernate session).
+        String teamName = member.getBand() != null ? member.getBand().getName() : null;
+
         // Send welcome email if needed (only on update if email changed or first time)
-        memberWelcomeService.sendWelcomeIfNeeded(member, currentUser);
+        memberWelcomeService.sendWelcomeIfNeeded(member, teamName, currentUser);
 
         return member;
     }

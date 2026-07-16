@@ -6,6 +6,7 @@ import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.mail.javamail.MimeMessageHelper;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import org.thymeleaf.context.Context;
 import org.thymeleaf.spring6.SpringTemplateEngine;
 
@@ -43,8 +44,18 @@ public class MemberWelcomeService {
         this.consentTokenRepository = consentTokenRepository;
     }
 
+    /**
+     * Sends a welcome email with a consent link if the member has an email address.
+     *
+     * @param member      the member to welcome (may be a detached/lazy entity — must NOT touch
+     *                    lazy associations such as {@code member.getBand()} because this method
+     *                    runs in an async thread with no Hibernate session)
+     * @param teamName    pre-resolved band name (already materialized by the caller)
+     * @param currentUser the user who triggered the action
+     */
+    @Transactional
     @Async
-    public void sendWelcomeIfNeeded(Member member, CurrentUser currentUser) {
+    public void sendWelcomeIfNeeded(Member member, String teamName, CurrentUser currentUser) {
         if (member.getEmail() == null || member.getEmail().isBlank()) {
             return;
         }
@@ -75,7 +86,7 @@ public class MemberWelcomeService {
 
             var context = new org.thymeleaf.context.Context();
             context.setVariable("memberName", member.getFirstName() + " " + member.getLastName());
-            context.setVariable("teamName", member.getBand() != null ? member.getBand().getName() : "unknown team");
+            context.setVariable("teamName", teamName != null ? teamName : "unknown team");
             context.setVariable("addedBy", currentUser != null ? currentUser.getName() : "unknown");
             context.setVariable("date", LocalDate.now());
             context.setVariable("consentLink", consentLink);
@@ -89,7 +100,7 @@ public class MemberWelcomeService {
             helper.setText(htmlContent, true);
 
             mailSender.send(message);
-            log.info("Sent welcome email to {} for team {}", member.getEmail(), member.getBand() != null ? member.getBand().getName() : null);
+            log.info("Sent welcome email to {} for team {}", member.getEmail(), teamName);
         } catch (MessagingException e) {
             log.error("Failed to send welcome email to {}", member.getEmail(), e);
         }
