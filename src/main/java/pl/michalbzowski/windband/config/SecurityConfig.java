@@ -109,7 +109,9 @@ public class SecurityConfig {
                                 "/v3/api-docs/**",
                                 "/api/auth/build-info",
                                 "/api/auth/debug-dns",
-                                "/public/**"
+                                "/public/**",
+                                "/consent",
+                                "/consent/**"
                         ).permitAll()
                         // Team admin endpoints
                         .requestMatchers("/api/teams/*/admin/**").hasRole("ADMIN")
