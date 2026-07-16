@@ -2,17 +2,14 @@ package pl.michalbzowski.windband.application.service;
 
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.mail.javamail.JavaMailSender;
-import org.springframework.mail.javamail.MimeMessageHelper;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.thymeleaf.context.Context;
 import org.thymeleaf.spring6.SpringTemplateEngine;
 
-import jakarta.mail.MessagingException;
-import java.time.LocalDate;
 import java.time.Instant;
+import java.time.LocalDate;
 
 import pl.michalbzowski.windband.application.security.CurrentUser;
 import pl.michalbzowski.windband.domain.member.Consent;
@@ -22,23 +19,29 @@ import pl.michalbzowski.windband.domain.member.ConsentTokenRepository;
 import pl.michalbzowski.windband.domain.member.ConsentType;
 import pl.michalbzowski.windband.domain.member.Member;
 
+/**
+ * Sends a welcome email (with a consent link) to newly added members.
+ *
+ * <p>Email delivery is delegated to {@link EmailSender} (implemented by the
+ * SendGrid REST API adapter on port 443) because outbound SMTP is blocked on
+ * the hosting platform (Railway). The service itself stays free of
+ * {@code org.springframework.web} dependencies.
+ */
 @Service
 @Slf4j
 public class MemberWelcomeService {
-    private final JavaMailSender mailSender;
+    private final EmailSender emailSender;
     private final SpringTemplateEngine templateEngine;
     private final ConsentRepository consentRepository;
     private final ConsentTokenRepository consentTokenRepository;
     @Value("${app.base-url:http://localhost:8080}")
     private String baseUrl;
-    @Value("${app.mail-from:windband@localhost}")
-    private String fromAddress;
 
-    public MemberWelcomeService(JavaMailSender mailSender,
+    public MemberWelcomeService(EmailSender emailSender,
                                 SpringTemplateEngine templateEngine,
                                 ConsentRepository consentRepository,
                                 ConsentTokenRepository consentTokenRepository) {
-        this.mailSender = mailSender;
+        this.emailSender = emailSender;
         this.templateEngine = templateEngine;
         this.consentRepository = consentRepository;
         this.consentTokenRepository = consentTokenRepository;
@@ -81,10 +84,7 @@ public class MemberWelcomeService {
         String consentLink = String.format("%s/consent?token=%s", baseUrl, token.getToken());
 
         try {
-            var message = mailSender.createMimeMessage();
-            var helper = new MimeMessageHelper(message, true, "UTF-8");
-
-            var context = new org.thymeleaf.context.Context();
+            Context context = new Context();
             context.setVariable("memberName", member.getFirstName() + " " + member.getLastName());
             context.setVariable("teamName", teamName != null ? teamName : "unknown team");
             context.setVariable("addedBy", currentUser != null ? currentUser.getName() : "unknown");
@@ -94,14 +94,13 @@ public class MemberWelcomeService {
 
             String htmlContent = templateEngine.process("email/member-welcome", context);
 
-            helper.setTo(member.getEmail());
-            helper.setFrom(fromAddress);
-            helper.setSubject("Witaj w zespole! – Twoje zgody na komunikację");
-            helper.setText(htmlContent, true);
-
-            mailSender.send(message);
+            emailSender.sendHtmlEmail(
+                    member.getEmail(),
+                    member.getFirstName() + " " + member.getLastName(),
+                    "Witaj w zespole! – Twoje zgody na komunikację",
+                    htmlContent);
             log.info("Sent welcome email to {} for team {}", member.getEmail(), teamName);
-        } catch (MessagingException e) {
+        } catch (Exception e) {
             log.error("Failed to send welcome email to {}", member.getEmail(), e);
         }
     }
