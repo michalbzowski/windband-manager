@@ -42,7 +42,7 @@ public class ConsentController {
     @PostMapping
     public String updateConsent(@RequestParam("token") UUID token,
                                 @RequestParam("type") ConsentType type,
-                                @RequestParam("grant") boolean grant) {
+                                @RequestParam(value = "grant", required = false, defaultValue = "false") boolean grant) {
         consentService.updateConsents(token, type, grant);
         return "redirect:/consent?token=" + token + "&saved=true";
     }

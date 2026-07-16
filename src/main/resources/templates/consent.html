@@ -4,7 +4,8 @@
     <title th:text="${'Zgody dla ' + memberName}">Zgody</title>
     <meta charset="UTF-8"/>
     <meta name="viewport" content="width=device-width, initial-scale=1"/>
-    <link rel="stylesheet" href="/css/pico.min.css" th:href="@{/css/pico.min.css}"/>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.min.css">
+    <link rel="stylesheet" th:href="@{/css/app.css}">
     <style>
         .container { max-width: 800px; margin: 2rem auto; }
         .consent-item { margin: 1rem 0; padding: 1rem; border: 1px solid #eee; border-radius: 4px; }
@@ -16,9 +17,6 @@
 <body>
 <nav class="container">
     <strong>Band Manager</strong>
-    <ul>
-        <li><li>
-    </ul>
 </nav>
 
 <main class="container">
@@ -27,22 +25,19 @@
     <p>Zostałeś/aś dodany/a do zespołu <strong th:text="${teamName}">Nieznany zespół</strong>.</p>
     <p>Wybierz, jakiego rodzaju wiadomości chcesz otrzymywać:</p>
 
-    <form th:action="@{/consent}" method="post">
-        <input type="hidden" name="token" th:value="${token}"/>
-        <div th:each="type : ${consentTypes}">
-            <div class="consent-item">
-                <label class="consent-label">
-                    <input type="checkbox"
-                           name="type"
-                           th:value="${type}"
-                           th:checked="${consentMap.get(type)}"
-                           onchange="this.form.submit()"/>
-                    <span th:text="${displayNames.get(type)}">Typ</span>
-                </label>
-                <input type="hidden" name="grant" value=""/>
-            </div>
-        </div>
-    </form>
+    <div th:each="type : ${consentTypes}">
+        <form th:action="@{/consent}" method="post" class="consent-item">
+            <input type="hidden" name="token" th:value="${token}"/>
+            <input type="hidden" name="type" th:value="${type}"/>
+            <label class="consent-label">
+                <input type="checkbox"
+                       name="grant"
+                       th:checked="${consentMap.get(type)}"
+                       onchange="this.form.submit()"/>
+                <span th:text="${displayNames.get(type)}">Typ</span>
+            </label>
+        </form>
+    </div>
 
     <div th:if="${param.saved}" class="saved">Zmiany zapisane!</div>
 </main>
