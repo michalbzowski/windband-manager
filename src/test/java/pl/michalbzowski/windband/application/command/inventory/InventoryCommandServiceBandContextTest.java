@@ -5,12 +5,17 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.transaction.annotation.Transactional;
 import pl.michalbzowski.windband.BaseIntegrationTest;
+import pl.michalbzowski.windband.application.query.inventory.AwardQueryService;
 import pl.michalbzowski.windband.domain.band.Band;
 import pl.michalbzowski.windband.domain.band.BandRepository;
+import pl.michalbzowski.windband.domain.inventory.AwardItem;
 import pl.michalbzowski.windband.domain.inventory.InventoryRepository;
+import pl.michalbzowski.windband.domain.inventory.InstrumentItem;
 import pl.michalbzowski.windband.domain.inventory.UniformItem;
+import pl.michalbzowski.windband.domain.member.Member;
 import pl.michalbzowski.windband.domain.member.MemberRepository;
 
+import java.time.LocalDate;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -45,6 +50,9 @@ class InventoryCommandServiceBandContextTest extends BaseIntegrationTest {
 
     @Autowired
     private InventoryRepository inventoryRepository;
+
+    @Autowired
+    private AwardQueryService awardQueryService;
 
     private Band band1;
     private Band band2;
@@ -141,6 +149,56 @@ class InventoryCommandServiceBandContextTest extends BaseIntegrationTest {
         assertThat(band1Items)
                 .as("Uniform created in band %d must NOT appear in band 1 query", savedBand2Id)
                 .noneMatch(u -> u.getId().equals(itemInBand2.getId()));
+    }
+
+    // ====================================================================
+    //  TEST: assignedMember must be eagerly fetched when querying by band
+    //  (regression for LazyInitializationException: could not initialize
+    //  proxy [Member#...] - no Session when rendering inventory/list.html)
+    // ====================================================================
+
+    @Test
+    void assignedMemberIsInitializedWhenQueryingItemsByBand() {
+        // Given: a member in band 2
+        Member member = memberRepository.save(
+                Member.create("E2E", "Członek", LocalDate.of(2000, 1, 1), band2));
+
+        // Create one of each inventory item assigned to that member
+        UniformItem uniform = commandService.addUniformItem(null, null, band2);
+        commandService.assignUniformToMember(uniform.getId(), member.getId(), "dobry");
+
+        InstrumentItem instrument = commandService.addInstrumentItem(null, null, band2);
+        commandService.assignInstrumentToMember(instrument.getId(), member.getId(), "dobry");
+
+        AwardItem award = commandService.addAwardItem(band2.getId(), "Medal", "za zasługi", member.getId(), null);
+
+        // When: query items by band (the same path used by inventory/list.html)
+        List<UniformItem> uniforms = inventoryRepository.findAllUniformItemsByBandId(savedBand2Id);
+        List<InstrumentItem> instruments = inventoryRepository.findAllInstrumentItemsByBandId(savedBand2Id);
+        List<AwardItem> awards = awardQueryService.getAwardItemsForBand(savedBand2Id);
+
+        // Then: the assigned member proxy must be initialized (JOIN FETCH worked),
+        // so getAssignedMemberName() does NOT throw LazyInitializationException.
+        UniformItem assignedUniform = uniforms.stream()
+                .filter(u -> u.getId().equals(uniform.getId())).findFirst().orElseThrow();
+        assertThat(org.hibernate.Hibernate.isInitialized(assignedUniform.getAssignedMember()))
+                .as("UniformItem.assignedMember must be fetched (not a lazy proxy) to avoid LazyInitializationException")
+                .isTrue();
+        assertThat(assignedUniform.getAssignedMemberName()).isEqualTo("E2E Członek");
+
+        InstrumentItem assignedInstrument = instruments.stream()
+                .filter(i -> i.getId().equals(instrument.getId())).findFirst().orElseThrow();
+        assertThat(org.hibernate.Hibernate.isInitialized(assignedInstrument.getAssignedMember()))
+                .as("InstrumentItem.assignedMember must be fetched (not a lazy proxy)")
+                .isTrue();
+        assertThat(assignedInstrument.getAssignedMemberName()).isEqualTo("E2E Członek");
+
+        AwardItem assignedAward = awards.stream()
+                .filter(a -> a.getId().equals(award.getId())).findFirst().orElseThrow();
+        assertThat(org.hibernate.Hibernate.isInitialized(assignedAward.getAssignedMember()))
+                .as("AwardItem.assignedMember must be fetched (not a lazy proxy)")
+                .isTrue();
+        assertThat(assignedAward.getAssignedMemberName()).isEqualTo("E2E Członek");
     }
 
     // ====================================================================
