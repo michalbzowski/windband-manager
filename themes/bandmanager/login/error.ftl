@@ -28,9 +28,9 @@
         </div>
     </#if>
 
-    <#if client??>
+    <#if client?? && client.clientName??>
         <div style="text-align:center; margin-top:1.25rem;">
-            <a href="${client.baseUrl}" class="btn btn-secondary">
+            <a href="${client.baseUrl!'#'}" class="btn btn-secondary">
                 ← Powrót do ${client.clientName}
             </a>
         </div>
