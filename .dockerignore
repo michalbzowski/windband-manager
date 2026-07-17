@@ -1,0 +1,14 @@
+# .dockerignore — keep Docker builds lean and avoid leaking local junk
+node_modules
+.git
+.gitignore
+*.log
+target
+**/target
+*.bak
+*.bak2
+.hermes
+.idea
+.vscode
+README.md
+.DS_Store

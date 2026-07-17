@@ -1,0 +1,75 @@
+# railway.toml — Band Manager multi-service project
+#
+# Defines two services:
+#   - app       : Spring Boot app (built from the root Dockerfile)
+#   - keycloak  : custom Keycloak 25 image with the bandmanager login theme
+#                 baked in as a provider JAR (see Dockerfile.keycloak)
+#
+# With this file committed, pushing `main` rebuilds BOTH services, so theme
+# fixes (e.g. the ${locale.locale} → (locale.currentLanguageTag)!"pl" hardening)
+# deploy automatically — no manual JAR upload, no stale-folder override.
+
+[[services]]
+name = "app"
+rootDirectory = "/"
+dockerfilePath = "Dockerfile"
+healthcheckPath = "/actuator/health"
+healthcheckTimeout = 100
+restartPolicyType = "on_failure"
+restartPolicyMaxRetries = 10
+
+[[services]]
+name = "keycloak"
+rootDirectory = "/"
+dockerfilePath = "Dockerfile.keycloak"
+healthcheckPath = "/realms/master"
+healthcheckTimeout = 120
+restartPolicyType = "on_failure"
+restartPolicyMaxRetries = 10
+
+# Keycloak needs a database. Railway provisions this automatically when the
+# service references a plugin, but we declare the variable contract here so
+# the dashboard shows what the keycloak service expects.
+[[services.variables]]
+key = "KC_DB"
+value = "postgres"
+
+[[services.variables]]
+key = "KC_DB_URL"
+value = "jdbc:postgresql://${{Railway.CONNECT_URL}}"
+
+[[services.variables]]
+key = "KC_DB_USERNAME"
+value = "${{Railway.DATABASE_USERNAME}}"
+
+[[services.variables]]
+key = "KC_DB_PASSWORD"
+value = "${{Railway.DATABASE_PASSWORD}}"
+
+[[services.variables]]
+key = "KC_HOSTNAME"
+value = "keycloak.michalbzowski.pl"
+
+[[services.variables]]
+key = "KC_HOSTNAME_STRICT"
+value = "false"
+
+[[services.variables]]
+key = "KC_PROXY"
+value = "edge"
+
+[[services.variables]]
+key = "KC_BOOTSTRAP_ADMIN_USERNAME"
+value = "${{KEYCLOAK_ADMIN}}"
+
+[[services.variables]]
+key = "KC_BOOTSTRAP_ADMIN_PASSWORD"
+value = "${{KEYCLOAK_ADMIN_PASSWORD}}"
+
+[[services.variables]]
+key = "KC_HTTP_ENABLED"
+value = "true"
+
+[[services.variables]]
+key = "KC_HTTP_PORT"
+value = "8080"

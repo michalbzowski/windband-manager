@@ -1,17 +1,24 @@
 #!/usr/bin/env bash
 #
-# setup-theme.sh — Wdrożenie motywu Keycloaka "bandmanager"
+# setup-theme.sh — LOKALNY dev-only: wdraża motyw przez bind-mount (docker-compose)
 #
-# Wymaga: docker i docker-compose z poziomu katalogu windband-manager.
+# ⚠️  PRODUKCJA (Railway): motyw NIE jest tu wdrażany.
+#     Railway buduje `Dockerfile.keycloak`, który piecze JAR motywu do
+#     /opt/keycloak/providers/ (zob. railway.toml). Push na `main` wdraża
+#     poprawki motywu automatycznie — bez ręcznego uploadu JAR.
 #
-# Użycie:
+#     Uwaga: nigdy nie kładź surowego katalogu w /opt/keycloak/themes/bandmanager
+#     w produkcji — nadpisuje on JAR w providers/ i przywraca stare błędy
+#     (np. ${locale.locale} → HTTP 500).
+#
+# Użycie (tylko lokalnie):
 #   chmod +x setup-theme.sh
 #   ./setup-theme.sh
 #
 # Co robi skrypt:
 #   1. Sprawdza, czy motyw istnieje lokalnie
-#   2. Restartuje kontener Keycloaka, żeby załadować nowy motyw
-#   3. Wchodzi do kontenera i włącza motyw bandmanager
+#   2. Restartuje kontener Keycloaka (docker-compose montuje ./themes :ro)
+#   3. Włącza motyw bandmanager przez kcadm
 
 set -euo pipefail
 
