@@ -29,7 +29,7 @@ class EventParticipationInstrumentUiTest extends UiTestBase {
 
         // 1. Navigate to events list and create an event
         loginAndNavigateTo("/events");
-        wait.until(ExpectedConditions.presenceOfElementLocated(By.id("events-content")));
+        wait.until(ExpectedConditions.presenceOfElementLocated(By.id("events-list-container")));
 
         var addButton = driver.findElement(By.xpath("//button[contains(text(), 'Dodaj wydarzenie')]"));
         addButton.click();
@@ -50,14 +50,16 @@ class EventParticipationInstrumentUiTest extends UiTestBase {
         // Wait for save + redirect
         Thread.sleep(3000);
         driver.get(baseUrl() + "/events");
-        wait.until(ExpectedConditions.presenceOfElementLocated(By.id("events-content")));
+        wait.until(ExpectedConditions.presenceOfElementLocated(By.id("events-list-container")));
 
         // 2. Click first "Szczegóły" button to open event detail
         var detailBtns = driver.findElements(By.xpath("//button[contains(text(), 'Szczegóły')]"));
         assertThat(detailBtns).isNotEmpty();
         detailBtns.get(0).click();
 
-        // Wait for event detail page to load (HTMX swap) - wait for invite section which is part of the detail
+        // Wait for event detail fragment to load
+        wait.until(ExpectedConditions.presenceOfElementLocated(By.id("events-content")));
+        // Wait for invite section which is part of the detail
         wait.until(ExpectedConditions.presenceOfElementLocated(By.id("invite-member-select")));
 
         // Get the event ID from the #events-content element's data-event-id attribute (now guaranteed to be the detail fragment)
@@ -82,14 +84,14 @@ class EventParticipationInstrumentUiTest extends UiTestBase {
         driver.findElement(By.id("invite-btn")).click();
 
         // Wait for invite API to complete and toast to appear
-        Thread.sleep(2000);
+        Thread.sleep(3000);
         
         // Manually reload the event detail page to see the invited member (HTMX reload has server-side 500 issue)
         driver.get(baseUrl() + "/events/" + eventId);
         wait.until(ExpectedConditions.presenceOfElementLocated(By.id("events-content")));
         
         // Wait for script to initialize (event listeners to attach)
-        Thread.sleep(3000);
+        Thread.sleep(5000);
         
         // Wait for the participant row to appear
         wait.until(ExpectedConditions.numberOfElementsToBeMoreThan(By.cssSelector("#participants-table tbody tr"), 0));

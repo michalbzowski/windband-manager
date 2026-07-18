@@ -5,10 +5,10 @@
 <nav th:replace="~{fragments/layout :: nav}"></nav>
 
     <main class="container" id="content">
-        <div id="events-content">
+        <div id="events-list-container">
             <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem;">
                 <h2>🎪 Wydarzenia</h2>
-                <button hx-get="/events/new" hx-target="#events-content"
+                <button hx-get="/events/new" hx-target="#events-list-container"
                         hx-swap="innerHTML transition:true" class="primary">+ Dodaj wydarzenie</button>
             </div>
 
@@ -42,8 +42,8 @@
                             <td data-label="Akcje">
                                 <button class="outline small"
                                         th:hx-get="@{/events/{id}(id=${e.id})}"
-                                        hx-target="#events-content"
-                                        hx-swap="outerHTML transition:true">Szczegóły</button>
+                                        hx-target="#events-list-container"
+                                        hx-swap="innerHTML transition:true">Szczegóły</button>
                             </td>
                         </tr>
                     </tbody>

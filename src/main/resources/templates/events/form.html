@@ -1,4 +1,4 @@
-<div id="events-content">
+<div id="events-list-container">
     <h2>🎪 Dodaj wydarzenie</h2>
 
     <form id="event-form" onsubmit="return handleCreateFormSubmit(event)">
@@ -76,7 +76,7 @@
             <button type="submit" class="primary">Dodaj wydarzenie</button>
             <button type="submit" class="secondary" name="saveAndAddAnother" value="true">Zapisz i dodaj kolejny</button>
             <button type="button" class="secondary"
-                    hx-get="/events/list" hx-target="#events-content"
+                    hx-get="/events/list" hx-target="#events-list-container"
                     hx-swap="innerHTML transition:true">Anuluj</button>
         </div>
     </form>
@@ -112,9 +112,9 @@
             body: JSON.stringify(data)
         }).then(function() {
             if (saveAndAddAnother) {
-                htmx.ajax('GET', '/events/new', {target: '#events-content', swap: 'innerHTML transition:true'});
+                htmx.ajax('GET', '/events/new', {target: '#events-list-container', swap: 'innerHTML transition:true'});
             } else {
-                htmx.ajax('GET', '/events/list', {target: '#events-content', swap: 'innerHTML transition:true'});
+                htmx.ajax('GET', '/events/list', {target: '#events-list-container', swap: 'innerHTML transition:true'});
             }
         });
         return false;
