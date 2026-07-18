@@ -1,5 +1,5 @@
 <div id="members-content">
-    <h2 th:text="${member.id() != null ? '✏️ Edytuj członka' : '➕ Dodaj członka'}">Dodaj członka</h2>
+    <h2 th:text="${member.id() != null ? '✏️ Edytuj członka' : '➕ Dodaj członka'}">Dodaj człо�ek</h2>
 
     <form id="member-form"
           th:attr="data-member-id=${member.id()},data-active-team-id=${activeTeamId}">
@@ -18,7 +18,7 @@
         <div class="grid">
             <label>
                 Data urodzenia *
-                <input type="date" name="dateOfBirth" th:value="${member.dateOfBirth()}" required>
+                <input type="date" name="dateOfBirth" th:value="${member.dateOfBirth()}">
             </label>
             <label>
                 Data dołączenia

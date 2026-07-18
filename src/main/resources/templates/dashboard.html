@@ -36,7 +36,7 @@
         </div>
 
         <div th:unless="${#lists.isEmpty(upcomingItems)}" class="upcoming-list">
-            <a th:each="item : ${upcomingItems}" th:href="@{${item.href}}" class="upcoming-card" hx-target="#content" hx-swap="innerHTML transition:true">
+            <a th:each="item : ${upcomingItems}" th:href="@{${item.href}}" class="upcoming-card">
                 <div class="upcoming-card-icon" th:text="${item.icon}">🎵</div>
                 <div class="upcoming-card-body">
                     <div class="upcoming-card-topline">

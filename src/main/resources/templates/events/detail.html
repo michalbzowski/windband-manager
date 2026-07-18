@@ -1,3 +1,11 @@
+<!DOCTYPE html>
+<html lang="pl" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/layout :: head(${event.name})}"></head>
+<body>
+<nav th:replace="~{fragments/layout :: nav}"></nav>
+
+<main class="container" id="content">
+    <div id="event-detail-wrapper" th:fragment="event-detail-detail-content">
 <div id="events-content" 
      th:data-event-id="${event.id}"
      th:data-payment-type="${event.paymentType}"
@@ -563,3 +571,11 @@
     updateStatsPosition();
 })();
 </script>
+    </div>
+</main>
+
+<footer th:replace="~{fragments/layout :: footer}"></footer>
+<div th:insert="~{fragments/layout :: toast-container}"></div>
+<div th:insert="~{fragments/layout :: footer-scripts}"></div>
+</body>
+</html>
