@@ -5,13 +5,14 @@
 <nav th:replace="~{fragments/layout :: nav}"></nav>
 
 <main class="container" id="content">
-    <div id="event-detail-wrapper" th:fragment="event-detail-detail-content">
-<div id="events-content" 
+    <div id="event-detail-wrapper">
+<div id="events-content"
      th:data-event-id="${event.id}"
      th:data-payment-type="${event.paymentType}"
      th:data-payment-amount="${event.paymentAmount}"
-     th:data-confirmed-count="${event.confirmedCount}">
-    <script>console.log("TOP SCRIPT: Event detail fragment loaded, eventId:", document.getElementById("events-content")?.dataset.eventId);</script>
+     th:data-confirmed-count="${event.confirmedCount}"
+     th:fragment="event-detail-content">
+    <script>console.log("TOP SCRIPT: Event detail fragment loaded, eventId:", document.querySelector("#events-content[data-event-id]")?.dataset.eventId);</script>
     <h2>🎪 Szczegóły wydarzenia</h2>
 
     <article>
@@ -174,11 +175,11 @@
 
     <div style="margin-top:1rem; display:flex; gap:0.5rem;">
         <button type="button" class="secondary"
-                hx-get="/events/list" hx-target="#events-content"
+                hx-get="/events/list" hx-target="#events-list-container"
                 hx-swap="innerHTML transition:true">Powrót</button>
         <button type="button" class="outline"
                 th:hx-get="@{/events/{id}/edit(id=${event.id})}"
-                hx-target="#events-content"
+                hx-target="#events-list-container"
                 hx-swap="innerHTML transition:true">✏️ Edytuj</button>
         <button type="button" class="outline danger" id="delete-event-btn">🗑️ Usuń wydarzenie</button>
     </div>
@@ -186,7 +187,7 @@
 
 <script>
     // Initialize from DOM attributes (works after HTMX swap)
-    var container = document.getElementById('events-content');
+    var container = document.querySelector('#events-content[data-event-id]');
     
     // Set selected options for instrument selects based on data-name attribute
     document.querySelectorAll('.instrument-select').forEach(function(select) {
@@ -274,7 +275,7 @@
                 body: JSON.stringify({eventId: eventId, memberId: memberId})
             }).then(function(response) {
                 if (!response.ok) return;
-                htmx.ajax('GET', '/events/' + eventId, {target: '#events-content', swap: 'outerHTML transition:true'});
+                htmx.ajax('GET', '/events/' + eventId, {target: '#events-content[data-event-id]', swap: 'outerHTML transition:true'});
                 // One-time handler: highlight + scroll to the newly invited member
                 var handler = function(evt) {
                     if (evt.detail && evt.detail.target && evt.detail.target.id === 'events-content') {
@@ -311,7 +312,7 @@
                 body: JSON.stringify({eventId: eventId, groupId: parseInt(groupId)})
             }).then(function(response) {
                 if (!response.ok) return;
-                htmx.ajax('GET', '/events/' + eventId, {target: '#events-content', swap: 'outerHTML transition:true'});
+                htmx.ajax('GET', '/events/' + eventId, {target: '#events-content[data-event-id]', swap: 'outerHTML transition:true'});
                 // After reload, highlight rows that weren't in beforeIds
                 // We use a one-time afterSettle handler to compute the diff
                 var handler = function(evt) {
@@ -358,7 +359,7 @@
                 }
                 // Save scroll position before HTMX swap (no scrolling for response changes)
                 var scrollY = window.scrollY;
-                htmx.ajax('GET', '/events/' + eventId, {target: '#events-content', swap: 'outerHTML transition:true'});
+                htmx.ajax('GET', '/events/' + eventId, {target: '#events-content[data-event-id]', swap: 'outerHTML transition:true'});
                 // Restore scroll position after swap settles
                 var settleHandler = function(evt) {
                     if (evt.detail && evt.detail.target && evt.detail.target.id === 'events-content') {
@@ -385,7 +386,7 @@
                     console.error('Failed to update instrument');
                     return;
                 }
-                htmx.ajax('GET', '/events/' + eventId, {target: '#events-content', swap: 'outerHTML transition:true'});
+                htmx.ajax('GET', '/events/' + eventId, {target: '#events-content[data-event-id]', swap: 'outerHTML transition:true'});
                 // Scroll to the edited member after swap settles (list may have reordered by instrument)
                 var settleHandler = function(evt) {
                     if (evt.detail && evt.detail.target && evt.detail.target.id === 'events-content') {
@@ -473,14 +474,14 @@
 
     // Delete event
     document.getElementById('delete-event-btn').addEventListener('click', function() {
-        var container = document.getElementById('events-content');
+        var container = document.querySelector('#events-content[data-event-id]');
         var eventId = container.dataset.eventId;
         if (confirm('Czy na pewno chcesz usunąć to wydarzenie?')) {
             fetch('/api/events/' + eventId, {
                 method: 'DELETE'
             }).then(function(response) {
                 if (response.ok) {
-                    htmx.ajax('GET', '/events/list', {target: '#events-content', swap: 'outerHTML transition:true'});
+                    htmx.ajax('GET', '/events/list', {target: '#events-list-container', swap: 'outerHTML transition:true'});
                 } else {
                     alert('Nie udało się usunąć wydarzenia');
                 }
@@ -504,7 +505,7 @@
             }).then(function(response) {
                 if (response.ok) {
                     // Reload the event detail page to show updated status
-                    htmx.ajax('GET', '/events/' + eid, {target: '#events-content', swap: 'outerHTML transition:true'});
+                    htmx.ajax('GET', '/events/' + eid, {target: '#events-content[data-event-id]', swap: 'outerHTML transition:true'});
                 }
             }).catch(function(err) { console.error('Send error:', err); });
         });
@@ -514,7 +515,7 @@
     var sendAllBtn = document.getElementById('send-all-btn');
     if (sendAllBtn) {
         sendAllBtn.addEventListener('click', function() {
-            var eid = document.getElementById('events-content').dataset.eventId;
+            var eid = document.querySelector('#events-content[data-event-id]').dataset.eventId;
             var resultSpan = document.getElementById('send-all-result');
             
             this.disabled = true;
@@ -530,7 +531,7 @@
                     });
                     // Reload to show updated statuses
                     setTimeout(function() {
-                        htmx.ajax('GET', '/events/' + eid, {target: '#events-content', swap: 'outerHTML transition:true'});
+                        htmx.ajax('GET', '/events/' + eid, {target: '#events-content[data-event-id]', swap: 'outerHTML transition:true'});
                     }, 1000);
                 } else {
                     resultSpan.textContent = '❌ Błąd wysyłki';

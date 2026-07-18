@@ -56,7 +56,7 @@ public class EventQueryService {
             memberHasEmail.put(inv.getMember().getId(), inv.getMember().getEmail() != null);
         }
 
-        List<ParticipationDto> participationDtos = event.getParticipations().stream()
+        List<ParticipationDto> participationDtos = new java.util.ArrayList<>(event.getParticipations()).stream()
                 .map(p -> {
                     Long memberId = p.getMember().getId();
                     String invStatus = invitationStatusByMember.getOrDefault(memberId, "NOT_SENT");

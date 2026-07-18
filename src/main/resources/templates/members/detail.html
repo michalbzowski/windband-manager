@@ -27,7 +27,7 @@
             <div class="grid" style="grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap:1rem;">
                 <div>
                     <small style="color:var(--pico-muted-color);">Data urodzenia</small>
-                    <p style="margin:0;" th:text="${#temporals.format(member.dateOfBirth, 'dd-MM-yyyy')}">01-01-1990</p>
+                    <p style="margin:0;" th:text="${member.dateOfBirth} ? ${#temporals.format(member.dateOfBirth, 'dd-MM-yyyy')} : '-'">01-01-1990</p>
                 </div>
                 <div>
                     <small style="color:var(--pico-muted-color);">Wiek</small>
@@ -58,7 +58,7 @@
                 </div>
                 <div th:if="${member.resignedDate}">
                     <small style="color:var(--pico-muted-color);">Data rezygnacji</small>
-                    <p style="margin:0;" th:text="${#temporals.format(member.resignedDate, 'dd-MM-yyyy')}">01-01-2025</p>
+                    <p style="margin:0;" th:text="${member.resignedDate} ? ${#temporals.format(member.resignedDate, 'dd-MM-yyyy')} : '-'">01-01-2025</p>
                 </div>
             </div>
         </article>

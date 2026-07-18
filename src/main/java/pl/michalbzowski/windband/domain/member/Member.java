@@ -25,7 +25,7 @@ public class Member {
     @Column(nullable = false)
     private String lastName;
 
-    @Column(nullable = false)
+    @Column(nullable = true)
     private LocalDate dateOfBirth;
 
     private String email;
@@ -52,7 +52,7 @@ public class Member {
     private Member(String firstName, String lastName, LocalDate dateOfBirth, Band band) {
         this.firstName = Objects.requireNonNull(firstName, "firstName required");
         this.lastName = Objects.requireNonNull(lastName, "lastName required");
-        this.dateOfBirth = Objects.requireNonNull(dateOfBirth, "dateOfBirth required");
+        this.dateOfBirth = dateOfBirth;
         this.active = true;
         this.joinedDate = LocalDate.now();
         this.band = Objects.requireNonNull(band, "band required");
@@ -71,7 +71,7 @@ public class Member {
     public void update(String firstName, String lastName, LocalDate dateOfBirth, boolean active) {
         this.firstName = Objects.requireNonNull(firstName, "firstName required");
         this.lastName = Objects.requireNonNull(lastName, "lastName required");
-        this.dateOfBirth = Objects.requireNonNull(dateOfBirth, "dateOfBirth required");
+        this.dateOfBirth = dateOfBirth;
         this.active = active;
     }
 
@@ -128,15 +128,15 @@ public class Member {
     }
 
     public boolean isMinor() {
-        return dateOfBirth.plusYears(18).isAfter(LocalDate.now());
+        return dateOfBirth != null && dateOfBirth.plusYears(18).isAfter(LocalDate.now());
     }
 
     public boolean isSenior() {
-        return dateOfBirth.plusYears(65).isBefore(LocalDate.now());
+        return dateOfBirth != null && dateOfBirth.plusYears(65).isBefore(LocalDate.now());
     }
 
     public int getAge() {
-        return LocalDate.now().getYear() - dateOfBirth.getYear();
+        return dateOfBirth != null ? LocalDate.now().getYear() - dateOfBirth.getYear() : 0;
     }
 
     public void updateEmailConsent(boolean emailConsentGiven) {

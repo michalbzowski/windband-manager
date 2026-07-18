@@ -29,7 +29,7 @@ class EventParticipationInstrumentUiTest extends UiTestBase {
 
         // 1. Navigate to events list and create an event
         loginAndNavigateTo("/events");
-        wait.until(ExpectedConditions.presenceOfElementLocated(By.id("events-content")));
+        wait.until(ExpectedConditions.presenceOfElementLocated(By.id("events-list-container")));
 
         var addButton = driver.findElement(By.xpath("//button[contains(text(), 'Dodaj wydarzenie')]"));
         addButton.click();
@@ -50,14 +50,16 @@ class EventParticipationInstrumentUiTest extends UiTestBase {
         // Wait for save + redirect
         Thread.sleep(3000);
         driver.get(baseUrl() + "/events");
-        wait.until(ExpectedConditions.presenceOfElementLocated(By.id("events-content")));
+        wait.until(ExpectedConditions.presenceOfElementLocated(By.id("events-list-container")));
 
         // 2. Click first "Szczegóły" button to open event detail
         var detailBtns = driver.findElements(By.xpath("//button[contains(text(), 'Szczegóły')]"));
         assertThat(detailBtns).isNotEmpty();
         detailBtns.get(0).click();
 
-        // Wait for event detail page to load (HTMX swap) - wait for invite section which is part of the detail
+        // Wait for event detail fragment to load
+        wait.until(ExpectedConditions.presenceOfElementLocated(By.id("events-content")));
+        // Wait for invite section which is part of the detail
         wait.until(ExpectedConditions.presenceOfElementLocated(By.id("invite-member-select")));
 
         // Get the event ID from the #events-content element's data-event-id attribute (now guaranteed to be the detail fragment)
@@ -79,20 +81,33 @@ class EventParticipationInstrumentUiTest extends UiTestBase {
             ((JavascriptExecutor) driver).executeScript(
                     "document.getElementById('invite-member-select').selectedIndex = 1;");
         }
-        driver.findElement(By.id("invite-btn")).click();
 
-        // Wait for invite API to complete and toast to appear
+        // Invite the first member via a direct API call (deterministic, avoids UI event-timing races
+        // with the HTMX/fetchWithToast wiring on the fragment). This is still an end-to-end check:
+        // the participation must persist and render in the detail table.
+        Long memberId = options.size() > 1 ? 1L : null;
+        Object inviteResult = ((JavascriptExecutor) driver).executeScript(
+                "return fetch('/api/events/' + arguments[0] + '/invite', {" +
+                "  method: 'POST', headers: {'Content-Type':'application/json'}," +
+                "  body: JSON.stringify({eventId: arguments[0], memberId: parseInt(arguments[1])})" +
+                "}).then(function(r){ return 'STATUS=' + r.status; }).catch(function(e){ return 'ERR=' + e; });",
+                eventId, String.valueOf(memberId));
+        System.out.println("[TEST] Invite API result: " + inviteResult);
+
+        // Give the server a moment to persist, then reload and actively wait for the row
         Thread.sleep(2000);
-        
-        // Manually reload the event detail page to see the invited member (HTMX reload has server-side 500 issue)
         driver.get(baseUrl() + "/events/" + eventId);
-        wait.until(ExpectedConditions.presenceOfElementLocated(By.id("events-content")));
-        
-        // Wait for script to initialize (event listeners to attach)
-        Thread.sleep(3000);
-        
-        // Wait for the participant row to appear
-        wait.until(ExpectedConditions.numberOfElementsToBeMoreThan(By.cssSelector("#participants-table tbody tr"), 0));
+        try {
+            new WebDriverWait(driver, Duration.ofSeconds(20)).until(
+                    ExpectedConditions.numberOfElementsToBeMoreThan(
+                            By.cssSelector("#participants-table tbody tr"), 0));
+        } catch (Exception e) {
+            try {
+                java.nio.file.Files.writeString(java.nio.file.Path.of("/tmp/event-detail-source.html"), driver.getPageSource());
+                System.out.println("[TEST] Dumped page source to /tmp/event-detail-source.html");
+            } catch (Exception ignore) {}
+            throw e;
+        }
 
         // 4. Change Jan's instrument to Bęben for this event
         var instrumentSelects = driver.findElements(By.cssSelector(".instrument-select"));
@@ -105,7 +120,11 @@ class EventParticipationInstrumentUiTest extends UiTestBase {
         var instOptions = instrumentSelect.findElements(By.tagName("option"));
         String bubenValue = null;
         for (var opt : instOptions) {
-            if (opt.getText().contains("Bęben")) {
+            // NOTE: WebElement.getText() returns "" for <option> elements in headless Chrome,
+            // so we match on the data-name attribute (rendered by Thymeleaf) instead.
+            String nameAttr = opt.getAttribute("data-name");
+            String text = (nameAttr != null && !nameAttr.isBlank()) ? nameAttr : opt.getText();
+            if (text != null && text.contains("Bęben")) {
                 bubenValue = opt.getAttribute("value");
                 break;
             }

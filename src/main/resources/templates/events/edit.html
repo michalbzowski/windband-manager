@@ -1,4 +1,4 @@
-<div id="events-content">
+<div id="events-list-container">
     <h2>🎪 Edytuj wydarzenie</h2>
 
     <form id="event-edit-form" onsubmit="return handleEditFormSubmit(event)">
@@ -79,7 +79,7 @@
             <button type="submit" class="primary">Zapisz zmiany</button>
         <button type="button" class="secondary"
                 th:attr="hx-get='/events/' + ${event.id}"
-                hx-target="#events-content"
+                hx-target="#events-list-container"
                 hx-swap="innerHTML transition:true">Anuluj</button>
         </div>
     </form>
@@ -108,7 +108,7 @@
         }).then(function(res) {
             console.log('[EDIT FORM] PUT status:', res.status);
             if (res.ok) {
-                htmx.ajax('GET', '/events/' + data.id, {target: '#events-content', swap: 'innerHTML transition:true'});
+                htmx.ajax('GET', '/events/' + data.id, {target: '#events-list-container', swap: 'innerHTML transition:true'});
             } else {
                 return res.text().then(function(t) {
                     console.error('[EDIT FORM] PUT error body:', t);
