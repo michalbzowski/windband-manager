@@ -12,28 +12,35 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 /**
  * E2E test for the home dashboard page ("/").
- * Verifies that the events table is shown first and the old hero /
- * "upcoming items" widgets are gone.
+ * Verifies that the upcoming events + rehearsals list is shown first,
+ * sorted chronologically, and the old hero / standalone events table are gone.
  */
 class DashboardHomeUiTest extends UiTestBase {
 
     @Test
-    void shouldShowEventsTableAsFirstContent() {
+    void shouldShowUpcomingListAsFirstContent() {
         loginAndNavigateTo("/");
 
         assertThat(driver.getTitle()).contains("Podsumowanie");
 
         WebDriverWait wait = new WebDriverWait(driver, Duration.ofSeconds(10));
         wait.until(ExpectedConditions.presenceOfElementLocated(
-                By.cssSelector("section.dashboard-events table")));
+                By.cssSelector("section.dashboard-upcoming .upcoming-table table")));
 
-        // Events table heading present
-        var heading = driver.findElement(By.cssSelector("section.dashboard-events h2"));
-        assertThat(heading.getText()).contains("Wydarzenia");
+        // Heading present
+        var heading = driver.findElement(By.cssSelector("section.dashboard-upcoming h2"));
+        assertThat(heading.getText()).contains("Nadchodzące");
+
+        // At least one row rendered with a relative badge (Jutro / Za N dni / Dziś)
+        var badges = driver.findElements(By.cssSelector("section.dashboard-upcoming .upcoming-badge"));
+        assertThat(badges).isNotEmpty();
+
+        // On wide view the table is shown and the mobile card list is hidden
+        assertThat(driver.findElement(By.cssSelector("section.dashboard-upcoming .upcoming-table")).isDisplayed()).isTrue();
+        assertThat(driver.findElement(By.cssSelector("section.dashboard-upcoming .upcoming-list")).isDisplayed()).isFalse();
 
         // Removed widgets must NOT be present
         assertThat(driver.findElements(By.cssSelector(".dashboard-hero"))).isEmpty();
-        assertThat(driver.findElements(By.cssSelector(".dashboard-upcoming"))).isEmpty();
-        assertThat(driver.findElements(By.cssSelector(".upcoming-card"))).isEmpty();
+        assertThat(driver.findElements(By.cssSelector(".dashboard-events"))).isEmpty();
     }
 }

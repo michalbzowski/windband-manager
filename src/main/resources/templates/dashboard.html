@@ -5,54 +5,72 @@
 <nav th:replace="~{fragments/layout :: nav}"></nav>
 
 <main class="container" id="content">
-    <section class="dashboard-events">
+    <section class="dashboard-upcoming">
         <div class="section-head">
             <div>
                 <p class="dashboard-kicker">Pierwsze, co się dzieje</p>
-                <h2>🎪 Wydarzenia</h2>
+                <h2>Nadchodzące</h2>
             </div>
             <div style="display:flex; gap:0.5rem;">
                 <a th:href="@{/events/new}" hx-target="#content" hx-swap="innerHTML transition:true" class="primary">+ Dodaj wydarzenie</a>
-                <a th:href="@{/events}" hx-target="#content" hx-swap="innerHTML transition:true" class="secondary outline">Zobacz wszystkie</a>
+                <a th:href="@{/rehearsals/new}" hx-target="#content" hx-swap="innerHTML transition:true" class="secondary outline">+ Zaplanuj spotkanie</a>
             </div>
         </div>
 
-        <div th:if="${#lists.isEmpty(events)}" class="empty-state">
+        <div th:if="${#lists.isEmpty(upcoming)}" class="empty-state">
             <article>
-                <p>Brak wydarzeń w systemie. Dodaj pierwsze wydarzenie, aby zobaczyć je tutaj.</p>
+                <p>Brak nadchodzących wydarzeń i prób. Dodaj pierwsze wpisy, aby zobaczyć je tutaj.</p>
             </article>
         </div>
 
-        <div th:unless="${#lists.isEmpty(events)}">
+        <!-- Wide view: table -->
+        <div th:unless="${#lists.isEmpty(upcoming)}" class="upcoming-table">
             <table role="grid">
                 <thead>
                     <tr>
-                        <th>Nazwa</th>
                         <th>Data</th>
+                        <th>Godzina</th>
+                        <th>Co</th>
                         <th>Miejsce</th>
-                        <th>Typ</th>
-                        <th>Potwierdzenia</th>
+                        <th>Kiedy</th>
                         <th>Akcje</th>
                     </tr>
                 </thead>
                 <tbody>
-                    <tr th:each="e : ${events}">
-                        <td data-label="Nazwa" th:text="${e.name}">Koncert</td>
-                        <td data-label="Data" th:text="${#temporals.format(e.date, 'dd.MM.yyyy')}">01.01.2025</td>
-                        <td data-label="Miejsce" th:text="${e.location}">Rynek</td>
-                        <td data-label="Typ" th:text="${e.eventType}">CONCERT</td>
-                        <td data-label="Potwierdzenia">
-                            <span th:text="${e.confirmedCount} + ' ✅ / ' + ${e.declinedCount} + ' ❌ / ' + ${e.noResponseCount} + ' ?'">5 ✅ / 2 ❌ / 8 ?</span>
+                    <tr th:each="item : ${upcoming}">
+                        <td data-label="Data" th:text="${#temporals.format(item.date, 'dd.MM.yyyy')}">01.01.2025</td>
+                        <td data-label="Godzina" th:text="${item.startTime != null} ? ${#temporals.format(item.startTime, 'HH:mm')} : '—'">18:00</td>
+                        <td data-label="Co">
+                            <span th:text="${item.icon}">🎪</span>
+                            <span th:text="${item.title}">Koncert</span>
                         </td>
+                        <td data-label="Miejsce" th:text="${item.subtitle}">Rynek</td>
+                        <td data-label="Kiedy"><span class="upcoming-badge" th:text="${item.badge}">Jutro</span></td>
                         <td data-label="Akcje">
-                            <button class="outline small"
-                                    th:hx-get="@{/events/{id}(id=${e.id})}"
-                                    hx-target="#content"
-                                    hx-swap="innerHTML transition:true">Szczegóły</button>
+                            <a th:href="@{${item.href}}" hx-target="#content" hx-swap="innerHTML transition:true" class="outline small">Szczegóły</a>
                         </td>
                     </tr>
                 </tbody>
             </table>
+        </div>
+
+        <!-- Mobile view: cards -->
+        <div th:unless="${#lists.isEmpty(upcoming)}" class="upcoming-list">
+            <a th:each="item : ${upcoming}" th:href="@{${item.href}}" class="upcoming-card">
+                <div class="upcoming-card-icon" th:text="${item.icon}">🎵</div>
+                <div class="upcoming-card-body">
+                    <div class="upcoming-card-topline">
+                        <h3 th:text="${item.title}">Nazwa</h3>
+                        <span th:text="${item.badge}">Jutro</span>
+                    </div>
+                    <p th:text="${item.subtitle}">Opis</p>
+                    <div class="upcoming-card-meta">
+                        <span th:text="${#temporals.format(item.date, 'dd.MM.yyyy')}">12.07.2026</span>
+                        <span th:if="${item.startTime != null}" th:text="${#temporals.format(item.startTime, 'HH:mm')}">18:00</span>
+                    </div>
+                </div>
+                <div class="upcoming-card-arrow">→</div>
+            </a>
         </div>
     </section>
 
@@ -180,8 +198,111 @@
         color: var(--pico-muted-color);
     }
 
-    .dashboard-events {
+    .dashboard-upcoming {
         margin-bottom: 1.75rem;
+    }
+
+    /* Wide view: table; Mobile view: cards (toggled in media query) */
+    .upcoming-list {
+        display: none;
+    }
+
+    .upcoming-table table {
+        width: 100%;
+    }
+
+    .upcoming-badge {
+        display: inline-block;
+        font-size: 0.8rem;
+        font-weight: 600;
+        color: var(--pico-primary);
+        background: color-mix(in srgb, var(--pico-primary) 12%, transparent);
+        padding: 0.2rem 0.55rem;
+        border-radius: 999px;
+        white-space: nowrap;
+    }
+
+    .upcoming-card {
+        display: grid;
+        grid-template-columns: auto minmax(0, 1fr) auto;
+        gap: 0.9rem;
+        align-items: center;
+        padding: 1rem;
+        text-decoration: none;
+        color: inherit;
+        background: var(--pico-card-background-color, var(--pico-card-sectioning-background-color));
+        border: 1px solid var(--pico-card-border-color, var(--pico-muted-border-color));
+        border-radius: 18px;
+        box-shadow: var(--pico-card-box-shadow, none);
+        transition: transform 0.15s ease, border-color 0.15s ease, background 0.15s ease;
+    }
+
+    .upcoming-card:hover {
+        transform: translateY(-1px);
+        border-color: var(--pico-primary);
+    }
+
+    .upcoming-card-icon {
+        width: 2.75rem;
+        height: 2.75rem;
+        border-radius: 999px;
+        display: grid;
+        place-items: center;
+        background: color-mix(in srgb, var(--pico-primary) 12%, transparent);
+        font-size: 1.1rem;
+        flex: none;
+    }
+
+    .upcoming-card-body {
+        min-width: 0;
+    }
+
+    .upcoming-card-topline {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 1rem;
+        margin-bottom: 0.25rem;
+    }
+
+    .upcoming-card-topline h3 {
+        margin: 0;
+        font-size: 1rem;
+        font-weight: 650;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+
+    .upcoming-card-topline span {
+        flex: none;
+        font-size: 0.8rem;
+        font-weight: 600;
+        color: var(--pico-primary);
+        background: color-mix(in srgb, var(--pico-primary) 12%, transparent);
+        padding: 0.2rem 0.55rem;
+        border-radius: 999px;
+        white-space: nowrap;
+    }
+
+    .upcoming-card p {
+        margin: 0 0 0.35rem;
+        font-size: 0.95rem;
+        color: var(--pico-muted-color);
+    }
+
+    .upcoming-card-meta {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.6rem;
+        font-size: 0.82rem;
+        color: var(--pico-muted-color);
+    }
+
+    .upcoming-card-arrow {
+        color: var(--pico-muted-color);
+        font-size: 1.25rem;
+        padding-inline-start: 0.25rem;
     }
 
     .section-head {
@@ -260,6 +381,15 @@
             grid-template-columns: 1fr;
             display: grid;
             align-items: start;
+        }
+
+        .upcoming-table {
+            display: none;
+        }
+
+        .upcoming-list {
+            display: grid;
+            gap: 0.75rem;
         }
 
         .stat-grid {
