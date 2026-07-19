@@ -2,6 +2,7 @@ package pl.michalbzowski.windband.domain.member;
 
 import jakarta.persistence.*;
 import lombok.AccessLevel;
+import lombok.EqualsAndHashCode;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import pl.michalbzowski.windband.domain.band.Band;
@@ -12,6 +13,7 @@ import java.util.*;
 @Entity
 @Table(name = "members")
 @Getter
+@EqualsAndHashCode(of = "id")
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class Member {
 
@@ -117,6 +119,11 @@ public class Member {
     public void deactivate() {
         this.active = false;
         this.resignedDate = LocalDate.now();
+    }
+
+    public void activate() {
+        this.active = true;
+        this.resignedDate = null;
     }
 
     public void setJoinedDate(LocalDate joinedDate) {

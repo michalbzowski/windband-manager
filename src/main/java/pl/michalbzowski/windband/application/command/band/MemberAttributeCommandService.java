@@ -9,6 +9,7 @@ import pl.michalbzowski.windband.domain.band.MemberAttributeDef;
 import pl.michalbzowski.windband.domain.band.MemberAttributeDefRepository;
 import pl.michalbzowski.windband.domain.band.MemberAttributeValue;
 import pl.michalbzowski.windband.domain.band.MemberAttributeValueRepository;
+import pl.michalbzowski.windband.domain.member.AttributeDefSource;
 import pl.michalbzowski.windband.domain.member.GroupRepository;
 import pl.michalbzowski.windband.domain.member.Member;
 import pl.michalbzowski.windband.domain.member.MemberRepository;
@@ -87,7 +88,8 @@ public class MemberAttributeCommandService {
         }
         attributeValueRepository.save(attrValue);
         // Sync dynamic group membership based on the new value
-        groupCommandService.syncMemberInDynamicGroup(def, member, value);
+        groupCommandService.syncMemberInDynamicGroup(
+                new AttributeDefSource(def, attributeValueRepository), member);
     }
 
     /**
@@ -106,7 +108,8 @@ public class MemberAttributeCommandService {
         // Sync existing attribute values into the group
         List<MemberAttributeValue> values = attributeValueRepository.findByAttributeDef(def);
         for (MemberAttributeValue v : values) {
-            groupCommandService.syncMemberInDynamicGroup(def, v.getMember(), v.getValue());
+            groupCommandService.syncMemberInDynamicGroup(
+                    new AttributeDefSource(def, attributeValueRepository), v.getMember());
         }
     }
 

@@ -7,8 +7,14 @@ import org.springframework.boot.ApplicationRunner;
 import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Component;
 import pl.michalbzowski.windband.application.command.band.MemberAttributeCommandService;
+import pl.michalbzowski.windband.application.command.member.GroupCommandService;
+import pl.michalbzowski.windband.domain.band.Band;
+import pl.michalbzowski.windband.domain.band.BandRepository;
 import pl.michalbzowski.windband.domain.band.MemberAttributeDef;
 import pl.michalbzowski.windband.domain.band.MemberAttributeDefRepository;
+import pl.michalbzowski.windband.domain.member.Member;
+import pl.michalbzowski.windband.domain.member.MemberFieldSource;
+import pl.michalbzowski.windband.domain.member.MemberRepository;
 
 import java.util.List;
 
@@ -42,6 +48,9 @@ public class DynamicGroupBackfillRunner implements ApplicationRunner {
 
     private final MemberAttributeDefRepository attributeDefRepository;
     private final MemberAttributeCommandService memberAttributeCommandService;
+    private final GroupCommandService groupCommandService;
+    private final BandRepository bandRepository;
+    private final MemberRepository memberRepository;
 
     @Override
     public void run(ApplicationArguments args) {
@@ -67,5 +76,23 @@ public class DynamicGroupBackfillRunner implements ApplicationRunner {
         }
         log.info("[backfill] Done. succeeded={}, failed={}, total={}",
                 succeeded, failed, allBoolean.size());
+
+        // Ensure every band has an "Aktywni" dynamic group backed by the fixed
+        // member.active field, and sync its current membership. Idempotent.
+        int activeGroups = 0;
+        for (Band band : bandRepository.findAll()) {
+            try {
+                groupCommandService.createDynamicGroupForMemberField(MemberFieldSource.ACTIVE, band);
+                List<Member> activeMembers = memberRepository.findAllActiveByBandId(band.getId());
+                for (Member m : activeMembers) {
+                    groupCommandService.syncMemberForActiveField(m);
+                }
+                activeGroups++;
+            } catch (Exception e) {
+                log.error("[backfill] Failed to ensure 'Aktywni' dynamic group for band {}: {}",
+                        band.getId(), e.getMessage(), e);
+            }
+        }
+        log.info("[backfill] Ensured 'Aktywni' dynamic groups for {} bands", activeGroups);
     }
 }

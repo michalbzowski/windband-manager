@@ -1,6 +1,7 @@
 package pl.michalbzowski.windband.application.command.member;
 
 import lombok.RequiredArgsConstructor;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import pl.michalbzowski.windband.application.security.CurrentUser;
@@ -8,6 +9,8 @@ import pl.michalbzowski.windband.application.service.MemberWelcomeService;
 import pl.michalbzowski.windband.domain.band.Band;
 import pl.michalbzowski.windband.domain.band.BandRepository;
 import pl.michalbzowski.windband.domain.member.*;
+import pl.michalbzowski.windband.domain.member.MemberActivatedEvent;
+import pl.michalbzowski.windband.domain.member.MemberDeactivatedEvent;
 
 import java.time.LocalDate;
 import java.util.Objects;
@@ -21,6 +24,7 @@ public class MemberCommandService {
     private final InstrumentRepository instrumentRepository;
     private final BandRepository bandRepository;
     private final MemberWelcomeService memberWelcomeService;
+    private final ApplicationEventPublisher eventPublisher;
 
     public Member createMember(CreateMemberCommand cmd, Long teamId, CurrentUser currentUser) {
         Band band = bandRepository.findById(teamId)
@@ -57,6 +61,8 @@ public class MemberCommandService {
     public Member updateMember(UpdateMemberCommand cmd, CurrentUser currentUser) {
         Member member = memberRepository.findById(cmd.getMemberId())
                 .orElseThrow(() -> new MemberNotFoundException(cmd.getMemberId()));
+        Member memberBeforeUpdate = Member.create(member.getFirstName(), member.getLastName(), member.getDateOfBirth(), member.getBand());
+        memberBeforeUpdate.update(member.getFirstName(), member.getLastName(), member.getDateOfBirth(), member.isActive());
         member.update(cmd.getFirstName(), cmd.getLastName(), cmd.getDateOfBirth(), cmd.isActive());
         member.updateContact(cmd.getEmail(), cmd.getPhone(), cmd.isEmailConsentGiven());
         if (cmd.getJoinedDate() != null) {
@@ -77,6 +83,16 @@ public class MemberCommandService {
             member.changeInstrument(instrument);
         }
         member = memberRepository.saveAndFlush(member);
+
+        // Publish activation/deactivation domain events when the active flag flips,
+        // so downstream listeners (dynamic group sync, future notifications) can react.
+        boolean wasActive = memberBeforeUpdate.isActive();
+        boolean isActive = member.isActive();
+        if (wasActive && !isActive) {
+            eventPublisher.publishEvent(new MemberDeactivatedEvent(member.getId(), member.getBand().getId()));
+        } else if (!wasActive && isActive) {
+            eventPublisher.publishEvent(new MemberActivatedEvent(member.getId(), member.getBand().getId()));
+        }
 
         // Resolve team name BEFORE leaving the transaction (member.getBand() is lazy and
         // the welcome email runs in an async thread with no Hibernate session).
@@ -129,5 +145,14 @@ public class MemberCommandService {
                 .orElseThrow(() -> new MemberNotFoundException(memberId));
         member.deactivate();
         memberRepository.save(member);
+        eventPublisher.publishEvent(new MemberDeactivatedEvent(member.getId(), member.getBand().getId()));
+    }
+
+    public void activateMember(Long memberId) {
+        Member member = memberRepository.findById(memberId)
+                .orElseThrow(() -> new MemberNotFoundException(memberId));
+        member.activate();
+        memberRepository.save(member);
+        eventPublisher.publishEvent(new MemberActivatedEvent(member.getId(), member.getBand().getId()));
     }
 }

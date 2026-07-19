@@ -6,9 +6,13 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import pl.michalbzowski.windband.domain.band.Band;
 import pl.michalbzowski.windband.domain.band.MemberAttributeDef;
+import pl.michalbzowski.windband.domain.band.MemberAttributeValueRepository;
+import pl.michalbzowski.windband.domain.member.DynamicGroupSource;
+import pl.michalbzowski.windband.domain.member.DynamicSourceType;
 import pl.michalbzowski.windband.domain.member.Group;
 import pl.michalbzowski.windband.domain.member.GroupRepository;
 import pl.michalbzowski.windband.domain.member.Member;
+import pl.michalbzowski.windband.domain.member.MemberFieldSource;
 import pl.michalbzowski.windband.domain.member.MemberRepository;
 
 import java.util.Optional;
@@ -21,6 +25,7 @@ public class GroupCommandService {
 
     private final GroupRepository groupRepository;
     private final MemberRepository memberRepository;
+    private final MemberAttributeValueRepository valueRepository;
 
     public Group createGroup(CreateGroupCommand cmd, Band band) {
         Group group = new Group(cmd.getName(), cmd.getDescription(), band);
@@ -129,20 +134,25 @@ public class GroupCommandService {
     }
 
     /**
-     * Sync a single member's membership in the dynamic group backed by `def`:
-     *  - if value == "true" and member not in group → add
-     *  - if value != "true" and member in group → remove
-     * No-op if the attribute has no dynamic group, or is not BOOLEAN.
+     * Sync a single member's membership in the dynamic group backed by the given
+     * polymorphic {@link DynamicGroupSource}:
+     *  - if {@code source.memberMatches(member)} and member not in group → add
+     *  - if not matches and member in group → remove
+     * No-op if no dynamic group corresponds to the source.
+     * <p>
+     * This is written against the {@code DynamicGroupSource} interface only — it does
+     * not branch on whether the source is an attribute or a member field, so new
+     * source kinds are added without touching this method (OCP).
+     * <p>
      * Joins the caller's transaction (default REQUIRED) — see
      * {@link #createDynamicGroupForAttribute} for why this is preferred over
      * REQUIRES_NEW here.
      */
-    public void syncMemberInDynamicGroup(MemberAttributeDef def, Member member, String newValue) {
-        if (!"BOOLEAN".equals(def.getType())) return;
-        Optional<Group> maybeGroup = groupRepository.findByDynamicSource(def);
+    public void syncMemberInDynamicGroup(DynamicGroupSource source, Member member) {
+        Optional<Group> maybeGroup = findDynamicGroupForSource(source);
         if (maybeGroup.isEmpty()) return;
         Group group = maybeGroup.get();
-        boolean shouldBeMember = "true".equalsIgnoreCase(newValue);
+        boolean shouldBeMember = source.memberMatches(member);
         boolean isMember = group.getMembers().stream()
                 .anyMatch(gm -> gm.getMember().equals(member));
         if (shouldBeMember && !isMember) {
@@ -154,6 +164,29 @@ public class GroupCommandService {
         }
     }
 
+    /**
+     * Resolve the dynamic group that corresponds to a polymorphic source.
+     * Attribute-backed sources are found via the attribute def; member-field-backed
+     * sources via (type, key).
+     */
+    private Optional<Group> findDynamicGroupForSource(DynamicGroupSource source) {
+        if (source instanceof pl.michalbzowski.windband.domain.member.AttributeDefSource attr) {
+            return groupRepository.findByDynamicSource(attr.getDef());
+        }
+        if (source instanceof MemberFieldSource field) {
+            return groupRepository.findByDynamicSourceTypeAndDynamicSourceKey(DynamicSourceType.MEMBER_FIELD, field.getField());
+        }
+        return Optional.empty();
+    }
+
+    /**
+     * Convenience for syncing a member against the fixed {@code active} field.
+     * Used by the group-sync event listener when a member is activated/deactivated.
+     */
+    public void syncMemberForActiveField(Member member) {
+        syncMemberInDynamicGroup(new MemberFieldSource(MemberFieldSource.ACTIVE), member);
+    }
+
     public void renameDynamicGroup(MemberAttributeDef def) {
         groupRepository.findByDynamicSource(def).ifPresent(g -> {
             g.renameForDynamicSource(def.getName());
@@ -163,5 +196,23 @@ public class GroupCommandService {
 
     public void deleteDynamicGroup(MemberAttributeDef def) {
         groupRepository.findByDynamicSource(def).ifPresent(groupRepository::delete);
+    }
+
+    /**
+     * Create the dynamic group backed by a fixed member field (e.g. "active").
+     * Idempotent: returns the existing group if one already exists for that field.
+     */
+    public Group createDynamicGroupForMemberField(String field, Band band) {
+        Optional<Group> existing = groupRepository.findByDynamicSourceTypeAndDynamicSourceKey(DynamicSourceType.MEMBER_FIELD, field);
+        if (existing.isPresent()) {
+            return existing.get();
+        }
+        String baseName = new MemberFieldSource(field).getName();
+        String resolvedName = resolveNameCollision(baseName, band);
+        if (!resolvedName.equals(baseName)) {
+            log.warn("[dynamic-groups] Name collision for member field '{}' (band {}): creating dynamic group as '{}' instead.",
+                    field, band.getId(), resolvedName);
+        }
+        return groupRepository.save(Group.createDynamicForMemberField(field, band));
     }
 }

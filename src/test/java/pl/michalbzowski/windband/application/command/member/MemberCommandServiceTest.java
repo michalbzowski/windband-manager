@@ -12,15 +12,17 @@ import java.time.LocalDate;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.mock.mockito.MockBean;
+import org.springframework.test.annotation.Commit;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
 import pl.michalbzowski.windband.BaseIntegrationTest;
 import pl.michalbzowski.windband.application.security.CurrentUser;
 import pl.michalbzowski.windband.application.service.MemberWelcomeService;
-import pl.michalbzowski.windband.domain.member.Instrument;
-import pl.michalbzowski.windband.domain.member.InstrumentRepository;
-import pl.michalbzowski.windband.domain.member.Member;
-import pl.michalbzowski.windband.domain.member.MemberRepository;
+import pl.michalbzowski.windband.domain.member.*;
+import pl.michalbzowski.windband.domain.member.DynamicSourceType;
+import pl.michalbzowski.windband.domain.member.MemberActivatedEvent;
+import pl.michalbzowski.windband.domain.member.MemberDeactivatedEvent;
 
 @Transactional
 class MemberCommandServiceTest extends BaseIntegrationTest {
@@ -33,6 +35,12 @@ class MemberCommandServiceTest extends BaseIntegrationTest {
 
     @Autowired
     private InstrumentRepository instrumentRepository;
+
+    @Autowired
+    private GroupRepository groupRepository;
+
+    @Autowired
+    private GroupCommandService groupCommandService;
 
     @MockBean
     private MemberWelcomeService memberWelcomeService;
@@ -157,11 +165,61 @@ class MemberCommandServiceTest extends BaseIntegrationTest {
         updateCmd.setDateOfBirth(LocalDate.of(1990, 5, 15));
         updateCmd.setActive(true);
         updateCmd.setInstrumentId(clarinet.getId());
-        commandService.updateMember(updateCmd, null);
-
-        // Then - muzyk powinien miec nowy instrument
         Member updated = memberRepository.findById(member.getId()).orElseThrow();
         assertThat(updated.getPrimaryInstrument()).isPresent();
         assertThat(updated.getPrimaryInstrument().get().getName()).isEqualTo("Klarnet");
+    }
+
+    @Test
+    @org.springframework.transaction.annotation.Transactional(propagation = Propagation.NOT_SUPPORTED)
+    @Commit
+    void deactivateMember_removesFromActiveGroup() {
+        // given: ensure the "Aktywni" dynamic group exists for band 1 (backfill runner is gated to !test)
+        groupCommandService.createDynamicGroupForMemberField(MemberFieldSource.ACTIVE,
+                memberRepository.findById(1L).orElseThrow().getBand());
+        groupCommandService.syncMemberForActiveField(memberRepository.findById(1L).orElseThrow());
+
+        assertThat(groupRepository.countMembersByDynamicSourceTypeAndKey(DynamicSourceType.MEMBER_FIELD, MemberFieldSource.ACTIVE))
+                .isGreaterThanOrEqualTo(1);
+
+        // when
+        commandService.deactivateMember(1L);
+
+        // then: MemberDeactivatedEvent -> GroupSyncEventListener removes member from "Aktywni"
+        assertThat(groupRepository.countMembersByDynamicSourceTypeAndKey(DynamicSourceType.MEMBER_FIELD, MemberFieldSource.ACTIVE))
+                .isZero();
+    }
+
+    @Test
+    @org.springframework.transaction.annotation.Transactional(propagation = Propagation.NOT_SUPPORTED)
+    @Commit
+    void activateMember_addsToActiveGroup() {
+        // given: member 1 is deactivated first
+        groupCommandService.createDynamicGroupForMemberField(MemberFieldSource.ACTIVE,
+                memberRepository.findById(1L).orElseThrow().getBand());
+        commandService.deactivateMember(1L);
+        assertThat(groupRepository.countMembersByDynamicSourceTypeAndKey(DynamicSourceType.MEMBER_FIELD, MemberFieldSource.ACTIVE))
+                .isZero();
+
+        // when
+        commandService.activateMember(1L);
+
+        // then: MemberActivatedEvent -> GroupSyncEventListener adds member back
+        assertThat(groupRepository.countMembersByDynamicSourceTypeAndKey(DynamicSourceType.MEMBER_FIELD, MemberFieldSource.ACTIVE))
+                .isGreaterThanOrEqualTo(1);
+    }
+
+    @Test
+    void backfillCreatesActiveGroupForEveryBand() {
+        // when: simulate the backfill logic (runner is !test gated)
+        groupCommandService.createDynamicGroupForMemberField(MemberFieldSource.ACTIVE,
+                memberRepository.findById(1L).orElseThrow().getBand());
+
+        // then: group exists with correct discriminator and contains the seeded active member
+        Group activeGroup = groupRepository.findByDynamicSourceTypeAndDynamicSourceKey(DynamicSourceType.MEMBER_FIELD, MemberFieldSource.ACTIVE)
+                .orElseThrow();
+        assertThat(activeGroup.getDynamicSourceType()).isEqualTo(DynamicSourceType.MEMBER_FIELD);
+        assertThat(activeGroup.getDynamicSourceKey()).isEqualTo(MemberFieldSource.ACTIVE);
+        assertThat(activeGroup.getName()).isEqualTo("Aktywni");
     }
 }

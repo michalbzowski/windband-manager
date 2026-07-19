@@ -4,6 +4,7 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import pl.michalbzowski.windband.domain.band.MemberAttributeDef;
+import pl.michalbzowski.windband.domain.member.DynamicSourceType;
 import pl.michalbzowski.windband.domain.member.Group;
 
 import java.util.List;
@@ -22,6 +23,11 @@ public interface SpringDataGroupRepository extends JpaRepository<Group, Long> {
     List<Group> findAllWithMembersByBandId(@Param("bandId") Long bandId);
 
     Optional<Group> findByDynamicSource(MemberAttributeDef source);
+
+    Optional<Group> findByDynamicSourceTypeAndDynamicSourceKey(DynamicSourceType type, String key);
+
+    @Query("SELECT COUNT(gm) FROM GroupMember gm WHERE gm.group.dynamicSourceType = :type AND gm.group.dynamicSourceKey = :key")
+    long countMembersByDynamicSourceTypeAndKey(DynamicSourceType type, String key);
 
     // Explicit @Query because the derived-name form (existsByNameAndBandId) would
     // generate `WHERE band = ?` (entity comparison) and fail — we need `WHERE band.id = ?`.

@@ -1,6 +1,9 @@
 package pl.michalbzowski.windband.domain.member;
 
+import org.springframework.data.jpa.repository.Query;
+
 import pl.michalbzowski.windband.domain.band.MemberAttributeDef;
+import pl.michalbzowski.windband.domain.member.DynamicSourceType;
 
 import java.util.List;
 import java.util.Optional;
@@ -20,6 +23,11 @@ public interface GroupRepository {
     List<Group> findAllWithMembersByBandId(Long bandId);
 
     Optional<Group> findByDynamicSource(MemberAttributeDef source);
+
+    Optional<Group> findByDynamicSourceTypeAndDynamicSourceKey(DynamicSourceType type, String key);
+
+    @Query("SELECT COUNT(gm) FROM GroupMember gm WHERE gm.group.dynamicSourceType = :type AND gm.group.dynamicSourceKey = :key")
+    long countMembersByDynamicSourceTypeAndKey(DynamicSourceType type, String key);
 
     /**
      * True iff there is already a group with the given (band, name) pair. Used to
