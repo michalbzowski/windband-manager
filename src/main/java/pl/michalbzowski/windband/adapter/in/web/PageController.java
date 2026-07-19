@@ -10,7 +10,6 @@ import lombok.RequiredArgsConstructor;
 import jakarta.servlet.http.HttpSession;
 import pl.michalbzowski.windband.adapter.in.security.WindbandOidcUser;
 import pl.michalbzowski.windband.application.query.band.BandQueryService;
-import pl.michalbzowski.windband.application.dto.UpcomingItemDto;
 import pl.michalbzowski.windband.application.query.event.EventQueryService;
 import pl.michalbzowski.windband.application.query.inventory.InventoryQueryService;
 import pl.michalbzowski.windband.application.query.member.MemberQueryService;
@@ -18,11 +17,8 @@ import pl.michalbzowski.windband.application.query.rehearsal.RehearsalQueryServi
 import pl.michalbzowski.windband.application.query.team.TeamQueryService;
 import pl.michalbzowski.windband.domain.band.Band;
 import pl.michalbzowski.windband.domain.event.BandEvent;
-import pl.michalbzowski.windband.domain.rehearsal.Rehearsal;
 
 import java.time.LocalDate;
-import java.util.ArrayList;
-import java.util.Comparator;
 import java.util.List;
 
 @Controller
@@ -127,60 +123,9 @@ public class PageController {
         model.addAttribute("totalUniforms", totalUniforms);
         model.addAttribute("totalInstruments", totalInstruments);
 
-        List<UpcomingItemDto> upcomingItems = collectUpcomingItems(activeTeamId, today, 5);
-        model.addAttribute("upcomingItems", upcomingItems);
-        model.addAttribute("upcomingItemsCount", upcomingItems.size());
+        List<BandEvent> events = eventQueryService.getEventsBetween(today, LocalDate.of(2099, 12, 31), activeTeamId);
+        model.addAttribute("events", events);
         
         return "dashboard";
-    }
-
-    private List<UpcomingItemDto> collectUpcomingItems(Long activeTeamId, LocalDate from, int limit) {
-        LocalDate to = from.plusYears(1);
-
-        List<UpcomingItemDto> items = new ArrayList<>();
-
-        for (Rehearsal rehearsal : rehearsalQueryService.getRehearsalsBetween(from, to, activeTeamId)) {
-            items.add(new UpcomingItemDto(
-                    "REHEARSAL",
-                    rehearsal.getId(),
-                    "Próba",
-                    rehearsal.getLocation() != null && !rehearsal.getLocation().isBlank() ? rehearsal.getLocation() : "Spotkanie zespołu",
-                    rehearsal.getDate(),
-                    rehearsal.getStartTime(),
-                    rehearsal.getDate().isEqual(from) ? "Dziś" : formatRelativeLabel(rehearsal.getDate(), from),
-                    "/rehearsals/" + rehearsal.getId(),
-                    "🎵"
-            ));
-        }
-
-        for (BandEvent event : eventQueryService.getEventsBetween(from, to, activeTeamId)) {
-            items.add(new UpcomingItemDto(
-                    "EVENT",
-                    event.getId(),
-                    event.getName(),
-                    event.getLocation() != null && !event.getLocation().isBlank() ? event.getLocation() : event.getEventType().name(),
-                    event.getDate(),
-                    event.getStartTime(),
-                    event.getDate().isEqual(from) ? "Dziś" : formatRelativeLabel(event.getDate(), from),
-                    "/events/" + event.getId(),
-                    "🎪"
-            ));
-        }
-
-        return items.stream()
-                .sorted(Comparator
-                        .comparing(UpcomingItemDto::date)
-                        .thenComparing(item -> item.startTime() != null ? item.startTime() : java.time.LocalTime.MAX)
-                        .thenComparing(UpcomingItemDto::title))
-                .limit(limit)
-                .toList();
-    }
-
-    private String formatRelativeLabel(LocalDate date, LocalDate from) {
-        long days = java.time.temporal.ChronoUnit.DAYS.between(from, date);
-        if (days <= 0) return "Dziś";
-        if (days == 1) return "Jutro";
-        if (days < 7) return "Za " + days + " dni";
-        return date.toString();
     }
 }

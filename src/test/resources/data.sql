@@ -69,3 +69,9 @@ INSERT INTO member_instruments (member_id, instrument_id, is_primary)
 VALUES (1, 1, true);
 INSERT INTO member_instruments (member_id, instrument_id, is_primary)
 VALUES (2, 2, true);
+
+-- Events for Test Band (band_id=1) — dashboard shows the events list
+INSERT INTO band_events (name, date, start_time, location, event_type, payment_type, payment_amount, notes, band_id)
+VALUES ('Koncert Noworoczny', CURRENT_DATE + 30, '18:00', 'Rynek', 'CONCERT', 'FREE', NULL, 'Występ plenerowy', 1);
+INSERT INTO band_events (name, date, start_time, location, event_type, payment_type, payment_amount, notes, band_id)
+VALUES ('Parada 3 Maja', CURRENT_DATE - 10, '10:00', 'Park Miejski', 'PARADE', 'FREE', NULL, 'Uczestnictwo w paradzie', 1);
