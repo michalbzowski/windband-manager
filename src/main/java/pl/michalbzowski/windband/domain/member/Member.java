@@ -2,6 +2,7 @@ package pl.michalbzowski.windband.domain.member;
 
 import jakarta.persistence.*;
 import lombok.AccessLevel;
+import lombok.EqualsAndHashCode;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import pl.michalbzowski.windband.domain.band.Band;

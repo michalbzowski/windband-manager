@@ -165,7 +165,9 @@ class MemberCommandServiceTest extends BaseIntegrationTest {
         updateCmd.setDateOfBirth(LocalDate.of(1990, 5, 15));
         updateCmd.setActive(true);
         updateCmd.setInstrumentId(clarinet.getId());
-        Member updated = memberRepository.findById(member.getId()).orElseThrow();
+        Member updated = commandService.updateMember(updateCmd, null);
+
+        // Then - primary instrument should now be Klarnet
         assertThat(updated.getPrimaryInstrument()).isPresent();
         assertThat(updated.getPrimaryInstrument().get().getName()).isEqualTo("Klarnet");
     }
