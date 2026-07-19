@@ -6,7 +6,7 @@ import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
-import pl.michalbzowski.windband.config.DynamicGroupBackfillRunner;
+import pl.michalbzowski.windband.application.command.member.DynamicGroupService;
 
 /**
  * System-admin only endpoints (guarded by SecurityConfig: {@code /admin/**}
@@ -23,12 +23,12 @@ import pl.michalbzowski.windband.config.DynamicGroupBackfillRunner;
 @Slf4j
 public class AdminController {
 
-    private final DynamicGroupBackfillRunner dynamicGroupBackfillRunner;
+    private final DynamicGroupService dynamicGroupService;
 
     @PostMapping("/groups/backfill")
     public String backfillDynamicGroups(RedirectAttributes redirectAttributes) {
         try {
-            dynamicGroupBackfillRunner.ensureActiveGroups();
+            dynamicGroupService.ensureActiveGroupsForAllBands();
             redirectAttributes.addFlashAttribute("toastMessage", "Zaktualizowano grupy dynamiczne.");
         } catch (Exception e) {
             log.error("[admin] Manual dynamic-group backfill failed: {}", e.getMessage(), e);

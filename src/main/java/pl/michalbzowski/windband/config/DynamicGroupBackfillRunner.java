@@ -7,14 +7,9 @@ import org.springframework.boot.ApplicationRunner;
 import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Component;
 import pl.michalbzowski.windband.application.command.band.MemberAttributeCommandService;
-import pl.michalbzowski.windband.application.command.member.GroupCommandService;
-import pl.michalbzowski.windband.domain.band.Band;
-import pl.michalbzowski.windband.domain.band.BandRepository;
+import pl.michalbzowski.windband.application.command.member.DynamicGroupService;
 import pl.michalbzowski.windband.domain.band.MemberAttributeDef;
 import pl.michalbzowski.windband.domain.band.MemberAttributeDefRepository;
-import pl.michalbzowski.windband.domain.member.Member;
-import pl.michalbzowski.windband.domain.member.MemberFieldSource;
-import pl.michalbzowski.windband.domain.member.MemberRepository;
 
 import java.util.List;
 
@@ -25,7 +20,8 @@ import java.util.List;
  * This is the production data migration for bands that had BOOLEAN attributes
  * before the dynamic-groups feature shipped. After the first deploy, every such
  * attribute will have its dynamic group, so subsequent restarts are no-ops
- * ({@code ensureDynamicGroupExists} is idempotent).
+ * ({@code ensureDynamicGroupExists} is idempotent). The fixed-field "Aktywni"
+ * group (backed by {@code Member.active}) is created via {@link DynamicGroupService}.
  * <p>
  * <b>Transaction boundary:</b> deliberately NOT marked {@code @Transactional}.
  * Each call to {@code ensureDynamicGroupExists} runs in its own REQUIRES_NEW
@@ -48,13 +44,12 @@ public class DynamicGroupBackfillRunner implements ApplicationRunner {
 
     private final MemberAttributeDefRepository attributeDefRepository;
     private final MemberAttributeCommandService memberAttributeCommandService;
-    private final GroupCommandService groupCommandService;
-    private final BandRepository bandRepository;
-    private final MemberRepository memberRepository;
+    private final DynamicGroupService dynamicGroupService;
+
     @Override
     public void run(ApplicationArguments args) {
         ensureAttributeGroups();
-        ensureActiveGroups();
+        dynamicGroupService.ensureActiveGroupsForAllBands();
     }
 
     /**
@@ -84,31 +79,5 @@ public class DynamicGroupBackfillRunner implements ApplicationRunner {
         }
         log.info("[backfill] Done. succeeded={}, failed={}, total={}",
                 succeeded, failed, allBoolean.size());
-    }
-
-    /**
-     * Ensure every band has an "Aktywni" dynamic group backed by the fixed
-     * member.active field, and sync its current membership. Idempotent.
-     * <p>
-     * Public so it can be triggered on demand (e.g. from an admin endpoint)
-     * without a full application restart — useful when a new band is created
-     * after startup, or when the startup backfill was skipped.
-     */
-    public void ensureActiveGroups() {
-        int activeGroups = 0;
-        for (Band band : bandRepository.findAll()) {
-            try {
-                groupCommandService.createDynamicGroupForMemberField(MemberFieldSource.ACTIVE, band);
-                List<Member> activeMembers = memberRepository.findAllActiveByBandId(band.getId());
-                for (Member m : activeMembers) {
-                    groupCommandService.syncMemberForActiveField(m);
-                }
-                activeGroups++;
-            } catch (Exception e) {
-                log.error("[backfill] Failed to ensure 'Aktywni' dynamic group for band {}: {}",
-                        band.getId(), e.getMessage(), e);
-            }
-        }
-        log.info("[backfill] Ensured 'Aktywni' dynamic groups for {} bands", activeGroups);
     }
 }
