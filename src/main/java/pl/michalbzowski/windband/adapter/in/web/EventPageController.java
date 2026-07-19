@@ -36,10 +36,14 @@ public class EventPageController {
 
     @GetMapping
 
-    public String listPage(@ModelAttribute("activeTeamId") Long activeTeamId, Model model) {
+    public String listPage(@ModelAttribute("activeTeamId") Long activeTeamId, Model model,
+                           jakarta.servlet.http.HttpServletRequest request) {
 
         model.addAttribute("events", eventQueryService.getAllEvents(activeTeamId));
 
+        if ("true".equals(request.getHeader("HX-Request"))) {
+            return "events/list :: #events-list-container";
+        }
         return "events/list";
 
     }
@@ -56,10 +60,13 @@ public class EventPageController {
 
     @GetMapping("/new")
 
-    public String newEventForm(Model model) {
+    public String newEventForm(Model model, jakarta.servlet.http.HttpServletRequest request) {
 
         model.addAttribute("today", LocalDate.now());
 
+        if ("true".equals(request.getHeader("HX-Request"))) {
+            return "events/form :: #events-list-container";
+        }
         return "events/form";
 
     }
@@ -109,10 +116,14 @@ public class EventPageController {
 
     @GetMapping("/{id}/edit")
 
-    public String editEventForm(@PathVariable Long id, @ModelAttribute("activeTeamId") Long activeTeamId, Model model) {
+    public String editEventForm(@PathVariable Long id, @ModelAttribute("activeTeamId") Long activeTeamId, Model model,
+                                jakarta.servlet.http.HttpServletRequest request) {
 
         model.addAttribute("event", eventQueryService.getEventDetailById(id, activeTeamId));
 
+        if ("true".equals(request.getHeader("HX-Request"))) {
+            return "events/edit :: #events-list-container";
+        }
         return "events/edit";
 
     }

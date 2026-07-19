@@ -1,5 +1,6 @@
 package pl.michalbzowski.windband.adapter.in.web;
 
+import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
@@ -21,8 +22,12 @@ public class RehearsalPageController {
     private final MemberQueryService memberQueryService;
 
     @GetMapping
-    public String listPage(@ModelAttribute("activeTeamId") Long activeTeamId, Model model) {
+    public String listPage(@ModelAttribute("activeTeamId") Long activeTeamId, Model model,
+                           HttpServletRequest request) {
         model.addAttribute("rehearsals", rehearsalQueryService.getAllRehearsals(activeTeamId));
+        if ("true".equals(request.getHeader("HX-Request"))) {
+            return "rehearsals/list :: #rehearsals-content";
+        }
         return "rehearsals/list";
     }
 
@@ -33,13 +38,17 @@ public class RehearsalPageController {
     }
 
     @GetMapping("/new")
-    public String newRehearsalForm(Model model) {
+    public String newRehearsalForm(Model model, HttpServletRequest request) {
         model.addAttribute("today", LocalDate.now());
+        if ("true".equals(request.getHeader("HX-Request"))) {
+            return "rehearsals/form :: #rehearsals-content";
+        }
         return "rehearsals/form";
     }
 
     @GetMapping("/{id}")
-    public String rehearsalDetail(@PathVariable Long id, @ModelAttribute("activeTeamId") Long activeTeamId, Model model) {
+    public String rehearsalDetail(@PathVariable Long id, @ModelAttribute("activeTeamId") Long activeTeamId, Model model,
+                                  HttpServletRequest request) {
         var rehearsal = rehearsalQueryService.getRehearsalById(id);
         model.addAttribute("rehearsal", rehearsal);
         model.addAttribute("members", memberQueryService.getAllActiveMembers(activeTeamId));
@@ -49,13 +58,19 @@ public class RehearsalPageController {
                         a -> a.getStatus()
                 ));
         model.addAttribute("attendanceMap", attendanceMap);
+        if ("true".equals(request.getHeader("HX-Request"))) {
+            return "rehearsals/detail :: #rehearsals-content";
+        }
         return "rehearsals/detail";
     }
 
     @GetMapping("/{id}/edit")
-    public String editRehearsalForm(@PathVariable Long id, Model model) {
+    public String editRehearsalForm(@PathVariable Long id, Model model, HttpServletRequest request) {
         var rehearsal = rehearsalQueryService.getRehearsalById(id);
         model.addAttribute("rehearsal", rehearsal);
+        if ("true".equals(request.getHeader("HX-Request"))) {
+            return "rehearsals/edit :: #rehearsals-content";
+        }
         return "rehearsals/edit";
     }
 

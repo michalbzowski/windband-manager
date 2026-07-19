@@ -12,8 +12,8 @@
                 <h2>Nadchodzące</h2>
             </div>
             <div style="display:flex; gap:0.5rem;">
-                <a th:href="@{/events/new}" hx-target="#content" hx-swap="innerHTML transition:true" class="primary">+ Dodaj wydarzenie</a>
-                <a th:href="@{/rehearsals/new}" hx-target="#content" hx-swap="innerHTML transition:true" class="secondary outline">+ Zaplanuj spotkanie</a>
+                <button hx-get="/events/new" hx-target="#content" hx-swap="innerHTML transition:true" class="primary">+ Dodaj wydarzenie</button>
+                <button hx-get="/rehearsals/new" hx-target="#content" hx-swap="innerHTML transition:true" class="secondary outline">+ Zaplanuj spotkanie</button>
             </div>
         </div>
 
