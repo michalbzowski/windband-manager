@@ -1,46 +1,54 @@
-<div id="rehearsals-content">
-    <h2>✏️ Edytuj spotkanie</h2>
+<!DOCTYPE html>
+<html lang="pl" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/layout :: head('Edytuj spotkanie')}"></head>
+<body>
+<nav th:replace="~{fragments/layout :: nav}"></nav>
 
-    <form id="rehearsal-edit-form"
-          hx-target="#rehearsals-content"
-          hx-swap="innerHTML transition:true">
+<main class="container" id="content">
+    <div id="rehearsals-content">
+        <h2>✏️ Edytuj spotkanie</h2>
 
-        <div class="grid">
+        <form id="rehearsal-edit-form"
+              hx-target="#rehearsals-content"
+              hx-swap="innerHTML transition:true">
+
+            <div class="grid">
+                <label>
+                    Data *
+                    <input type="date" name="date" th:value="${rehearsal.date}" required>
+                </label>
+                <label>
+                    Godzina rozpoczęcia *
+                    <input type="time" name="startTime" th:value="${rehearsal.startTime}" required>
+                </label>
+            </div>
+
+            <div class="grid">
+                <label>
+                    Godzina zakończenia
+                    <input type="time" name="endTime" th:value="${rehearsal.endTime}">
+                </label>
+                <label>
+                    Miejsce
+                    <input type="text" name="location" placeholder="Miejsce spotkania, DK Psary..." th:value="${rehearsal.location}">
+                </label>
+            </div>
+
             <label>
-                Data *
-                <input type="date" name="date" th:value="${rehearsal.date}" required>
+                Notatki
+                <textarea name="notes" rows="2" placeholder="Dodatkowe informacje..." th:text="${rehearsal.notes}"></textarea>
             </label>
-            <label>
-                Godzina rozpoczęcia *
-                <input type="time" name="startTime" th:value="${rehearsal.startTime}" required>
-            </label>
-        </div>
 
-        <div class="grid">
-            <label>
-                Godzina zakończenia
-                <input type="time" name="endTime" th:value="${rehearsal.endTime}">
-            </label>
-            <label>
-                Miejsce
-                <input type="text" name="location" placeholder="Miejsce spotkania, DK Psary..." th:value="${rehearsal.location}">
-            </label>
-        </div>
-
-        <label>
-            Notatki
-            <textarea name="notes" rows="2" placeholder="Dodatkowe informacje..." th:text="${rehearsal.notes}"></textarea>
-        </label>
-
-        <div style="display:flex; gap:0.5rem; margin-top:1rem;">
-            <button type="submit" class="primary">Zapisz zmiany</button>
-            <button type="button" class="secondary"
-                    th:hx-get="@{/rehearsals/{id}(id=${rehearsal.id})}"
-                    hx-target="#rehearsals-content"
-                    hx-swap="innerHTML transition:true">Anuluj</button>
-        </div>
-    </form>
-</div>
+            <div style="display:flex; gap:0.5rem; margin-top:1rem;">
+                <button type="submit" class="primary">Zapisz zmiany</button>
+                <button type="button" class="secondary"
+                        th:hx-get="@{/rehearsals/{id}(id=${rehearsal.id})}"
+                        hx-target="#rehearsals-content"
+                        hx-swap="innerHTML transition:true">Anuluj</button>
+            </div>
+        </form>
+    </div>
+</main>
 
 <script th:inline="javascript">
     // Guard: prevent duplicate event listeners when form is reloaded via htmx
@@ -56,7 +64,7 @@
 
                 var rehearsalId = [[${rehearsal.id}]];
 
-                fetchWithToast('/api/rehearsals/' + rehearsalId,{ toastMessage: 'Zapisano spotkanie', {
+                fetchWithToast('/api/rehearsals/' + rehearsalId, {
                     method: 'PUT',
                     headers: {'Content-Type': 'application/json'},
                     body: JSON.stringify(data)
@@ -73,3 +81,5 @@
         });
     }
 </script>
+</body>
+</html>

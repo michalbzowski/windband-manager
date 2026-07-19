@@ -1,48 +1,67 @@
-<div id="rehearsals-content">
-    <h2>🎵 Szczegóły spotkania</h2>
+<!DOCTYPE html>
+<html lang="pl" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/layout :: head('Szczegóły spotkania')}"></head>
+<body>
+<nav th:replace="~{fragments/layout :: nav}"></nav>
 
-    <article>
-        <header>
-            <strong th:text="${rehearsal.date}">01.01.2025</strong>
-            <span th:text="${rehearsal.startTime} + ' - ' + ${rehearsal.endTime}">18:00 - 20:00</span>
-            <span style="margin-left:0.5rem;">
-                <button class="outline small"
-                        hx-get="@{/rehearsals/{id}/notifications(id=${rehearsal.id})}"
-                        hx-target="#content"
-                        hx-swap="innerHTML transition:true"
-                        title="Zobacz szczegóły wysyłki powiadomień e-mail">📧 <span id="email-badge" th:text="'...'">...</span></button>
-            </span>
-        </header>
-        <p th:if="${rehearsal.location}" th:text="'Miejsce: ' + ${rehearsal.location}">Miejsce: Miejsce spotkania</p>
-        <p th:if="${rehearsal.notes}" th:text="${rehearsal.notes}">Notatki</p>
-    </article>
+<main class="container" id="content">
+    <div id="rehearsals-content">
+        <h2>🎵 Szczegóły spotkania</h2>
 
-    <h3>Lista obecności</h3>
+        <article>
+            <header>
+                <strong th:text="${rehearsal.date}">01.01.2025</strong>
+                <span th:text="${rehearsal.startTime} + ' - ' + ${rehearsal.endTime}">18:00 - 20:00</span>
+                <span style="margin-left:0.5rem;">
+                    <button class="outline small"
+                            hx-get="@{/rehearsals/{id}/notifications(id=${rehearsal.id})}"
+                            hx-target="#content"
+                            hx-swap="innerHTML transition:true"
+                            title="Zobacz szczegóły wysyłki powiadomień e-mail">📧 <span id="email-badge" th:text="'...'">...</span></button>
+                </span>
+            </header>
+            <p th:if="${rehearsal.location}" th:text="'Miejsce: ' + ${rehearsal.location}">Miejsce: Miejsce spotkania</p>
+            <p th:if="${rehearsal.notes}" th:text="${rehearsal.notes}">Notatki</p>
+        </article>
 
-    <table role="grid">
-        <thead>
-            <tr>
-                <th>Członek</th>
-                <th>Instrument</th>
-                <th>Status</th>
-            </tr>
-        </thead>
-        <tbody>
-            <tr th:each="m : ${members}">
-                <td th:text="${m.firstName + ' ' + m.lastName}">Jan Kowalski</td>
-                <td th:text="${m.primaryInstrument}">Trąbka</td>
-                <td>
-                    <select class="status-select" data-member-id="${m.id}" th:name="'status_' + ${m.id}" th:id="'status_' + ${m.id}">
-                        <option value="PRESENT" th:selected="${attendanceMap[m.id]?.name() == 'PRESENT'}">Present</option>
-                        <option value="EXCUSED" th:selected="${attendanceMap[m.id]?.name() == 'EXCUSED'}">Excused</option>
-                        <option value="UNEXCUSED" th:selected="${attendanceMap[m.id]?.name() == 'UNEXCUSED'}">Unexcused</option>
-                        <option value="NO_RESPONSE" th:selected="${attendanceMap[m.id]?.name() == 'NO_RESPONSE'}">No response</option>
-                    </select>
-                </td>
-            </tr>
-        </tbody>
-    </table>
-</div>
+        <h3>Lista obecności</h3>
+
+        <table role="grid">
+            <thead>
+                <tr>
+                    <th>Członek</th>
+                    <th>Instrument</th>
+                    <th>Status</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr th:each="m : ${members}">
+                    <td th:text="${m.firstName + ' ' + m.lastName}">Jan Kowalski</td>
+                    <td th:text="${m.primaryInstrument}">Trąbka</td>
+                    <td>
+                        <select class="status-select" data-member-id="${m.id}" th:name="'status_' + ${m.id}" th:id="'status_' + ${m.id}">
+                            <option value="PRESENT" th:selected="${attendanceMap[m.id]?.name() == 'PRESENT'}">Present</option>
+                            <option value="EXCUSED" th:selected="${attendanceMap[m.id]?.name() == 'EXCUSED'}">Excused</option>
+                            <option value="UNEXCUSED" th:selected="${attendanceMap[m.id]?.name() == 'UNEXCUSED'}">Unexcused</option>
+                            <option value="NO_RESPONSE" th:selected="${attendanceMap[m.id]?.name() == 'NO_RESPONSE'}">No response</option>
+                        </select>
+                    </td>
+                </tr>
+            </tbody>
+        </table>
+
+        <div style="display:flex; gap:0.5rem; margin-top:1rem;">
+            <button type="button" class="primary" id="save-attendance-btn">Zapisz obecność</button>
+            <button type="button" class="secondary"
+                    th:hx-get="@{/rehearsals/{id}/edit(id=${rehearsal.id})}"
+                    hx-target="#rehearsals-content"
+                    hx-swap="innerHTML transition:true">Edytuj</button>
+            <button type="button" class="secondary"
+                    hx-get="/rehearsals/list" hx-target="#rehearsals-content"
+                    hx-swap="innerHTML transition:true">Powrót</button>
+        </div>
+    </div>
+</main>
 
 <script>
     document.addEventListener('DOMContentLoaded', function() {
@@ -54,7 +73,7 @@
                 const memberId = event.target.dataset.memberId;
                 const selectedStatus = event.target.value;
 
-                fetchWithToast('/api/rehearsals/' + rehearsalId + '/attendance',{ toastMessage: 'Zapisano obecność', {
+                fetchWithToast('/api/rehearsals/' + rehearsalId + '/attendance', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
@@ -68,35 +87,18 @@
                 .then(response => {
                     if (!response.ok) {
                         console.error('Failed to update status:', response.statusText);
-                        // Optionally, revert the select to its previous value or show an error message
-                        // For simplicity, we'll just log the error here.
                     } else {
-                        // Optionally, provide visual feedback to the user that the save was successful
                         console.log('Status updated successfully');
-                        // To refresh the UI, you could trigger a HTMX reload of the container
                         htmx.ajax('GET', '/rehearsals/' + rehearsalId, {target: '#rehearsals-content', swap: 'innerHTML'});
                     }
                 })
                 .catch(error => {
                     console.error('Error updating status:', error);
-                    // Optionally, revert the select to its previous value or show an error message
                 });
             });
         });
     });
 </script>
-    <div style="display:flex; gap:0.5rem; margin-top:1rem;">
-        <button type="button" class="primary" id="save-attendance-btn">Zapisz obecność</button>
-        <button type="button" class="secondary"
-                th:hx-get="@{/rehearsals/{id}/edit(id=${rehearsal.id})}"
-                hx-target="#rehearsals-content"
-                hx-swap="innerHTML transition:true">Edytuj</button>
-        <button type="button" class="secondary"
-                hx-get="/rehearsals/list" hx-target="#rehearsals-content"
-                hx-swap="innerHTML transition:true">Powrót</button>
-    </div>
-</div>
-
 <script th:inline="javascript">
     document.getElementById('save-attendance-btn').addEventListener('click', function() {
         var rehearsalId = [[${rehearsal.id}]];
@@ -106,7 +108,7 @@
             var memberId = select.id.replace('status_', '');
             var status = select.value;
             if (status !== 'NO_RESPONSE') {
-                promises.push(fetchWithToast('/api/rehearsals/' + rehearsalId + '/attendance',{ toastMessage: 'Zapisano obecność', {
+                promises.push(fetchWithToast('/api/rehearsals/' + rehearsalId + '/attendance', {
                     method: 'POST',
                     headers: {'Content-Type': 'application/json'},
                     body: JSON.stringify({rehearsalId: rehearsalId, memberId: parseInt(memberId), status: status})
@@ -135,3 +137,5 @@
             .catch(function() { badge.textContent = '—'; });
     })();
 </script>
+</body>
+</html>
