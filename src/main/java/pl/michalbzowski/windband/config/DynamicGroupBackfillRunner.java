@@ -51,9 +51,17 @@ public class DynamicGroupBackfillRunner implements ApplicationRunner {
     private final GroupCommandService groupCommandService;
     private final BandRepository bandRepository;
     private final MemberRepository memberRepository;
-
     @Override
     public void run(ApplicationArguments args) {
+        ensureAttributeGroups();
+        ensureActiveGroups();
+    }
+
+    /**
+     * Walk every existing BOOLEAN {@link MemberAttributeDef} across all bands and
+     * ensure a corresponding dynamic {@code Group} exists. Idempotent.
+     */
+    private void ensureAttributeGroups() {
         List<MemberAttributeDef> allBoolean = attributeDefRepository.findAll().stream()
                 .filter(d -> "BOOLEAN".equals(d.getType()))
                 .toList();
@@ -76,9 +84,17 @@ public class DynamicGroupBackfillRunner implements ApplicationRunner {
         }
         log.info("[backfill] Done. succeeded={}, failed={}, total={}",
                 succeeded, failed, allBoolean.size());
+    }
 
-        // Ensure every band has an "Aktywni" dynamic group backed by the fixed
-        // member.active field, and sync its current membership. Idempotent.
+    /**
+     * Ensure every band has an "Aktywni" dynamic group backed by the fixed
+     * member.active field, and sync its current membership. Idempotent.
+     * <p>
+     * Public so it can be triggered on demand (e.g. from an admin endpoint)
+     * without a full application restart — useful when a new band is created
+     * after startup, or when the startup backfill was skipped.
+     */
+    public void ensureActiveGroups() {
         int activeGroups = 0;
         for (Band band : bandRepository.findAll()) {
             try {
