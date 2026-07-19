@@ -62,7 +62,7 @@ public class Group {
 
     public void addMember(Member member) {
         boolean alreadyInGroup = members.stream()
-                .anyMatch(gm -> gm.getMember().equals(member));
+                .anyMatch(gm -> gm.getMember().getId().equals(member.getId()));
         if (alreadyInGroup) {
             throw new IllegalStateException("Member already in group: " + member.getId());
         }
@@ -70,7 +70,7 @@ public class Group {
     }
 
     public void removeMember(Member member) {
-        members.removeIf(gm -> gm.getMember().equals(member));
+        members.removeIf(gm -> gm.getMember().getId().equals(member.getId()));
     }
 
     public int getMemberCount() {

@@ -89,7 +89,7 @@ public class PublicResponseService {
 
     private EventParticipation findParticipation(BandEvent event, Member member) {
         return event.getParticipations().stream()
-                .filter(p -> p.getMember().equals(member))
+                .filter(p -> p.getMember().getId().equals(member.getId()))
                 .findFirst()
                 .orElseThrow(() -> new IllegalStateException(
                         "Member " + member.getId() + " not invited to event " + event.getId()));
