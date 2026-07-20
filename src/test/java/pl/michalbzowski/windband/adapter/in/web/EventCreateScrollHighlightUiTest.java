@@ -33,13 +33,16 @@ class EventCreateScrollHighlightUiTest extends UiTestBase {
                 name, java.time.LocalDate.now().plusDays(5).toString(), "18:00", "Test");
         driver.findElement(By.cssSelector("#event-form button[type='submit'].primary")).click();
 
-        // After submit we should be back on the events list
-        wait.until(ExpectedConditions.urlContains("/events"));
-        wait.until(ExpectedConditions.presenceOfElementLocated(By.id("events-list-container")));
-
-        // The just-created row must carry id="event-<id>" so it can be scrolled to/highlighted
+        // After submit we should be back on the events LIST (full reload to /events?focus=...),
+        // not still on the /events/new form page.
+        wait.until(ExpectedConditions.and(
+                ExpectedConditions.urlContains("/events"),
+                ExpectedConditions.not(ExpectedConditions.urlContains("/new"))));
+        // Wait for the just-created event row specifically (by its unique name) so we never
+        // match a leftover/stale row that the /events/new form page might already render.
         WebElement row = wait.until(ExpectedConditions.presenceOfElementLocated(
-                By.cssSelector("#events-list-container tr[id^='event-']")));
+                By.xpath("//*[@id='events-list-container']//tr[contains(@id,'event-') and contains(., '"
+                        + name + "')]")));
         assertThat(row.getAttribute("id")).startsWith("event-");
         assertThat(row.getText()).contains(name);
     }
