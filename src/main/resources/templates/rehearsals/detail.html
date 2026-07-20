@@ -75,14 +75,24 @@
             var memberId = select.id.replace('status_', '');
             var status = select.value;
             if (status !== 'NO_RESPONSE') {
-                promises.push(fetch('/api/rehearsals/' + rehearsalId + '/attendance', {
+                // fetchWithToast shows an error toast automatically on failure;
+                // success toasts are suppressed here (showSuccessToast: false)
+                // so we show exactly ONE summary toast after all requests finish.
+                promises.push(fetchWithToast('/api/rehearsals/' + rehearsalId + '/attendance', {
                     method: 'POST',
                     headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify({rehearsalId: rehearsalId, memberId: parseInt(memberId), status: status})
+                    body: JSON.stringify({rehearsalId: rehearsalId, memberId: parseInt(memberId), status: status}),
+                    toastMessage: 'Zapisano obecność',
+                    showSuccessToast: false
                 }));
             }
         });
         Promise.all(promises).then(function() {
+            Toast.success('Zapisano obecność');
+            htmx.ajax('GET', '/rehearsals/' + rehearsalId, {target: '#rehearsals-content', swap: 'innerHTML transition:true'});
+        }).catch(function() {
+            // Individual errors already showed an error toast via fetchWithToast.
+            // Reload anyway so the UI reflects whatever was persisted.
             htmx.ajax('GET', '/rehearsals/' + rehearsalId, {target: '#rehearsals-content', swap: 'innerHTML transition:true'});
         });
     };
@@ -103,5 +113,7 @@
             .catch(function() { badge.textContent = '—'; });
     })();
 </script>
+<div th:insert="~{fragments/layout :: toast-container}"></div>
+<div th:insert="~{fragments/layout :: footer-scripts}"></div>
 </body>
 </html>

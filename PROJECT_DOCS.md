@@ -15,6 +15,7 @@
 12. [Common Pitfalls](#common-pitfalls)
 13. [Database Migrations](#database-migrations)
 14. [Build & Deploy](#build--deploy)
+15. [Rehearsal Detail View](#rehearsal-detail-view)
 
 ---
 
@@ -580,3 +581,71 @@ See `.env.example`. Key vars: DB_HOST, DB_PORT, DB_NAME, DB_USER, DB_PASS, KEYCL
 
 ### Local Development
 Use `application-local.yml` profile: localhost Keycloak (8180), localhost PostgreSQL (5432), Mailpit (1025), show-sql enabled.
+
+## Rehearsal Detail View
+
+The rehearsal detail page (`GET /rehearsals/{id}`, template `rehearsals/detail.html`,
+controller `RehearsalPageController.rehearsalDetail`) shows the rehearsal header and the
+**attendance list** for every active member of the active band.
+
+### Data flow
+1. `RehearsalPageController` loads the `Rehearsal` and all active members of the team
+   (`memberQueryService.getAllActiveMembers(activeTeamId)`).
+2. It builds `attendanceMap: Map<memberId, AttendanceStatus>` from the rehearsal's
+   existing `Attendance` records (keyed by `member.getId()`).
+3. The template renders one `<select class="status-select" id="status_{memberId}">` per
+   member. The selected option is resolved from `attendanceMap`.
+
+### Default status (important)
+A freshly created rehearsal has **no `Attendance` records** (scheduling a rehearsal does
+not pre-create attendance rows — see `RehearsalCommandService.scheduleRehearsal`).
+For a member absent from `attendanceMap` (i.e. `attendanceMap[m.id] == null`) the
+`NO_RESPONSE` option is selected by default:
+
+```html
+<option value="NO_RESPONSE"
+        th:selected="${attendanceMap[m.id] == null or attendanceMap[m.id]?.name() == 'NO_RESPONSE'}">
+    No response
+</option>
+```
+
+This prevents the browser from defaulting to the first `<option>` (PRESENT) for members
+without a recorded status. **Do not add `selected` to the PRESENT option**, or new
+rehearsals will falsely show every member as PRESENT.
+
+### Saving attendance
+Clicking **"Zapisz obecność"** runs `window.saveRehearsalAttendance()` (inline script in
+`detail.html`). It iterates all `select[id^="status_"]` and, for every member whose status
+is **not** `NO_RESPONSE`, POSTs to `/api/rehearsals/{id}/attendance` with
+`{rehearsalId, memberId, status}`. Requests use `fetchWithToast` (auto error toast on
+failure, success toast suppressed per-request) and, after all finish, a single success
+toast `Zapisano obecność` is shown and the detail view is reloaded via `htmx.ajax`.
+
+- `NO_RESPONSE` members are **not** sent to the backend (no attendance row is created for
+  them) — they remain absent from `attendanceMap`.
+- Changing an existing status uses `Rehearsal.updateAttendance()` (upsert); the unique
+  constraint is `(rehearsal, member)`.
+
+### Required page fragments
+`detail.html` MUST include (near `</body>`):
+```html
+<div th:insert="~{fragments/layout :: toast-container}"></div>
+<div th:insert="~{fragments/layout :: footer-scripts}"></div>
+```
+The `#toast-container` element is required for `Toast.success()` to render the save toast;
+without it the save still works but silently shows no confirmation. `footer-scripts`
+loads `windband-utils.js` (provides `fetchWithToast`/`Toast`). Note: `windband-utils.js`
+is also loaded in `<head>` via the layout, so the helpers exist even in HTMX fragments,
+but `#toast-container` must be present in the served HTML.
+
+### Email notification badge
+The header shows an email badge (e.g. `3/12`) loaded from `GET /api/rehearsals/{id}/email-stats`
+(`RehearsalEmailStats`: `successCount / totalMembers`). Emails are sent on rehearsal
+creation/update by `RehearsalNotificationService` (members must have `email_consent_given`).
+
+### Tests
+- `RehearsalDetailRenderTest` — renders the detail page and asserts NO_RESPONSE is the
+  default selected status (PRESENT selected count = 0).
+- `RehearsalAttendanceToastUiTest` — Selenium: change a status, click "Zapisz obecność",
+  assert the `Zapisano obecność` success toast appears.
+- `AttendancePersistenceUiTest` — Selenium: default NO_RESPONSE + persistence across reload.

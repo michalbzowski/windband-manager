@@ -72,11 +72,16 @@ class RehearsalDetailRenderTest {
         String html = detail.getResponse().getContentAsString();
         System.out.println("[TEST] ===== DETAIL HTML (status selects) =====");
         for (String line : html.split("\n")) {
-            if (line.contains("status_") || line.contains("NO_RESPONSE") || line.contains("PRESENT") || line.contains("selected")) {
+            if (line.contains("status_") || line.contains("NO_RESPONSE") || line.contains("PRESENT") || line.contains("selected") || line.toLowerCase().contains("toast")) {
                 System.out.println("[TEST] " + line.trim());
             }
         }
         System.out.println("[TEST] ===== END =====");
+
+        // Sanity: is the toast container present on the detail page?
+        boolean hasToastContainer = html.contains("id=\"toast-container\"");
+        boolean hasSaveHandler = html.contains("saveRehearsalAttendance");
+        System.out.println("[TEST] hasToastContainer=" + hasToastContainer + " hasSaveHandler=" + hasSaveHandler);
 
         // There must be status selects, and each default-selected value must be NO_RESPONSE
         assertThat(html).contains("id=\"status_");
