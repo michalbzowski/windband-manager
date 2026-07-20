@@ -17,6 +17,7 @@
 14. [Build & Deploy](#build--deploy)
 15. [Rehearsal Detail View](#rehearsal-detail-view)
 16. [List Sorting & Past Highlighting](#list-sorting--past-highlighting)
+17. [Member Attributes & Groups](#member-attributes--groups)
 
 ---
 
@@ -686,3 +687,27 @@ into two sections by date relative to today (`LocalDate.now()`):
 Driven by `getUpcomingRehearsals`/`getPastRehearsals` (and `getUpcomingEvents`/
 `getPastEvents`) in the query services; controllers expose `upcoming*` / `past*`
 model attributes. See `docs/list-sorting.md` for the full breakdown.
+
+---
+
+## Member Attributes & Groups
+
+Member attributes (`MemberAttributeDef` / `MemberAttributeValue`) and groups
+(`Group`) are documented in detail in [`docs/member-attributes.md`](docs/member-attributes.md).
+Key points:
+
+- **Attributes** have types: `BOOLEAN` (Tak/Nie), `TEXT`, `NUMBER`, `SELECT`,
+  `MULTI_SELECT`, `DATE`. Managed via `/band/attributes` (UI) or
+  `POST /api/bands/{bandId}/attribute-defs` (API).
+- **Groups** are either **static** (manual member add/remove via
+  `POST/DELETE /api/groups/{id}/members/{memberId}`) or **dynamic**
+  (`Group.isDynamic()` = true) — auto-populated from a `BOOLEAN` attribute
+  (`dynamicSource`) or a member field (`dynamicSourceType`). Dynamic groups
+  sync in `MemberAttributeCommandService` and cannot be edited by hand.
+- **Recommended pattern for "active playing members":** add a `BOOLEAN`
+  attribute `Grający członek`, flag each playing musician, and bind a dynamic
+  group to it. This yields the desired group without exclusion-rule logic.
+  The earlier "Aktywni via attribute exclusion" variant was **dropped**
+  (see `docs/plans/2026-07-04-dynamic-groups.md` STATUS note).
+- **Tests:** `DynamicGroupEndToEndUiTest`, `GroupCommandServiceTest`,
+  `MemberQueryServiceTest`.

@@ -1,5 +1,15 @@
 # Dynamic Groups from Boolean Attributes — Implementation Plan
 
+> **STATUS (2026-07-20):** Podstawowy mechanizm (grupa dynamiczna z atrybutu
+> BOOLEAN) jest zaimplementowany i działa — patrz `docs/member-attributes.md`
+> oraz `DynamicGroupEndToEndUiTest`. Wariant "grupa Aktywni przez wykluczanie
+> atrybutów" (odejmij Goście + Uczniowie, ale zostaw OSP) został **porzucony**
+> jako zbyt złożony dla obecnego modelu `DynamicGroupSource` (brak wsparcia dla
+> reguł "A i B ale nie C"). Zamiast tego przyjęto uproszczone podejście flagowe:
+> atrybut `BOOLEAN` "Grający członek" + grupa dynamiczna z niego — daje grupę
+> aktywnych grających muzyków bez logiki wykluczania. Plan poniżej pozostaje
+> jako dokumentacja architektury mechanizmu.
+
 > **For Hermes:** Use subagent-driven-development skill to implement this plan task-by-task.
 
 **Goal:** Each Boolean (TAK/NIE) member attribute automatically creates and maintains a matching "dynamic" group whose members are exactly the members who have that attribute set to "true". The group is fully system-managed (no manual add/remove), shows a badge in the UI, and syncs whenever the source attribute or any of its values change.
