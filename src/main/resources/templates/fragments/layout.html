@@ -323,6 +323,15 @@
     document.addEventListener('DOMContentLoaded', bindEventDetailIfPresent);
     document.addEventListener('htmx:afterSwap', bindEventDetailIfPresent);
 
+    // Re-run list focus/highlight after every HTMX swap (and on initial load)
+    // so newly created/edited members/events/rehearsals scroll into view and
+    // pulse green. Mirrors the event-detail binding above.
+    function bindFocusHighlightIfPresent() {
+        if (window.initFocusHighlight) window.initFocusHighlight();
+    }
+    document.addEventListener('DOMContentLoaded', bindFocusHighlightIfPresent);
+    document.addEventListener('htmx:afterSwap', bindFocusHighlightIfPresent);
+
     (function() {
         console.log('Loading build info...');
         fetchWithToast('/api/auth/build-info', { credentials: 'same-origin' })

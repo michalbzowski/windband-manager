@@ -23,9 +23,11 @@ public class RehearsalPageController {
 
     @GetMapping
     public String listPage(@ModelAttribute("activeTeamId") Long activeTeamId, Model model,
-                           HttpServletRequest request) {
+                           HttpServletRequest request,
+                           @RequestParam(required = false) Long focus) {
         model.addAttribute("upcomingRehearsals", rehearsalQueryService.getUpcomingRehearsals(activeTeamId));
         model.addAttribute("pastRehearsals", rehearsalQueryService.getPastRehearsals(activeTeamId));
+        model.addAttribute("focusRehearsalId", focus);
         if ("true".equals(request.getHeader("HX-Request"))) {
             return "rehearsals/list :: #rehearsals-content";
         }
@@ -33,9 +35,11 @@ public class RehearsalPageController {
     }
 
     @GetMapping("/list")
-    public String listFragment(@ModelAttribute("activeTeamId") Long activeTeamId, Model model) {
+    public String listFragment(@ModelAttribute("activeTeamId") Long activeTeamId, Model model,
+                               @RequestParam(required = false) Long focus) {
         model.addAttribute("upcomingRehearsals", rehearsalQueryService.getUpcomingRehearsals(activeTeamId));
         model.addAttribute("pastRehearsals", rehearsalQueryService.getPastRehearsals(activeTeamId));
+        model.addAttribute("focusRehearsalId", focus);
         return "rehearsals/list :: #rehearsals-content";
     }
 

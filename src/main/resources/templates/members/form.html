@@ -162,8 +162,8 @@
                     headers: {'Content-Type': 'application/json'},
                     body: JSON.stringify(data)
                 }).then(function(resp) {
-                // Save dynamic attributes only for existing members
                     if (memberId) {
+                        // EDIT: save dynamic attributes, then reload list focused on this member
                         var attrPromises = [];
                         // Group attribute inputs by attr ID to handle multi-select checkboxes
                         var attrGroups = {};
@@ -199,29 +199,28 @@
                                 body: JSON.stringify({value: value})
                             }));
                         });
-                        Promise.all(attrPromises).then(function() {
-                            // Reload member list and scroll/highlight the edited member
-                            var handler = function(evt) {
-                                if (evt.detail && evt.detail.target && evt.detail.target.id === 'members-content') {
-                                    setTimeout(function() {
-                                        var row = document.querySelector('#members-table tbody tr[data-member-id="' + memberId + '"]');
-                                        if (row) {
-                                            row.classList.add('highlight-row');
-                                            setTimeout(function() { row.classList.remove('highlight-row'); }, 3000);
-                                            row.scrollIntoView({behavior: 'smooth', block: 'center'});
-                                        }
-                                    }, 50);
-                                    document.body.removeEventListener('htmx:afterSettle', handler);
-                                }
-                            };
-                            document.body.addEventListener('htmx:afterSettle', handler);
+                        var reload = function() {
+                            htmx.ajax('GET', '/members/list?focus=' + memberId, {target: '#members-content', swap: 'innerHTML transition:true'});
+                        };
+                        if (attrPromises.length) {
+                            Promise.all(attrPromises).then(reload);
+                        } else {
+                            reload();
+                        }
+                    } else {
+                        // CREATE: parse the new id from the response, then reload list focused on it
+                        resp.json().then(function(body) {
+                            var newId = body && body.id ? body.id : null;
+                            if (saveAndAddAnother) {
+                                htmx.ajax('GET', '/members/new', {target: '#members-content', swap: 'innerHTML transition:true'});
+                            } else if (newId) {
+                                htmx.ajax('GET', '/members/list?focus=' + newId, {target: '#members-content', swap: 'innerHTML transition:true'});
+                            } else {
+                                htmx.ajax('GET', '/members/list', {target: '#members-content', swap: 'innerHTML transition:true'});
+                            }
+                        }).catch(function() {
                             htmx.ajax('GET', '/members/list', {target: '#members-content', swap: 'innerHTML transition:true'});
                         });
-                    } else if (saveAndAddAnother) {
-                        // Reload the form for adding another member
-                        htmx.ajax('GET', '/members/new', {target: '#members-content', swap: 'innerHTML transition:true'});
-                    } else {
-                        htmx.ajax('GET', '/members/list', {target: '#members-content', swap: 'innerHTML transition:true'});
                     }
                 });
             }

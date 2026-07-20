@@ -5,7 +5,7 @@
 <nav th:replace="~{fragments/layout :: nav}"></nav>
 
     <main class="container" id="content">
-        <div id="events-list-container">
+        <div id="events-list-container" th:attr="data-focus-id=${focusEventId},data-focus-prefix='event'">
             <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem;">
                 <h2>🎪 Wydarzenia</h2>
                 <button hx-get="/events/new" hx-target="#events-list-container"

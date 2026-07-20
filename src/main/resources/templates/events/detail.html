@@ -53,16 +53,8 @@
         <button class="outline" id="invite-group-btn">Zaproś grupę</button>
     </div>
 
-    <div style="display:flex; gap:0.5rem; margin-bottom:1rem; align-items:flex-end;">
-        <div>
-            <label for="invite-member-select">Zaproś pojedynczego członka</label>
-            <select id="invite-member-select">
-                <option value="">Wybierz członka...</option>
-                <option th:each="m : ${members}" th:value="${m.id}"
-                        th:text="${m.firstName} + ' ' + ${m.lastName}">Jan Kowalski</option>
-            </select>
-        </div>
-        <button class="outline" id="invite-btn">Zaproś</button>
+    <div style="margin-bottom:1rem;">
+        <button type="button" class="outline" id="open-invite-modal-btn">➕ Zaproś uczestników</button>
     </div>
 
     <h3>📧 Wyślij zaproszenia</h3>
@@ -183,6 +175,30 @@
                 hx-swap="innerHTML transition:true">✏️ Edytuj</button>
         <button type="button" class="outline danger" id="delete-event-btn">🗑️ Usuń wydarzenie</button>
     </div>
+
+<dialog id="invite-members-modal" class="app-modal">
+    <div class="app-modal-content">
+        <header class="app-modal-header">
+            <div class="app-modal-header-text">
+                <h3>Zaproś uczestników</h3>
+            </div>
+            <button type="button" class="app-modal-close" aria-label="Zamknij" data-close>×</button>
+        </header>
+        <div class="app-modal-body">
+            <p th:if="${#lists.isEmpty(members)}" class="text-muted" style="margin:0 0 0.5rem;">Wszyscy członkowie zostali już zaproszeni.</p>
+            <ul style="list-style:none; padding:0; margin:0; max-height:50vh; overflow-y:auto;">
+                <li th:each="m : ${members}" style="display:flex; align-items:center; gap:0.6rem; padding:0.5rem 0; border-bottom:1px solid var(--pico-muted-border-color);">
+                    <input type="checkbox" class="invite-checkbox" th:value="${m.id}" th:id="'invite-cb-' + ${m.id}">
+                    <label th:for="'invite-cb-' + ${m.id}" th:text="${m.firstName} + ' ' + ${m.lastName}" style="margin:0; flex:1; cursor:pointer;">Jan Kowalski</label>
+                </li>
+            </ul>
+        </div>
+        <footer class="app-modal-footer">
+            <button type="button" class="outline" data-close>Anuluj</button>
+            <button type="button" class="primary" id="invite-selected-btn">Zaproś zaznaczone osoby</button>
+        </footer>
+    </div>
+</dialog>
 </div>
 
 

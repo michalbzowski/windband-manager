@@ -79,10 +79,15 @@
                         var endTimeInput = form.querySelector("input[name='endTime']");
                         if (endTimeInput) endTimeInput.value = '20:00';
                     } else {
-                        // Redirect to rehearsals list after a brief delay so the toast is visible
+                        // Navigate to the list with ?focus= so the shared
+                        // initFocusHighlight scrolls to and highlights the new row.
                         setTimeout(function() {
-                            window.location.href = '/rehearsals';
-                        }, 1500);
+                            if (rehearsal && rehearsal.id) {
+                                window.location.href = '/rehearsals?focus=' + rehearsal.id;
+                            } else {
+                                window.location.href = '/rehearsals';
+                            }
+                        }, 600);
                     }
                 }).catch(function(err) {
                     console.log('[REHEARSAL] fetch error:', err);

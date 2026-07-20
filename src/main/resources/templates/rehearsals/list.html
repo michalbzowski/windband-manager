@@ -5,7 +5,7 @@
 <nav th:replace="~{fragments/layout :: nav}"></nav>
 
     <main class="container" id="content">
-        <div id="rehearsals-content">
+        <div id="rehearsals-content" th:attr="data-focus-id=${focusRehearsalId},data-focus-prefix='rehearsal'">
             <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem;">
                 <h2>🎵 Spotkania</h2>
                 <button hx-get="/rehearsals/new" hx-target="#rehearsals-content"
@@ -32,7 +32,7 @@
                         </tr>
                     </thead>
                     <tbody>
-                        <tr th:each="r : ${upcomingRehearsals}">
+                        <tr th:each="r : ${upcomingRehearsals}" th:id="'rehearsal-' + ${r.id}">
                             <td data-label="Data" th:text="${r.date}">01.01.2025</td>
                             <td data-label="Godzina" th:text="${r.startTime}">18:00</td>
                             <td data-label="Miejsce" th:text="${r.location}">Miejsce spotkania</td>
@@ -73,7 +73,7 @@
                         </tr>
                     </thead>
                     <tbody>
-                        <tr th:each="r : ${pastRehearsals}" class="past-item">
+                        <tr th:each="r : ${pastRehearsals}" class="past-item" th:id="'rehearsal-' + ${r.id}">
                             <td data-label="Data">
                                 <span th:text="${r.date}">01.01.2025</span>
                                 <span class="past-badge">Odbyło się</span>

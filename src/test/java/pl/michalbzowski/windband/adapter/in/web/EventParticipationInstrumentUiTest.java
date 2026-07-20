@@ -64,7 +64,7 @@ class EventParticipationInstrumentUiTest extends UiTestBase {
         // Ensure it is actually visible/clickable (not covered by a sticky bar or leftover toast)
         wait.until(ExpectedConditions.visibilityOfElementLocated(By.id("events-content")));
         // Wait for invite section which is part of the detail
-        wait.until(ExpectedConditions.presenceOfElementLocated(By.id("invite-member-select")));
+        wait.until(ExpectedConditions.presenceOfElementLocated(By.id("open-invite-modal-btn")));
 
         // Get the event ID from the #events-content element's data-event-id attribute (now guaranteed to be the detail fragment)
         String eventIdStr = (String) ((JavascriptExecutor) driver).executeScript(
@@ -72,24 +72,10 @@ class EventParticipationInstrumentUiTest extends UiTestBase {
         Long eventId = eventIdStr != null ? Long.valueOf(eventIdStr) : null;
         System.out.println("[TEST] Event ID: " + eventId);
 
-        // 3. Invite the first member (Jan Kowalski) via API
-        var memberSelect = driver.findElement(By.id("invite-member-select"));
-        var options = memberSelect.findElements(By.tagName("option"));
-        System.out.println("[TEST] Member option count: " + options.size());
-        for (var opt : options) {
-            System.out.println("[TEST]   option: value=" + opt.getAttribute("value") + " text=" + opt.getText());
-        }
-
-        // Select first member (skip placeholder)
-        if (options.size() > 1) {
-            ((JavascriptExecutor) driver).executeScript(
-                    "document.getElementById('invite-member-select').selectedIndex = 1;");
-        }
-
-        // Invite the first member via a direct API call (deterministic, avoids UI event-timing races
-        // with the HTMX/fetchWithToast wiring on the fragment). This is still an end-to-end check:
-        // the participation must persist and render in the detail table.
-        Long memberId = options.size() > 1 ? 1L : null;
+        // 3. Invite Jan (member id 1) via the API directly (deterministic; avoids UI
+        //    timing races with the modal/fetch wiring). The participation must persist
+        //    and render in the detail table — that is what we assert below.
+        Long memberId = 1L;
         Object inviteResult = ((JavascriptExecutor) driver).executeScript(
                 "return fetch('/api/events/' + arguments[0] + '/invite', {" +
                 "  method: 'POST', headers: {'Content-Type':'application/json'}," +

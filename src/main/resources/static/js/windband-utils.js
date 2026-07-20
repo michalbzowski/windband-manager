@@ -132,6 +132,45 @@
     }
 
     /**
+     * Scroll a list row into view and apply a transient green highlight.
+     * Shared by the members / events / rehearsals lists so a freshly
+     * created or edited entity pulses green and is scrolled into view.
+     *
+     * @param {string} prefix - row id prefix, e.g. 'member' -> 'member-123'
+     * @param {string|number} id - entity id
+     */
+    function focusEntityRow(prefix, id) {
+        if (id == null || id === '' || id === 'null' || id === '0') return;
+        var row = document.getElementById(prefix + '-' + id);
+        if (!row) {
+            row = document.querySelector('[data-entity-id="' + id + '"]');
+        }
+        if (!row) return;
+        row.classList.add('highlight-row');
+        setTimeout(function () { row.classList.remove('highlight-row'); }, 3000);
+        row.scrollIntoView({behavior: 'smooth', block: 'center'});
+    }
+
+    /**
+     * Reads data-focus-id / data-focus-prefix from any container present in the
+     * DOM and focuses the matching row. Runs on page load (DOMContentLoaded)
+     * and after every HTMX swap (htmx:afterSwap) so it works for both full
+     * navigations (event/rehearsal/member create -> list page reload) and
+     * in-page HTMX reloads (member edit). Guarded per-container so a row is
+     * only highlighted once.
+     */
+    function initFocusHighlight() {
+        document.querySelectorAll('[data-focus-id]').forEach(function (container) {
+            var focusId = container.getAttribute('data-focus-id');
+            if (!focusId || focusId === 'null' || focusId === '0') return;
+            if (container.dataset.focusHandled === '1') return;
+            container.dataset.focusHandled = '1';
+            var prefix = container.getAttribute('data-focus-prefix') || 'entity';
+            focusEntityRow(prefix, focusId);
+        });
+    }
+
+    /**
      * Bind event-detail page handlers (invite member/group, delete, response,
      * instrument, send, payment). Called on DOMContentLoaded AND on every
      * htmx:afterSwap so handlers survive HTMX navigation to event details
@@ -218,41 +257,70 @@
         invitedMemberIds.add(parseInt(row.dataset.memberId));
     });
 
-    // Invite single member
-    document.getElementById('invite-btn').addEventListener('click', function() {
-        var select = document.getElementById('invite-member-select');
-        var memberId = parseInt(select.value);
-        console.log('Invite button clicked, memberId=' + memberId + ', eventId=' + eventId);
-        if (memberId) {
-            fetchWithToast('/api/events/' + eventId + '/invite', { toastMessage: 'Zaproszono uczestnika',
-                method: 'POST',
-                headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({eventId: eventId, memberId: memberId})
-            }).then(function(response) {
-                if (!response.ok) return;
+    // Open the multi-member invite modal
+    var openInviteBtn = document.getElementById('open-invite-modal-btn');
+    if (openInviteBtn) {
+        openInviteBtn.addEventListener('click', function() {
+            if (typeof openAppModal === 'function') {
+                openAppModal('invite-members-modal');
+            } else {
+                var fallbackDlg = document.getElementById('invite-members-modal');
+                if (fallbackDlg && fallbackDlg.showModal) fallbackDlg.showModal();
+            }
+        });
+    }
+
+    // Invite all checked members from the modal
+    var inviteSelectedBtn = document.getElementById('invite-selected-btn');
+    if (inviteSelectedBtn) {
+        inviteSelectedBtn.addEventListener('click', function() {
+            var modal = document.getElementById('invite-members-modal');
+            var checkboxes = modal ? modal.querySelectorAll('.invite-checkbox:checked') : [];
+            var selected = [];
+            checkboxes.forEach(function(cb) { selected.push(parseInt(cb.value)); });
+            console.log('Invite selected clicked, count=' + selected.length + ', eventId=' + eventId);
+            if (selected.length === 0) {
+                if (window.Toast) Toast.info('Zaznacz przynajmniej jedną osobę');
+                return;
+            }
+            var csrf = getCookie('XSRF-TOKEN');
+            var promises = selected.map(function(mid) {
+                var headers = {'Content-Type': 'application/json'};
+                if (csrf) headers['X-XSRF-TOKEN'] = csrf;
+                return fetch('/api/events/' + eventId + '/invite', {
+                    method: 'POST',
+                    headers: headers,
+                    body: JSON.stringify({eventId: parseInt(eventId), memberId: mid})
+                });
+            });
+            Promise.all(promises).then(function() {
+                if (typeof closeAppModal === 'function') closeAppModal(modal);
+                else if (modal && modal.close) modal.close();
+                Toast.success('Zaproszono ' + selected.length + (selected.length === 1 ? ' osobę' : ' osób'));
                 htmx.ajax('GET', '/events/' + eventId, {target: '#events-content[data-event-id]', swap: 'outerHTML transition:true'});
-                // One-time handler: highlight + scroll to the newly invited member
+                // One-time handler: highlight + scroll to all newly invited members
                 var handler = function(evt) {
                     if (evt.detail && evt.detail.target && evt.detail.target.id === 'events-content') {
-                        // Small delay to ensure DOM is fully settled
                         setTimeout(function() {
-                            var row = document.querySelector('#participants-table tbody tr[data-member-id="' + memberId + '"]');
-                            if (row) {
-                                console.log('Highlighting and scrolling to row for memberId=' + memberId);
-                                row.classList.add('highlight-row');
-                                setTimeout(function() { row.classList.remove('highlight-row'); }, 3000);
-                                row.scrollIntoView({behavior: 'smooth', block: 'center'});
-                            } else {
-                                console.warn('Row not found for memberId=' + memberId);
-                            }
+                            selected.forEach(function(mid) {
+                                var row = document.querySelector('#participants-table tbody tr[data-member-id="' + mid + '"]');
+                                if (row) {
+                                    row.classList.add('highlight-row');
+                                    setTimeout(function() { row.classList.remove('highlight-row'); }, 3000);
+                                    row.scrollIntoView({behavior: 'smooth', block: 'center'});
+                                }
+                            });
                         }, 50);
                         document.body.removeEventListener('htmx:afterSettle', handler);
                     }
                 };
                 document.body.addEventListener('htmx:afterSettle', handler);
-            }).catch(function(err) { console.error('Invite error:', err); });
-        }
-    });
+            }).catch(function(err) {
+                console.error('Invite selected error:', err);
+                if (window.Toast) Toast.error('Błąd podczas zapraszania');
+            });
+        });
+    }
 
     // Invite entire group
     document.getElementById('invite-group-btn').addEventListener('click', function() {
@@ -565,6 +633,7 @@
     }
 
     global.bindEventDetailHandlers = bindEventDetailHandlers;
+    global.initFocusHighlight = initFocusHighlight;
     // Expose globally
     global.Toast = Toast;
     global.fetchWithToast = fetchWithToast;

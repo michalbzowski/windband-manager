@@ -17,7 +17,8 @@
 14. [Build & Deploy](#build--deploy)
 15. [Rehearsal Detail View](#rehearsal-detail-view)
 16. [List Sorting & Past Highlighting](#list-sorting--past-highlighting)
-17. [Member Attributes & Groups](#member-attributes--groups)
+17. [Unified Focus Highlight & Multi-Member Invite Modal](#17-unified-focus-highlight--multi-member-invite-modal)
+18. [Member Attributes & Groups](#member-attributes--groups)
 
 ---
 
@@ -690,7 +691,7 @@ model attributes. See `docs/list-sorting.md` for the full breakdown.
 
 ---
 
-## Member Attributes & Groups
+## 18. Member Attributes & Groups
 
 Member attributes (`MemberAttributeDef` / `MemberAttributeValue`) and groups
 (`Group`) are documented in detail in [`docs/member-attributes.md`](docs/member-attributes.md).
@@ -711,3 +712,61 @@ Key points:
   (see `docs/plans/2026-07-04-dynamic-groups.md` STATUS note).
 - **Tests:** `DynamicGroupEndToEndUiTest`, `GroupCommandServiceTest`,
   `MemberQueryServiceTest`.
+
+---
+
+## 17. Unified Focus Highlight & Multi-Member Invite Modal
+
+### Shared focus/highlight mechanism
+All three lists (members, events, rehearsals) share ONE highlight+scroll routine so
+a newly created/edited entity is scrolled into view and pulsed green after the list
+reloads:
+
+- **`windband-utils.js → initFocusHighlight(container)`** reads `data-focus-id`
+  and `data-focus-prefix` from the list container, finds the row via
+  `getElementById(prefix + focusId)`, adds `.highlight-row` (green pulse, removed
+  after 3 s) and `scrollIntoView({block:'center'})`. Guarded by `data-focus-handled`
+  so it never double-highlights.
+- Registered in `fragments/layout.html` `footer-scripts` on **both** `DOMContentLoaded`
+  and `htmx:afterSwap` (same pattern as `bindEventDetailHandlers`), so it works for
+  full page loads *and* HTMX fragment swaps.
+- Each list container carries the attributes:
+  - `members/list.html` → `#members-content` `data-focus-id="${focusMemberId}" data-focus-prefix="member"`
+  - `events/list.html` → `#events-list-container` `data-focus-id="${focusEventId}" data-focus-prefix="event"`
+  - `rehearsals/list.html` → `#rehearsals-content` `data-focus-id="${focusRehearsalId}" data-focus-prefix="rehearsal"`
+- List rows already expose the matching `id`: `member-{id}`, `event-{id}`,
+  `rehearsal-{id}`.
+- **Controllers** (`MemberPageController`, `EventPageController`,
+  `RehearsalPageController`) accept an optional `@RequestParam(required=false) Long focus`
+  on `listPage`/`listFragment` and expose it as `focusMemberId`/`focusEventId`/
+  `focusRehearsalId`.
+- **Create/edit forms** navigate back with `?focus=<id>`:
+  - `members/form.html` create → `htmx.ajax('GET','/members/list?focus='+newId,...)`;
+    edit → `/members/list?focus={id}`. Reads `newId` from the `POST /api/members`
+    response body (`{id:...}`).
+  - `events/form.html` → `window.location.href='/events?focus='+newId`.
+  - `rehearsals/form.html` → `window.location.href='/rehearsals?focus='+newId`.
+
+> The OLD per-page inline `highlight-row` + `setTimeout(...,scrollIntoView)` code was
+> removed — it ran on a page that was already destroyed by a full navigation, so the
+> highlight never appeared (user-reported bug after adding an event).
+
+### Event invite → multi-member modal
+The single-invite `<select>` + "Zaproś" button on `events/detail.html` was replaced
+by a **modal**:
+
+- Trigger: `#open-invite-modal-btn` ("➕ Zaproś uczestników") → `openAppModal('invite-members-modal')`.
+- Modal `#invite-members-modal` (native `<dialog class="app-modal">`, **inside**
+  `#events-content` so it is part of the HTMX detail fragment) lists every available
+  member with an `.invite-checkbox` and a label.
+- `#invite-selected-btn` ("Zaproś zaznaczone osoby") collects checked ids and POSTs
+  `/api/events/{id}/invite` for each (CSRF header from `XSRF-TOKEN` cookie),
+  closes the modal, toasts success, then reloads the detail fragment. All newly
+  invited rows are pulsed via the shared `highlight-row` handler.
+- Wiring lives in `windband-utils.js → bindEventDetailHandlers` (re-bound on every
+  `htmx:afterSwap`).
+
+**Tests (UI/Selenium):** `MemberListFocusHighlightUiTest`,
+`EventListFocusHighlightUiTest`, `EventInviteModalUiTest` (multi-select + highlight),
+plus the existing `EventParticipationInstrumentUiTest` /
+`AttendancePersistenceUiTest` updated to the new modal trigger.

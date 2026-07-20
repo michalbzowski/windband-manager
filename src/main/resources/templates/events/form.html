@@ -117,18 +117,9 @@
             if (saveAndAddAnother) {
                 htmx.ajax('GET', '/events/new', {target: '#events-list-container', swap: 'innerHTML transition:true'});
             } else {
-                window.location.href = '/events';
-                // After the list reloads, scroll to and highlight the new event row
-                if (newEventId) {
-                    setTimeout(function() {
-                        var row = document.getElementById('event-' + newEventId);
-                        if (row) {
-                            row.classList.add('highlight-row');
-                            row.scrollIntoView({behavior: 'smooth', block: 'center'});
-                            setTimeout(function() { row.classList.remove('highlight-row'); }, 3000);
-                        }
-                    }, 600);
-                }
+                // Full navigation to the list with ?focus= so the shared
+                // initFocusHighlight scrolls to and highlights the new row.
+                window.location.href = '/events' + (newEventId ? '?focus=' + newEventId : '');
             }
         }).catch(function(err) {
             console.error('Create event error:', err);

@@ -29,9 +29,11 @@ public class MemberPageController {
     private final InventoryQueryService inventoryQueryService;
 
     @GetMapping
-    public String listPage(@ModelAttribute("activeTeamId") Long activeTeamId, Model model) {
+    public String listPage(@ModelAttribute("activeTeamId") Long activeTeamId, Model model,
+                           @RequestParam(required = false) Long focus) {
         model.addAttribute("members", memberQueryService.getAllActiveMembers(activeTeamId));
         model.addAttribute("activeTeamId", activeTeamId);
+        model.addAttribute("focusMemberId", focus);
         return "members/list";
     }
 

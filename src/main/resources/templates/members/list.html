@@ -5,7 +5,7 @@
 <nav th:replace="~{fragments/layout :: nav}"></nav>
 
     <main class="container" id="content">
-        <div id="members-content" th:attr="data-focus-id=${focusMemberId}">
+        <div id="members-content" th:attr="data-focus-id=${focusMemberId},data-focus-prefix='member'">
             <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem;">
                 <h2>👥 Członkowie</h2>
                 <button hx-get="/members/new" hx-target="#members-content" hx-swap="innerHTML transition:true"
@@ -69,18 +69,6 @@
                     </tbody>
                 </table>
             </div>
-            <script th:if="${focusMemberId != null}" th:inline="javascript">
-                // After the list fragment is swapped in, scroll the focused member into view.
-                (function () {
-                    var row = document.getElementById('member-' + /*[[${focusMemberId}]]*/ 0);
-                    if (row) {
-                        row.scrollIntoView({behavior: 'smooth', block: 'center'});
-                        row.style.transition = 'background-color 1s ease';
-                        row.style.backgroundColor = '#fff3cd';
-                        setTimeout(function () { row.style.backgroundColor = ''; }, 1500);
-                    }
-                })();
-            </script>
         </div>
     </main>
 
