@@ -200,20 +200,18 @@ public abstract class UiTestBase {
      * several UI tests rely on, and re-seeding is not available after TRUNCATE.</p>
      */
     protected void cleanDatabase() {
-        // H2 supports multi-table TRUNCATE; CASCADE handles FK ordering automatically.
-        // Child tables first, then parents — but CASCADE makes order irrelevant.
+        // Child tables only — keep members/bands/teams/users seeded by data.sql
+        // so legacy UI tests that rely on those rows keep working. CASCADE clears
+        // dependent rows (consent tokens, attendances, participations) without FK violations.
         String allTables = "attendances, event_participations, member_instruments, "
                 + "member_consent_tokens, member_consents, rehearsals, band_events, "
-                + "member_attribute_values, member_attribute_defs, team_members, "
-                + "members, bands, teams, users";
+                + "member_attribute_values, member_attribute_defs, team_members";
         try {
             jdbcTemplate.execute("TRUNCATE TABLE " + allTables + " RESTART IDENTITY CASCADE");
         } catch (Exception e) {
-            // Fallback: try without RESTART IDENTITY
             try {
                 jdbcTemplate.execute("TRUNCATE TABLE " + allTables + " CASCADE");
             } catch (Exception e2) {
-                // Last resort: per-table with CASCADE
                 for (String t : allTables.split(",")) {
                     String table = t.trim();
                     try {
