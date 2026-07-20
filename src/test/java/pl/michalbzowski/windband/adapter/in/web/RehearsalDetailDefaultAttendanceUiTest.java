@@ -22,42 +22,28 @@ import static org.assertj.core.api.Assertions.assertThat;
 class RehearsalDetailDefaultAttendanceUiTest extends UiTestBase {
 
     @Test
-    void newRehearsal_showsAllMembersAsNoResponse_notPresent() {
+    void newRehearsal_showsAllMembersAsNoResponse_notPresent() throws Exception {
         WebDriverWait wait = new WebDriverWait(driver, Duration.ofSeconds(10));
 
         loginAndNavigateTo("/rehearsals");
         wait.until(ExpectedConditions.presenceOfElementLocated(By.id("rehearsals-content")));
 
-        // Open the "Zaplanuj spotkanie" form
-        var addButton = driver.findElement(By.xpath("//button[contains(text(), 'Zaplanuj spotkanie')]"));
-        addButton.click();
-        wait.until(ExpectedConditions.presenceOfElementLocated(
-                By.cssSelector("#rehearsals-content form#rehearsal-form")));
-
-        // Fill required fields
+        // Create a rehearsal via the REST API (deterministic id, avoids the
+        // multi-step UI form which is exercised by AttendancePersistenceUiTest).
         String today = java.time.LocalDate.now().toString();
-        ((JavascriptExecutor) driver).executeScript(
-                "document.querySelector(\"input[name='date']\").value = '" + today + "';");
-        var startTimeInput = driver.findElement(By.cssSelector("input[name='startTime']"));
-        startTimeInput.clear();
-        startTimeInput.sendKeys("18:00");
-        var endTimeInput = driver.findElement(By.cssSelector("input[name='endTime']"));
-        endTimeInput.clear();
-        endTimeInput.sendKeys("20:00");
-        ((JavascriptExecutor) driver).executeScript(
-                "document.querySelector(\"input[name='location']\").value = 'Sala prób';");
+        String rehearsalIdStr = (String) ((JavascriptExecutor) driver).executeScript(
+                "return fetch('/api/rehearsals', {" +
+                "  method: 'POST', headers: {'Content-Type':'application/json'}," +
+                "  body: JSON.stringify({date: '" + today + "', startTime: '18:00'," +
+                "    endTime: '20:00', location: 'Sala prób', bandId: 1})" +
+                "}).then(r => r.json()).then(r => '' + r.id);");
+        Thread.sleep(1000);
+        Long rehearsalId = rehearsalIdStr != null ? Long.valueOf(rehearsalIdStr) : null;
+        System.out.println("[TEST] created rehearsal id=" + rehearsalId);
+        assertThat(rehearsalId).as("a rehearsal should have been created via API").isNotNull();
 
-        // Submit
-        var submitBtn = driver.findElement(
-                By.cssSelector("#rehearsal-form button[type='submit'].primary"));
-        submitBtn.click();
-
-        // Wait for the save to complete (toast + redirect away from /new)
-        wait.until(ExpectedConditions.not(ExpectedConditions.urlContains("/new")));
-
-        // Navigate directly to the detail view of the newly created rehearsal.
-        // In a fresh H2 test DB the first created rehearsal has id=1.
-        driver.get(baseUrl() + "/rehearsals/1");
+        // Open the detail view of the newly created rehearsal directly.
+        driver.get(baseUrl() + "/rehearsals/" + rehearsalId);
         wait.until(ExpectedConditions.presenceOfElementLocated(
                 By.cssSelector("select[id^='status_']")));
 
@@ -69,12 +55,15 @@ class RehearsalDetailDefaultAttendanceUiTest extends UiTestBase {
                 .isNotEmpty();
 
         for (var select : selects) {
+            String id = select.getAttribute("id");
             String value = select.getAttribute("value");
-            System.out.println("[TEST] member select " + select.getAttribute("id") + " value=" + value);
-            assertThat(value)
-                    .as("Fresh rehearsal: member %s must default to NO_RESPONSE, not PRESENT",
-                            select.getAttribute("id"))
-                    .isEqualTo("NO_RESPONSE");
+            boolean noRespSelected = select.findElement(
+                    By.cssSelector("option[value='NO_RESPONSE']")).isSelected();
+            System.out.println("[TEST] member select " + id + " value=" + value
+                    + " noResponseOptionSelected=" + noRespSelected);
+            assertThat(noRespSelected)
+                    .as("Fresh rehearsal: member %s must default to NO_RESPONSE, not PRESENT", id)
+                    .isTrue();
         }
     }
 }

@@ -9,8 +9,10 @@ import org.openqa.selenium.chrome.ChromeDriver;
 import org.openqa.selenium.chrome.ChromeOptions;
 import org.openqa.selenium.support.ui.ExpectedConditions;
 import org.openqa.selenium.support.ui.WebDriverWait;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.web.server.LocalServerPort;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.context.ActiveProfiles;
 
 import java.io.BufferedReader;
@@ -24,10 +26,19 @@ public abstract class UiTestBase {
     @LocalServerPort
     protected int port;
 
+    @Autowired
+    protected JdbcTemplate jdbcTemplate;
+
     protected WebDriver driver;
 
     @BeforeEach
     void setUp() {
+        // UI tests share a single H2 database in the JVM. Reset it before each
+        // test so stale rows from a previous test cannot leak in and break
+        // ordering/assertions. TRUNCATE ... CASCADE removes child rows
+        // (consent tokens, attendances, participations) without FK violations.
+        cleanDatabase();
+
         String browserPath = detectChromeBinary();
         String browserVersion = getMajorVersion(browserPath);
         System.out.println("[UiTestBase] Browser: " + browserPath + " version: " + browserVersion);
@@ -175,6 +186,35 @@ public abstract class UiTestBase {
 
     protected String baseUrl() {
         return "http://localhost:" + port;
+    }
+
+    /**
+     * Reset the shared H2 test database. Called from {@link BeforeEach} so every
+     * UI test starts from a clean state. Uses TRUNCATE ... CASCADE (per table —
+     * H2 does not support multi-table TRUNCATE) to drop child rows (consent
+     * tokens, attendances, participations, member_instruments) together with
+     * their parents without tripping foreign-key constraints.
+     *
+     * <p>Members and seeded reference data (bands, instruments, dynamic groups)
+     * are left intact — the seed in data.sql provides the baseline members that
+     * several UI tests rely on, and re-seeding is not available after TRUNCATE.</p>
+     */
+    protected void cleanDatabase() {
+        String[] tables = {
+                "attendances", "event_participations", "member_instruments",
+                "member_consent_tokens", "rehearsals", "band_events"
+        };
+        for (String table : tables) {
+            try {
+                jdbcTemplate.execute("TRUNCATE TABLE " + table + " RESTART IDENTITY CASCADE");
+            } catch (Exception e) {
+                try {
+                    jdbcTemplate.execute("TRUNCATE TABLE " + table + " CASCADE");
+                } catch (Exception ignored) {
+                    // table may not exist in this schema variant; skip
+                }
+            }
+        }
     }
 
     protected void loginAndNavigateTo(String path) {

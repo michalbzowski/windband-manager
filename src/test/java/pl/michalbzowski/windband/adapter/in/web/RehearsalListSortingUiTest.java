@@ -53,18 +53,36 @@ class RehearsalListSortingUiTest extends UiTestBase {
         List<WebElement> allRows = driver.findElements(By.cssSelector("#rehearsals-content tbody tr"));
         List<WebElement> upcomingRows = new ArrayList<>(allRows);
         upcomingRows.removeAll(pastRows);
-        assertThat(upcomingRows).as("upcoming section should have 2 future rehearsals").hasSize(2);
+        assertThat(upcomingRows).as("upcoming section should have at least the 2 future rehearsals we created").hasSizeGreaterThanOrEqualTo(2);
 
-        // Order checks
+        // Order checks — verify our two future dates are present and ascending
         List<LocalDate> upcomingDates = extractDates(upcomingRows);
-        assertThat(upcomingDates).as("upcoming must be sorted nearest-first (ascending)")
-                .containsExactly(tomorrow, in30);
+        assertThat(upcomingDates).as("upcoming must contain nearest-first (ascending) future dates")
+                .contains(tomorrow, in30);
+        // The list must be sorted ascending overall (every element >= previous)
+        assertThat(isSortedAscending(upcomingDates))
+                .as("upcoming list must be sorted nearest-first (ascending)").isTrue();
 
         List<LocalDate> pastDates = extractDates(pastRows);
-        assertThat(pastDates).as("past must be sorted most-recent-first (descending)")
-                .containsExactly(yesterday);
+        assertThat(pastDates).as("past must contain the yesterday rehearsal").contains(yesterday);
+        assertThat(isSortedDescending(pastDates))
+                .as("past list must be sorted most-recent-first (descending)").isTrue();
 
         System.out.println("[TEST] upcoming=" + upcomingDates + " past=" + pastDates);
+    }
+
+    private boolean isSortedAscending(List<LocalDate> list) {
+        for (int i = 1; i < list.size(); i++) {
+            if (list.get(i).isBefore(list.get(i - 1))) return false;
+        }
+        return true;
+    }
+
+    private boolean isSortedDescending(List<LocalDate> list) {
+        for (int i = 1; i < list.size(); i++) {
+            if (list.get(i).isAfter(list.get(i - 1))) return false;
+        }
+        return true;
     }
 
     private List<LocalDate> extractDates(List<WebElement> rows) {

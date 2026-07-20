@@ -106,18 +106,30 @@ class QuickAttendanceModalUiTest extends UiTestBase {
         assertThat(driver.findElement(By.id("qa-back")).getAttribute("disabled")).isNotNull();
 
         // --- Click through the rest (PRESENT for every remaining member) until modal closes ---
-        int safety = memberCount + 2;
+        // Wait for the save response (progress advances or modal closes) after each click
+        // to avoid racing the next click against a slow fetch under suite load.
+        WebDriverWait saveWait = new WebDriverWait(driver, Duration.ofSeconds(20));
+        int maxClicks = memberCount + 2;
         int clicks = 0;
-        while (isModalOpen() && clicks < safety) {
+        while (isModalOpen() && clicks < maxClicks) {
+            String before = driver.findElement(By.id("qa-progress")).getText();
             driver.findElement(By.cssSelector(".qa-status[data-status='PRESENT']")).click();
-            Thread.sleep(500);
+            final int clickNo = clicks;
+            saveWait.until(d -> {
+                boolean closed = !(Boolean) ((JavascriptExecutor) d).executeScript(
+                        "return document.getElementById('quick-attendance-modal').open === true;");
+                if (closed) return true;
+                String now = d.findElement(By.id("qa-progress")).getText();
+                return !now.equals(before);
+            });
             clicks++;
+            System.out.println("[TEST] click " + clickNo + " done, modalOpen=" + isModalOpen());
         }
-        System.out.println("[TEST] clicks to finish: " + clicks);
-        wait.until(d -> (Boolean) ((JavascriptExecutor) d).executeScript(
+        System.out.println("[TEST] total clicks to finish: " + clicks);
+        saveWait.until(d -> (Boolean) ((JavascriptExecutor) d).executeScript(
                 "return document.getElementById('quick-attendance-modal').open === false;"));
         assertThat(isModalOpen()).isFalse();
-        wait.until(ExpectedConditions.textToBePresentInElementLocated(
+        saveWait.until(ExpectedConditions.textToBePresentInElementLocated(
                 By.id("toast-container"), "Zapisano obecność"));
 
         // --- Reload and assert all members persisted as PRESENT ---
