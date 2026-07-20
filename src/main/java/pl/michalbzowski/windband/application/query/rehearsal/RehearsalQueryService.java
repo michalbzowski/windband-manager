@@ -44,6 +44,36 @@ public class RehearsalQueryService {
         return rehearsalRepository.findByDateBetween(from, to);
     }
 
+    /**
+     * Upcoming (today or later) rehearsals, sorted nearest-first (ascending by date).
+     */
+    public List<Rehearsal> getUpcomingRehearsals(Long teamId) {
+        LocalDate today = LocalDate.now();
+        return loadSortedAsc(teamId).stream()
+                .filter(r -> !r.getDate().isBefore(today))
+                .collect(java.util.stream.Collectors.toList());
+    }
+
+    /**
+     * Past (before today) rehearsals, sorted most-recent-first (descending by date),
+     * rendered after the upcoming section.
+     */
+    public List<Rehearsal> getPastRehearsals(Long teamId) {
+        LocalDate today = LocalDate.now();
+        return loadSortedAsc(teamId).stream()
+                .filter(r -> r.getDate().isBefore(today))
+                .sorted(java.util.Comparator.comparing(Rehearsal::getDate).reversed())
+                .collect(java.util.stream.Collectors.toList());
+    }
+
+    private List<Rehearsal> loadSortedAsc(Long teamId) {
+        List<Rehearsal> all = (teamId != null)
+                ? rehearsalRepository.findAllOrderByDateDescByBandId(teamId)
+                : rehearsalRepository.findAllOrderByDateDesc();
+        all.sort(java.util.Comparator.comparing(Rehearsal::getDate));
+        return all;
+    }
+
     public long getRehearsalCountBetween(LocalDate from, LocalDate to) {
         return getRehearsalCountBetween(from, to, null);
     }

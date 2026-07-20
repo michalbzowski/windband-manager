@@ -39,7 +39,8 @@ public class EventPageController {
     public String listPage(@ModelAttribute("activeTeamId") Long activeTeamId, Model model,
                            jakarta.servlet.http.HttpServletRequest request) {
 
-        model.addAttribute("events", eventQueryService.getAllEvents(activeTeamId));
+        model.addAttribute("upcomingEvents", eventQueryService.getUpcomingEvents(activeTeamId));
+        model.addAttribute("pastEvents", eventQueryService.getPastEvents(activeTeamId));
 
         if ("true".equals(request.getHeader("HX-Request"))) {
             return "events/list :: #events-list-container";
@@ -52,7 +53,8 @@ public class EventPageController {
 
     public String listFragment(@ModelAttribute("activeTeamId") Long activeTeamId, Model model) {
 
-        model.addAttribute("events", eventQueryService.getAllEvents(activeTeamId));
+        model.addAttribute("upcomingEvents", eventQueryService.getUpcomingEvents(activeTeamId));
+        model.addAttribute("pastEvents", eventQueryService.getPastEvents(activeTeamId));
 
         return "events/list :: #events-list-container";
 

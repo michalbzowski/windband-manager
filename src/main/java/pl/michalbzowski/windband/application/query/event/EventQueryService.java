@@ -157,6 +157,36 @@ public class EventQueryService {
         return eventRepository.findByDateBetween(from, to);
     }
 
+    /**
+     * Upcoming (today or later) events, sorted nearest-first (ascending by date).
+     */
+    public List<BandEvent> getUpcomingEvents(Long teamId) {
+        LocalDate today = LocalDate.now();
+        return loadSortedAsc(teamId).stream()
+                .filter(e -> !e.getDate().isBefore(today))
+                .collect(Collectors.toList());
+    }
+
+    /**
+     * Past (before today) events, sorted most-recent-first (descending by date),
+     * rendered after the upcoming section.
+     */
+    public List<BandEvent> getPastEvents(Long teamId) {
+        LocalDate today = LocalDate.now();
+        return loadSortedAsc(teamId).stream()
+                .filter(e -> e.getDate().isBefore(today))
+                .sorted(Comparator.comparing(BandEvent::getDate).reversed())
+                .collect(Collectors.toList());
+    }
+
+    private List<BandEvent> loadSortedAsc(Long teamId) {
+        List<BandEvent> all = (teamId != null)
+                ? eventRepository.findAllOrderByDateDescByBandId(teamId)
+                : eventRepository.findAllOrderByDateDesc();
+        all.sort(Comparator.comparing(BandEvent::getDate));
+        return all;
+    }
+
     public long getEventCountBetween(LocalDate from, LocalDate to) {
         return getEventCountBetween(from, to, null);
     }

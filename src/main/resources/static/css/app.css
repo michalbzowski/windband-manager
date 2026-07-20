@@ -1305,3 +1305,41 @@ tr.highlight-row > td {
     border-radius: 0.25rem;
     vertical-align: middle;
 }
+
+/* ============================================================
+   PAST REHEARSALS / EVENTS — visual distinction
+   Items whose date is before today are rendered in a separate
+   "Przeszłe" section, dimmed, with an "Odbyło się" badge.
+   ============================================================ */
+tr.past-item,
+li.past-item {
+    opacity: 0.62;
+}
+
+tr.past-item > td,
+li.past-item > * {
+    /* Keep badge/actions still legible despite the dimmed row */
+    color: inherit;
+}
+
+.past-badge {
+    display: inline-block;
+    margin-left: 0.4rem;
+    padding: 0.1rem 0.45rem;
+    font-size: 0.72rem;
+    font-weight: 600;
+    background: var(--pico-secondary-background);
+    color: var(--pico-secondary-inverse);
+    border-radius: 0.25rem;
+    vertical-align: middle;
+    white-space: nowrap;
+}
+
+.section-heading {
+    margin: 1.25rem 0 0.5rem;
+    font-size: 0.8rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--pico-muted-color);
+}

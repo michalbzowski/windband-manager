@@ -1,0 +1,95 @@
+package pl.michalbzowski.windband.adapter.in.web;
+
+import org.junit.jupiter.api.Test;
+import org.openqa.selenium.By;
+import org.openqa.selenium.JavascriptExecutor;
+import org.openqa.selenium.WebElement;
+import org.openqa.selenium.support.ui.ExpectedConditions;
+import org.openqa.selenium.support.ui.WebDriverWait;
+import pl.michalbzowski.windband.UiTestBase;
+
+import java.time.Duration;
+import java.time.LocalDate;
+import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
+import java.util.List;
+
+import static org.assertj.core.api.Assertions.assertThat;
+
+/**
+ * Verifies the rehearsal list splits into upcoming (ascending by date) and
+ * past (descending by date, dimmed with "Odbyło się" badge) sections.
+ */
+class RehearsalListSortingUiTest extends UiTestBase {
+
+    private static final DateTimeFormatter DATE_FMT = DateTimeFormatter.ISO_LOCAL_DATE;
+
+    @Test
+    void rehearsalList_splitsUpcomingAndPast_sortedCorrectly() throws Exception {
+        WebDriverWait wait = new WebDriverWait(driver, Duration.ofSeconds(10));
+        LocalDate yesterday = LocalDate.now().minusDays(1);
+        LocalDate tomorrow = LocalDate.now().plusDays(1);
+        LocalDate in30 = LocalDate.now().plusDays(30);
+
+        // Create a past rehearsal (yesterday)
+        createRehearsal(yesterday, "Przeszla A");
+        // Create two future rehearsals (tomorrow, in 30 days) -> upcoming section should be ascending
+        createRehearsal(tomorrow, "Nadchodzaca B");
+        createRehearsal(in30, "Nadchodzaca C");
+
+        // Open rehearsal list (full page load)
+        loginAndNavigateTo("/rehearsals");
+        wait.until(ExpectedConditions.presenceOfElementLocated(By.id("rehearsals-content")));
+        Thread.sleep(800);
+
+        // Past section must exist with the "Odbyło się" badge + dimmed rows
+        List<WebElement> pastRows = driver.findElements(By.cssSelector("#rehearsals-content tr.past-item"));
+        assertThat(pastRows).as("past section should contain the yesterday rehearsal").isNotEmpty();
+
+        List<WebElement> pastBadges = driver.findElements(By.cssSelector("#rehearsals-content .past-badge"));
+        assertThat(pastBadges).as("past rows should show 'Odbyło się' badge").isNotEmpty();
+
+        // Upcoming rows = all rows minus past rows
+        List<WebElement> allRows = driver.findElements(By.cssSelector("#rehearsals-content tbody tr"));
+        List<WebElement> upcomingRows = new ArrayList<>(allRows);
+        upcomingRows.removeAll(pastRows);
+        assertThat(upcomingRows).as("upcoming section should have 2 future rehearsals").hasSize(2);
+
+        // Order checks
+        List<LocalDate> upcomingDates = extractDates(upcomingRows);
+        assertThat(upcomingDates).as("upcoming must be sorted nearest-first (ascending)")
+                .containsExactly(tomorrow, in30);
+
+        List<LocalDate> pastDates = extractDates(pastRows);
+        assertThat(pastDates).as("past must be sorted most-recent-first (descending)")
+                .containsExactly(yesterday);
+
+        System.out.println("[TEST] upcoming=" + upcomingDates + " past=" + pastDates);
+    }
+
+    private List<LocalDate> extractDates(List<WebElement> rows) {
+        List<LocalDate> dates = new ArrayList<>();
+        for (WebElement row : rows) {
+            // First cell holds the date text (may include the badge in past rows)
+            String text = row.findElement(By.cssSelector("td")).getText().replace("Odbyło się", "").trim();
+            dates.add(LocalDate.parse(text, DATE_FMT));
+        }
+        return dates;
+    }
+
+    private void createRehearsal(LocalDate date, String location) {
+        WebDriverWait wait = new WebDriverWait(driver, Duration.ofSeconds(10));
+        loginAndNavigateTo("/rehearsals");
+        driver.findElement(By.xpath("//button[contains(text(), 'Zaplanuj spotkanie')]")).click();
+        wait.until(ExpectedConditions.presenceOfElementLocated(By.cssSelector("#rehearsal-form")));
+        ((JavascriptExecutor) driver).executeScript(
+                "document.querySelector(\"input[name='date']\").value = '" + date + "';");
+        driver.findElement(By.cssSelector("input[name='startTime']")).sendKeys("18:00");
+        driver.findElement(By.cssSelector("input[name='endTime']")).sendKeys("20:00");
+        driver.findElement(By.cssSelector("input[name='location']")).sendKeys(location);
+        driver.findElement(By.cssSelector("#rehearsal-form button[type='submit'].primary")).click();
+        wait.until(ExpectedConditions.urlContains("/rehearsals"));
+        wait.until(ExpectedConditions.not(ExpectedConditions.urlContains("/new")));
+        try { Thread.sleep(1200); } catch (InterruptedException ignored) {}
+    }
+}

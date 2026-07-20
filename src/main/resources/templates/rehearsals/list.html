@@ -12,13 +12,15 @@
                         hx-swap="innerHTML transition:true" class="primary">+ Zaplanuj spotkanie</button>
             </div>
 
-            <div th:if="${#lists.isEmpty(rehearsals)}">
+            <div th:if="${#lists.isEmpty(upcomingRehearsals) and #lists.isEmpty(pastRehearsals)}">
                 <article>
                     <p>Brak zaplanowanych prób.</p>
                 </article>
             </div>
 
-            <div th:unless="${#lists.isEmpty(rehearsals)}">
+            <!-- ===================== UPCOMING ===================== -->
+            <div th:if="${not #lists.isEmpty(upcomingRehearsals)}">
+                <h3 class="section-heading" th:unless="${#lists.isEmpty(pastRehearsals)}">Nadchodzące</h3>
                 <table role="grid">
                     <thead>
                         <tr>
@@ -30,8 +32,52 @@
                         </tr>
                     </thead>
                     <tbody>
-                        <tr th:each="r : ${rehearsals}">
+                        <tr th:each="r : ${upcomingRehearsals}">
                             <td data-label="Data" th:text="${r.date}">01.01.2025</td>
+                            <td data-label="Godzina" th:text="${r.startTime}">18:00</td>
+                            <td data-label="Miejsce" th:text="${r.location}">Miejsce spotkania</td>
+                            <td data-label="Obecność">
+                                <span th:text="${r.presentCount} + ' / ' + ${r.attendances.size()}">12 / 15</span>
+                            </td>
+                            <td data-label="Akcje">
+                                <button class="outline small"
+                                th:hx-get="@{/rehearsals/{id}(id=${r.id})}"
+                                hx-target="#content"
+                                hx-swap="innerHTML transition:true">Szczegóły</button>
+                                <button class="outline small"
+                                        th:hx-get="@{/rehearsals/{id}/notifications(id=${r.id})}"
+                                        hx-target="#content"
+                                        hx-swap="innerHTML transition:true"
+                                        title="Powiadomienia e-mail">📧</button>
+                                <button class="outline small secondary"
+                                        th:attr="data-id=${r.id}"
+                                        onclick="if(confirm('Czy na pewno chcesz usunąć tę spotkanie?')) deleteRehearsal(this.getAttribute('data-id'))"
+                                        style="margin-left:0.25rem;">Usuń</button>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- ===================== PAST ===================== -->
+            <div th:if="${not #lists.isEmpty(pastRehearsals)}">
+                <h3 class="section-heading">📅 Przeszłe spotkania</h3>
+                <table role="grid">
+                    <thead>
+                        <tr>
+                            <th>Data</th>
+                            <th>Godzina</th>
+                            <th>Miejsce</th>
+                            <th>Obecność</th>
+                            <th>Akcje</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr th:each="r : ${pastRehearsals}" class="past-item">
+                            <td data-label="Data">
+                                <span th:text="${r.date}">01.01.2025</span>
+                                <span class="past-badge">Odbyło się</span>
+                            </td>
                             <td data-label="Godzina" th:text="${r.startTime}">18:00</td>
                             <td data-label="Miejsce" th:text="${r.location}">Miejsce spotkania</td>
                             <td data-label="Obecność">

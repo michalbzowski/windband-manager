@@ -24,7 +24,8 @@ public class RehearsalPageController {
     @GetMapping
     public String listPage(@ModelAttribute("activeTeamId") Long activeTeamId, Model model,
                            HttpServletRequest request) {
-        model.addAttribute("rehearsals", rehearsalQueryService.getAllRehearsals(activeTeamId));
+        model.addAttribute("upcomingRehearsals", rehearsalQueryService.getUpcomingRehearsals(activeTeamId));
+        model.addAttribute("pastRehearsals", rehearsalQueryService.getPastRehearsals(activeTeamId));
         if ("true".equals(request.getHeader("HX-Request"))) {
             return "rehearsals/list :: #rehearsals-content";
         }
@@ -33,7 +34,8 @@ public class RehearsalPageController {
 
     @GetMapping("/list")
     public String listFragment(@ModelAttribute("activeTeamId") Long activeTeamId, Model model) {
-        model.addAttribute("rehearsals", rehearsalQueryService.getAllRehearsals(activeTeamId));
+        model.addAttribute("upcomingRehearsals", rehearsalQueryService.getUpcomingRehearsals(activeTeamId));
+        model.addAttribute("pastRehearsals", rehearsalQueryService.getPastRehearsals(activeTeamId));
         return "rehearsals/list :: #rehearsals-content";
     }
 

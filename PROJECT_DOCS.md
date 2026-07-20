@@ -16,6 +16,7 @@
 13. [Database Migrations](#database-migrations)
 14. [Build & Deploy](#build--deploy)
 15. [Rehearsal Detail View](#rehearsal-detail-view)
+16. [List Sorting & Past Highlighting](#list-sorting--past-highlighting)
 
 ---
 
@@ -671,3 +672,17 @@ creation/update by `RehearsalNotificationService` (members must have `email_cons
 - `QuickAttendanceModalUiTest` — Selenium: open "⚡ Szybka obecność" modal, click a status
   (save-then-advance), use Wstecz, auto-close after last member, assert persistence.
 - `AttendancePersistenceUiTest` — Selenium: default NO_RESPONSE + persistence across reload.
+
+## List Sorting & Past Highlighting
+
+Both the **rehearsal** (`/rehearsals`) and **event** (`/events`) lists are split
+into two sections by date relative to today (`LocalDate.now()`):
+
+- **Upcoming** (date ≥ today): sorted **ascending** (nearest first).
+- **Past** (date < today): rendered at the bottom, sorted **descending**
+  (most-recent first), visually dimmed (`tr.past-item` — `opacity: 0.62`) and
+  marked with an **"Odbyło się"** badge (`.past-badge`).
+
+Driven by `getUpcomingRehearsals`/`getPastRehearsals` (and `getUpcomingEvents`/
+`getPastEvents`) in the query services; controllers expose `upcoming*` / `past*`
+model attributes. See `docs/list-sorting.md` for the full breakdown.
