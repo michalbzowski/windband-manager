@@ -74,8 +74,9 @@ public class SupersetClient {
                 SupersetApiDtos.DashboardListResponse.class
         );
 
-        if (response.getBody() != null && response.getBody().getResult() != null) {
-            return response.getBody().getResult();
+        var body = response.getBody();
+        if (body != null && body.getResult() != null) {
+            return body.getResult();
         }
         return Collections.emptyList();
     }
@@ -95,8 +96,9 @@ public class SupersetClient {
                     SupersetApiDtos.DashboardDetailResponse.class
             );
 
-            if (response.getBody() != null) {
-                return response.getBody().getResult();
+            var body = response.getBody();
+            if (body != null) {
+                return body.getResult();
             }
         } catch (RestClientException e) {
             log.warn("Failed to fetch dashboard {}: {}", dashboardId, e.getMessage());
@@ -170,8 +172,9 @@ public class SupersetClient {
                     SupersetApiDtos.EmbeddedDashboardResponse.class
             );
 
-            if (response.getBody() != null && response.getBody().getResult() != null) {
-                String embeddedUuid = response.getBody().getResult().getUuid();
+            var body = response.getBody();
+            if (body != null && body.getResult() != null) {
+                String embeddedUuid = body.getResult().getUuid();
                 log.info("Registered embedded dashboard {} -> uuid={}", dashboardId, embeddedUuid);
                 return embeddedUuid;
             }
@@ -240,8 +243,9 @@ public class SupersetClient {
                     java.util.Map.class
             );
 
-            if (response.getBody() != null && response.getBody().get("access_token") != null) {
-                this.keycloakAccessToken = (String) response.getBody().get("access_token");
+            var respBody = response.getBody();
+            if (respBody != null && respBody.get("access_token") != null) {
+                this.keycloakAccessToken = (String) respBody.get("access_token");
                 log.info("Refreshed Superset API token via Keycloak");
             }
         } catch (Exception e) {
@@ -269,8 +273,9 @@ public class SupersetClient {
                 SupersetApiDtos.LoginResponse.class
         );
 
-        if (response.getBody() != null && response.getBody().getToken() != null) {
-            return response.getBody().getToken();
+        var loginBody = response.getBody();
+        if (loginBody != null && loginBody.getToken() != null) {
+            return loginBody.getToken();
         }
         throw new RuntimeException("Superset login failed: no token in response");
     }

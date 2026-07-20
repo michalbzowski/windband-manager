@@ -1,6 +1,5 @@
 package pl.michalbzowski.windband.application.query.event;
 
-import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import pl.michalbzowski.windband.application.command.event.EventNotFoundException;
@@ -12,7 +11,6 @@ import pl.michalbzowski.windband.application.query.member.GroupQueryService;
 import pl.michalbzowski.windband.domain.event.BandEvent;
 import pl.michalbzowski.windband.domain.event.EventInvitationRepository;
 import pl.michalbzowski.windband.domain.event.EventRepository;
-import pl.michalbzowski.windband.domain.event.NotificationStatus;
 import pl.michalbzowski.windband.domain.member.InstrumentRepository;
 
 import java.time.LocalDate;
@@ -29,7 +27,7 @@ public class EventQueryService {
     private final InstrumentRepository instrumentRepository;
     private final EventInvitationRepository invitationRepository;
 
-    public EventQueryService(EventRepository eventRepository, GroupQueryService groupQueryService, 
+    public EventQueryService(EventRepository eventRepository, GroupQueryService groupQueryService,
                              InstrumentRepository instrumentRepository,
                              EventInvitationRepository invitationRepository) {
         this.eventRepository = eventRepository;
@@ -50,10 +48,8 @@ public class EventQueryService {
         // Load invitation statuses for this event
         var invitations = invitationRepository.findByEventId(id);
         var invitationStatusByMember = new java.util.HashMap<Long, String>();
-        var memberHasEmail = new java.util.HashMap<Long, Boolean>();
         for (var inv : invitations) {
             invitationStatusByMember.put(inv.getMember().getId(), inv.getStatus().name());
-            memberHasEmail.put(inv.getMember().getId(), inv.getMember().getEmail() != null);
         }
 
         List<ParticipationDto> participationDtos = new java.util.ArrayList<>(event.getParticipations()).stream()

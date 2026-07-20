@@ -113,7 +113,7 @@ class EventInviteGroupSecondEventUiTest extends UiTestBase {
         select.findElement(By.cssSelector("option[value='" + groupId + "']")).click();
         jsClick(driver.findElement(By.id("invite-group-btn")));
         // Give HTMX reload time to settle
-        try { Thread.sleep(1200); } catch (InterruptedException ignored) {}
+        try { Thread.sleep(1200); } catch (InterruptedException ignored) { /* intentionally ignored */ }
     }
 
     private void jsClick(WebElement el) {
@@ -145,7 +145,7 @@ class EventInviteGroupSecondEventUiTest extends UiTestBase {
                         + "  body: JSON.stringify({name: 'Wydarzenie" + name + "', date: '" + LocalDate.now() + "',"
                         + "    startTime: '18:00', endTime: '20:00', paymentType: 'FREE', eventType: 'CONCERT', bandId: " + bandId + "})"
                         + "}).then(r => r.json()).then(ev => '' + ev.id);");
-        try { Thread.sleep(500); } catch (InterruptedException ignored) {}
+        try { Thread.sleep(500); } catch (InterruptedException ignored) { /* intentionally ignored */ }
         return eventIdStr != null ? Long.valueOf(eventIdStr) : null;
     }
 

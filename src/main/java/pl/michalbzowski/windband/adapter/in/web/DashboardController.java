@@ -82,7 +82,6 @@ public class DashboardController {
         }
 
         // Generate guest token with RLS
-        String bandName = teamQueryService.getBandName(activeTeamId).orElse("band");
         // Guest token generation requires Superset to be available — skip in view, embed URL without token
         // The guest token will be fetched client-side via API
         String guestToken = null; // Will be populated by SupersetGuestTokenController if needed

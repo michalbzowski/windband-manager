@@ -1,0 +1,21 @@
+<?xml version="1.0"?>
+<!--
+  SpotBugs exclusion filter for windband-manager.
+
+  We deliberately suppress EI_EXPOSE_REP / EI_EXPOSE_REP2. These fire on every
+  getter/setter that returns or stores a mutable object (List, Map, array,
+  custom DTO). In a Spring Boot app the overwhelming majority of such classes
+  are plain DTOs / request-response records where exposing the field is the
+  whole point. Fixing them everywhere (defensive copies in every accessor)
+  would add noise without catching real logic bugs. We keep every other
+  category enabled so genuine defects (NPEs, dead stores, useless objects,
+  broad exception catches) still fail the build.
+-->
+<FindBugsFilter>
+    <Match>
+        <Bug pattern="EI_EXPOSE_REP"/>
+    </Match>
+    <Match>
+        <Bug pattern="EI_EXPOSE_REP2"/>
+    </Match>
+</FindBugsFilter>

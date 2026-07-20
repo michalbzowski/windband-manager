@@ -3,7 +3,6 @@ package pl.michalbzowski.windband.application.query.dashboard;
 import lombok.Data;
 import pl.michalbzowski.windband.domain.dashboard.SupersetDashboard;
 
-import java.util.List;
 
 /**
  * DTO for the dashboard list view (available dashboards for current user's band).

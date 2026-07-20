@@ -11,7 +11,6 @@ import pl.michalbzowski.windband.application.command.member.MemberNotFoundExcept
 import pl.michalbzowski.windband.application.command.rehearsal.RehearsalNotFoundException;
 
 import java.time.LocalDateTime;
-import java.util.List;
 import java.util.Map;
 
 @ControllerAdvice

@@ -73,7 +73,7 @@ class MemberEditUxRegressionUiTest extends UiTestBase {
 
             // Wait for the add-member success toast to auto-hide (3s + 300ms animation)
             // so the test only counts the toasts from the EDIT operation.
-            try { Thread.sleep(3500); } catch (InterruptedException ignored) {}
+            try { Thread.sleep(3500); } catch (InterruptedException ignored) { /* intentionally ignored */ }
 
             // === STEP 3: Open edit form ===
             clickEditForMember(wait, firstName + " " + lastName);
@@ -107,7 +107,7 @@ class MemberEditUxRegressionUiTest extends UiTestBase {
 
             // === STEP 7: Verify only ONE success toast (not 6) ===
             // Wait briefly to let all parallel fetches complete + give the success toast time to render
-            try { Thread.sleep(800); } catch (InterruptedException ignored) {}
+            try { Thread.sleep(800); } catch (InterruptedException ignored) { /* intentionally ignored */ }
 
             // The previous 'Dodaj członka' toast has long auto-hid (3s+). Only the edit toast
             // should be visible. Verify NO per-attribute toasts (the ones we consolidated away).
@@ -132,7 +132,7 @@ class MemberEditUxRegressionUiTest extends UiTestBase {
                     .containsIgnoringCase("Zapisano członka");
 
             // === STEP 8: Verify the highlight disappears after ~3 seconds ===
-            try { Thread.sleep(3500); } catch (InterruptedException ignored) {}
+            try { Thread.sleep(3500); } catch (InterruptedException ignored) { /* intentionally ignored */ }
             Object stillHasHighlight = ((JavascriptExecutor) driver).executeScript(
                     "var r = document.querySelector(\"tr[data-member-id='" + expectedId + "']\");"
                             + "return r ? r.classList.contains('highlight-row') : false;");

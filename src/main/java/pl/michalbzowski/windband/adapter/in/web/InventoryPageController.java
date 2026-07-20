@@ -1,15 +1,11 @@
 package pl.michalbzowski.windband.adapter.in.web;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
-import org.springframework.security.core.annotation.AuthenticationPrincipal;
-import org.springframework.security.oauth2.core.oidc.user.OidcUser;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
-import pl.michalbzowski.windband.adapter.in.security.WindbandOidcUser;
 import pl.michalbzowski.windband.application.dto.InstrumentAttributeDefDto;
 import pl.michalbzowski.windband.application.dto.AwardAttributeDefDto;
 import pl.michalbzowski.windband.application.dto.InventoryItemDto;
@@ -120,7 +116,7 @@ public class InventoryPageController {
         model.addAttribute("awardItems", awardItems);
         model.addAttribute("awardAttributeDefs", awardDefs);
         model.addAttribute("awardAttributeValues", awardAttrValues);
-        
+
         // JSON versions for JavaScript
         String uniformJson = objectMapper.writeValueAsString(uniformDefs);
         String instrumentJson = objectMapper.writeValueAsString(instrumentDefs);
@@ -183,7 +179,7 @@ public class InventoryPageController {
     public String instrumentsFragment(@ModelAttribute("activeTeamId") Long activeTeamId, Model model) {
         Band band = getActiveBand(activeTeamId);
         Long teamId = activeTeamId;
-        
+
         if (band == null) {
             model.addAttribute("instrumentItems", List.of());
             model.addAttribute("instrumentAttributeDefs", List.of());

@@ -123,28 +123,28 @@ public class EventCommandService {
     public void updateEvent(UpdateEventCommand cmd) {
         BandEvent event = eventRepository.findById(cmd.getId())
                 .orElseThrow(() -> new EventNotFoundException(cmd.getId()));
-        
+
         event.updateDetails(cmd.getName(), cmd.getDate(), cmd.getStartTime(), cmd.getLocation());
-        
+
         // Update event type if provided
         if (cmd.getEventType() != null) {
             EventType eventType = EventType.valueOf(cmd.getEventType().toUpperCase());
             event.setEventType(eventType);
         }
-        
+
         // Update payment details - handle all cases including switching to/from FREE
         if (cmd.getPaymentType() != null) {
             PaymentType paymentType = PaymentType.valueOf(cmd.getPaymentType().toUpperCase());
             BigDecimal paymentAmount = cmd.getPaymentAmount();
-            
+
             // If switching to FREE, clear payment amount
             if (paymentType == PaymentType.FREE) {
                 paymentAmount = null;
             }
-            
+
             event.updatePaymentDetails(paymentType, paymentAmount);
         }
-        
+
         // Handle notes: set to notes value, or clear if empty/blank
         if (cmd.getNotes() != null) {
             if (cmd.getNotes().isBlank()) {
@@ -153,7 +153,7 @@ public class EventCommandService {
                 event.setNotes(cmd.getNotes());
             }
         }
-        
+
         eventRepository.save(event);
 
         // Reset all SENT invitations so previously notified members

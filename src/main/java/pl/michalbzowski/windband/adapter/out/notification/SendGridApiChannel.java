@@ -106,8 +106,9 @@ public class SendGridApiChannel implements Channel {
                     request,
                     new ParameterizedTypeReference<>() {});
 
+            var respBody = response.getBody();
             if (response.getStatusCode() != HttpStatusCode.valueOf(202)) {
-                String errorBody = response.getBody() != null ? response.getBody().toString() : "no body";
+                String errorBody = respBody != null ? respBody.toString() : "no body";
                 throw new ChannelException("SendGrid API returned " + response.getStatusCode() + ": " + errorBody,
                         new RuntimeException("HTTP " + response.getStatusCode()));
             }

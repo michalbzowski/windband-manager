@@ -5,7 +5,6 @@ import pl.michalbzowski.windband.application.command.member.GroupCommandService;
 import pl.michalbzowski.windband.domain.member.Member;
 import pl.michalbzowski.windband.domain.member.MemberActivatedEvent;
 import pl.michalbzowski.windband.domain.member.MemberDeactivatedEvent;
-import pl.michalbzowski.windband.domain.member.MemberFieldSource;
 import pl.michalbzowski.windband.domain.member.MemberRepository;
 
 import java.time.LocalDate;

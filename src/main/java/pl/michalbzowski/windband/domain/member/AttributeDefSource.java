@@ -4,7 +4,6 @@ import pl.michalbzowski.windband.domain.band.MemberAttributeDef;
 import pl.michalbzowski.windband.domain.band.MemberAttributeValueRepository;
 
 import java.util.Objects;
-import java.util.Optional;
 
 /**
  * Dynamic-group source backed by a user-defined BOOLEAN {@link MemberAttributeDef}.

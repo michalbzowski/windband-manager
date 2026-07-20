@@ -1,10 +1,6 @@
 package pl.michalbzowski.windband.domain.member;
 
-import pl.michalbzowski.windband.domain.band.MemberAttributeDef;
-import pl.michalbzowski.windband.domain.band.MemberAttributeValue;
-import pl.michalbzowski.windband.domain.band.MemberAttributeValueRepository;
 
-import java.util.Optional;
 
 /**
  * Polymorphic source of truth for a dynamic {@link Group}'s membership.

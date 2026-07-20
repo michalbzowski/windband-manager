@@ -99,7 +99,7 @@ public abstract class UiTestBase {
             if (p.waitFor() == 0) {
                 return "flatpak run org.chromium.Chromium";
             }
-        } catch (Exception ignored) {}
+        } catch (Exception ignored) { /* intentionally ignored */ }
         return null;
     }
 
@@ -173,7 +173,7 @@ public abstract class UiTestBase {
                     }
                 }
             }
-        } catch (Exception ignored) {}
+        } catch (Exception ignored) { /* intentionally ignored */ }
         return null;
     }
 
@@ -216,8 +216,7 @@ public abstract class UiTestBase {
                     String table = t.trim();
                     try {
                         jdbcTemplate.execute("TRUNCATE TABLE " + table + " CASCADE");
-                    } catch (Exception ignored) {
-                    }
+                    } catch (Exception ignored) { /* intentionally ignored */ }
                 }
             }
         }

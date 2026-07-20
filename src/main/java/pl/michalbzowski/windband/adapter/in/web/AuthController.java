@@ -266,7 +266,7 @@ public class AuthController {
                         name = attrs.getValue("Implementation-Title");
                     }
                 }
-            } catch (Exception ignored) {
+            } catch (java.io.IOException ignored) {
                 // fall through with whatever we have
             }
         }

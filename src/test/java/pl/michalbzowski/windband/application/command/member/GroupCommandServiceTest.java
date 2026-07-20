@@ -2,12 +2,10 @@ package pl.michalbzowski.windband.application.command.member;
 
 import org.junit.jupiter.api.Test;
 import pl.michalbzowski.windband.domain.band.Band;
-import pl.michalbzowski.windband.domain.band.MemberAttributeDef;
 import pl.michalbzowski.windband.domain.band.MemberAttributeValueRepository;
 import pl.michalbzowski.windband.domain.member.*;
 
 import java.time.LocalDate;
-import java.util.List;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.*;

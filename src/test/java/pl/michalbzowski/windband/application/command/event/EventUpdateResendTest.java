@@ -134,7 +134,10 @@ class EventUpdateResendTest extends BaseIntegrationTest {
                 .containsOnly(NotificationStatus.NOT_SENT);
 
         // mark as sent again
-        afterFirst.forEach(i -> { i.markSent(); invitationRepository.save(i); });
+        afterFirst.forEach(i -> {
+            i.markSent();
+            invitationRepository.save(i);
+        });
 
         // when — second update + check reset
         updateEventName(event.getId(), "Koncert plenerowy (odwołany, nowy termin)");

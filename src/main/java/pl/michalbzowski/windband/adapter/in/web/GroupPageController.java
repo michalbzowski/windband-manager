@@ -1,16 +1,12 @@
 package pl.michalbzowski.windband.adapter.in.web;
 
 import lombok.RequiredArgsConstructor;
-import org.springframework.security.core.annotation.AuthenticationPrincipal;
-import org.springframework.security.oauth2.core.oidc.user.OidcUser;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
-import pl.michalbzowski.windband.adapter.in.security.WindbandOidcUser;
 import pl.michalbzowski.windband.application.command.member.CreateGroupCommand;
 import pl.michalbzowski.windband.application.command.member.GroupCommandService;
 import pl.michalbzowski.windband.application.dto.GroupDetailDto.GroupMemberDto;
-import pl.michalbzowski.windband.application.dto.GroupDetailDto;
 import pl.michalbzowski.windband.application.dto.MemberDto;
 import pl.michalbzowski.windband.application.query.band.BandQueryService;
 import pl.michalbzowski.windband.application.query.member.GroupQueryService;

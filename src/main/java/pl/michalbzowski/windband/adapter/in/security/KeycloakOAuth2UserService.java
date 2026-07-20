@@ -3,8 +3,6 @@ package pl.michalbzowski.windband.adapter.in.security;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.http.HttpHeaders;
-import org.springframework.http.MediaType;
 import org.springframework.security.oauth2.client.oidc.userinfo.OidcUserRequest;
 import org.springframework.security.oauth2.client.oidc.userinfo.OidcUserService;
 import org.springframework.security.oauth2.core.OAuth2AuthenticationException;
@@ -14,15 +12,11 @@ import org.springframework.security.oauth2.core.oidc.user.DefaultOidcUser;
 import org.springframework.security.oauth2.core.oidc.user.OidcUser;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.web.client.RestClient;
 import pl.michalbzowski.windband.domain.user.AppUser;
 import pl.michalbzowski.windband.domain.user.AppUserRepository;
 import pl.michalbzowski.windband.domain.user.UserTeamRoleRepository;
 
-import java.time.Instant;
 import java.util.List;
-import java.util.Map;
-import java.util.Set;
 
 /**
  * Custom OAuth2UserService that bridges Keycloak OIDC authentication

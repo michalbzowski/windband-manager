@@ -16,8 +16,6 @@ import pl.michalbzowski.windband.domain.member.InstrumentRepository;
 import pl.michalbzowski.windband.domain.member.Member;
 import pl.michalbzowski.windband.domain.member.MemberRepository;
 
-import pl.michalbzowski.windband.domain.inventory.*;
-
 import java.time.Duration;
 import java.util.UUID;
 

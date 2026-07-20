@@ -4,7 +4,6 @@ import jakarta.persistence.*;
 import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
-import pl.michalbzowski.windband.domain.band.Band;
 
 import java.time.Instant;
 import java.util.Objects;

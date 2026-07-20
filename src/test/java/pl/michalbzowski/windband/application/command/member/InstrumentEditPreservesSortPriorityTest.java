@@ -14,7 +14,7 @@ import pl.michalbzowski.windband.BaseIntegrationTest;
 /**
  * Regression test for issue #61:
  * "Edytowany Instrument trafia na koniec listy"
- * 
+ *
  * When editing an instrument without changing sortPriority,
  * the sortPriority should be preserved.
  */

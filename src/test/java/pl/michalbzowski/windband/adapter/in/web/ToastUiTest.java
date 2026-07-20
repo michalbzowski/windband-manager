@@ -96,7 +96,11 @@ class ToastUiTest extends UiTestBase {
         WebElement toast = wait.until(ExpectedConditions.presenceOfElementLocated(
                 By.cssSelector("#toast-container .toast.success")));
         // Wait for the slide-in animation (0.3s) so textContent is stable
-        try { Thread.sleep(500); } catch (InterruptedException e) { Thread.currentThread().interrupt(); }
+        try {
+            Thread.sleep(500);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+        }
 
         // Use textContent via JS to avoid Selenium getText() quirks (it sometimes
         // returns "" for elements inside position:fixed containers with animations)
@@ -111,7 +115,11 @@ class ToastUiTest extends UiTestBase {
                 .contains("success");
 
         // Wait for the slide-in animation to finish (0.3s) before checking positions
-        try { Thread.sleep(500); } catch (InterruptedException e) { Thread.currentThread().interrupt(); }
+        try {
+            Thread.sleep(500);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+        }
 
         // === Toast computed styles + position check ===
         Map<String, Object> styles = (Map<String, Object>) ((JavascriptExecutor) driver)
@@ -171,7 +179,11 @@ class ToastUiTest extends UiTestBase {
         // Wait for the toast AND the slide-in animation to finish
         WebElement toast = wait.until(ExpectedConditions.presenceOfElementLocated(
                 By.cssSelector("#toast-container .toast.error")));
-        try { Thread.sleep(500); } catch (InterruptedException e) { Thread.currentThread().interrupt(); }
+        try {
+            Thread.sleep(500);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+        }
 
         // Re-fetch the element after animation so getText() returns the rendered text
         toast = driver.findElement(By.cssSelector("#toast-container .toast.error"));
@@ -181,7 +193,11 @@ class ToastUiTest extends UiTestBase {
         assertThat(toast.getAttribute("class")).contains("error");
 
         // Wait 4s — error toasts do NOT auto-hide
-        try { Thread.sleep(4000); } catch (InterruptedException e) { Thread.currentThread().interrupt(); }
+        try {
+            Thread.sleep(4000);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+        }
         List<WebElement> stillThere = driver.findElements(
                 By.cssSelector("#toast-container .toast.error"));
         assertThat(stillThere)
@@ -217,7 +233,11 @@ class ToastUiTest extends UiTestBase {
         // That toast should appear in #toast-container .toast.success.
         WebElement toast = wait.until(ExpectedConditions.presenceOfElementLocated(
                 By.cssSelector("#toast-container .toast.success")));
-        try { Thread.sleep(500); } catch (InterruptedException e) { Thread.currentThread().interrupt(); }
+        try {
+            Thread.sleep(500);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+        }
 
         // Re-fetch after animation for accurate text/visibility
         toast = driver.findElement(By.cssSelector("#toast-container .toast.success"));

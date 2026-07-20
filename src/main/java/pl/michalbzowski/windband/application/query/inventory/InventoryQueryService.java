@@ -11,7 +11,6 @@ import pl.michalbzowski.windband.application.command.inventory.InventoryOrderNot
 import pl.michalbzowski.windband.application.command.member.MemberNotFoundException;
 import pl.michalbzowski.windband.domain.inventory.*;
 import pl.michalbzowski.windband.domain.member.MemberRepository;
-import pl.michalbzowski.windband.domain.band.Band;
 
 import java.util.List;
 
@@ -257,7 +256,7 @@ public class InventoryQueryService {
     }
 
     public List<AwardItem> getAwardItemsByMember(Long memberId, Long teamId) {
-        var member = memberRepository.findById(memberId)
+        memberRepository.findById(memberId)
                 .orElseThrow(() -> new MemberNotFoundException(memberId));
         return awardQueryService.getAwardItemsForBand(teamId).stream()
                 .filter(item -> item.getAssignedMember() != null

@@ -3,7 +3,6 @@ package pl.michalbzowski.windband.domain.member;
 import org.springframework.data.jpa.repository.Query;
 
 import pl.michalbzowski.windband.domain.band.MemberAttributeDef;
-import pl.michalbzowski.windband.domain.member.DynamicSourceType;
 
 import java.util.List;
 import java.util.Optional;

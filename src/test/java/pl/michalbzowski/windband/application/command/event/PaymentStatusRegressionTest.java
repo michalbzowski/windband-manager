@@ -8,10 +8,10 @@ import pl.michalbzowski.windband.BaseIntegrationTest;
 
 /**
  * Regression test for issue #40: Zmiana statusu wypłaty nie udaje się
- * 
+ *
  * The bug was that payment status could only be updated for PAID_SPLIT events,
  * but should also work for PAID_TO_TEAM events.
- * 
+ *
  * Before fix: 409 Conflict when trying to update payment status on PAID_TO_TEAM event
  * After fix: Payment status can be updated for both PAID_SPLIT and PAID_TO_TEAM events
  */
@@ -24,12 +24,12 @@ class PaymentStatusRegressionTest extends BaseIntegrationTest {
     void shouldAllowPaymentStatusUpdateForPaidToTeamEvents() {
         // Before fix: throws IllegalStateException("Payment status only applicable for PAID_SPLIT events")
         // After fix: should work for PAID_TO_TEAM events too
-        
+
         // Test 1: PAID_TO_TEAM should NOT throw
         // We can't create real events without Band, but we can test the logic by checking
         // that the error message changed to include both PAID_SPLIT and PAID_TO_TEAM
         // The simplest way is to verify the fix is in place
-        
+
         // This test will pass if the service method doesn't throw for non-existent event
         // The real test is manual - but we can at least verify the service is accessible
         assertThat(commandService).isNotNull();

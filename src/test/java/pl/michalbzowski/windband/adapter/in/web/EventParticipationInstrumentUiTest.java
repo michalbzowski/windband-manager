@@ -3,13 +3,11 @@ package pl.michalbzowski.windband.adapter.in.web;
 import org.junit.jupiter.api.Test;
 import org.openqa.selenium.By;
 import org.openqa.selenium.JavascriptExecutor;
-import org.openqa.selenium.WebDriver;
 import org.openqa.selenium.support.ui.ExpectedConditions;
 import org.openqa.selenium.support.ui.WebDriverWait;
 import pl.michalbzowski.windband.UiTestBase;
 
 import java.time.Duration;
-import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -111,7 +109,7 @@ class EventParticipationInstrumentUiTest extends UiTestBase {
             try {
                 java.nio.file.Files.writeString(java.nio.file.Path.of("/tmp/event-detail-source.html"), driver.getPageSource());
                 System.out.println("[TEST] Dumped page source to /tmp/event-detail-source.html");
-            } catch (Exception ignore) {}
+            } catch (Exception ignore) { /* intentionally ignored */ }
             throw e;
         }
 

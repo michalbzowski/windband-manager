@@ -21,8 +21,6 @@ import pl.michalbzowski.windband.application.security.CurrentUser;
 import pl.michalbzowski.windband.application.service.MemberWelcomeService;
 import pl.michalbzowski.windband.domain.member.*;
 import pl.michalbzowski.windband.domain.member.DynamicSourceType;
-import pl.michalbzowski.windband.domain.member.MemberActivatedEvent;
-import pl.michalbzowski.windband.domain.member.MemberDeactivatedEvent;
 
 @Transactional
 class MemberCommandServiceTest extends BaseIntegrationTest {

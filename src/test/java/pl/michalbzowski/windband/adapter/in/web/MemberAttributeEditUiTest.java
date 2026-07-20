@@ -1,8 +1,6 @@
 package pl.michalbzowski.windband.adapter.in.web;
 
 import org.junit.jupiter.api.Test;
-import org.openqa.selenium.JavascriptExecutor;
-import org.openqa.selenium.support.ui.WebDriverWait;
 import org.springframework.beans.factory.annotation.Autowired;
 import pl.michalbzowski.windband.UiTestBase;
 import pl.michalbzowski.windband.domain.band.Band;
@@ -10,7 +8,6 @@ import pl.michalbzowski.windband.domain.band.BandRepository;
 import pl.michalbzowski.windband.domain.band.MemberAttributeDef;
 import pl.michalbzowski.windband.domain.band.MemberAttributeDefRepository;
 
-import java.time.Duration;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;

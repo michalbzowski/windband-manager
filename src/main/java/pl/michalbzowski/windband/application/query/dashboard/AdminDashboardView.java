@@ -1,7 +1,6 @@
 package pl.michalbzowski.windband.application.query.dashboard;
 
 import lombok.Data;
-import pl.michalbzowski.windband.domain.band.Band;
 
 import java.util.List;
 

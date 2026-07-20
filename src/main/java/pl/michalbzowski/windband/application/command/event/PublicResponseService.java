@@ -7,9 +7,6 @@ import pl.michalbzowski.windband.application.dto.PublicEventDetailDto;
 import pl.michalbzowski.windband.domain.event.*;
 import pl.michalbzowski.windband.domain.member.Member;
 
-import java.math.BigDecimal;
-import java.text.NumberFormat;
-import java.util.Locale;
 
 @Service
 @RequiredArgsConstructor

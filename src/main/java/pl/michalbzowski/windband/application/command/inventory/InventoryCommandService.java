@@ -5,8 +5,6 @@ import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import pl.michalbzowski.windband.application.command.inventory.InventoryItemNotFoundException;
-import pl.michalbzowski.windband.application.command.inventory.InventoryOrderNotFoundException;
 import pl.michalbzowski.windband.application.command.member.MemberNotFoundException;
 import pl.michalbzowski.windband.domain.band.Band;
 import pl.michalbzowski.windband.domain.band.BandRepository;
@@ -114,7 +112,7 @@ public class InventoryCommandService {
             order.generateOrderNumber();
         }
         inventoryRepository.saveOrder(order);
-        
+
         // Auto-copy to inventory with attributes
         Map<String, String> attributes = attributesStringToMap(order.getAttributesJson());
         Band band = order.getRequester().getBand();

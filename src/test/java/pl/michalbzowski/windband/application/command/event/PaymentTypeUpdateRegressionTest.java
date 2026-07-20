@@ -2,7 +2,6 @@ package pl.michalbzowski.windband.application.command.event;
 
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import pl.michalbzowski.windband.domain.band.Band;
 import pl.michalbzowski.windband.domain.band.BandRepository;
 import pl.michalbzowski.windband.domain.event.BandEvent;
 import pl.michalbzowski.windband.domain.event.EventType;
@@ -18,10 +17,10 @@ import pl.michalbzowski.windband.BaseIntegrationTest;
 
 /**
  * Regression test for issue #28: Zmiana informacji o płatności nie jest zapisana
- * 
+ *
  * The bug was that when changing an event from FREE to PAID_SPLIT or other payment types,
  * the payment type was not being saved to the database.
- * 
+ *
  * Before fix: paymentType remains FREE after update
  * After fix: paymentType is correctly updated and saved
  */
@@ -46,7 +45,7 @@ class PaymentTypeUpdateRegressionTest extends BaseIntegrationTest {
         createCmd.setLocation("Test Location");
         createCmd.setEventType("CONCERT");
         createCmd.setPaymentType("FREE");
-        
+
         BandEvent event = commandService.createEvent(createCmd, 1L);
 
         // Verify initial state is FREE
@@ -86,7 +85,7 @@ class PaymentTypeUpdateRegressionTest extends BaseIntegrationTest {
         createCmd.setLocation("Venue");
         createCmd.setEventType("CONCERT");
         createCmd.setPaymentType("FREE");
-        
+
         BandEvent event = commandService.createEvent(createCmd, 1L);
 
         // Verify initial event type
@@ -127,7 +126,7 @@ class PaymentTypeUpdateRegressionTest extends BaseIntegrationTest {
         createCmd.setEventType("CONCERT");
         createCmd.setPaymentType("PAID_SPLIT");
         createCmd.setPaymentAmount(new BigDecimal("200.00"));
-        
+
         BandEvent event = commandService.createEvent(createCmd, 1L);
 
         // Verify initial payment info

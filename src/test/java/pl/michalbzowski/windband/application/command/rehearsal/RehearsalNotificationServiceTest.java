@@ -100,7 +100,10 @@ class RehearsalNotificationServiceTest {
         ReflectionTestUtils.setField(rehearsal, "id", 200L);
 
         CountDownLatch latch = new CountDownLatch(1);
-        doAnswer(inv -> { latch.countDown(); return null; }).when(mailSender).send(any(SimpleMailMessage.class));
+        doAnswer(inv -> {
+            latch.countDown();
+            return null;
+        }).when(mailSender).send(any(SimpleMailMessage.class));
 
         service.notifyMembersAboutNewRehearsal(rehearsal);
 
@@ -132,7 +135,10 @@ class RehearsalNotificationServiceTest {
         ReflectionTestUtils.setField(rehearsal, "id", 300L);
 
         CountDownLatch latch = new CountDownLatch(1);
-        doAnswer(inv -> { latch.countDown(); return null; }).when(mailSender).send(any(SimpleMailMessage.class));
+        doAnswer(inv -> {
+            latch.countDown();
+            return null;
+        }).when(mailSender).send(any(SimpleMailMessage.class));
 
         service.notifyMembersAboutNewRehearsal(rehearsal);
         assertThat(latch.await(3, TimeUnit.SECONDS)).isTrue();

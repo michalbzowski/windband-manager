@@ -32,16 +32,16 @@ class UserInfoDisplayRegressionTest extends UiTestBase {
         // Wait for user info to become visible (not just loading to disappear)
         // This is the proper test - user info must be displayed after login
         wait.until(ExpectedConditions.visibilityOfElementLocated(By.id("nav-user-info")));
-        
+
         // Verify elements
         var userInfo = driver.findElement(By.id("nav-user-info"));
         assertThat(userInfo.isDisplayed()).isTrue();
-        
+
         // Check that username is displayed and not empty
         var username = driver.findElement(By.id("nav-username"));
         wait.until(ExpectedConditions.textToBePresentInElement(username, "admin"));
         assertThat(username.getText()).isNotEmpty();
-        
+
         // Check that team is displayed (might be "brak zespołu" if no team)
         var team = driver.findElement(By.id("nav-team"));
         assertThat(team.getText()).isNotEmpty();

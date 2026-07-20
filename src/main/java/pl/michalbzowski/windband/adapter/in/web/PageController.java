@@ -98,30 +98,30 @@ public class PageController {
         }
 
         var band = bandQueryService.getBandById(activeTeamId);
-        
+
         // Stats - z filtracją po zespole
         long activeMembers = memberQueryService.getActiveMemberCount(activeTeamId);
         long totalMembers = memberQueryService.findAllActiveMembers(activeTeamId).size();
-        
+
         LocalDate today = LocalDate.now();
         LocalDate weekEnd = today.plusDays(7);
         long rehearsalsThisWeek = rehearsalQueryService.getRehearsalCountBetween(today, weekEnd, activeTeamId);
-        
+
         // Events - używamy countBetween
         long upcomingEvents = eventQueryService.getEventCountBetween(today, LocalDate.of(2099, 12, 31), activeTeamId);
-        
+
         // Inventory - filtered by activeTeamId
         var orders = inventoryQueryService.getAllOrders(activeTeamId);
         long activeOrders = orders.stream()
-                .filter(o -> "SUBMITTED".equals(o.status()) || 
+                .filter(o -> "SUBMITTED".equals(o.status()) ||
                             "PENDING_APPROVAL".equals(o.status()) ||
                             "IN_PRODUCTION".equals(o.status()) ||
                             "SHIPPED".equals(o.status()))
                 .count();
-        
+
         long totalUniforms = inventoryQueryService.getAllUniformItems(activeTeamId).size();
         long totalInstruments = inventoryQueryService.getAllInstrumentItems(activeTeamId).size();
-        
+
         model.addAttribute("totalMembers", totalMembers);
         model.addAttribute("activeMembers", activeMembers);
         model.addAttribute("rehearsalsThisWeek", rehearsalsThisWeek);
@@ -136,7 +136,7 @@ public class PageController {
 
         List<UpcomingItemDto> upcoming = collectUpcomingItems(activeTeamId, today, 5);
         model.addAttribute("upcoming", upcoming);
-        
+
         return "dashboard";
     }
 

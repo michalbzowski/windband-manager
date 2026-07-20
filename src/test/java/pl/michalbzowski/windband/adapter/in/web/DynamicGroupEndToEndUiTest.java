@@ -2,8 +2,6 @@ package pl.michalbzowski.windband.adapter.in.web;
 
 import org.junit.jupiter.api.Test;
 import org.openqa.selenium.By;
-import org.openqa.selenium.JavascriptExecutor;
-import org.openqa.selenium.WebElement;
 import org.openqa.selenium.support.ui.ExpectedConditions;
 import org.openqa.selenium.support.ui.WebDriverWait;
 import pl.michalbzowski.windband.UiTestBase;
@@ -19,7 +17,6 @@ import pl.michalbzowski.windband.domain.member.MemberRepository;
 
 import java.time.Duration;
 import java.time.LocalDate;
-import java.util.List;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -157,7 +154,7 @@ class DynamicGroupEndToEndUiTest extends UiTestBase {
     }
 
     private void safeDelete(Runnable r) {
-        try { r.run(); } catch (Exception ignored) { }
+        try { r.run(); } catch (Exception ignored) { /* intentionally ignored */ }
     }
 
     private Band ensureBand() {

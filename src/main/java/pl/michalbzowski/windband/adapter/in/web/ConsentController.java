@@ -6,10 +6,8 @@ import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
 import pl.michalbzowski.windband.application.service.ConsentService;
 import pl.michalbzowski.windband.application.service.ConsentPageData;
-import pl.michalbzowski.windband.domain.member.Consent;
 import pl.michalbzowski.windband.domain.member.ConsentType;
 
-import java.util.EnumMap;
 import java.util.Map;
 import java.util.UUID;
 

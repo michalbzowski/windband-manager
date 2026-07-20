@@ -108,6 +108,6 @@ class RehearsalListSortingUiTest extends UiTestBase {
         driver.findElement(By.cssSelector("#rehearsal-form button[type='submit'].primary")).click();
         wait.until(ExpectedConditions.urlContains("/rehearsals"));
         wait.until(ExpectedConditions.not(ExpectedConditions.urlContains("/new")));
-        try { Thread.sleep(1200); } catch (InterruptedException ignored) {}
+        try { Thread.sleep(1200); } catch (InterruptedException ignored) { /* intentionally ignored */ }
     }
 }

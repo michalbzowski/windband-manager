@@ -2,10 +2,8 @@ package pl.michalbzowski.windband.domain.event;
 
 import org.junit.jupiter.api.Test;
 import pl.michalbzowski.windband.domain.band.Band;
-import pl.michalbzowski.windband.domain.member.Instrument;
 import pl.michalbzowski.windband.domain.member.Member;
 
-import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalTime;
 

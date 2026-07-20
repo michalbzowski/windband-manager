@@ -14,7 +14,6 @@ import pl.michalbzowski.windband.application.query.band.BandQueryService;
 import pl.michalbzowski.windband.application.query.band.MemberAttributeQueryService;
 import pl.michalbzowski.windband.application.query.inventory.InventoryAttributeQueryService;
 import pl.michalbzowski.windband.domain.band.Band;
-import pl.michalbzowski.windband.domain.band.MemberAttributeDef;
 
 import java.util.List;
 
@@ -85,18 +84,18 @@ public class MemberAttributeController {
 
     @GetMapping("/{id}/edit")
     public String editAttributeForm(@PathVariable Long id, @ModelAttribute("activeTeamId") Long activeTeamId, @RequestParam(defaultValue = "MEMBER") String type, Model model) {
-        Band band = getActiveBand(activeTeamId);
         model.addAttribute("type", type);
         model.addAttribute("availableAttributes", getAvailableAttributes(activeTeamId, type));
-        
-        String name, attrType;
+
+        String name;
+        String attrType;
         boolean required;
         boolean displayInList = false;
         int displayOrder = 0;
         String options = null;
         Long dependsOnAttributeId = null;
         String dependsOnValue = null;
-        
+
         Object cmdService = getCommandService(type);
         if (cmdService instanceof UniformAttributeCommandService svc) {
             var def = svc.getAttributeDefById(id);
@@ -137,7 +136,7 @@ public class MemberAttributeController {
             displayOrder = def.getDisplayOrder();
             options = def.getOptions();
         }
-        
+
         model.addAttribute("attributeDef", new AttributeDefForm(name, attrType, required, displayInList, displayOrder, options, dependsOnAttributeId, dependsOnValue));
         model.addAttribute("attributeDefId", id);
         return "band/inventory-attribute-form";
@@ -149,7 +148,7 @@ public class MemberAttributeController {
         if (band == null) {
             return ResponseEntity.badRequest().build();
         }
-        
+
         switch (type) {
             case "UNIFORM" -> uniformCommandService.createAttributeDef(band, form.getName(), form.getType(), form.isRequired(), form.isDisplayInList(), form.getDisplayOrder(), form.getOptions(), form.getDependsOnAttributeId(), form.getDependsOnValue());
             case "INSTRUMENT" -> instrumentCommandService.createAttributeDef(band, form.getName(), form.getType(), form.isRequired(), form.isDisplayInList(), form.getDisplayOrder(), form.getOptions(), form.getDependsOnAttributeId(), form.getDependsOnValue());

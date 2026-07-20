@@ -13,7 +13,6 @@ import pl.michalbzowski.windband.domain.member.MemberActivatedEvent;
 import pl.michalbzowski.windband.domain.member.MemberDeactivatedEvent;
 
 import java.time.LocalDate;
-import java.util.Objects;
 
 @Service
 @RequiredArgsConstructor

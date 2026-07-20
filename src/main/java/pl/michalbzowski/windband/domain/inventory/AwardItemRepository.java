@@ -1,6 +1,5 @@
 package pl.michalbzowski.windband.domain.inventory;
 
-import pl.michalbzowski.windband.domain.band.Band;
 
 import java.util.List;
 import java.util.Optional;

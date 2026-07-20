@@ -12,8 +12,6 @@ import pl.michalbzowski.windband.application.command.inventory.InventoryCommandS
 import pl.michalbzowski.windband.application.query.inventory.InventoryQueryService;
 import pl.michalbzowski.windband.application.query.band.BandQueryService;
 import pl.michalbzowski.windband.domain.band.Band;
-import pl.michalbzowski.windband.domain.inventory.OrderStatus;
-import pl.michalbzowski.windband.domain.inventory.OwnershipStatus;
 
 import java.util.Map;
 

@@ -12,7 +12,6 @@ import pl.michalbzowski.windband.UiTestBase;
 
 import java.time.Duration;
 import java.util.HashSet;
-import java.util.List;
 import java.util.Set;
 import java.util.UUID;
 
@@ -134,7 +133,7 @@ class AttributeFlowUiTest extends UiTestBase {
             try {
                 Object idObj = i.getClass().getMethod("getId").invoke(i);
                 if (idObj instanceof Long id && id != null) ids.add(id);
-            } catch (Exception ignored) {}
+            } catch (Exception ignored) { /* intentionally ignored */ }
         });
         return ids;
     }
