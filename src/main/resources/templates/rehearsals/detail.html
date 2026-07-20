@@ -5,7 +5,7 @@
 <nav th:replace="~{fragments/layout :: nav}"></nav>
 
 <main class="container" id="content">
-    <div id="rehearsals-content">
+    <div id="rehearsals-content" th:attr="data-rehearsal-id=${rehearsal.id}">
         <h2>🎵 Szczegóły spotkania</h2>
 
         <article>
@@ -39,11 +39,11 @@
                     <td th:text="${m.firstName + ' ' + m.lastName}">Jan Kowalski</td>
                     <td th:text="${m.primaryInstrument}">Trąbka</td>
                     <td>
-                        <select class="status-select" data-member-id="${m.id}" th:name="'status_' + ${m.id}" th:id="'status_' + ${m.id}">
+                        <select class="status-select" th:attr="data-member-id=${m.id}" th:name="'status_' + ${m.id}" th:id="'status_' + ${m.id}">
                             <option value="PRESENT" th:selected="${attendanceMap[m.id]?.name() == 'PRESENT'}">Present</option>
                             <option value="EXCUSED" th:selected="${attendanceMap[m.id]?.name() == 'EXCUSED'}">Excused</option>
                             <option value="UNEXCUSED" th:selected="${attendanceMap[m.id]?.name() == 'UNEXCUSED'}">Unexcused</option>
-                            <option value="NO_RESPONSE" th:selected="${attendanceMap[m.id]?.name() == 'NO_RESPONSE'}">No response</option>
+                            <option value="NO_RESPONSE" th:selected="${attendanceMap[m.id] == null or attendanceMap[m.id]?.name() == 'NO_RESPONSE'}">No response</option>
                         </select>
                     </td>
                 </tr>
@@ -51,7 +51,8 @@
         </table>
 
         <div style="display:flex; gap:0.5rem; margin-top:1rem;">
-            <button type="button" class="primary" id="save-attendance-btn">Zapisz obecność</button>
+            <button type="button" class="primary" id="save-attendance-btn"
+                    onclick="window.saveRehearsalAttendance()">Zapisz obecność</button>
             <button type="button" class="secondary"
                     th:hx-get="@{/rehearsals/{id}/edit(id=${rehearsal.id})}"
                     hx-target="#rehearsals-content"
@@ -64,51 +65,17 @@
 </main>
 
 <script>
-    document.addEventListener('DOMContentLoaded', function() {
-        const statusSelects = document.querySelectorAll('.status-select');
-        const rehearsalId = [[${rehearsal.id}]];
-
-        statusSelects.forEach(select => {
-            select.addEventListener('change', function(event) {
-                const memberId = event.target.dataset.memberId;
-                const selectedStatus = event.target.value;
-
-                fetchWithToast('/api/rehearsals/' + rehearsalId + '/attendance', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify({
-                        rehearsalId: rehearsalId,
-                        memberId: parseInt(memberId),
-                        status: selectedStatus
-                    }),
-                })
-                .then(response => {
-                    if (!response.ok) {
-                        console.error('Failed to update status:', response.statusText);
-                    } else {
-                        console.log('Status updated successfully');
-                        htmx.ajax('GET', '/rehearsals/' + rehearsalId, {target: '#rehearsals-content', swap: 'innerHTML'});
-                    }
-                })
-                .catch(error => {
-                    console.error('Error updating status:', error);
-                });
-            });
-        });
-    });
-</script>
-<script th:inline="javascript">
-    document.getElementById('save-attendance-btn').addEventListener('click', function() {
-        var rehearsalId = [[${rehearsal.id}]];
+    window.saveRehearsalAttendance = function() {
+        var container = document.getElementById('rehearsals-content');
+        if (!container) return;
+        var rehearsalId = container.getAttribute('data-rehearsal-id');
         var selects = document.querySelectorAll('select[id^="status_"]');
         var promises = [];
         selects.forEach(function(select) {
             var memberId = select.id.replace('status_', '');
             var status = select.value;
             if (status !== 'NO_RESPONSE') {
-                promises.push(fetchWithToast('/api/rehearsals/' + rehearsalId + '/attendance', {
+                promises.push(fetch('/api/rehearsals/' + rehearsalId + '/attendance', {
                     method: 'POST',
                     headers: {'Content-Type': 'application/json'},
                     body: JSON.stringify({rehearsalId: rehearsalId, memberId: parseInt(memberId), status: status})
@@ -118,20 +85,19 @@
         Promise.all(promises).then(function() {
             htmx.ajax('GET', '/rehearsals/' + rehearsalId, {target: '#rehearsals-content', swap: 'innerHTML transition:true'});
         });
-    });
+    };
 
     // Load email notification badge
     (function() {
-        var rehearsalId = [[${rehearsal.id}]];
+        var container = document.getElementById('rehearsals-content');
+        if (!container) return;
+        var rehearsalId = container.getAttribute('data-rehearsal-id');
         var badge = document.getElementById('email-badge');
         if (!badge) return;
         fetch('/api/rehearsals/' + rehearsalId + '/email-stats')
             .then(function(res) { if (!res.ok) return null; return res.json(); })
             .then(function(stats) {
-                if (!stats) {
-                    badge.textContent = '—';
-                    return;
-                }
+                if (!stats) { badge.textContent = '—'; return; }
                 badge.textContent = stats.successCount + '/' + stats.totalMembers;
             })
             .catch(function() { badge.textContent = '—'; });

@@ -39,9 +39,9 @@
                             </td>
                             <td data-label="Akcje">
                                 <button class="outline small"
-                                        th:hx-get="@{/rehearsals/{id}(id=${r.id})}"
-                                        hx-target="#rehearsals-content"
-                                        hx-swap="innerHTML transition:true">Szczegóły</button>
+                                th:hx-get="@{/rehearsals/{id}(id=${r.id})}"
+                                hx-target="#content"
+                                hx-swap="innerHTML transition:true">Szczegóły</button>
                                 <button class="outline small"
                                         th:hx-get="@{/rehearsals/{id}/notifications(id=${r.id})}"
                                         hx-target="#content"

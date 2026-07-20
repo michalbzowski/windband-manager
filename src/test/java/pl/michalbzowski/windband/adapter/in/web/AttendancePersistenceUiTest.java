@@ -1,0 +1,231 @@
+package pl.michalbzowski.windband.adapter.in.web;
+
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.openqa.selenium.By;
+import org.openqa.selenium.JavascriptExecutor;
+import org.openqa.selenium.WebElement;
+import org.openqa.selenium.support.ui.ExpectedConditions;
+import org.openqa.selenium.support.ui.WebDriverWait;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.jdbc.core.JdbcTemplate;
+import pl.michalbzowski.windband.UiTestBase;
+import pl.michalbzowski.windband.domain.member.MemberRepository;
+
+import java.time.Duration;
+import java.util.List;
+import java.util.UUID;
+
+import static org.assertj.core.api.Assertions.assertThat;
+
+/**
+ * Regression test for attendance persistence on rehearsals and events.
+ *
+ * <p>Verifies two things the user reported broken:
+ * <ol>
+ *   <li>A newly invited member must NOT already have PRESENT/CONFIRMED attendance
+ *       — the default is NO_RESPONSE / no response.</li>
+ *   <li>Changing the attendance/response status and saving must persist across a
+ *       full page reload (not just a transient HX swap).</li>
+ * </ol>
+ */
+class AttendancePersistenceUiTest extends UiTestBase {
+
+    @Autowired
+    private MemberRepository memberRepository;
+
+    @Autowired
+    private JdbcTemplate jdbcTemplate;
+
+    @BeforeEach
+    void cleanDatabase() {
+        // H2 test database is shared across UI tests in the JVM; clear relevant tables
+        // so each test starts from a known state (no stale rehearsals/events/members).
+        jdbcTemplate.execute("DELETE FROM attendances");
+        jdbcTemplate.execute("DELETE FROM event_participations");
+        jdbcTemplate.execute("DELETE FROM member_instruments");
+        jdbcTemplate.execute("DELETE FROM rehearsals");
+        jdbcTemplate.execute("DELETE FROM band_events");
+        jdbcTemplate.execute("DELETE FROM members");
+    }
+
+    @Test
+    void rehearsalAttendance_defaultsToNoResponse_andPersistsAfterReload() throws Exception {
+        WebDriverWait wait = new WebDriverWait(driver, Duration.ofSeconds(10));
+        String uid = UUID.randomUUID().toString().substring(0, 8);
+        String firstName = "Obecnosc" + uid;
+        String lastName = "Test" + uid;
+
+        // --- Create a member via UI ---
+        loginAndNavigateTo("/members");
+        driver.findElement(By.xpath("//button[contains(text(), 'Dodaj członka')]")).click();
+        wait.until(ExpectedConditions.presenceOfElementLocated(By.cssSelector("#member-form")));
+        fillField("firstName", firstName);
+        fillField("lastName", lastName);
+        ((JavascriptExecutor) driver).executeScript(
+                "document.querySelector(\"input[name='dateOfBirth']\").value = '1990-05-15';");
+        driver.findElement(By.cssSelector("#member-form button[type='submit'].primary")).click();
+        wait.until(ExpectedConditions.presenceOfElementLocated(By.cssSelector("#members-content table")));
+        Thread.sleep(1000);
+
+        // --- Create a rehearsal via UI ---
+        loginAndNavigateTo("/rehearsals");
+        driver.findElement(By.xpath("//button[contains(text(), 'Zaplanuj spotkanie')]")).click();
+        wait.until(ExpectedConditions.presenceOfElementLocated(By.cssSelector("#rehearsal-form")));
+        String today = java.time.LocalDate.now().toString();
+        ((JavascriptExecutor) driver).executeScript(
+                "document.querySelector(\"input[name='date']\").value = '" + today + "';");
+        driver.findElement(By.cssSelector("input[name='startTime']")).sendKeys("18:00");
+        driver.findElement(By.cssSelector("input[name='endTime']")).sendKeys("20:00");
+        driver.findElement(By.cssSelector("input[name='location']")).sendKeys("Sala prób");
+        driver.findElement(By.cssSelector("#rehearsal-form button[type='submit'].primary")).click();
+        wait.until(ExpectedConditions.urlContains("/rehearsals"));
+        wait.until(ExpectedConditions.not(ExpectedConditions.urlContains("/new")));
+        Thread.sleep(1500);
+
+        // Open the newly created rehearsal detail via the "Szczegóły" button (HTMX swaps #rehearsals-content)
+        driver.get(baseUrl() + "/rehearsals");
+        wait.until(ExpectedConditions.presenceOfElementLocated(By.id("rehearsals-content")));
+        List<WebElement> detailBtns = driver.findElements(By.xpath("//button[contains(text(), 'Szczegóły')]"));
+        assertThat(detailBtns).isNotEmpty();
+        detailBtns.get(0).click();
+        wait.until(ExpectedConditions.presenceOfElementLocated(
+                By.cssSelector("#rehearsals-content .status-select")));
+        System.out.println("[TEST] rehearsal detail loaded, status-select found");
+
+        // Resolve the member id from the UI (the member actually shown in the detail view)
+        String memberIdStr = (String) ((JavascriptExecutor) driver).executeScript(
+                "var s = document.querySelector('#rehearsals-content .status-select'); return s ? s.getAttribute('data-member-id') : null;");
+        Long memberId = memberIdStr != null ? Long.valueOf(memberIdStr) : null;
+        System.out.println("[TEST] memberId from UI: " + memberId);
+
+        // Resolve the rehearsal id from the detail container
+        String rehearsalIdStr = (String) ((JavascriptExecutor) driver).executeScript(
+                "var c = document.getElementById('rehearsals-content'); return c ? c.getAttribute('data-rehearsal-id') : null;");
+        Long rehearsalId = rehearsalIdStr != null ? Long.valueOf(rehearsalIdStr) : null;
+        System.out.println("[TEST] rehearsalId from UI: " + rehearsalId);
+
+        // --- ASSERT 1: default is NOT PRESENT ---
+        WebElement statusSelect = driver.findElement(
+                By.cssSelector("#rehearsals-content .status-select[data-member-id='" + memberId + "']"));
+        String initial = statusSelect.getAttribute("value");
+        System.out.println("[TEST] initial status value: " + initial);
+        assertThat(initial)
+                .as("Newly invited member must default to NO_RESPONSE, not PRESENT")
+                .isEqualTo("NO_RESPONSE");
+
+        // --- Change to PRESENT and save (via direct fetch, same as UI handler) ---
+        ((JavascriptExecutor) driver).executeScript(
+                "fetch('/api/rehearsals/" + rehearsalId + "/attendance', {" +
+                "  method: 'POST'," +
+                "  headers: {'Content-Type': 'application/json'}," +
+                "  body: JSON.stringify({rehearsalId: " + rehearsalId + ", memberId: " + memberId + ", status: 'PRESENT'})" +
+                "});");
+        Thread.sleep(2000);
+
+        // --- Reload and ASSERT 2: persisted as PRESENT ---
+        driver.get(baseUrl() + "/rehearsals/" + rehearsalId);
+        wait.until(ExpectedConditions.presenceOfElementLocated(
+                By.cssSelector("#rehearsals-content .status-select")));
+        WebElement reloaded = driver.findElement(
+                By.cssSelector("#rehearsals-content .status-select[data-member-id='" + memberId + "']"));
+        String after = reloaded.getAttribute("value");
+        System.out.println("[TEST] status after reload: " + after);
+        assertThat(after)
+                .as("Attendance PRESENT must persist after full page reload")
+                .isEqualTo("PRESENT");
+    }
+
+    @Test
+    void eventResponse_defaultsToNoResponse_andPersistsAfterReload() throws Exception {
+        WebDriverWait wait = new WebDriverWait(driver, Duration.ofSeconds(10));
+        String uid = UUID.randomUUID().toString().substring(0, 8);
+        String firstName = "Odp" + uid;
+        String lastName = "Test" + uid;
+
+        // --- Create a member via UI ---
+        loginAndNavigateTo("/members");
+        driver.findElement(By.xpath("//button[contains(text(), 'Dodaj członka')]")).click();
+        wait.until(ExpectedConditions.presenceOfElementLocated(By.cssSelector("#member-form")));
+        fillField("firstName", firstName);
+        fillField("lastName", lastName);
+        ((JavascriptExecutor) driver).executeScript(
+                "document.querySelector(\"input[name='dateOfBirth']\").value = '1990-05-15';");
+        driver.findElement(By.cssSelector("#member-form button[type='submit'].primary")).click();
+        wait.until(ExpectedConditions.presenceOfElementLocated(By.cssSelector("#members-content table")));
+        Thread.sleep(1000);
+
+        Long memberId = jdbcTemplate.queryForObject(
+                "SELECT MAX(id) FROM members WHERE first_name = ?", Long.class, firstName);
+        System.out.println("[TEST] memberId from db: " + memberId);
+
+        // --- Create an event via API (deterministic id) ---
+        String eventIdStr = (String) ((JavascriptExecutor) driver).executeScript(
+                "return fetch('/api/events', {" +
+                "  method: 'POST', headers: {'Content-Type':'application/json'}," +
+                "  body: JSON.stringify({name: 'Wydarzenie " + uid + "', date: '" + java.time.LocalDate.now() + "'," +
+                "    startTime: '18:00', endTime: '20:00', paymentType: 'FREE', eventType: 'CONCERT'})" +
+                "}).then(r => r.json()).then(ev => '' + ev.id);");
+        Thread.sleep(1000);
+        Long eventId = eventIdStr != null ? Long.valueOf(eventIdStr) : null;
+        System.out.println("[TEST] eventId from API: " + eventId);
+
+        // Open event detail via list (HTMX fragment)
+        driver.get(baseUrl() + "/events");
+        wait.until(ExpectedConditions.presenceOfElementLocated(By.id("events-list-container")));
+        var detailBtns = driver.findElements(By.xpath("//button[contains(text(), 'Szczegóły')]"));
+        assertThat(detailBtns).isNotEmpty();
+        detailBtns.get(0).click();
+        wait.until(ExpectedConditions.presenceOfElementLocated(By.id("event-detail-content")));
+        wait.until(ExpectedConditions.presenceOfElementLocated(By.id("invite-member-select")));
+
+        // Invite the member via API
+        ((JavascriptExecutor) driver).executeScript(
+                "return fetch('/api/events/' + arguments[0] + '/invite', {" +
+                "  method: 'POST', headers: {'Content-Type':'application/json'}," +
+                "  body: JSON.stringify({eventId: arguments[0], memberId: parseInt(arguments[1])})" +
+                "});", eventId, String.valueOf(memberId));
+        Thread.sleep(2000);
+
+        // Reload event detail fragment to see the newly invited participant
+        detailBtns = driver.findElements(By.xpath("//button[contains(text(), 'Szczegóły')]"));
+        assertThat(detailBtns).isNotEmpty();
+        detailBtns.get(0).click();
+        wait.until(ExpectedConditions.presenceOfElementLocated(
+                By.cssSelector("#event-detail-content .response-select[data-member-id='" + memberId + "']")));
+
+        // --- ASSERT 1: default response is NOT CONFIRMED ---
+        WebElement responseSelect = driver.findElement(
+                By.cssSelector("#event-detail-content .response-select[data-member-id='" + memberId + "']"));
+        String initial = responseSelect.getAttribute("value");
+        System.out.println("[TEST] initial response value: " + initial);
+        assertThat(initial)
+                .as("Newly invited participant must NOT default to CONFIRMED")
+                .isNotEqualTo("CONFIRMED");
+
+        // --- Change to CONFIRMED (fires on change) ---
+        ((JavascriptExecutor) driver).executeScript(
+                "var s = document.querySelector(\"#event-detail-content .response-select[data-member-id='" + memberId + "']\");" +
+                "s.value = 'CONFIRMED';" +
+                "s.dispatchEvent(new Event('change', {bubbles:true}));");
+        Thread.sleep(1500);
+
+        // --- Reload event detail (full page) and ASSERT 2: persisted as CONFIRMED ---
+        driver.get(baseUrl() + "/events/" + eventId);
+        wait.until(ExpectedConditions.presenceOfElementLocated(
+                By.cssSelector("#event-detail-content .response-select[data-member-id='" + memberId + "']")));
+        WebElement reloaded = driver.findElement(
+                By.cssSelector("#event-detail-content .response-select[data-member-id='" + memberId + "']"));
+        String after = reloaded.getAttribute("value");
+        System.out.println("[TEST] response after reload: " + after);
+        assertThat(after)
+                .as("Event response CONFIRMED must persist after reloading the detail view")
+                .isEqualTo("CONFIRMED");
+    }
+
+    private void fillField(String name, String value) {
+        WebElement el = driver.findElement(By.cssSelector("input[name='" + name + "']"));
+        el.clear();
+        el.sendKeys(value);
+    }
+}
