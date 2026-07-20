@@ -129,10 +129,10 @@
                             th:data-event-id="${event.id}"
                             th:data-member-id="${p.memberId}"
                             th:data-response="${p.response}">
-                        <option value="CONFIRMED">✅ Będę</option>
-                        <option value="DECLINED">❌ Nie będę</option>
-                        <option value="LATER">⏳ Dam znać później</option>
-                        <option value="NO_RESPONSE">❓ Brak odpowiedzi</option>
+                        <option value="CONFIRMED" th:selected="${p.response == 'CONFIRMED'}">✅ Będę</option>
+                        <option value="DECLINED" th:selected="${p.response == 'DECLINED'}">❌ Nie będę</option>
+                        <option value="LATER" th:selected="${p.response == 'LATER'}">⏳ Dam znać później</option>
+                        <option value="NO_RESPONSE" th:selected="${p.response == null or p.response == 'NO_RESPONSE'}">❓ Brak odpowiedzi</option>
                     </select>
                 </td>
                 <td data-label="Status wysyłki">
