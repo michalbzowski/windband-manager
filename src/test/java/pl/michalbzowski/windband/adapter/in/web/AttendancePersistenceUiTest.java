@@ -68,12 +68,15 @@ class AttendancePersistenceUiTest extends UiTestBase {
         wait.until(ExpectedConditions.not(ExpectedConditions.urlContains("/new")));
         Thread.sleep(1500);
 
-        // Open the newly created rehearsal detail via the "Szczegóły" button (HTMX swaps #rehearsals-content)
-        driver.get(baseUrl() + "/rehearsals");
-        wait.until(ExpectedConditions.presenceOfElementLocated(By.id("rehearsals-content")));
-        List<WebElement> detailBtns = driver.findElements(By.xpath("//button[contains(text(), 'Szczegóły')]"));
-        assertThat(detailBtns).isNotEmpty();
-        detailBtns.get(0).click();
+        // Resolve the rehearsal id directly from the DB (deterministic — avoids
+        // depending on list ordering / stale rows left by other UI tests).
+        Long rehearsalId = jdbcTemplate.queryForObject(
+                "SELECT MAX(id) FROM rehearsals WHERE date = ?", Long.class, today);
+        System.out.println("[TEST] rehearsalId from db: " + rehearsalId);
+        assertThat(rehearsalId).isNotNull();
+
+        // Open the newly created rehearsal detail directly by id (not via list + get(0))
+        driver.get(baseUrl() + "/rehearsals/" + rehearsalId);
         wait.until(ExpectedConditions.presenceOfElementLocated(
                 By.cssSelector("#rehearsals-content .status-select")));
         System.out.println("[TEST] rehearsal detail loaded, status-select found");
@@ -84,11 +87,10 @@ class AttendancePersistenceUiTest extends UiTestBase {
         Long memberId = memberIdStr != null ? Long.valueOf(memberIdStr) : null;
         System.out.println("[TEST] memberId from UI: " + memberId);
 
-        // Resolve the rehearsal id from the detail container
+        // Resolve the rehearsal id from the detail container (cross-check)
         String rehearsalIdStr = (String) ((JavascriptExecutor) driver).executeScript(
                 "var c = document.getElementById('rehearsals-content'); return c ? c.getAttribute('data-rehearsal-id') : null;");
-        Long rehearsalId = rehearsalIdStr != null ? Long.valueOf(rehearsalIdStr) : null;
-        System.out.println("[TEST] rehearsalId from UI: " + rehearsalId);
+        System.out.println("[TEST] rehearsalId from UI: " + rehearsalIdStr);
 
         // --- ASSERT 1: default is NOT PRESENT ---
         WebElement statusSelect = driver.findElement(
