@@ -613,7 +613,27 @@ This prevents the browser from defaulting to the first `<option>` (PRESENT) for 
 without a recorded status. **Do not add `selected` to the PRESENT option**, or new
 rehearsals will falsely show every member as PRESENT.
 
-### Saving attendance
+### Quick attendance modal
+For fast capturing, the detail page has a **"⚡ Szybka obecność"** button that opens a
+`<dialog id="quick-attendance-modal">` (native dialog, `openAppModal('quick-attendance-modal')`).
+It shows **one member at a time** with four status buttons (Obecny / Usprawiedliwiony /
+Nieobecny / Brak odp.). Clicking a status button:
+
+1. POSTs to `/api/rehearsals/{id}/attendance` (`fetchWithToast`, success toast suppressed) —
+   **save happens before advancing**, so a failure keeps the current member on screen
+   (no data loss).
+2. On success, advances to the next member; the underlying `<select>` in the table is
+   synced and the current status button is highlighted.
+3. A **"← Wstecz"** button returns to the previous member (disabled on the first).
+4. After the **last** member, shows `Toast.success('Zapisano obecność')`, closes the modal
+   (`closeAppModal`), and reloads the detail view via `htmx.ajax` so the table reflects
+   saved data.
+
+Member order matches the detail table (`#rehearsals-content tbody tr`). All active members
+are shown (including those currently `NO_RESPONSE`) so nothing is missed. The modal reads
+member ids/names/statuses from the rendered table on open (`window.openQuickAttendance`).
+
+### Saving attendance (bulk)
 Clicking **"Zapisz obecność"** runs `window.saveRehearsalAttendance()` (inline script in
 `detail.html`). It iterates all `select[id^="status_"]` and, for every member whose status
 is **not** `NO_RESPONSE`, POSTs to `/api/rehearsals/{id}/attendance` with
@@ -648,4 +668,6 @@ creation/update by `RehearsalNotificationService` (members must have `email_cons
   default selected status (PRESENT selected count = 0).
 - `RehearsalAttendanceToastUiTest` — Selenium: change a status, click "Zapisz obecność",
   assert the `Zapisano obecność` success toast appears.
+- `QuickAttendanceModalUiTest` — Selenium: open "⚡ Szybka obecność" modal, click a status
+  (save-then-advance), use Wstecz, auto-close after last member, assert persistence.
 - `AttendancePersistenceUiTest` — Selenium: default NO_RESPONSE + persistence across reload.

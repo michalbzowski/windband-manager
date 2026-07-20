@@ -50,7 +50,9 @@
             </tbody>
         </table>
 
-        <div style="display:flex; gap:0.5rem; margin-top:1rem;">
+        <div style="display:flex; gap:0.5rem; margin-top:1rem; flex-wrap:wrap;">
+            <button type="button" class="primary" id="quick-attendance-btn"
+                    onclick="window.openQuickAttendance()">⚡ Szybka obecność</button>
             <button type="button" class="primary" id="save-attendance-btn"
                     onclick="window.saveRehearsalAttendance()">Zapisz obecność</button>
             <button type="button" class="secondary"
@@ -63,6 +65,37 @@
         </div>
     </div>
 </main>
+
+<!-- Quick attendance modal: one member at a time, status as buttons, save-then-advance -->
+<dialog id="quick-attendance-modal" class="app-modal">
+    <div class="app-modal-content">
+        <header class="app-modal-header">
+            <div class="app-modal-header-text">
+                <h3 style="margin:0;">Szybka obecność</h3>
+                <small id="qa-progress">1 / 1</small>
+            </div>
+            <button type="button" class="app-modal-close" aria-label="Zamknij" data-close>×</button>
+        </header>
+        <div class="app-modal-body">
+            <p id="qa-member-name" style="font-size:1.25rem; font-weight:bold; margin:0.5rem 0;">—</p>
+            <div style="display:grid; grid-template-columns:1fr 1fr; gap:0.5rem; margin-top:1rem;">
+                <button type="button" class="qa-status primary" data-status="PRESENT"
+                        onclick="window.quickAttendanceSelect('PRESENT')">✓ Obecny</button>
+                <button type="button" class="qa-status" data-status="EXCUSED"
+                        onclick="window.quickAttendanceSelect('EXCUSED')">🕓 Usprawiedliwiony</button>
+                <button type="button" class="qa-status" data-status="UNEXCUSED"
+                        onclick="window.quickAttendanceSelect('UNEXCUSED')">✕ Nieobecny</button>
+                <button type="button" class="qa-status secondary" data-status="NO_RESPONSE"
+                        onclick="window.quickAttendanceSelect('NO_RESPONSE')">? Brak odp.</button>
+            </div>
+            <div style="display:flex; gap:0.5rem; margin-top:1rem; justify-content:space-between;">
+                <button type="button" class="secondary" id="qa-back"
+                        onclick="window.quickAttendanceBack()">← Wstecz</button>
+                <button type="button" class="secondary" data-close>Anuluj</button>
+            </div>
+        </div>
+    </div>
+</dialog>
 
 <script>
     window.saveRehearsalAttendance = function() {
@@ -95,6 +128,100 @@
             // Reload anyway so the UI reflects whatever was persisted.
             htmx.ajax('GET', '/rehearsals/' + rehearsalId, {target: '#rehearsals-content', swap: 'innerHTML transition:true'});
         });
+    };
+
+    // ---- Quick attendance modal ----
+    // state: { members: [{id, name, status}], index, rehearsalId }
+    window._qa = null;
+
+    window.openQuickAttendance = function() {
+        var container = document.getElementById('rehearsals-content');
+        if (!container) return;
+        var rehearsalId = container.getAttribute('data-rehearsal-id');
+        var rows = container.querySelectorAll('tbody tr');
+        var members = [];
+        rows.forEach(function(tr) {
+            var nameCell = tr.querySelector('td');
+            var name = nameCell ? nameCell.textContent.trim() : '?';
+            var select = tr.querySelector('select.status-select');
+            var id = select ? select.getAttribute('data-member-id') : null;
+            var status = select ? select.value : 'NO_RESPONSE';
+            if (id) members.push({id: id, name: name, status: status});
+        });
+        if (!members.length) {
+            Toast.error('Brak członków do odznaczenia');
+            return;
+        }
+        window._qa = { members: members, index: 0, rehearsalId: rehearsalId };
+        window.quickAttendanceRender();
+        if (typeof openAppModal === 'function') {
+            openAppModal('quick-attendance-modal');
+        } else {
+            var dlg = document.getElementById('quick-attendance-modal');
+            if (dlg) dlg.setAttribute('open', '');
+        }
+    };
+
+    window.quickAttendanceRender = function() {
+        var qa = window._qa;
+        if (!qa) return;
+        var m = qa.members[qa.index];
+        var nameEl = document.getElementById('qa-member-name');
+        var progressEl = document.getElementById('qa-progress');
+        var backEl = document.getElementById('qa-back');
+        if (nameEl) nameEl.textContent = (qa.index + 1) + '. ' + m.name;
+        if (progressEl) progressEl.textContent = (qa.index + 1) + ' / ' + qa.members.length;
+        if (backEl) backEl.disabled = (qa.index === 0);
+        document.querySelectorAll('.qa-status').forEach(function(btn) {
+            if (btn.getAttribute('data-status') === m.status) {
+                btn.classList.add('selected');
+            } else {
+                btn.classList.remove('selected');
+            }
+        });
+    };
+
+    window.quickAttendanceSelect = function(status) {
+        var qa = window._qa;
+        if (!qa) return;
+        var m = qa.members[qa.index];
+        fetchWithToast('/api/rehearsals/' + qa.rehearsalId + '/attendance', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({rehearsalId: qa.rehearsalId, memberId: parseInt(m.id), status: status}),
+            toastMessage: 'Zapisano obecność',
+            showSuccessToast: false
+        }).then(function(resp) {
+            if (!resp.ok) throw new Error('HTTP ' + resp.status);
+            // Persist locally so the underlying table reflects the choice
+            qa.members[qa.index].status = status;
+            var sel = document.querySelector('select.status-select[data-member-id="' + m.id + '"]');
+            if (sel) sel.value = status;
+            if (qa.index < qa.members.length - 1) {
+                qa.index++;
+                window.quickAttendanceRender();
+            } else {
+                Toast.success('Zapisano obecność');
+                var dlg = document.getElementById('quick-attendance-modal');
+                if (typeof closeAppModal === 'function') {
+                    closeAppModal(dlg);
+                } else if (dlg) {
+                    dlg.removeAttribute('open');
+                }
+                // Reload the detail view so the table + selects reflect saved data
+                htmx.ajax('GET', '/rehearsals/' + qa.rehearsalId, {target: '#rehearsals-content', swap: 'innerHTML transition:true'});
+            }
+        }).catch(function(err) {
+            // Do NOT advance on failure — keep the member on screen so the user can retry.
+            Toast.error('Błąd zapisu: ' + (err && err.message ? err.message : 'spróbuj ponownie'));
+        });
+    };
+
+    window.quickAttendanceBack = function() {
+        var qa = window._qa;
+        if (!qa || qa.index === 0) return;
+        qa.index--;
+        window.quickAttendanceRender();
     };
 
     // Load email notification badge
