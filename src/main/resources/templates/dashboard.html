@@ -85,6 +85,9 @@
                 <footer th:if="${totalMembers > activeMembers}">
                     + <span th:text="${totalMembers - activeMembers}">0</span> nieaktywnych
                 </footer>
+                <footer th:each="attr : ${booleanAttributeCounts}" th:if="${booleanAttributeCounts != null}">
+                    <span th:text="${attr.key}">OSP</span>: <span th:text="${attr.value}">0</span>
+                </footer>
             </article>
 
             <article>

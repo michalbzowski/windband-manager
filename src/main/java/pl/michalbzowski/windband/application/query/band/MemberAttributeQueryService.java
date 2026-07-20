@@ -57,4 +57,24 @@ public class MemberAttributeQueryService {
         return attributeValueRepository.findByMemberAndAttributeDef(member, def)
                 .map(MemberAttributeValue::getValue);
     }
+
+    /**
+     * Returns a map of BOOLEAN attribute name -> number of members in the band
+     * whose value for that attribute equals "true". Only BOOLEAN attribute defs
+     * are included. Order follows displayOrder.
+     */
+    public Map<String, Long> getBooleanAttributeCounts(Band band) {
+        Map<String, Long> result = new LinkedHashMap<>();
+        List<MemberAttributeDef> defs = attributeDefRepository.findByBandOrderByDisplayOrderAsc(band);
+        for (MemberAttributeDef def : defs) {
+            if (!"BOOLEAN".equals(def.getType())) {
+                continue;
+            }
+            long count = attributeValueRepository.findByAttributeDef(def).stream()
+                    .filter(v -> "true".equals(v.getValue()))
+                    .count();
+            result.put(def.getName(), count);
+        }
+        return result;
+    }
 }

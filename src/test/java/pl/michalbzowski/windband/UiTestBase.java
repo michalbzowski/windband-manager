@@ -202,7 +202,8 @@ public abstract class UiTestBase {
     protected void cleanDatabase() {
         String[] tables = {
                 "attendances", "event_participations", "member_instruments",
-                "member_consent_tokens", "rehearsals", "band_events"
+                "member_consent_tokens", "rehearsals", "band_events",
+                "member_attribute_values", "member_attribute_defs"
         };
         for (String table : tables) {
             try {

@@ -10,6 +10,7 @@ import lombok.RequiredArgsConstructor;
 import jakarta.servlet.http.HttpSession;
 import pl.michalbzowski.windband.adapter.in.security.WindbandOidcUser;
 import pl.michalbzowski.windband.application.query.band.BandQueryService;
+import pl.michalbzowski.windband.application.query.band.MemberAttributeQueryService;
 import pl.michalbzowski.windband.application.dto.UpcomingItemDto;
 import pl.michalbzowski.windband.application.query.event.EventQueryService;
 import pl.michalbzowski.windband.application.query.inventory.InventoryQueryService;
@@ -24,6 +25,7 @@ import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
+import java.util.Map;
 
 @Controller
 @RequiredArgsConstructor
@@ -35,6 +37,7 @@ public class PageController {
     private final InventoryQueryService inventoryQueryService;
     private final BandQueryService bandQueryService;
     private final TeamQueryService teamQueryService;
+    private final MemberAttributeQueryService attributeQueryService;
 
     private Band getDefaultBand() {
         return bandQueryService.getDefaultBand();
@@ -126,6 +129,10 @@ public class PageController {
         model.addAttribute("activeOrders", activeOrders);
         model.addAttribute("totalUniforms", totalUniforms);
         model.addAttribute("totalInstruments", totalInstruments);
+
+        // BOOLEAN member attributes -> count of members with value "true" per attribute
+        Map<String, Long> booleanAttributeCounts = attributeQueryService.getBooleanAttributeCounts(band);
+        model.addAttribute("booleanAttributeCounts", booleanAttributeCounts);
 
         List<UpcomingItemDto> upcoming = collectUpcomingItems(activeTeamId, today, 5);
         model.addAttribute("upcoming", upcoming);
