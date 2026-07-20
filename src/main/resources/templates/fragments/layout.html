@@ -314,6 +314,15 @@
     document.addEventListener('DOMContentLoaded', bindModalCloseHandlers);
     document.addEventListener('htmx:afterSettle', bindModalCloseHandlers);
 
+    // Re-bind event-detail page handlers after every HTMX swap (and on initial
+    // load) so they survive HTMX navigation to event details and the in-page
+    // reloads the detail page triggers after each action.
+    function bindEventDetailIfPresent() {
+        if (window.bindEventDetailHandlers) window.bindEventDetailHandlers();
+    }
+    document.addEventListener('DOMContentLoaded', bindEventDetailIfPresent);
+    document.addEventListener('htmx:afterSwap', bindEventDetailIfPresent);
+
     (function() {
         console.log('Loading build info...');
         fetchWithToast('/api/auth/build-info', { credentials: 'same-origin' })
