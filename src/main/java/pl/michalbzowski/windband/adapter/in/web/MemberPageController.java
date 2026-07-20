@@ -39,9 +39,11 @@ public class MemberPageController {
     }
 
     @GetMapping("/list")
-    public String listFragment(@ModelAttribute("activeTeamId") Long activeTeamId, Model model) {
+    public String listFragment(@ModelAttribute("activeTeamId") Long activeTeamId,
+                               @RequestParam(required = false) Long focus, Model model) {
         model.addAttribute("members", memberQueryService.getAllActiveMembers(activeTeamId));
         model.addAttribute("activeTeamId", activeTeamId);
+        model.addAttribute("focusMemberId", focus);
         return "members/list :: #members-content";
     }
 

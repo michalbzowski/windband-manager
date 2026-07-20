@@ -127,7 +127,7 @@
             <button type="submit" class="secondary" name="saveAndAddAnother" value="true" th:if="${member.id() == null}"
                     th:text="'Zapisz i dodaj kolejny'">Zapisz i dodaj kolejny</button>
             <button type="button" class="secondary"
-                    hx-get="/members/list" hx-target="#members-content"
+                    th:attr="hx-get=@{/members/list(focus=${member.id()})}" hx-target="#members-content"
                     hx-swap="innerHTML transition:true">Anuluj</button>
         </div>
     </form>
