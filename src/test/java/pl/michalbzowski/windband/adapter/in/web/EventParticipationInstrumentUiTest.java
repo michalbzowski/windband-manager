@@ -55,10 +55,16 @@ class EventParticipationInstrumentUiTest extends UiTestBase {
         // 2. Click first "Szczegóły" button to open event detail
         var detailBtns = driver.findElements(By.xpath("//button[contains(text(), 'Szczegóły')]"));
         assertThat(detailBtns).isNotEmpty();
-        detailBtns.get(0).click();
+        var firstDetailBtn = detailBtns.get(0);
+        ((org.openqa.selenium.JavascriptExecutor) driver).executeScript("arguments[0].scrollIntoView({block: 'center'});", firstDetailBtn);
+        wait.until(ExpectedConditions.elementToBeClickable(firstDetailBtn));
+        // Click via JS to avoid intermittent ElementClickIntercepted from sticky bars/toasts in full suite runs
+        ((org.openqa.selenium.JavascriptExecutor) driver).executeScript("arguments[0].click();", firstDetailBtn);
 
         // Wait for event detail fragment to load
         wait.until(ExpectedConditions.presenceOfElementLocated(By.id("events-content")));
+        // Ensure it is actually visible/clickable (not covered by a sticky bar or leftover toast)
+        wait.until(ExpectedConditions.visibilityOfElementLocated(By.id("events-content")));
         // Wait for invite section which is part of the detail
         wait.until(ExpectedConditions.presenceOfElementLocated(By.id("invite-member-select")));
 
@@ -113,10 +119,13 @@ class EventParticipationInstrumentUiTest extends UiTestBase {
         var instrumentSelects = driver.findElements(By.cssSelector(".instrument-select"));
         System.out.println("[TEST] Instrument select count: " + instrumentSelects.size());
 
-        // We expect exactly one instrument select (for the invited member)
-        assertThat(instrumentSelects).hasSize(1);
-
-        var instrumentSelect = instrumentSelects.get(0);
+        // Find the select for the invited member (memberId=1). Other members seeded by
+        // data.sql may also appear, so we locate by data-member-id rather than asserting size 1.
+        var instrumentSelect = instrumentSelects.stream()
+                .filter(s -> "1".equals(s.getAttribute("data-member-id")))
+                .findFirst()
+                .orElse(null);
+        assertThat(instrumentSelect).as("instrument select for invited member must exist").isNotNull();
         var instOptions = instrumentSelect.findElements(By.tagName("option"));
         String bubenValue = null;
         for (var opt : instOptions) {

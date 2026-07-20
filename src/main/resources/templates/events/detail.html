@@ -186,6 +186,8 @@
 </div>
 
 <script>
+    // Wait for DOM (including <dialog> at end of body) to be fully parsed
+    document.addEventListener('DOMContentLoaded', function() {
     // Initialize from DOM attributes (works after HTMX swap)
     var container = document.querySelector('#events-content[data-event-id]');
     
@@ -473,21 +475,60 @@
     });
 
     // Delete event
-    document.getElementById('delete-event-btn').addEventListener('click', function() {
-        var container = document.querySelector('#events-content[data-event-id]');
-        var eventId = container.dataset.eventId;
-        if (confirm('Czy na pewno chcesz usunąć to wydarzenie?')) {
+    try {
+        document.getElementById('delete-event-btn').addEventListener('click', function() {
+            var modal = document.getElementById('delete-event-modal');
+            if (typeof openAppModal === 'function') {
+                openAppModal('delete-event-modal');
+            } else if (modal.showModal) {
+                modal.showModal();
+            }
+        });
+    } catch (e) { console.error('delete-event-btn handler error:', e); }
+
+    try {
+        document.getElementById('delete-event-cancel-btn').addEventListener('click', function() {
+            var modal = document.getElementById('delete-event-modal');
+            if (typeof closeAppModal === 'function') {
+                closeAppModal(modal);
+            } else if (modal.close) {
+                modal.close();
+            }
+        });
+    } catch (e) { console.error('delete-event-cancel-btn handler error:', e); }
+
+    try {
+        document.getElementById('delete-event-confirm-btn').addEventListener('click', function() {
+            var container = document.querySelector('#events-content[data-event-id]');
+            var eventId = container ? container.dataset.eventId : window.location.pathname.split('/').pop();
+            console.log('DELETE confirm clicked, eventId=', eventId);
+            var modal = document.getElementById('delete-event-modal');
             fetch('/api/events/' + eventId, {
                 method: 'DELETE'
             }).then(function(response) {
+                console.log('DELETE response status=', response.status);
                 if (response.ok) {
-                    htmx.ajax('GET', '/events/list', {target: '#events-list-container', swap: 'outerHTML transition:true'});
+                    Toast.success('Usunięto wydarzenie');
                 } else {
-                    alert('Nie udało się usunąć wydarzenia');
+                    Toast.error('Nie udało się usunąć wydarzenia');
                 }
-            }).catch(function(err) { console.error('Delete error:', err); });
-        }
-    });
+            }).catch(function(err) {
+                console.error('Delete error:', err);
+            }).finally(function() {
+                try {
+                    if (typeof closeAppModal === 'function') {
+                        closeAppModal(modal);
+                    } else if (modal.close) {
+                        modal.close();
+                    }
+                } catch (e) {
+                    console.error('Modal close error:', e);
+                }
+                console.log('Redirecting to /events');
+                window.location.replace('/events');
+            });
+        });
+    } catch (e) { console.error('delete-event-confirm-btn handler error:', e); }
 
     // Send invitation to single member
     document.querySelectorAll('.send-btn').forEach(function(btn) {
@@ -544,7 +585,25 @@
             });
         });
     }
+    }); // end DOMContentLoaded
 </script>
+<dialog id="delete-event-modal" class="app-modal">
+    <div class="app-modal-content">
+        <header class="app-modal-header">
+            <div class="app-modal-header-text">
+                <h3>Usuń wydarzenie</h3>
+            </div>
+            <button type="button" class="app-modal-close" aria-label="Zamknij" data-close>×</button>
+        </header>
+        <div class="app-modal-body">
+            <p>Czy na pewno chcesz usunąć to wydarzenie? Tej operacji nie można cofnąć.</p>
+        </div>
+        <footer class="app-modal-footer">
+            <button type="button" class="outline" id="delete-event-cancel-btn">Anuluj</button>
+            <button type="button" class="primary" id="delete-event-confirm-btn">Tak, usuń</button>
+        </footer>
+    </div>
+</dialog>
 <script>
 // Sticky stats bar - runs after main script
 (function() {

@@ -33,7 +33,7 @@
                         </tr>
                     </thead>
                     <tbody>
-                        <tr th:each="e : ${upcomingEvents}">
+                        <tr th:each="e : ${upcomingEvents}" th:id="'event-' + ${e.id}">
                             <td data-label="Nazwa" th:text="${e.name}">Koncert</td>
                             <td data-label="Data" th:text="${e.date}">01.01.2025</td>
                             <td data-label="Miejsce" th:text="${e.location}">Rynek</td>
@@ -67,7 +67,7 @@
                         </tr>
                     </thead>
                     <tbody>
-                        <tr th:each="e : ${pastEvents}" class="past-item">
+                        <tr th:each="e : ${pastEvents}" class="past-item" th:id="'event-' + ${e.id}">
                             <td data-label="Nazwa" th:text="${e.name}">Koncert</td>
                             <td data-label="Data">
                                 <span th:text="${e.date}">01.01.2025</span>

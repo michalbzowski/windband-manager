@@ -12,6 +12,7 @@ import pl.michalbzowski.windband.domain.member.GroupRepository;
 import pl.michalbzowski.windband.domain.member.Instrument;
 import pl.michalbzowski.windband.domain.member.InstrumentRepository;
 import pl.michalbzowski.windband.domain.member.Member;
+import pl.michalbzowski.windband.domain.band.MemberAttributeValueRepository;
 import pl.michalbzowski.windband.domain.member.MemberRepository;
 
 import java.math.BigDecimal;
@@ -26,6 +27,7 @@ public class EventCommandService {
     private final GroupRepository groupRepository;
     private final BandRepository bandRepository;
     private final InstrumentRepository instrumentRepository;
+    private final MemberAttributeValueRepository memberAttributeValueRepository;
     private final NotificationCommandService notificationCommandService;
 
     public BandEvent createEvent(CreateEventCommand cmd, Long teamId) {
@@ -170,9 +172,25 @@ public class EventCommandService {
                 .map(p -> p.getMember().getId())
                 .collect(java.util.stream.Collectors.toSet());
 
-        for (var groupMember : group.getMembers()) {
-            if (!invitedMemberIds.contains(groupMember.getMember().getId())) {
-                event.inviteMember(groupMember.getMember());
+        // Resolve the effective members of the group. Manual groups store their
+        // membership in member_groups_members; dynamic groups (attribute- or
+        // member-field-backed) compute membership on the fly, so group.getMembers()
+        // would be empty for them — fall back to evaluating the dynamic source.
+        java.util.List<Member> groupMembers;
+        if (group.isDynamic()) {
+            var source = group.resolveSource(memberAttributeValueRepository);
+            groupMembers = memberRepository.findAllActiveByBandId(group.getBand().getId()).stream()
+                    .filter(source::memberMatches)
+                    .collect(java.util.stream.Collectors.toList());
+        } else {
+            groupMembers = group.getMembers().stream()
+                    .map(gm -> gm.getMember())
+                    .collect(java.util.stream.Collectors.toList());
+        }
+
+        for (var member : groupMembers) {
+            if (!invitedMemberIds.contains(member.getId())) {
+                event.inviteMember(member);
             }
         }
         eventRepository.save(event);

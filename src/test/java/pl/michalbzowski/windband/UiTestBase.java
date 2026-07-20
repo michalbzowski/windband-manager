@@ -200,19 +200,26 @@ public abstract class UiTestBase {
      * several UI tests rely on, and re-seeding is not available after TRUNCATE.</p>
      */
     protected void cleanDatabase() {
-        String[] tables = {
-                "attendances", "event_participations", "member_instruments",
-                "member_consent_tokens", "rehearsals", "band_events",
-                "member_attribute_values", "member_attribute_defs"
-        };
-        for (String table : tables) {
+        // H2 supports multi-table TRUNCATE; CASCADE handles FK ordering automatically.
+        // Child tables first, then parents — but CASCADE makes order irrelevant.
+        String allTables = "attendances, event_participations, member_instruments, "
+                + "member_consent_tokens, member_consents, rehearsals, band_events, "
+                + "member_attribute_values, member_attribute_defs, team_members, "
+                + "members, bands, teams, users";
+        try {
+            jdbcTemplate.execute("TRUNCATE TABLE " + allTables + " RESTART IDENTITY CASCADE");
+        } catch (Exception e) {
+            // Fallback: try without RESTART IDENTITY
             try {
-                jdbcTemplate.execute("TRUNCATE TABLE " + table + " RESTART IDENTITY CASCADE");
-            } catch (Exception e) {
-                try {
-                    jdbcTemplate.execute("TRUNCATE TABLE " + table + " CASCADE");
-                } catch (Exception ignored) {
-                    // table may not exist in this schema variant; skip
+                jdbcTemplate.execute("TRUNCATE TABLE " + allTables + " CASCADE");
+            } catch (Exception e2) {
+                // Last resort: per-table with CASCADE
+                for (String t : allTables.split(",")) {
+                    String table = t.trim();
+                    try {
+                        jdbcTemplate.execute("TRUNCATE TABLE " + table + " CASCADE");
+                    } catch (Exception ignored) {
+                    }
                 }
             }
         }

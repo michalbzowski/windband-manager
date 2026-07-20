@@ -110,12 +110,29 @@
             method: 'POST',
             headers: {'Content-Type': 'application/json'},
             body: JSON.stringify(data)
-        }).then(function() {
+        }).then(function(response) {
+            return response.json();
+        }).then(function(created) {
+            var newEventId = created && created.id ? created.id : null;
             if (saveAndAddAnother) {
                 htmx.ajax('GET', '/events/new', {target: '#events-list-container', swap: 'innerHTML transition:true'});
             } else {
-                htmx.ajax('GET', '/events/list', {target: '#events-list-container', swap: 'innerHTML transition:true'});
+                window.location.href = '/events';
+                // After the list reloads, scroll to and highlight the new event row
+                if (newEventId) {
+                    setTimeout(function() {
+                        var row = document.getElementById('event-' + newEventId);
+                        if (row) {
+                            row.classList.add('highlight-row');
+                            row.scrollIntoView({behavior: 'smooth', block: 'center'});
+                            setTimeout(function() { row.classList.remove('highlight-row'); }, 3000);
+                        }
+                    }, 600);
+                }
             }
+        }).catch(function(err) {
+            console.error('Create event error:', err);
+            Toast.error('Nie udało się utworzyć wydarzenia');
         });
         return false;
     }
