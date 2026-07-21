@@ -195,11 +195,32 @@ public abstract class UiTestBase {
      * tokens, attendances, participations, member_instruments) together with
      * their parents without tripping foreign-key constraints.
      *
-     * <p>Members and seeded reference data (bands, instruments, dynamic groups)
-     * are left intact — the seed in data.sql provides the baseline members that
-     * several UI tests rely on, and re-seeding is not available after TRUNCATE.</p>
+     * <p>Members and seeded reference data (bands, instruments) are left intact
+     * — the seed in data.sql provides the baseline members that several UI
+     * tests rely on, and re-seeding is not available after TRUNCATE.</p>
+     *
+     * <p>The {@code member_groups} (and its junction {@code group_members})
+     * tables <em>are</em> cleared and re-seeded with the 3 baseline groups
+     * (Trąbki / Perkusja / Saksofony) from data.sql, because tests that create
+     * manual groups leave them behind across the full suite — a sibling
+     * selector that matches a partial group name then latches onto a previous
+     * test's (stale) group and the wrong {@code groupId} is sent. See the
+     * {@code EventInviteGroupSecondEventUiTest} fix commit for the bug this
+     * caused. The 3 baseline groups are re-inserted so
+     * {@code TeamIsolationRegressionUiTest} still finds them on the Test
+     * Band page.</p>
      */
     protected void cleanDatabase() {
+        // Clear manual-group state. Use DELETE (not TRUNCATE) because member_groups
+        // has a FK to bands (which we keep) and H2's TRUNCATE ... CASCADE silently
+        // no-ops on tables whose parent is not in the truncate list — the seed
+        // groups then leak into the next test, breaking the unique constraint on
+        // name when we try to re-seed. DELETE respects FKs without ceremony.
+        try {
+            jdbcTemplate.execute("DELETE FROM group_members");
+            jdbcTemplate.execute("DELETE FROM member_groups");
+        } catch (Exception ignored) { /* intentionally ignored — see below */ }
+
         // Child tables only — keep members/bands/teams/users seeded by data.sql
         // so legacy UI tests that rely on those rows keep working. CASCADE clears
         // dependent rows (consent tokens, attendances, participations) without FK violations.
@@ -220,6 +241,19 @@ public abstract class UiTestBase {
                 }
             }
         }
+
+        // Re-seed the 3 baseline groups from data.sql (lines 39-44) so the
+        // team-isolation test still finds Trąbki / Perkusja on Test Band and
+        // confirms Saksofony is hidden.
+        jdbcTemplate.update(
+                "INSERT INTO member_groups (name, description, band_id) VALUES (?, ?, ?)",
+                "Trąbki", "Trębacze", 1L);
+        jdbcTemplate.update(
+                "INSERT INTO member_groups (name, description, band_id) VALUES (?, ?, ?)",
+                "Perkusja", "Perkusyści", 1L);
+        jdbcTemplate.update(
+                "INSERT INTO member_groups (name, description, band_id) VALUES (?, ?, ?)",
+                "Saksofony", "Saksofoniści", 2L);
     }
 
     protected void loginAndNavigateTo(String path) {
