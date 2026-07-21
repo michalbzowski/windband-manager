@@ -176,13 +176,11 @@
      * htmx:afterSwap so handlers survive HTMX navigation to event details
      * and the in-page reloads the detail page triggers after each action.
      */
-    function bindEventDetailHandlers() {
+function bindEventDetailHandlers() {
     // Initialize from DOM attributes (works after HTMX swap)
     var container = document.querySelector('#events-content[data-event-id]');
     if (!container) return;
-    if (container.dataset.detailBound === '1') return;
-    container.dataset.detailBound = '1';
-    
+
     // Set selected options for instrument selects based on data-name attribute
     document.querySelectorAll('.instrument-select').forEach(function(select) {
         var currentInstrument = select.getAttribute('data-current-instrument');
