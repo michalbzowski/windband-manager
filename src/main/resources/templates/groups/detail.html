@@ -1,92 +1,109 @@
-<div id="groups-content">
-    <h2>🎼 <span th:text="${group.name}">Sekcja dęta</span></h2>
+<!DOCTYPE html>
+<html lang="pl" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/layout :: head(${group.name})}">
+    <title>Grupa</title>
+</head>
+<body>
+<nav th:replace="~{fragments/layout :: nav}"></nav>
 
-    <article>
-        <header>
-            <strong>Grupa: </strong>
-            <span th:text="${group.name}">Sekcja dęta</span>
-        </header>
-        <p th:if="${group.description}" th:text="${group.description}">Opis grupy</p>
-        <p><small th:text="'Liczba członeków: ' + ${group.memberCount}">Liczba: 5</small></p>
-    </article>
+<main class="container" id="content">
+    <div id="groups-content" th:data-group-id="${group.id}" th:fragment="group-detail-content">
+        <h2>🎼 <span th:text="${group.name}">Sekcja dęta</span></h2>
 
-    <h3>Zarządzaj członkami</h3>
-    <div th:unless="${group.dynamic}" style="display:flex; gap:0.5rem; margin-bottom:1rem;">
-        <select id="add-member-select">
-            <option value="">Wybierz członka...</option>
-            <option th:each="m : ${members}" th:value="${m.id}"
-                    th:text="${m.firstName} + ' ' + ${m.lastName} + ' (' + ${m.primaryInstrument} + ')'">
-                Jan Kowalski (Trąbka)
-            </option>
-        </select>
-        <button class="outline" id="add-member-btn">Dodaj</button>
+        <article>
+            <header>
+                <strong>Grupa: </strong>
+                <span th:text="${group.name}">Sekcja dęta</span>
+            </header>
+            <p th:if="${group.description}" th:text="${group.description}">Opis grupy</p>
+            <p><small th:text="'Liczba członeków: ' + ${group.memberCount}">Liczba: 5</small></p>
+        </article>
+
+        <h3>Zarządzaj członkami</h3>
+        <div th:unless="${group.dynamic}" style="margin-bottom:1rem;">
+            <button type="button" class="outline" id="open-add-members-modal-btn">➕ Dodaj członków</button>
+        </div>
+
+        <div th:if="${group.dynamic}" class="dynamic-info-banner" style="margin-bottom:1rem; padding:0.75rem; background:var(--pico-card-background-color); border-radius:0.5rem; border-left: 4px solid var(--pico-primary);">
+            <strong>🔄 Grupa dynamiczna</strong>
+            <p style="margin:0.25rem 0 0;">Członkowie tej grupy są zarządzani automatycznie przez atrybut <code th:text="${group.name}">OSP</code>. Aby zmienić skład, edytuj wartość tego atrybutu u danego członka.</p>
+        </div>
+
+        <h3>Członkowie w grupie</h3>
+
+        <div th:if="${#lists.isEmpty(group.members)}">
+            <article><p>Brak członeków w grupie.</p></article>
+        </div>
+
+        <div th:unless="${#lists.isEmpty(group.members)}">
+            <table role="grid">
+                <thead>
+                    <tr>
+                        <th>Członek</th>
+                        <th>Instrument</th>
+                        <th>Akcje</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr th:each="gm : ${group.members}">
+                        <td th:text="${gm.memberName}">Jan Kowalski</td>
+                        <td th:text="${gm.primaryInstrument}">Trąbka</td>
+                        <td>
+                            <form th:unless="${group.dynamic}"
+                                  th:action="@{'/groups/' + ${group.id} + '/members/' + ${gm.memberId} + '/remove'}"
+                                  th:method="post"
+                                  hx-target="#groups-content" hx-swap="innerHTML transition:true"
+                                  style="display:inline;">
+                                <button class="outline small secondary" type="submit">Usuń</button>
+                            </form>
+                            <span th:if="${group.dynamic}" class="secondary">—</span>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <div style="display:flex; gap:0.5rem; margin-top:1rem;">
+            <form th:unless="${group.dynamic}"
+                  th:hx-post="@{/groups/{id}/delete(id=${group.id})}"
+                  hx-target="#content" hx-swap="innerHTML transition:true"
+                  style="display:inline;"
+                  onsubmit="return confirm('Czy na pewno chcesz usunąć tę grupę?');">
+                <button class="outline small secondary" type="submit">Usuń grupę</button>
+            </form>
+            <button type="button" class="secondary"
+                    hx-get="/groups/list" hx-target="#groups-content"
+                    hx-swap="innerHTML transition:true">Powrót</button>
+        </div>
+
+        <dialog id="add-members-to-group-modal" class="app-modal">
+            <div class="app-modal-content">
+                <header class="app-modal-header">
+                    <div class="app-modal-header-text">
+                        <h3>Dodaj członków do grupy</h3>
+                    </div>
+                    <button type="button" class="app-modal-close" aria-label="Zamknij" data-close>×</button>
+                </header>
+                <div class="app-modal-body">
+                    <p th:if="${#lists.isEmpty(members)}" class="text-muted" style="margin:0 0 0.5rem;">Wszyscy członkowie są już w tej grupie.</p>
+                    <ul style="list-style:none; padding:0; margin:0; max-height:50vh; overflow-y:auto;">
+                        <li th:each="m : ${members}" style="display:flex; align-items:center; gap:0.6rem; padding:0.5rem 0; border-bottom:1px solid var(--pico-muted-border-color);">
+                            <input type="checkbox" class="add-member-checkbox" th:value="${m.id}" th:id="'add-cb-' + ${m.id}">
+                            <label th:for="'add-cb-' + ${m.id}" th:text="${m.firstName} + ' ' + ${m.lastName} + (${m.primaryInstrument} ? ' (' + ${m.primaryInstrument} + ')' : '')" style="margin:0; flex:1; cursor:pointer;">Jan Kowalski</label>
+                        </li>
+                    </ul>
+                </div>
+                <footer class="app-modal-footer">
+                    <button type="button" class="outline" data-close>Anuluj</button>
+                    <button type="button" class="primary" id="add-selected-members-btn">Dodaj zaznaczonych</button>
+                </footer>
+            </div>
+        </dialog>
     </div>
+</main>
 
-    <div th:if="${group.dynamic}" class="dynamic-info-banner" style="margin-bottom:1rem; padding:0.75rem; background:var(--pico-card-background-color); border-radius:0.5rem; border-left: 4px solid var(--pico-primary);">
-        <strong>🔄 Grupa dynamiczna</strong>
-        <p style="margin:0.25rem 0 0;">Członkowie tej grupy są zarządzani automatycznie przez atrybut <code th:text="${group.name}">OSP</code>. Aby zmienić skład, edytuj wartość tego atrybutu u danego członka.</p>
-    </div>
-
-    <h3>Członkowie w grupie</h3>
-
-    <div th:if="${#lists.isEmpty(group.members)}">
-        <article><p>Brak członeków w grupie.</p></article>
-    </div>
-
-    <div th:unless="${#lists.isEmpty(group.members)}">
-        <table role="grid">
-            <thead>
-                <tr>
-                    <th>Członek</th>
-                    <th>Instrument</th>
-                    <th>Akcje</th>
-                </tr>
-            </thead>
-            <tbody>
-                <tr th:each="gm : ${group.members}">
-                    <td th:text="${gm.memberName}">Jan Kowalski</td>
-                    <td th:text="${gm.primaryInstrument}">Trąbka</td>
-                    <td>
-                        <form th:unless="${group.dynamic}"
-                              th:action="@{'/groups/' + ${group.id} + '/members/' + ${gm.memberId} + '/remove'}"
-                              th:method="post"
-                              hx-target="#groups-content" hx-swap="innerHTML transition:true"
-                              style="display:inline;">
-                            <button class="outline small secondary" type="submit">Usuń</button>
-                        </form>
-                        <span th:if="${group.dynamic}" class="secondary">—</span>
-                    </td>
-                </tr>
-            </tbody>
-        </table>
-    </div>
-
-    <div style="display:flex; gap:0.5rem; margin-top:1rem;">
-        <form th:unless="${group.dynamic}"
-              th:hx-post="@{/groups/{id}/delete(id=${group.id})}"
-              hx-target="#content" hx-swap="innerHTML transition:true"
-              style="display:inline;"
-              onsubmit="return confirm('Czy na pewno chcesz usunąć tę grupę?');">
-            <button class="outline small secondary" type="submit">Usuń grupę</button>
-        </form>
-        <button type="button" class="secondary"
-                hx-get="/groups/list" hx-target="#groups-content"
-                hx-swap="innerHTML transition:true">Powrót</button>
-    </div>
-</div>
-
-<script>
-    document.getElementById('add-member-btn').addEventListener('click', function() {
-        var select = document.getElementById('add-member-select');
-        var memberId = select.value;
-        var groupId = [[${group.id}]];
-        if (memberId) {
-            fetchWithToast('/api/groups/' + groupId + '/members/' + memberId, { toastMessage: 'Zapisano członka do grupy',
-                method: 'POST',
-                headers: {'Content-Type': 'application/json'}
-            }).then(function() {
-                htmx.ajax('GET', '/groups/' + groupId, {target: '#groups-content', swap: 'innerHTML transition:true'});
-            });
-        }
-    });
-</script>
+<footer th:replace="~{fragments/layout :: footer}"></footer>
+<div th:insert="~{fragments/layout :: toast-container}"></div>
+<div th:insert="~{fragments/layout :: footer-scripts}"></div>
+</body>
+</html>

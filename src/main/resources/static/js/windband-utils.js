@@ -632,7 +632,81 @@
     updateStatsPosition();
     }
 
+    /**
+     * Bind group-detail page handlers (add members via modal). Called on DOMContentLoaded AND on every
+     * htmx:afterSwap so handlers survive HTMX navigation to group details and the in-page
+     * reloads the detail page triggers after each action.
+     */
+    function bindGroupDetailHandlers() {
+        var container = document.querySelector('#groups-content[data-group-id]');
+        if (!container) return;
+        if (container.dataset.detailBound === '1') return;
+        container.dataset.detailBound = '1';
+
+        var groupId = container.dataset.groupId;
+        console.log("Group detail script loaded, groupId:", groupId);
+
+        // Open the add-members modal
+        var openAddMembersBtn = document.getElementById('open-add-members-modal-btn');
+        if (openAddMembersBtn) {
+            openAddMembersBtn.addEventListener('click', function() {
+                var modal = document.getElementById('add-members-to-group-modal');
+                if (modal && typeof modal.showModal === 'function') {
+                    modal.showModal();
+                } else if (modal) {
+                    modal.setAttribute('open', '');
+                    modal.classList.add('app-modal-fallback');
+                }
+            });
+        }
+
+        // Add all checked members from the modal
+        var addSelectedBtn = document.getElementById('add-selected-members-btn');
+        if (addSelectedBtn) {
+            addSelectedBtn.addEventListener('click', function() {
+                var modal = document.getElementById('add-members-to-group-modal');
+                var checkboxes = modal ? modal.querySelectorAll('.add-member-checkbox:checked') : [];
+                var selected = [];
+                checkboxes.forEach(function(cb) { selected.push(parseInt(cb.value)); });
+                console.log('Add selected clicked, count=' + selected.length + ', groupId=' + groupId);
+                if (selected.length === 0) {
+                    if (window.Toast) Toast.info('Zaznacz przynajmniej jedną osobę');
+                    return;
+                }
+                var csrf = getCookie('XSRF-TOKEN');
+                var promises = selected.map(function(mid) {
+                    var headers = {'Content-Type': 'application/json'};
+                    if (csrf) headers['X-XSRF-TOKEN'] = csrf;
+                    return fetch('/api/groups/' + groupId + '/members/' + mid, {
+                        method: 'POST',
+                        headers: headers
+                    });
+                });
+                Promise.all(promises).then(function(responses) {
+                    var allOk = Array.from(responses).every(function(r) { return r.ok; });
+                    if (allOk) {
+                        if (typeof closeAppModal === 'function') closeAppModal(modal);
+                        else if (modal && modal.close) modal.close();
+                        Toast.success('Dodano ' + selected.length + (selected.length === 1 ? ' osobę' : ' osób'));
+                        htmx.ajax('GET', '/groups/' + groupId, {
+            target: document.querySelector('#groups-content'),
+            swap: 'outerHTML',
+            headers: {'HX-Request': 'true'}
+        });
+                    } else {
+                        console.error('Add members error: some requests failed');
+                        if (window.Toast) Toast.error('Błąd podczas dodawania członków');
+                    }
+                }).catch(function(err) {
+                    console.error('Add members error:', err);
+                    if (window.Toast) Toast.error('Błąd podczas dodawania członków');
+                });
+            });
+        }
+    }
+
     global.bindEventDetailHandlers = bindEventDetailHandlers;
+    global.bindGroupDetailHandlers = bindGroupDetailHandlers;
     global.initFocusHighlight = initFocusHighlight;
     // Expose globally
     global.Toast = Toast;

@@ -323,6 +323,15 @@
     document.addEventListener('DOMContentLoaded', bindEventDetailIfPresent);
     document.addEventListener('htmx:afterSwap', bindEventDetailIfPresent);
 
+    // Re-bind group-detail page handlers after every HTMX swap (and on initial
+    // load) so they survive HTMX navigation to group details and the in-page
+    // reloads the detail page triggers after each action.
+    function bindGroupDetailIfPresent() {
+        if (window.bindGroupDetailHandlers) window.bindGroupDetailHandlers();
+    }
+    document.addEventListener('DOMContentLoaded', bindGroupDetailIfPresent);
+    document.addEventListener('htmx:afterSwap', bindGroupDetailIfPresent);
+
     // Re-run list focus/highlight after every HTMX swap (and on initial load)
     // so newly created/edited members/events/rehearsals scroll into view and
     // pulse green. Mirrors the event-detail binding above.

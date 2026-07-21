@@ -46,7 +46,8 @@ public class GroupPageController {
     }
 
     @GetMapping("/{id}")
-    public String groupDetail(@PathVariable Long id, @ModelAttribute("activeTeamId") Long activeTeamId, Model model) {
+    public String groupDetail(@PathVariable Long id, @ModelAttribute("activeTeamId") Long activeTeamId, Model model,
+                              jakarta.servlet.http.HttpServletRequest request) {
         var groupDetail = groupQueryService.getGroupDetailById(id);
         model.addAttribute("group", groupDetail);
         Set<Long> memberIdsInGroup = groupDetail.members().stream()
@@ -56,7 +57,12 @@ public class GroupPageController {
                 .filter(m -> !memberIdsInGroup.contains(m.id()))
                 .toList();
         model.addAttribute("members", availableMembers);
-        return "groups/detail";
+        boolean isHtmx = "true".equalsIgnoreCase(request.getHeader("HX-Request"));
+        if (isHtmx) {
+            return "groups/detail :: #groups-content";
+        } else {
+            return "groups/detail";
+        }
     }
 
     @PostMapping

@@ -94,9 +94,9 @@ class DynamicGroupEndToEndUiTest extends UiTestBase {
             assertThat(pageText)
                     .as("Dynamic group detail should show the info banner")
                     .contains("Grupa dynamiczna");
-            // Verify no manual "Dodaj" select is visible (it's th:unless-hidden)
-            assertThat(driver.findElements(By.id("add-member-select")))
-                    .as("Manual add select should be hidden for dynamic groups")
+            // Verify no manual "Dodaj" button is visible (it's th:unless-hidden)
+            assertThat(driver.findElements(By.id("open-add-members-modal-btn")))
+                    .as("Manual add button should be hidden for dynamic groups")
                     .isEmpty();
         } finally {
             safeDelete(() -> memberRepository.findById(m.getId()).ifPresent(memberRepository::delete));
