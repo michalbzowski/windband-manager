@@ -127,7 +127,9 @@ class EventInviteGroupSecondEventUiTest extends UiTestBase {
                 .click();
         jsClick(driver.findElement(By.id("invite-group-selected-btn")));
         // Give HTMX reload time to settle - longer wait for CI
-        try { Thread.sleep(2500); } catch (InterruptedException ignored) { /* intentionally ignored */ }
+        try { Thread.sleep(5000); } catch (InterruptedException ignored) { /* intentionally ignored */ }
+        // Additionally wait for any pending HTMX requests to complete
+        waitForHtmxSettle();
     }
 
     private void jsClick(WebElement el) {
