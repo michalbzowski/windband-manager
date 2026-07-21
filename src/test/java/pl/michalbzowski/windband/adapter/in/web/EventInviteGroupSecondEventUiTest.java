@@ -86,20 +86,17 @@ class EventInviteGroupSecondEventUiTest extends UiTestBase {
         wait.until(ExpectedConditions.presenceOfElementLocated(By.id("invite-group-modal")));
         wait.until(d -> (Boolean) ((org.openqa.selenium.JavascriptExecutor) d).executeScript(
                 "return document.getElementById('invite-group-modal').open === true;"));
-        selectAndInviteGroupModal(wait, groupId);
+        selectAndInviteGroupModal(wait, groupId, groupName);
 
-        // Event 1 should now have both members.
-        // Use the proven full-page-nav pattern (same as EventInviteGroupUiTest) instead of
-        // trusting the in-page HTMX outerHTML reload after the invite POST: CI on Ubuntu is
-        // slower than local Fedora and htmx swap occasionally settles before the new
-        // participants fragment is in place, causing a 15s Awaitility timeout. A fresh
-        // `driver.get(...)` bypasses the HTMX race and verifies the server-side result.
+        // Event 1 should now have both members. Poll the JDBC connection for the
+        // persisted event_participations rows — the source of truth, independent of
+        // render timing on slow CI runners.
         assertEventHasMembers(driver, wait, eventId1, alphaId, betaId);
 
-        // ---- Navigate BACK to list (full page load — the detail page loaded above has no
-        // #events-list-container, so the in-page "Powrót" HTMX target is missing here),
-        // then to EVENT 2 via HTMX ----
-        driver.get(baseUrl() + "/events");
+        // ---- Navigate BACK to list (click "Powrót" — HTMX) then to EVENT 2 via HTMX.
+        // This is the core regression: after two HTMX navigations the modal handler
+        // must still be bound on the second event detail page.
+        clickPowrot(wait);
         wait.until(ExpectedConditions.presenceOfElementLocated(By.id("event-" + eventId2)));
         clickSzczegoly(wait, eventId2);
         // Wait for HTMX to settle after navigation so handlers are re-bound
@@ -111,10 +108,10 @@ class EventInviteGroupSecondEventUiTest extends UiTestBase {
         wait.until(ExpectedConditions.presenceOfElementLocated(By.id("invite-group-modal")));
         wait.until(d -> (Boolean) ((org.openqa.selenium.JavascriptExecutor) d).executeScript(
                 "return document.getElementById('invite-group-modal').open === true;"));
-        selectAndInviteGroupModal(wait, groupId);
+        selectAndInviteGroupModal(wait, groupId, groupName);
 
         // Event 2 should now have both members (this is the reported bug). Same
-        // full-page-nav assert pattern as event 1 — reliable on CI.
+        // JDBC poll as event 1.
         assertEventHasMembers(driver, wait, eventId2, alphaId, betaId);
     }
 
@@ -129,9 +126,14 @@ class EventInviteGroupSecondEventUiTest extends UiTestBase {
         jsClick(back);
     }
 
-    private void selectAndInviteGroupModal(WebDriverWait wait, Long groupId) {
+    private void selectAndInviteGroupModal(WebDriverWait wait, Long groupId, String groupName) {
+        // Match the EXACT group name (incl. unique uid), not a hardcoded "GrupaTest"
+        // substring — otherwise the XPath grabs the first "GrupaTest*" row left in the
+        // modal by a previous test (UiTestBase.cleanDatabase() does not TRUNCATE the
+        // groups table, so they accumulate across the full suite) and the invite
+        // POSTs the wrong groupId, adding zero participants.
         driver.findElement(By.xpath(
-                "//*[@id='invite-group-modal']//label[contains(text(), 'GrupaTest')]/preceding-sibling::input[@type='checkbox']"))
+                "//*[@id='invite-group-modal']//label[contains(text(), '" + groupName + "')]/preceding-sibling::input[@type='checkbox']"))
                 .click();
         jsClick(driver.findElement(By.id("invite-group-selected-btn")));
         // Give HTMX reload time to settle - longer wait for CI
