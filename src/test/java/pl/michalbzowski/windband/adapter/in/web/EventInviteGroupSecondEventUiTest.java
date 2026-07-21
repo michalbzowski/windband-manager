@@ -95,6 +95,8 @@ class EventInviteGroupSecondEventUiTest extends UiTestBase {
         clickPowrot(wait);
         wait.until(ExpectedConditions.presenceOfElementLocated(By.id("event-" + eventId2)));
         clickSzczegoly(wait, eventId2);
+        // Wait for HTMX to settle after navigation so handlers are re-bound
+        waitForHtmxSettle();
         wait.until(ExpectedConditions.presenceOfElementLocated(By.id("open-invite-group-modal-btn")));
 
         // Invite the SAME group to the second event (via modal)
@@ -193,6 +195,15 @@ class EventInviteGroupSecondEventUiTest extends UiTestBase {
         org.openqa.selenium.WebElement el = driver.findElement(org.openqa.selenium.By.name(name));
         el.clear();
         el.sendKeys(value);
+    }
+
+    private void waitForHtmxSettle() {
+        try { Thread.sleep(800); } catch (InterruptedException ignored) { /* noop */ }
+        // Additional wait for any pending HTMX requests
+        new WebDriverWait(driver, Duration.ofSeconds(5)).until(
+                d -> (Boolean) ((org.openqa.selenium.JavascriptExecutor) d).executeScript(
+                        "return typeof htmx !== 'undefined' && !Array.from(htmx.findAll(document, '[hx-trigger]')).some(function(e) { return e.closest('.htmx-request'); })"
+                ));
     }
 
     private WebDriver getDriver() {
