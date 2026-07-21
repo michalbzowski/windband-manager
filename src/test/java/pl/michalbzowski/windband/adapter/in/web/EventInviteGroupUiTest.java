@@ -3,7 +3,6 @@ package pl.michalbzowski.windband.adapter.in.web;
 import org.junit.jupiter.api.Test;
 import org.openqa.selenium.By;
 import org.openqa.selenium.WebDriver;
-import org.openqa.selenium.WebElement;
 import org.openqa.selenium.support.ui.ExpectedConditions;
 import org.openqa.selenium.support.ui.WebDriverWait;
 import org.testcontainers.shaded.org.awaitility.Awaitility;
@@ -24,6 +23,7 @@ class EventInviteGroupUiTest extends UiTestBase {
         loginAsAdmin(driver, wait);
 
         String uid = "grp" + System.nanoTime();
+        String groupName = "GrupaTest" + uid;
         // Create two members via UI
         createMemberViaUi(driver, wait, "Alpha" + uid, "Kowalski" + uid);
         createMemberViaUi(driver, wait, "Beta" + uid, "Nowak" + uid);
@@ -62,12 +62,21 @@ class EventInviteGroupUiTest extends UiTestBase {
         // Open event detail
         driver.get(baseUrl() + "/events/" + eventId);
         wait.until(ExpectedConditions.presenceOfElementLocated(By.id("events-content")));
-        wait.until(ExpectedConditions.presenceOfElementLocated(By.id("invite-group-select")));
+        wait.until(ExpectedConditions.presenceOfElementLocated(By.id("open-invite-group-modal-btn")));
 
-        // Select the group and click invite
-        WebElement select = driver.findElement(By.id("invite-group-select"));
-        select.findElement(By.cssSelector("option[value='" + groupId + "']")).click();
-        driver.findElement(By.id("invite-group-btn")).click();
+        // Click the open-invite-group-modal-btn to open modal (JS click: button sits under sticky nav)
+        jsClick(driver.findElement(By.id("open-invite-group-modal-btn")));
+        wait.until(ExpectedConditions.presenceOfElementLocated(By.id("invite-group-modal")));
+        wait.until(d -> (Boolean) ((org.openqa.selenium.JavascriptExecutor) d).executeScript(
+                "return document.getElementById('invite-group-modal').open === true;"));
+
+// Check the group in the modal and click checkbox
+        driver.findElement(By.xpath(
+                "//*[@id='invite-group-modal']//label[contains(text(), '" + groupName + "')]/preceding-sibling::input[@type='checkbox']"))
+                .click();
+
+        // Click invite selected
+        jsClick(driver.findElement(By.id("invite-group-selected-btn")));
 
         // Wait for participants table to contain both members
         Awaitility.await().atMost(Duration.ofSeconds(15)).untilAsserted(() -> {
@@ -121,5 +130,9 @@ class EventInviteGroupUiTest extends UiTestBase {
         org.openqa.selenium.WebElement el = driver.findElement(org.openqa.selenium.By.name(name));
         el.clear();
         el.sendKeys(value);
+    }
+
+    private void jsClick(org.openqa.selenium.WebElement el) {
+        ((org.openqa.selenium.JavascriptExecutor) driver).executeScript("arguments[0].click();", el);
     }
 }

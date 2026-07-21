@@ -39,22 +39,9 @@
 
     <h3>Zaproś na wydarzenie</h3>
 
-    <div style="display:flex; gap:0.5rem; margin-bottom:0.5rem; align-items:flex-end;">
-        <div>
-            <label for="invite-group-select">Zaproś grupę</label>
-            <select id="invite-group-select">
-                <option value="">Wybierz grupę...</option>
-                <option th:each="g : ${event.allGroups}" th:value="${g.id}"
-                        th:text="${g.name} + ' (' + ${g.memberCount} + ' członeków)'">
-                    Sekcja dęta (5 członeków)
-                </option>
-            </select>
-        </div>
-        <button class="outline" id="invite-group-btn">Zaproś grupę</button>
-    </div>
-
-    <div style="margin-bottom:1rem;">
+    <div style="display:flex; gap:0.5rem; margin-bottom:1rem;">
         <button type="button" class="outline" id="open-invite-modal-btn">➕ Zaproś uczestników</button>
+        <button type="button" class="outline" id="open-invite-group-modal-btn">👥 Zaproś grupę</button>
     </div>
 
     <h3>📧 Wyślij zaproszenia</h3>
@@ -199,8 +186,32 @@
         </footer>
     </div>
 </dialog>
-</div>
 
+<dialog id="invite-group-modal" class="app-modal">
+    <div class="app-modal-content">
+        <header class="app-modal-header">
+            <div class="app-modal-header-text">
+                <h3>Zaproś grupę</h3>
+            </div>
+            <button type="button" class="app-modal-close" aria-label="Zamknij" data-close>×</button>
+        </header>
+        <div class="app-modal-body">
+            <p th:if="${#lists.isEmpty(event.allGroups)}" class="text-muted" style="margin:0 0 0.5rem;">Brak dostępnych grup.</p>
+            <ul style="list-style:none; padding:0; margin:0; max-height:50vh; overflow-y:auto;">
+                <li th:each="g : ${event.allGroups}" style="display:flex; align-items:center; gap:0.6rem; padding:0.5rem 0; border-bottom:1px solid var(--pico-muted-border-color);">
+                    <input type="checkbox" class="invite-group-checkbox" th:value="${g.id}" th:id="'invite-group-cb-' + ${g.id}">
+                    <label th:for="'invite-group-cb-' + ${g.id}" th:text="${g.name} + ' (' + ${g.memberCount} + ' członeków)'" style="margin:0; flex:1; cursor:pointer;">Sekcja dęta (5 członeków)</label>
+                </li>
+            </ul>
+        </div>
+        <footer class="app-modal-footer">
+            <button type="button" class="outline" data-close>Anuluj</button>
+            <button type="button" class="primary" id="invite-group-selected-btn">Zaproś zaznaczone grupy</button>
+        </footer>
+    </div>
+</dialog>
+
+</div>
 
 <dialog id="delete-event-modal" class="app-modal">
     <div class="app-modal-content">
@@ -220,7 +231,7 @@
     </div>
 </dialog>
 
-    </div>
+</div>
 </main>
 
 <footer th:replace="~{fragments/layout :: footer}"></footer>

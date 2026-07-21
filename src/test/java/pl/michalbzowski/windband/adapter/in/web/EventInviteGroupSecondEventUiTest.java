@@ -49,6 +49,8 @@ class EventInviteGroupSecondEventUiTest extends UiTestBase {
         System.out.println("[TEST] bandId=" + bandId);
         assertThat(bandId).isNotNull();
 
+        String groupName = "GrupaTest" + uid;
+
         // Manual group with both members
         String groupIdStr = (String) ((org.openqa.selenium.JavascriptExecutor) driver).executeScript(
                 "return fetch('/api/groups', {"
@@ -77,9 +79,14 @@ class EventInviteGroupSecondEventUiTest extends UiTestBase {
         System.out.println("[TEST] page contains event name = " + driver.getPageSource().contains("Wydarzenie" + uid + "A"));
         wait.until(ExpectedConditions.presenceOfElementLocated(By.id("event-" + eventId1)));
         clickSzczegoly(wait, eventId1);
-        wait.until(ExpectedConditions.presenceOfElementLocated(By.id("invite-group-select")));
+        wait.until(ExpectedConditions.presenceOfElementLocated(By.id("open-invite-group-modal-btn")));
 
-        selectAndInviteGroup(wait, groupId);
+        // Open modal, select group, invite
+        jsClick(driver.findElement(By.id("open-invite-group-modal-btn")));
+        wait.until(ExpectedConditions.presenceOfElementLocated(By.id("invite-group-modal")));
+        wait.until(d -> (Boolean) ((org.openqa.selenium.JavascriptExecutor) d).executeScript(
+                "return document.getElementById('invite-group-modal').open === true;"));
+        selectAndInviteGroupModal(wait, groupId);
 
         // Event 1 should now have both members (assert current DOM after htmx reload)
         assertEventHasMembers(driver, wait, alphaId, betaId);
@@ -88,10 +95,14 @@ class EventInviteGroupSecondEventUiTest extends UiTestBase {
         clickPowrot(wait);
         wait.until(ExpectedConditions.presenceOfElementLocated(By.id("event-" + eventId2)));
         clickSzczegoly(wait, eventId2);
-        wait.until(ExpectedConditions.presenceOfElementLocated(By.id("invite-group-select")));
+        wait.until(ExpectedConditions.presenceOfElementLocated(By.id("open-invite-group-modal-btn")));
 
-        // Invite the SAME group to the second event
-        selectAndInviteGroup(wait, groupId);
+        // Invite the SAME group to the second event (via modal)
+        jsClick(driver.findElement(By.id("open-invite-group-modal-btn")));
+        wait.until(ExpectedConditions.presenceOfElementLocated(By.id("invite-group-modal")));
+        wait.until(d -> (Boolean) ((org.openqa.selenium.JavascriptExecutor) d).executeScript(
+                "return document.getElementById('invite-group-modal').open === true;"));
+        selectAndInviteGroupModal(wait, groupId);
 
         // Event 2 should now have both members (this is the reported bug)
         assertEventHasMembers(driver, wait, alphaId, betaId);
@@ -108,10 +119,11 @@ class EventInviteGroupSecondEventUiTest extends UiTestBase {
         jsClick(back);
     }
 
-    private void selectAndInviteGroup(WebDriverWait wait, Long groupId) {
-        WebElement select = driver.findElement(By.id("invite-group-select"));
-        select.findElement(By.cssSelector("option[value='" + groupId + "']")).click();
-        jsClick(driver.findElement(By.id("invite-group-btn")));
+    private void selectAndInviteGroupModal(WebDriverWait wait, Long groupId) {
+        driver.findElement(By.xpath(
+                "//*[@id='invite-group-modal']//label[contains(text(), 'GrupaTest')]/preceding-sibling::input[@type='checkbox']"))
+                .click();
+        jsClick(driver.findElement(By.id("invite-group-selected-btn")));
         // Give HTMX reload time to settle
         try { Thread.sleep(1200); } catch (InterruptedException ignored) { /* intentionally ignored */ }
     }

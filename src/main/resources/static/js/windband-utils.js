@@ -322,48 +322,74 @@
         });
     }
 
-    // Invite entire group
-    document.getElementById('invite-group-btn').addEventListener('click', function() {
-        var select = document.getElementById('invite-group-select');
-        var groupId = select.value;
-        if (groupId) {
+// Invite entire group (multi-group modal)
+    var openInviteGroupBtn = document.getElementById('open-invite-group-modal-btn');
+    if (openInviteGroupBtn) {
+        openInviteGroupBtn.addEventListener('click', function() {
+            if (typeof openAppModal === 'function') {
+                openAppModal('invite-group-modal');
+            } else {
+                var fallbackDlg = document.getElementById('invite-group-modal');
+                if (fallbackDlg && fallbackDlg.showModal) fallbackDlg.showModal();
+            }
+        });
+    }
+
+    // Invite all checked groups from the modal
+    var inviteGroupSelectedBtn = document.getElementById('invite-group-selected-btn');
+    if (inviteGroupSelectedBtn) {
+        inviteGroupSelectedBtn.addEventListener('click', function() {
+            var modal = document.getElementById('invite-group-modal');
+            var checkboxes = modal ? modal.querySelectorAll('.invite-group-checkbox:checked') : [];
+            var selected = [];
+            checkboxes.forEach(function(cb) { selected.push(parseInt(cb.value)); });
+            console.log('Invite group selected clicked, count=' + selected.length + ', eventId=' + eventId);
+            if (selected.length === 0) {
+                if (window.Toast) Toast.info('Zaznacz przynajmniej jedną grupę');
+                return;
+            }
             // Snapshot current member IDs to detect new ones after reload
             var beforeIds = new Set(invitedMemberIds);
-            fetchWithToast('/api/events/' + eventId + '/invite-group', { toastMessage: 'Zaproszono grupę',
-                method: 'POST',
-                headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({eventId: eventId, groupId: parseInt(groupId)})
-            }).then(function(response) {
-                if (!response.ok) return;
-                htmx.ajax('GET', '/events/' + eventId, {target: '#events-content[data-event-id]', swap: 'outerHTML transition:true'});
-                // After reload, highlight rows that weren't in beforeIds
-                // We use a one-time afterSettle handler to compute the diff
-                var handler = function(evt) {
-                    if (evt.detail && evt.detail.target && evt.detail.target.id === 'events-content') {
-                        // Small delay to ensure DOM is fully settled
-                        setTimeout(function() {
-                            var scrolled = false;
-                            document.querySelectorAll('#participants-table tbody tr[data-member-id]').forEach(function(row) {
-                                var mid = parseInt(row.dataset.memberId);
-                                if (!beforeIds.has(mid)) {
-                                    console.log('Highlighting and scrolling to new member row, memberId=' + mid);
-                                    row.classList.add('highlight-row');
-                                    setTimeout(function() { row.classList.remove('highlight-row'); }, 3000);
-                                    if (!scrolled) {
-                                        row.scrollIntoView({behavior: 'smooth', block: 'center'});
-                                        scrolled = true;
+            var promises = selected.map(function(gid) {
+                var csrf = getCookie('XSRF-TOKEN');
+                var headers = {'Content-Type': 'application/json'};
+                if (csrf) headers['X-XSRF-TOKEN'] = csrf;
+                return fetch('/api/events/' + eventId + '/invite-group', {
+                    method: 'POST',
+                    headers: headers,
+                    credentials: 'include',
+                    body: JSON.stringify({eventId: eventId, groupId: gid})
+                });
+            });
+            Promise.all(promises).then(function(responses) {
+                var allOk = Array.from(responses).every(function(r) { return r.ok; });
+                if (allOk) {
+                    if (typeof closeAppModal === 'function') closeAppModal(modal);
+                    htmx.ajax('GET', '/events/' + eventId, {target: '#events-content[data-event-id]', swap: 'outerHTML transition:true'});
+                    // After reload, highlight rows that weren't in beforeIds
+                    var handler = function(evt) {
+                        if (evt.detail && evt.detail.target && evt.detail.target.id === 'events-content') {
+                            setTimeout(function() {
+                                var scrolled = false;
+                                document.querySelectorAll('#participants-table tbody tr[data-member-id]').forEach(function(row) {
+                                    var mid = parseInt(row.dataset.memberId);
+                                    if (!beforeIds.has(mid)) {
+                                        row.classList.add('highlight-row');
+                                        if (!scrolled) {
+                                            row.scrollIntoView({behavior: 'smooth', block: 'center'});
+                                            scrolled = true;
+                                        }
                                     }
-                                }
-                            });
-                        }, 50);
-                        document.body.removeEventListener('htmx:afterSettle', handler);
-                    }
-                };
-                document.body.addEventListener('htmx:afterSettle', handler);
-            }).catch(function(err) { console.error('Invite error:', err); });
-        }
-    });
-
+                                });
+                            }, 50);
+                            document.body.removeEventListener('htmx:afterSettle', handler);
+                        }
+                    };
+                    document.body.addEventListener('htmx:afterSettle', handler);
+                }
+            }).catch(function(err) { console.error('Invite group error:', err); });
+        });
+    }
     // Record response
     document.querySelectorAll('.response-select').forEach(function(select) {
         select.addEventListener('change', function() {
