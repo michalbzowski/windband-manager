@@ -126,8 +126,8 @@ class EventInviteGroupSecondEventUiTest extends UiTestBase {
                 "//*[@id='invite-group-modal']//label[contains(text(), 'GrupaTest')]/preceding-sibling::input[@type='checkbox']"))
                 .click();
         jsClick(driver.findElement(By.id("invite-group-selected-btn")));
-        // Give HTMX reload time to settle
-        try { Thread.sleep(1200); } catch (InterruptedException ignored) { /* intentionally ignored */ }
+        // Give HTMX reload time to settle - longer wait for CI
+        try { Thread.sleep(2500); } catch (InterruptedException ignored) { /* intentionally ignored */ }
     }
 
     private void jsClick(WebElement el) {
