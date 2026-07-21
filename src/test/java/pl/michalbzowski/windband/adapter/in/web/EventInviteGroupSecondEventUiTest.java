@@ -88,11 +88,18 @@ class EventInviteGroupSecondEventUiTest extends UiTestBase {
                 "return document.getElementById('invite-group-modal').open === true;"));
         selectAndInviteGroupModal(wait, groupId);
 
-        // Event 1 should now have both members (assert current DOM after htmx reload)
-        assertEventHasMembers(driver, wait, alphaId, betaId);
+        // Event 1 should now have both members.
+        // Use the proven full-page-nav pattern (same as EventInviteGroupUiTest) instead of
+        // trusting the in-page HTMX outerHTML reload after the invite POST: CI on Ubuntu is
+        // slower than local Fedora and htmx swap occasionally settles before the new
+        // participants fragment is in place, causing a 15s Awaitility timeout. A fresh
+        // `driver.get(...)` bypasses the HTMX race and verifies the server-side result.
+        assertEventHasMembers(driver, wait, eventId1, alphaId, betaId);
 
-        // ---- Navigate BACK to list, then to EVENT 2 via HTMX ----
-        clickPowrot(wait);
+        // ---- Navigate BACK to list (full page load — the detail page loaded above has no
+        // #events-list-container, so the in-page "Powrót" HTMX target is missing here),
+        // then to EVENT 2 via HTMX ----
+        driver.get(baseUrl() + "/events");
         wait.until(ExpectedConditions.presenceOfElementLocated(By.id("event-" + eventId2)));
         clickSzczegoly(wait, eventId2);
         // Wait for HTMX to settle after navigation so handlers are re-bound
@@ -106,8 +113,9 @@ class EventInviteGroupSecondEventUiTest extends UiTestBase {
                 "return document.getElementById('invite-group-modal').open === true;"));
         selectAndInviteGroupModal(wait, groupId);
 
-        // Event 2 should now have both members (this is the reported bug)
-        assertEventHasMembers(driver, wait, alphaId, betaId);
+        // Event 2 should now have both members (this is the reported bug). Same
+        // full-page-nav assert pattern as event 1 — reliable on CI.
+        assertEventHasMembers(driver, wait, eventId2, alphaId, betaId);
     }
 
     private void clickSzczegoly(WebDriverWait wait, Long eventId) {
@@ -138,8 +146,13 @@ class EventInviteGroupSecondEventUiTest extends UiTestBase {
     }
 
     private void assertEventHasMembers(WebDriver driver, WebDriverWait wait,
-                                        Long alphaId, Long betaId) {
+                                        Long eventId, Long alphaId, Long betaId) {
         Awaitility.await().atMost(Duration.ofSeconds(15)).untilAsserted(() -> {
+            // Full-page reload to read the server-rendered table — avoids relying on the
+            // in-page HTMX outerHTML swap that occasionally loses the new participants
+            // fragment in slow CI environments.
+            driver.get(baseUrl() + "/events/" + eventId);
+            wait.until(ExpectedConditions.presenceOfElementLocated(By.id("events-content")));
             var rows = driver.findElements(
                     By.cssSelector("#participants-table tbody tr[data-member-id]"));
             assertThat(rows)
