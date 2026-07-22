@@ -741,6 +741,7 @@ function bindEventDetailHandlers() {
      * is the bug fixed by hoisting this here).
      */
     document.addEventListener('submit', function(e) {
+        console.log('[windband-utils.js] submit event captured, target=', e.target && e.target.id);
         var form = e.target;
         if (!form || form.id !== 'rehearsal-form') return;
         e.preventDefault();
@@ -753,6 +754,7 @@ function bindEventDetailHandlers() {
         var saveAndAddBtn = form.querySelector('button[name="saveAndAddAnother"]');
         var saveAndAddAnother = saveAndAddBtn && saveAndAddBtn === document.activeElement;
 
+        console.log('[REHEARSAL] fetchWithToast available?', typeof fetchWithToast);
         fetchWithToast('/api/rehearsals', {
             toastMessage: 'Zapisano spotkanie',
             method: 'POST',
@@ -788,4 +790,5 @@ function bindEventDetailHandlers() {
     global.Toast = Toast;
     global.fetchWithToast = fetchWithToast;
     global.getCookie = getCookie;
+    console.log('[windband-utils.js] loaded; submit delegation registered, fetchWithToast=', typeof fetchWithToast);
 })(window);
