@@ -6,10 +6,11 @@ import org.openqa.selenium.JavascriptExecutor;
 import org.openqa.selenium.WebElement;
 import org.openqa.selenium.support.ui.ExpectedConditions;
 import org.openqa.selenium.support.ui.WebDriverWait;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.jdbc.core.JdbcTemplate;
 import pl.michalbzowski.windband.UiTestBase;
 
 import java.time.Duration;
-import java.util.List;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -21,6 +22,9 @@ import static org.assertj.core.api.Assertions.assertThat;
  * {@code fetch()} instead of {@code fetchWithToast}, so no toast appeared after saving.</p>
  */
 class RehearsalAttendanceToastUiTest extends UiTestBase {
+
+    @Autowired
+    private JdbcTemplate jdbcTemplate;
 
     @Test
     void clickingSaveAttendance_showsSuccessToast() throws Exception {
@@ -56,19 +60,33 @@ class RehearsalAttendanceToastUiTest extends UiTestBase {
         wait.until(ExpectedConditions.not(ExpectedConditions.urlContains("/new")));
         Thread.sleep(1500);
 
-        // --- Open rehearsal detail ---
-        driver.get(baseUrl() + "/rehearsals");
+        // --- Navigate directly to the new rehearsal by id (avoids stale-row trap:
+        // clicking "Szczegóły" of the first row may open a different, older
+        // rehearsal that still has attendance rows from previous test runs) ---
+        String rehearsalId = jdbcTemplate.queryForObject(
+                "SELECT MAX(id) FROM rehearsals WHERE date = ?", Long.class, today).toString();
+        Long memberId = jdbcTemplate.queryForObject(
+                "SELECT MAX(id) FROM members WHERE first_name = ?", Long.class, firstName);
+
+        // Fresh rehearsal: no rows. Invite the just-created member via the API so
+        // the attendance table has a row to mark PRESENT on.
+        driver.get(baseUrl() + "/rehearsals/" + rehearsalId);
         wait.until(ExpectedConditions.presenceOfElementLocated(By.id("rehearsals-content")));
-        List<WebElement> detailBtns = driver.findElements(By.xpath("//button[contains(text(), 'Szczegóły')]"));
-        assertThat(detailBtns).isNotEmpty();
-        detailBtns.get(0).click();
-        wait.until(ExpectedConditions.presenceOfElementLocated(
-                By.cssSelector("#rehearsals-content .status-select")));
+        assertThat(driver.findElements(By.cssSelector("#rehearsals-content tbody tr")).size())
+                .as("Fresh rehearsal must show an empty attendance table (no auto-invite)")
+                .isZero();
+        ((JavascriptExecutor) driver).executeScript(
+                "var xhr = new XMLHttpRequest();" +
+                "xhr.open('POST', '/api/rehearsals/' + arguments[0] + '/invite', false);" +
+                "xhr.setRequestHeader('Content-Type', 'application/json');" +
+                "var csrf = document.cookie.split('; ').find(c => c.startsWith('XSRF-TOKEN='));" +
+                "if (csrf) xhr.setRequestHeader('X-XSRF-TOKEN', csrf.split('=')[1]);" +
+                "xhr.send(JSON.stringify({rehearsalId: arguments[0], memberId: arguments[1]}));" +
+                "return xhr.status;", rehearsalId, String.valueOf(memberId));
+
         // Reload the detail page as a full page load so the inline <script> that
         // defines window.saveRehearsalAttendance() is executed (HTMX-injected
         // fragments do not run scripts).
-        String rehearsalId = (String) ((JavascriptExecutor) driver).executeScript(
-                "return document.getElementById('rehearsals-content').getAttribute('data-rehearsal-id');");
         driver.get(baseUrl() + "/rehearsals/" + rehearsalId);
         wait.until(ExpectedConditions.presenceOfElementLocated(
                 By.cssSelector("#rehearsals-content .status-select")));

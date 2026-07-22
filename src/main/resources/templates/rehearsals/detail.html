@@ -27,7 +27,11 @@
 
         <h3>Lista obecności</h3>
 
-        <table role="grid">
+        <p th:if="${#lists.isEmpty(invitedMembers)}" class="text-muted">
+            Brak zaproszonych uczestników. Użyj przycisków powyżej, aby zaprosić osoby lub grupy.
+        </p>
+
+        <table role="grid" th:if="${not #lists.isEmpty(invitedMembers)}">
             <thead>
                 <tr>
                     <th>Członek</th>
@@ -36,7 +40,7 @@
                 </tr>
             </thead>
             <tbody>
-                <tr th:each="m : ${members}" th:data-member-id="${m.id}">
+                <tr th:each="m : ${invitedMembers}" th:data-member-id="${m.id}">
                     <td th:text="${m.firstName + ' ' + m.lastName}">Jan Kowalski</td>
                     <td th:text="${m.primaryInstrument}">Trąbka</td>
                     <td>

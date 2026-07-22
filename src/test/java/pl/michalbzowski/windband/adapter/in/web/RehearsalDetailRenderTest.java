@@ -17,10 +17,12 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 /**
- * Renders the rehearsal DETAIL page for a freshly created rehearsal (no attendance
- * records) and verifies that every member's status select defaults to NO_RESPONSE,
- * never PRESENT. This is the server-side proof for the "all members show PRESENT"
- * regression.
+ * Renders the rehearsal DETAIL page and verifies the empty-after-create /
+ * populated-after-invite contract. The rehearsal must mirror the event flow:
+ * a freshly created rehearsal has NO attendance rows (no auto-invite), so
+ * the detail page shows the empty-state message instead of a status table.
+ * After a member is explicitly invited via {@code /api/rehearsals/{id}/invite},
+ * the table renders exactly one row with the default {@code NO_RESPONSE} status.
  */
 @SpringBootTest
 @ActiveProfiles("test")
@@ -34,18 +36,9 @@ class RehearsalDetailRenderTest {
     private ObjectMapper objectMapper;
 
     @Test
-    void freshRehearsalDetail_defaultsToNoResponse() throws Exception {
-        // Log in as admin via form login (success handler builds WindbandOidcUser with activeTeamId=1)
-        MvcResult loginResult = mvc.perform(post("/login")
-                        .param("username", "admin")
-                        .param("password", "admin"))
-                .andExpect(status().is3xxRedirection())
-                .andReturn();
-        // Reuse the authenticated HTTP session for subsequent requests
-        org.springframework.mock.web.MockHttpSession session =
-                (org.springframework.mock.web.MockHttpSession) loginResult.getRequest().getSession();
+    void freshRehearsalDetail_isEmpty() throws Exception {
+        org.springframework.mock.web.MockHttpSession session = loginAsAdmin();
 
-        // Create a rehearsal via REST (JSON body)
         String createBody = objectMapper.writeValueAsString(java.util.Map.of(
                 "date", "2026-07-20",
                 "startTime", "18:00",
@@ -62,45 +55,115 @@ class RehearsalDetailRenderTest {
         Long rehearsalId = createdJson.get("id").asLong();
         System.out.println("[TEST] created rehearsal id=" + rehearsalId);
 
-        // Render the detail page for that rehearsal
-        MvcResult detail = mvc.perform(get("/rehearsals/" + rehearsalId)
+        String html = mvc.perform(get("/rehearsals/" + rehearsalId)
                         .session(session))
                 .andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString();
+
+        // Empty-state message is present
+        assertThat(html).contains("Brak zaproszonych uczestników");
+        // No status selects, no attendance rows on a fresh rehearsal
+        assertThat(html).doesNotContain("id=\"status_");
+        assertThat(countOccurrences(html, "<tr ")).isZero();
+        // No PRESENT selected anywhere
+        assertThat(countSelectedFor(html, "PRESENT"))
+                .as("Fresh rehearsal must not mark any member as PRESENT")
+                .isZero();
+        // Toast container + save handler are still wired (UI is complete, just empty)
+        assertThat(html).contains("id=\"toast-container\"");
+        assertThat(html).contains("saveRehearsalAttendance");
+    }
+
+    @Test
+    void detailAfterInvite_rendersRowForInvitedMemberOnly() throws Exception {
+        org.springframework.mock.web.MockHttpSession session = loginAsAdmin();
+
+        // Create rehearsal
+        String createBody = objectMapper.writeValueAsString(java.util.Map.of(
+                "date", "2026-07-21",
+                "startTime", "18:00",
+                "endTime", "20:00",
+                "location", "Sala prób"
+        ));
+        MvcResult created = mvc.perform(post("/api/rehearsals")
+                        .session(session)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(createBody))
+                .andExpect(status().isCreated())
                 .andReturn();
-        String html = detail.getResponse().getContentAsString();
-        System.out.println("[TEST] ===== DETAIL HTML (status selects) =====");
-        for (String line : html.split("\n")) {
-            if (line.contains("status_") || line.contains("NO_RESPONSE") || line.contains("PRESENT") || line.contains("selected") || line.toLowerCase().contains("toast")) {
-                System.out.println("[TEST] " + line.trim());
+        Long rehearsalId = objectMapper.readTree(created.getResponse().getContentAsString()).get("id").asLong();
+
+        // Look up any active member (the test profile seeds members)
+        MvcResult membersResult = mvc.perform(get("/api/members").session(session))
+                .andExpect(status().isOk())
+                .andReturn();
+        JsonNode members = objectMapper.readTree(membersResult.getResponse().getContentAsString());
+        long memberId = -1L;
+        for (JsonNode m : members) {
+            if (m.path("active").asBoolean(true)) {
+                memberId = m.path("id").asLong();
+                break;
             }
         }
-        System.out.println("[TEST] ===== END =====");
+        assertThat(memberId)
+                .as("test should have at least one active member to invite")
+                .isPositive();
 
-        // Sanity: is the toast container present on the detail page?
-        boolean hasToastContainer = html.contains("id=\"toast-container\"");
-        boolean hasSaveHandler = html.contains("saveRehearsalAttendance");
-        System.out.println("[TEST] hasToastContainer=" + hasToastContainer + " hasSaveHandler=" + hasSaveHandler);
+        // Invite that one member
+        mvc.perform(post("/api/rehearsals/" + rehearsalId + "/invite")
+                        .session(session)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(java.util.Map.of(
+                                "rehearsalId", rehearsalId,
+                                "memberId", memberId
+                        ))))
+                .andExpect(status().is2xxSuccessful());
 
-        // There must be status selects, and each default-selected value must be NO_RESPONSE
-        assertThat(html).contains("id=\"status_");
-        // Count how many options are marked selected="selected" with value PRESENT
-        int presentSelected = countSelectedFor(html, "PRESENT");
-        int noResponseSelected = countSelectedFor(html, "NO_RESPONSE");
-        System.out.println("[TEST] PRESENT selected count=" + presentSelected
-                + " NO_RESPONSE selected count=" + noResponseSelected);
-        assertThat(presentSelected)
-                .as("Fresh rehearsal must NOT default any member to PRESENT")
+        // Render the detail page
+        String html = mvc.perform(get("/rehearsals/" + rehearsalId)
+                        .session(session))
+                .andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString();
+
+        // Empty-state message is gone
+        assertThat(html).doesNotContain("Brak zaproszonych uczestników");
+        // Exactly one status select for the invited member
+        assertThat(countOccurrences(html, "id=\"status_")).isEqualTo(1);
+        // The select's NO_RESPONSE option is marked selected, PRESENT is not
+        assertThat(countSelectedFor(html, "NO_RESPONSE"))
+                .as("Invited member must default to NO_RESPONSE")
+                .isEqualTo(1);
+        assertThat(countSelectedFor(html, "PRESENT"))
+                .as("Invited member must NOT default to PRESENT")
                 .isZero();
     }
 
+    private org.springframework.mock.web.MockHttpSession loginAsAdmin() throws Exception {
+        MvcResult loginResult = mvc.perform(post("/login")
+                        .param("username", "admin")
+                        .param("password", "admin"))
+                .andExpect(status().is3xxRedirection())
+                .andReturn();
+        return (org.springframework.mock.web.MockHttpSession) loginResult.getRequest().getSession();
+    }
+
     private int countSelectedFor(String html, String value) {
-        // crude count of <option value="VALUE" selected ...> or ... selected>value</option>
         int count = 0;
         java.util.regex.Pattern p = java.util.regex.Pattern.compile(
                 "<option[^>]*value=\"" + value + "\"[^>]*selected[^>]*>",
                 java.util.regex.Pattern.CASE_INSENSITIVE);
         java.util.regex.Matcher m = p.matcher(html);
         while (m.find()) count++;
+        return count;
+    }
+
+    private int countOccurrences(String html, String substring) {
+        int count = 0;
+        int idx = 0;
+        while ((idx = html.indexOf(substring, idx)) != -1) {
+            count++;
+            idx += substring.length();
+        }
         return count;
     }
 }

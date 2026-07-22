@@ -34,19 +34,12 @@ class QuickAttendanceModalUiTest extends UiTestBase {
     void quickAttendanceModal_savesAndAdvancesAndPersists() throws Exception {
         WebDriverWait wait = new WebDriverWait(driver, Duration.ofSeconds(10));
         String uid = UUID.randomUUID().toString().substring(0, 8);
-        String firstName = "Quick" + uid;
-        String lastName = "Test" + uid;
+        String firstName1 = "Quick" + uid;
+        String firstName2 = "Quick2" + uid;
 
-        loginAndNavigateTo("/members");
-        driver.findElement(By.xpath("//button[contains(text(), 'Dodaj członka')]")).click();
-        wait.until(ExpectedConditions.presenceOfElementLocated(By.cssSelector("#member-form")));
-        fill("firstName", firstName);
-        fill("lastName", lastName);
-        ((JavascriptExecutor) driver).executeScript(
-                "document.querySelector(\"input[name='dateOfBirth']\").value = '1990-05-15';");
-        driver.findElement(By.cssSelector("#member-form button[type='submit'].primary")).click();
-        wait.until(ExpectedConditions.presenceOfElementLocated(By.cssSelector("#members-content table")));
-        Thread.sleep(1000);
+        // --- Create two members via UI ---
+        createMember(firstName1, "Test" + uid);
+        createMember(firstName2, "Test" + uid);
 
         loginAndNavigateTo("/rehearsals");
         driver.findElement(By.xpath("//button[contains(text(), 'Zaplanuj spotkanie')]")).click();
@@ -65,30 +58,32 @@ class QuickAttendanceModalUiTest extends UiTestBase {
 
         Long rehearsalId = jdbcTemplate.queryForObject(
                 "SELECT MAX(id) FROM rehearsals WHERE date = ?", Long.class, today);
-        Long memberId = jdbcTemplate.queryForObject(
-                "SELECT MAX(id) FROM members WHERE first_name = ?", Long.class, firstName);
+        Long memberId1 = jdbcTemplate.queryForObject(
+                "SELECT MAX(id) FROM members WHERE first_name = ?", Long.class, firstName1);
+        Long memberId2 = jdbcTemplate.queryForObject(
+                "SELECT id FROM members WHERE first_name = ? ORDER BY id ASC LIMIT 1", Long.class, firstName2);
         assertThat(rehearsalId).isNotNull();
-        assertThat(memberId).isNotNull();
+        assertThat(memberId1).isNotNull();
+        assertThat(memberId2).isNotNull();
 
         driver.get(baseUrl() + "/rehearsals/" + rehearsalId);
         wait.until(ExpectedConditions.presenceOfElementLocated(By.id("rehearsals-content")));
-        wait.until(d -> ((Number) ((JavascriptExecutor) d).executeScript(
-                "return document.querySelectorAll('#rehearsals-content .status-select').length;"))
-                .intValue() > 0);
-        ((JavascriptExecutor) driver).executeScript(
-                "var xhr = new XMLHttpRequest();" +
-                "xhr.open('POST', '/api/rehearsals/' + arguments[0] + '/invite', false);" +
-                "xhr.setRequestHeader('Content-Type', 'application/json');" +
-                "var csrf = document.cookie.split('; ').find(c => c.startsWith('XSRF-TOKEN='));" +
-                "if (csrf) xhr.setRequestHeader('X-XSRF-TOKEN', csrf.split('=')[1]);" +
-                "xhr.send(JSON.stringify({rehearsalId: arguments[0], memberId: arguments[1]}));" +
-                "return xhr.status;", rehearsalId, memberId);
+        // Fresh rehearsal: empty attendance table (no rows yet). We MUST invite first
+        // so the quick-attendance modal has at least one row to walk through.
+        assertThat(driver.findElements(By.cssSelector("#rehearsals-content tbody tr")).size())
+                .as("Fresh rehearsal must show an empty attendance table (no auto-invite)")
+                .isZero();
+        // Invite both members explicitly — the modal needs at least 2 to test save-then-advance.
+        inviteMember(rehearsalId, memberId1);
+        inviteMember(rehearsalId, memberId2);
         driver.get(baseUrl() + "/rehearsals/" + rehearsalId);
         wait.until(ExpectedConditions.presenceOfElementLocated(
-                By.cssSelector("#rehearsals-content .status-select[data-member-id='" + memberId + "']")));
+                By.cssSelector("#rehearsals-content .status-select[data-member-id='" + memberId1 + "']")));
 
         int memberCount = driver.findElements(By.cssSelector("#rehearsals-content tbody tr")).size();
-        assertThat(memberCount).isGreaterThanOrEqualTo(1);
+        assertThat(memberCount)
+                .as("Detail should show only the 2 explicitly invited members, not every active member")
+                .isEqualTo(2);
         System.out.println("[TEST] memberCount=" + memberCount);
 
         // --- Open quick attendance modal ---
@@ -163,6 +158,31 @@ class QuickAttendanceModalUiTest extends UiTestBase {
     private boolean isModalOpen() {
         return (Boolean) ((JavascriptExecutor) driver).executeScript(
                 "return document.getElementById('quick-attendance-modal').open === true;");
+    }
+
+    private void createMember(String firstName, String lastName) throws Exception {
+        WebDriverWait wait = new WebDriverWait(driver, Duration.ofSeconds(10));
+        loginAndNavigateTo("/members");
+        driver.findElement(By.xpath("//button[contains(text(), 'Dodaj członka')]")).click();
+        wait.until(ExpectedConditions.presenceOfElementLocated(By.cssSelector("#member-form")));
+        fill("firstName", firstName);
+        fill("lastName", lastName);
+        ((JavascriptExecutor) driver).executeScript(
+                "document.querySelector(\"input[name='dateOfBirth']\").value = '1990-05-15';");
+        driver.findElement(By.cssSelector("#member-form button[type='submit'].primary")).click();
+        wait.until(ExpectedConditions.presenceOfElementLocated(By.cssSelector("#members-content table")));
+        Thread.sleep(1000);
+    }
+
+    private void inviteMember(Long rehearsalId, Long memberId) {
+        ((JavascriptExecutor) driver).executeScript(
+                "var xhr = new XMLHttpRequest();" +
+                "xhr.open('POST', '/api/rehearsals/' + arguments[0] + '/invite', false);" +
+                "xhr.setRequestHeader('Content-Type', 'application/json');" +
+                "var csrf = document.cookie.split('; ').find(c => c.startsWith('XSRF-TOKEN='));" +
+                "if (csrf) xhr.setRequestHeader('X-XSRF-TOKEN', csrf.split('=')[1]);" +
+                "xhr.send(JSON.stringify({rehearsalId: arguments[0], memberId: arguments[1]}));" +
+                "return xhr.status;", rehearsalId, memberId);
     }
 
     private void fill(String name, String value) {

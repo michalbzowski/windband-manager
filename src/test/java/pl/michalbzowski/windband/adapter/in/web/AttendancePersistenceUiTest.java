@@ -137,7 +137,7 @@ class AttendancePersistenceUiTest extends UiTestBase {
     @Disabled("Flaky: after changing the response via UI the reloaded detail no longer exposes the " +
             "participant's response-select (member disappears from the detail view). Needs a follow-up " +
             "investigation of the event-response persistence/handler in events/detail.html. " +
-            "The default-NO_RESPONSE part is covered by RehearsalDetailDefaultAttendanceUiTest + render tests.")
+            "The default-NO_RESPONSE part is covered by RehearsalDetailRenderTest.")
     void eventResponse_defaultsToNoResponse_andPersistsAfterReload() throws Exception {
         WebDriverWait wait = new WebDriverWait(driver, Duration.ofSeconds(10));
         String uid = UUID.randomUUID().toString().substring(0, 8);

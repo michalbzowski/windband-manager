@@ -55,18 +55,15 @@ public class RehearsalPageController {
     }
 
     /**
-     * Renders the rehearsal detail page. The view needs three things the
-     * event detail page also needed:
-     * <ul>
-     *   <li>{@code members} — every active member of the current band,
-     *       minus the ones already invited (so the multi-member invite
-     *       modal can show only remaining candidates),</li>
-     *   <li>{@code groups} — every group of the current band, used to
-     *       render the "Zaproś grupę" modal,</li>
-     *   <li>{@code attendanceMap} — pre-computed memberId → status map
-     *       so the Thymeleaf template does not need to stream the
-     *       attendances list on every select.</li>
-     * </ul>
+     * Renders the rehearsal detail page. The view shows ONLY the members that
+     * were explicitly invited (have an {@code Attendance} row) — a freshly
+     * created rehearsal has no rows, just like a freshly created event. The
+     * template iterates over {@code invitedMembers} for the attendance table;
+     * the multi-member invite modal uses {@code inviteMembers} (the complement
+     * — every active member NOT yet invited). Both lists are pre-computed as
+     * {@code MemberDto} records in this method so the Thymeleaf renderer does
+     * not need to touch lazy associations on the {@code Member} entity outside
+     * the query-service transaction.
      */
     @GetMapping("/{id}")
     public String rehearsalDetail(@PathVariable Long id, @ModelAttribute("activeTeamId") Long activeTeamId, Model model,
@@ -74,31 +71,35 @@ public class RehearsalPageController {
         var rehearsal = rehearsalQueryService.getRehearsalById(id);
         model.addAttribute("rehearsal", rehearsal);
 
-        // IDs of members already invited to this rehearsal (already have an attendance row)
+        // IDs of members already invited to this rehearsal (have an attendance row)
         var invitedMemberIds = rehearsal.getAttendances().stream()
                 .map(a -> a.getMember().getId())
                 .collect(Collectors.toSet());
 
-        // The attendance table must always show every active member, so a newly invited member
-        // immediately appears with NO_RESPONSE and can be updated after reload.
-        model.addAttribute("members", memberQueryService.getAllActiveMembers(activeTeamId));
-
-        // The invite modal should only show members that are not invited yet.
-        var availableMembers = memberQueryService.getAllActiveMembers(activeTeamId).stream()
+        // Fetch every active member once; split it into the two views we need.
+        // This is a single DTO projection (no lazy member.instruments access from Thymeleaf).
+        var allActiveMembers = memberQueryService.getAllActiveMembers(activeTeamId);
+        var invitedMembers = allActiveMembers.stream()
+                .filter(m -> invitedMemberIds.contains(m.id()))
+                .collect(Collectors.toList());
+        var availableMembers = allActiveMembers.stream()
                 .filter(m -> !invitedMemberIds.contains(m.id()))
                 .collect(Collectors.toList());
+        model.addAttribute("invitedMembers", invitedMembers);
         model.addAttribute("inviteMembers", availableMembers);
 
         // All groups of the current band (manual + dynamic). The detail template renders the
         // membership count and the dynamic badge if applicable.
         model.addAttribute("groups", groupQueryService.getAllGroups(activeTeamId));
 
+        // Attendance map (memberId -> status) for the status <select> defaults.
         Map<Long, AttendanceStatus> attendanceMap = rehearsal.getAttendances().stream()
                 .collect(Collectors.toMap(
                         a -> a.getMember().getId(),
                         a -> a.getStatus()
                 ));
         model.addAttribute("attendanceMap", attendanceMap);
+
         if ("true".equals(request.getHeader("HX-Request"))) {
             return "rehearsals/detail :: #rehearsals-content";
         }
