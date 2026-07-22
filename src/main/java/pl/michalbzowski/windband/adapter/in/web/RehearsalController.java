@@ -8,10 +8,10 @@ import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.oauth2.core.oidc.user.OidcUser;
 import org.springframework.web.bind.annotation.*;
 import pl.michalbzowski.windband.adapter.in.security.WindbandOidcUser;
+import pl.michalbzowski.windband.application.command.rehearsal.InviteGroupCommand;
+import pl.michalbzowski.windband.application.command.rehearsal.InviteMemberCommand;
 import pl.michalbzowski.windband.application.command.rehearsal.RecordAttendanceCommand;
 import pl.michalbzowski.windband.application.command.rehearsal.RehearsalCommandService;
-import pl.michalbzowski.windband.application.command.rehearsal.RehearsalEmailStats;
-import pl.michalbzowski.windband.application.command.rehearsal.RehearsalNotificationService;
 import pl.michalbzowski.windband.application.command.rehearsal.ScheduleRehearsalCommand;
 import pl.michalbzowski.windband.application.query.rehearsal.RehearsalQueryService;
 import pl.michalbzowski.windband.application.query.team.TeamQueryService;
@@ -27,7 +27,6 @@ public class RehearsalController {
     private final RehearsalCommandService commandService;
     private final RehearsalQueryService queryService;
     private final TeamQueryService teamQueryService;
-    private final RehearsalNotificationService notificationService;
 
     @GetMapping
     public List<Rehearsal> getAllRehearsals(@AuthenticationPrincipal OidcUser oidcUser, HttpSession session) {
@@ -44,32 +43,48 @@ public class RehearsalController {
     public ResponseEntity<Rehearsal> scheduleRehearsal(@RequestBody ScheduleRehearsalCommand cmd,
                                                        @AuthenticationPrincipal OidcUser oidcUser,
                                                        HttpSession session) {
-        System.err.println("[DEBUG] POST /api/rehearsals oidcUser=" + (oidcUser != null ? oidcUser.getClass().getName() : "null") + " isWindband=" + (oidcUser instanceof WindbandOidcUser));
         Long activeTeamId = resolveActiveTeamId(oidcUser, session);
-        System.err.println("[DEBUG] POST /api/rehearsals teamId=" + activeTeamId + " cmd.date=" + cmd.getDate() + " cmd.location=" + cmd.getLocation());
-        try {
-            var rehearsal = commandService.scheduleRehearsal(cmd, activeTeamId);
-            System.err.println("[DEBUG] Saved rehearsal id=" + rehearsal.getId() + " location=" + rehearsal.getLocation());
-            return ResponseEntity.status(HttpStatus.CREATED).body(rehearsal);
-        } catch (Exception e) {
-            System.err.println("[DEBUG] ERROR: " + e.getClass().getName() + ": " + e.getMessage());
-            e.printStackTrace();
-            throw e;
-        }
+        var rehearsal = commandService.scheduleRehearsal(cmd, activeTeamId);
+        return ResponseEntity.status(HttpStatus.CREATED).body(rehearsal);
     }
 
     @PutMapping("/{id}")
     public ResponseEntity<Rehearsal> updateRehearsal(@PathVariable Long id,
-                                                     @RequestBody ScheduleRehearsalCommand cmd) {
+                                                    @RequestBody ScheduleRehearsalCommand cmd) {
         var rehearsal = commandService.updateRehearsal(id, cmd);
         return ResponseEntity.ok(rehearsal);
     }
 
     @PostMapping("/{id}/attendance")
     public ResponseEntity<Void> recordAttendance(@PathVariable Long id,
-                                                  @RequestBody RecordAttendanceCommand cmd) {
+                                                 @RequestBody RecordAttendanceCommand cmd) {
         cmd.setRehearsalId(id);
         commandService.recordAttendance(cmd);
+        return ResponseEntity.ok().build();
+    }
+
+    /**
+     * Invite a single member to a rehearsal. Mirrors the corresponding
+     * event endpoint ({@code POST /api/events/{id}/invite}) so the UI can
+     * reuse the same modal flow for both bounded contexts.
+     */
+    @PostMapping("/{id}/invite")
+    public ResponseEntity<Void> inviteMember(@PathVariable Long id,
+                                             @RequestBody InviteMemberCommand cmd) {
+        cmd.setRehearsalId(id);
+        commandService.inviteMember(cmd);
+        return ResponseEntity.ok().build();
+    }
+
+    /**
+     * Invite every member of a group to a rehearsal. Mirrors
+     * {@code POST /api/events/{id}/invite-group}.
+     */
+    @PostMapping("/{id}/invite-group")
+    public ResponseEntity<Void> inviteGroup(@PathVariable Long id,
+                                            @RequestBody InviteGroupCommand cmd) {
+        cmd.setRehearsalId(id);
+        commandService.inviteGroup(cmd);
         return ResponseEntity.ok().build();
     }
 
@@ -77,15 +92,6 @@ public class RehearsalController {
     public ResponseEntity<Void> deleteRehearsal(@PathVariable Long id) {
         commandService.deleteRehearsal(id);
         return ResponseEntity.noContent().build();
-    }
-
-    @GetMapping("/{id}/email-stats")
-    public ResponseEntity<RehearsalEmailStats> getEmailStats(@PathVariable Long id) {
-        RehearsalEmailStats stats = notificationService.getStats(id);
-        if (stats == null) {
-            return ResponseEntity.notFound().build();
-        }
-        return ResponseEntity.ok(stats);
     }
 
     private Long resolveActiveTeamId(OidcUser oidcUser, HttpSession session) {

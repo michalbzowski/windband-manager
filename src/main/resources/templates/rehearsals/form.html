@@ -79,15 +79,16 @@
                         var endTimeInput = form.querySelector("input[name='endTime']");
                         if (endTimeInput) endTimeInput.value = '20:00';
                     } else {
-                        // Navigate to the list with ?focus= so the shared
-                        // initFocusHighlight scrolls to and highlights the new row.
-                        setTimeout(function() {
-                            if (rehearsal && rehearsal.id) {
-                                window.location.href = '/rehearsals?focus=' + rehearsal.id;
-                            } else {
-                                window.location.href = '/rehearsals';
-                            }
-                        }, 600);
+                        // Navigate straight to the new rehearsal's detail page so the
+                        // user can immediately click "Zaproś uczestników" /
+                        // "Zaproś grupę" — same flow as event creation (no more
+                        // auto-inviting all active members, so the detail page is
+                        // the natural next step).
+                        if (rehearsal && rehearsal.id) {
+                            window.location.href = '/rehearsals/' + rehearsal.id;
+                        } else {
+                            window.location.href = '/rehearsals';
+                        }
                     }
                 }).catch(function(err) {
                     console.log('[REHEARSAL] fetch error:', err);

@@ -6,9 +6,12 @@ import org.openqa.selenium.JavascriptExecutor;
 import org.openqa.selenium.WebElement;
 import org.openqa.selenium.support.ui.ExpectedConditions;
 import org.openqa.selenium.support.ui.WebDriverWait;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.jdbc.core.JdbcTemplate;
 import pl.michalbzowski.windband.UiTestBase;
 
 import java.time.Duration;
+import java.time.LocalDate;
 import java.util.List;
 import java.util.UUID;
 
@@ -24,6 +27,9 @@ import static org.assertj.core.api.Assertions.assertThat;
  */
 class QuickAttendanceModalUiTest extends UiTestBase {
 
+    @Autowired
+    private JdbcTemplate jdbcTemplate;
+
     @Test
     void quickAttendanceModal_savesAndAdvancesAndPersists() throws Exception {
         WebDriverWait wait = new WebDriverWait(driver, Duration.ofSeconds(10));
@@ -31,7 +37,6 @@ class QuickAttendanceModalUiTest extends UiTestBase {
         String firstName = "Quick" + uid;
         String lastName = "Test" + uid;
 
-        // --- Create a member via UI ---
         loginAndNavigateTo("/members");
         driver.findElement(By.xpath("//button[contains(text(), 'Dodaj członka')]")).click();
         wait.until(ExpectedConditions.presenceOfElementLocated(By.cssSelector("#member-form")));
@@ -43,34 +48,44 @@ class QuickAttendanceModalUiTest extends UiTestBase {
         wait.until(ExpectedConditions.presenceOfElementLocated(By.cssSelector("#members-content table")));
         Thread.sleep(1000);
 
-        // --- Create a rehearsal via UI ---
         loginAndNavigateTo("/rehearsals");
         driver.findElement(By.xpath("//button[contains(text(), 'Zaplanuj spotkanie')]")).click();
         wait.until(ExpectedConditions.presenceOfElementLocated(By.cssSelector("#rehearsal-form")));
-        String today = java.time.LocalDate.now().toString();
+        String today = LocalDate.now().toString();
         ((JavascriptExecutor) driver).executeScript(
-                "document.querySelector(\"input[name='date']\").value = '" + today + "';");
-        driver.findElement(By.cssSelector("input[name='startTime']")).sendKeys("18:00");
-        driver.findElement(By.cssSelector("input[name='endTime']")).sendKeys("20:00");
-        driver.findElement(By.cssSelector("input[name='location']")).sendKeys("Sala prób");
+                "document.querySelector(\"input[name='date']\").value = arguments[0];" +
+                "document.querySelector(\"input[name='startTime']\").value = '18:00';" +
+                "document.querySelector(\"input[name='endTime']\").value = '20:00';" +
+                "document.querySelector(\"input[name='location']\").value = 'Sala prób';",
+                today);
         driver.findElement(By.cssSelector("#rehearsal-form button[type='submit'].primary")).click();
         wait.until(ExpectedConditions.urlContains("/rehearsals"));
         wait.until(ExpectedConditions.not(ExpectedConditions.urlContains("/new")));
-        Thread.sleep(1500);
+        Thread.sleep(1000);
 
-        // --- Open rehearsal detail (full page load so inline script + openAppModal run) ---
-        driver.get(baseUrl() + "/rehearsals");
+        Long rehearsalId = jdbcTemplate.queryForObject(
+                "SELECT MAX(id) FROM rehearsals WHERE date = ?", Long.class, today);
+        Long memberId = jdbcTemplate.queryForObject(
+                "SELECT MAX(id) FROM members WHERE first_name = ?", Long.class, firstName);
+        assertThat(rehearsalId).isNotNull();
+        assertThat(memberId).isNotNull();
+
+        driver.get(baseUrl() + "/rehearsals/" + rehearsalId);
         wait.until(ExpectedConditions.presenceOfElementLocated(By.id("rehearsals-content")));
-        List<WebElement> detailBtns = driver.findElements(By.xpath("//button[contains(text(), 'Szczegóły')]"));
-        assertThat(detailBtns).isNotEmpty();
-        detailBtns.get(0).click();
-        wait.until(ExpectedConditions.presenceOfElementLocated(
-                By.cssSelector("#rehearsals-content .status-select")));
-        String rehearsalId = (String) ((JavascriptExecutor) driver).executeScript(
-                "return document.getElementById('rehearsals-content').getAttribute('data-rehearsal-id');");
+        wait.until(d -> ((Number) ((JavascriptExecutor) d).executeScript(
+                "return document.querySelectorAll('#rehearsals-content .status-select').length;"))
+                .intValue() > 0);
+        ((JavascriptExecutor) driver).executeScript(
+                "var xhr = new XMLHttpRequest();" +
+                "xhr.open('POST', '/api/rehearsals/' + arguments[0] + '/invite', false);" +
+                "xhr.setRequestHeader('Content-Type', 'application/json');" +
+                "var csrf = document.cookie.split('; ').find(c => c.startsWith('XSRF-TOKEN='));" +
+                "if (csrf) xhr.setRequestHeader('X-XSRF-TOKEN', csrf.split('=')[1]);" +
+                "xhr.send(JSON.stringify({rehearsalId: arguments[0], memberId: arguments[1]}));" +
+                "return xhr.status;", rehearsalId, memberId);
         driver.get(baseUrl() + "/rehearsals/" + rehearsalId);
         wait.until(ExpectedConditions.presenceOfElementLocated(
-                By.cssSelector("#rehearsals-content .status-select")));
+                By.cssSelector("#rehearsals-content .status-select[data-member-id='" + memberId + "']")));
 
         int memberCount = driver.findElements(By.cssSelector("#rehearsals-content tbody tr")).size();
         assertThat(memberCount).isGreaterThanOrEqualTo(1);

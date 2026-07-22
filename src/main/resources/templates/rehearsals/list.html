@@ -41,17 +41,12 @@
                             </td>
                             <td data-label="Akcje">
                                 <button class="outline small"
-                                th:hx-get="@{/rehearsals/{id}(id=${r.id})}"
-                                hx-target="#content"
-                                hx-swap="innerHTML transition:true">Szczegóły</button>
-                                <button class="outline small"
-                                        th:hx-get="@{/rehearsals/{id}/notifications(id=${r.id})}"
+                                        th:hx-get="@{/rehearsals/{id}(id=${r.id})}"
                                         hx-target="#content"
-                                        hx-swap="innerHTML transition:true"
-                                        title="Powiadomienia e-mail">📧</button>
+                                        hx-swap="innerHTML transition:true">Szczegóły</button>
                                 <button class="outline small secondary"
                                         th:attr="data-id=${r.id}"
-                                        onclick="if(confirm('Czy na pewno chcesz usunąć tę spotkanie?')) deleteRehearsal(this.getAttribute('data-id'))"
+                                        onclick="deleteRehearsal(this.getAttribute('data-id'))"
                                         style="margin-left:0.25rem;">Usuń</button>
                             </td>
                         </tr>
@@ -88,11 +83,6 @@
                                 th:hx-get="@{/rehearsals/{id}(id=${r.id})}"
                                 hx-target="#content"
                                 hx-swap="innerHTML transition:true">Szczegóły</button>
-                                <button class="outline small"
-                                        th:hx-get="@{/rehearsals/{id}/notifications(id=${r.id})}"
-                                        hx-target="#content"
-                                        hx-swap="innerHTML transition:true"
-                                        title="Powiadomienia e-mail">📧</button>
                                 <button class="outline small secondary"
                                         th:attr="data-id=${r.id}"
                                         onclick="if(confirm('Czy na pewno chcesz usunąć tę spotkanie?')) deleteRehearsal(this.getAttribute('data-id'))"
@@ -114,7 +104,7 @@
             fetchWithToast('/api/rehearsals/' + id, { method: 'DELETE', toastMessage: 'Spotkanie zostało usunięte' })
                 .then(function(response) {
                     if (response.ok) {
-                        htmx.ajax('GET', '/rehearsals/list', {target: '#rehearsals-content', swap: 'innerHTML transition:true'});
+                        window.location.href = '/rehearsals';
                     }
                 });
         }

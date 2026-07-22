@@ -12,7 +12,9 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import pl.michalbzowski.windband.UiTestBase;
 
 import java.time.Duration;
+import java.time.LocalDate;
 import java.util.UUID;
+
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -55,35 +57,45 @@ class AttendancePersistenceUiTest extends UiTestBase {
         loginAndNavigateTo("/rehearsals");
         driver.findElement(By.xpath("//button[contains(text(), 'Zaplanuj spotkanie')]")).click();
         wait.until(ExpectedConditions.presenceOfElementLocated(By.cssSelector("#rehearsal-form")));
-        String today = java.time.LocalDate.now().toString();
+        String today = LocalDate.now().toString();
         ((JavascriptExecutor) driver).executeScript(
-                "document.querySelector(\"input[name='date']\").value = '" + today + "';");
-        driver.findElement(By.cssSelector("input[name='startTime']")).sendKeys("18:00");
-        driver.findElement(By.cssSelector("input[name='endTime']")).sendKeys("20:00");
-        driver.findElement(By.cssSelector("input[name='location']")).sendKeys("Sala prób");
+                "document.querySelector(\"input[name='date']\").value = arguments[0];" +
+                "document.querySelector(\"input[name='startTime']\").value = '18:00';" +
+                "document.querySelector(\"input[name='endTime']\").value = '20:00';" +
+                "document.querySelector(\"input[name='location']\").value = 'Sala prób';",
+                today);
         driver.findElement(By.cssSelector("#rehearsal-form button[type='submit'].primary")).click();
         wait.until(ExpectedConditions.urlContains("/rehearsals"));
         wait.until(ExpectedConditions.not(ExpectedConditions.urlContains("/new")));
-        Thread.sleep(1500);
+        Thread.sleep(1000);
 
-        // Resolve the rehearsal id directly from the DB (deterministic — avoids
-        // depending on list ordering / stale rows left by other UI tests).
         Long rehearsalId = jdbcTemplate.queryForObject(
                 "SELECT MAX(id) FROM rehearsals WHERE date = ?", Long.class, today);
-        System.out.println("[TEST] rehearsalId from db: " + rehearsalId);
+        Long memberId = jdbcTemplate.queryForObject(
+                "SELECT MAX(id) FROM members WHERE first_name = ?", Long.class, firstName);
+        System.out.println("[TEST] rehearsalId=" + rehearsalId + ", memberId=" + memberId);
         assertThat(rehearsalId).isNotNull();
+        assertThat(memberId).isNotNull();
 
-        // Open the newly created rehearsal detail directly by id (not via list + get(0))
+        driver.get(baseUrl() + "/rehearsals/" + rehearsalId);
+        wait.until(ExpectedConditions.presenceOfElementLocated(By.cssSelector("#rehearsals-content")));
+
+        ((JavascriptExecutor) driver).executeScript(
+                "var xhr = new XMLHttpRequest();" +
+                "xhr.open('POST', '/api/rehearsals/' + arguments[0] + '/invite', false);" +
+                "xhr.setRequestHeader('Content-Type', 'application/json');" +
+                "var csrf = document.cookie.split('; ').find(c => c.startsWith('XSRF-TOKEN='));" +
+                "if (csrf) xhr.setRequestHeader('X-XSRF-TOKEN', csrf.split('=')[1]);" +
+                "xhr.send(JSON.stringify({rehearsalId: arguments[0], memberId: arguments[1]}));" +
+                "return xhr.status;", rehearsalId, memberId);
+
         driver.get(baseUrl() + "/rehearsals/" + rehearsalId);
         wait.until(ExpectedConditions.presenceOfElementLocated(
-                By.cssSelector("#rehearsals-content .status-select")));
+                By.cssSelector("#rehearsals-content .status-select[data-member-id='" + memberId + "']")));
         System.out.println("[TEST] rehearsal detail loaded, status-select found");
-
-        // Resolve the member id from the UI (the member actually shown in the detail view)
-        String memberIdStr = (String) ((JavascriptExecutor) driver).executeScript(
-                "var s = document.querySelector('#rehearsals-content .status-select'); return s ? s.getAttribute('data-member-id') : null;");
-        Long memberId = memberIdStr != null ? Long.valueOf(memberIdStr) : null;
-        System.out.println("[TEST] memberId from UI: " + memberId);
+        wait.until(d -> ((Number) ((JavascriptExecutor) d).executeScript(
+                "return document.querySelectorAll('#rehearsals-content .status-select').length;"))
+                .intValue() > 0);
 
         // Resolve the rehearsal id from the detail container (cross-check)
         String rehearsalIdStr = (String) ((JavascriptExecutor) driver).executeScript(

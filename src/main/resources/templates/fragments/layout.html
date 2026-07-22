@@ -79,6 +79,12 @@
     <div class="nav-row nav-row-primary">
         <ul class="nav-primary">
             <li>
+                <a th:href="@{/}" hx-target="#content" hx-swap="innerHTML transition:true" aria-label="Podsumowanie">
+                    <span class="nav-icon" aria-hidden="true">🏠</span>
+                    <span class="nav-label">Podsumowanie</span>
+                </a>
+            </li>
+            <li>
                 <a th:href="@{/rehearsals}" hx-target="#content" hx-swap="innerHTML transition:true" aria-label="Spotkania">
                     <span class="nav-icon" aria-hidden="true">🎵</span>
                     <span class="nav-label">Spotkania</span>

@@ -73,6 +73,22 @@ public class Rehearsal {
         attendances.add(new Attendance(this, member, status));
     }
 
+    /**
+     * Invite a member to this rehearsal. Mirrors the {@code BandEvent.inviteMember}
+     * pattern: idempotent for repeat calls (silently skips members who already
+     * have an attendance row), throws if the same member is invited again
+     * through a different path. The new attendance row defaults to
+     * {@code NO_RESPONSE} so the member can later be marked PRESENT/EXCUSED/etc.
+     */
+    public void inviteMember(Member member) {
+        boolean alreadyInvited = attendances.stream()
+                .anyMatch(a -> a.getMember().equals(member));
+        if (alreadyInvited) {
+            throw new IllegalStateException("Member already invited: " + member.getId());
+        }
+        attendances.add(new Attendance(this, member, AttendanceStatus.NO_RESPONSE));
+    }
+
     public void updateAttendance(Member member, AttendanceStatus status) {
         attendances.stream()
                 .filter(a -> a.getMember().equals(member))

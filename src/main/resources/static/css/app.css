@@ -48,8 +48,26 @@ html, body {
 }
 
 .nav-row-primary {
-    /* On mobile the chip + icons + hamburger sit in a single flex row */
+    /* The hamburger stays on the LEFT, the primary icons are pushed to the
+       RIGHT. Keep the row aligned from the left edge so the hamburger does
+       not drift to the far right on wider screens. */
     justify-content: flex-start;
+}
+
+.nav-row-primary .hamburger-btn {
+    order: -1;
+    margin-left: 0;
+}
+
+.nav-row-primary .nav-primary {
+    order: 1;
+}
+
+.rehearsal-invite-actions {
+    display: flex;
+    gap: 0.5rem;
+    margin-bottom: 1rem;
+    flex-wrap: wrap;
 }
 
 /* === TEAM CHIP (round avatar button) =========================== */
@@ -111,7 +129,7 @@ html, body {
     text-shadow: none;
 }
 
-/* === PRIMARY NAV (Spotkania / Wydarzenia icons) ================= */
+/* === PRIMARY NAV (Podsumowanie / Spotkania / Wydarzenia icons) === */
 .nav-primary {
     display: flex;
     align-items: center;
@@ -119,10 +137,14 @@ html, body {
     list-style: none;
     margin: 0;
     padding: 0;
-    /* No flex: 1 here — we want the primary links to sit on the left and
-       the team chip + hamburger to be pushed to the right by margin-left:auto
-       on .team-chip. flex:1 here would consume all free space and make
-       justify-content useless. */
+    /* Push the icon group to the RIGHT edge of the row so the hamburger
+       button (the next .nav-row child) sits flush on the LEFT. The
+       hamburger already has its own width:40px + a 0.4rem margin-left
+       that we override below to 0 because the row gap (0.5rem) covers
+       it; without margin-left:auto on .nav-primary the icons would
+       cluster next to the hamburger instead of stretching to the
+       right. */
+    margin-left: auto;
     min-width: 0;
 }
 

@@ -5,6 +5,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
+import pl.michalbzowski.windband.application.query.member.GroupQueryService;
 import pl.michalbzowski.windband.application.query.member.MemberQueryService;
 import pl.michalbzowski.windband.application.query.rehearsal.RehearsalQueryService;
 import pl.michalbzowski.windband.domain.rehearsal.AttendanceStatus;
@@ -20,6 +21,7 @@ public class RehearsalPageController {
 
     private final RehearsalQueryService rehearsalQueryService;
     private final MemberQueryService memberQueryService;
+    private final GroupQueryService groupQueryService;
 
     @GetMapping
     public String listPage(@ModelAttribute("activeTeamId") Long activeTeamId, Model model,
@@ -52,12 +54,45 @@ public class RehearsalPageController {
         return "rehearsals/form";
     }
 
+    /**
+     * Renders the rehearsal detail page. The view needs three things the
+     * event detail page also needed:
+     * <ul>
+     *   <li>{@code members} — every active member of the current band,
+     *       minus the ones already invited (so the multi-member invite
+     *       modal can show only remaining candidates),</li>
+     *   <li>{@code groups} — every group of the current band, used to
+     *       render the "Zaproś grupę" modal,</li>
+     *   <li>{@code attendanceMap} — pre-computed memberId → status map
+     *       so the Thymeleaf template does not need to stream the
+     *       attendances list on every select.</li>
+     * </ul>
+     */
     @GetMapping("/{id}")
     public String rehearsalDetail(@PathVariable Long id, @ModelAttribute("activeTeamId") Long activeTeamId, Model model,
                                   HttpServletRequest request) {
         var rehearsal = rehearsalQueryService.getRehearsalById(id);
         model.addAttribute("rehearsal", rehearsal);
+
+        // IDs of members already invited to this rehearsal (already have an attendance row)
+        var invitedMemberIds = rehearsal.getAttendances().stream()
+                .map(a -> a.getMember().getId())
+                .collect(Collectors.toSet());
+
+        // The attendance table must always show every active member, so a newly invited member
+        // immediately appears with NO_RESPONSE and can be updated after reload.
         model.addAttribute("members", memberQueryService.getAllActiveMembers(activeTeamId));
+
+        // The invite modal should only show members that are not invited yet.
+        var availableMembers = memberQueryService.getAllActiveMembers(activeTeamId).stream()
+                .filter(m -> !invitedMemberIds.contains(m.id()))
+                .collect(Collectors.toList());
+        model.addAttribute("inviteMembers", availableMembers);
+
+        // All groups of the current band (manual + dynamic). The detail template renders the
+        // membership count and the dynamic badge if applicable.
+        model.addAttribute("groups", groupQueryService.getAllGroups(activeTeamId));
+
         Map<Long, AttendanceStatus> attendanceMap = rehearsal.getAttendances().stream()
                 .collect(Collectors.toMap(
                         a -> a.getMember().getId(),
@@ -78,17 +113,5 @@ public class RehearsalPageController {
             return "rehearsals/edit :: #rehearsals-content";
         }
         return "rehearsals/edit";
-    }
-
-    @GetMapping("/{id}/notifications")
-    public String rehearsalNotifications(@PathVariable Long id, @ModelAttribute("activeTeamId") Long activeTeamId,
-                                         Model model, jakarta.servlet.http.HttpServletRequest request) {
-        var rehearsal = rehearsalQueryService.getRehearsalById(id);
-        model.addAttribute("rehearsal", rehearsal);
-        model.addAttribute("activeMembers", memberQueryService.getAllActiveMembers(activeTeamId));
-        if ("true".equals(request.getHeader("HX-Request"))) {
-            return "rehearsals/notifications :: notifications-content";
-        }
-        return "rehearsals/notifications";
     }
 }
