@@ -4,7 +4,10 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import pl.michalbzowski.windband.application.service.ConsentService;
 import pl.michalbzowski.windband.domain.event.*;
+import pl.michalbzowski.windband.domain.member.ConsentType;
+import pl.michalbzowski.windband.domain.member.Member;
 
 @Service
 @RequiredArgsConstructor
@@ -13,6 +16,7 @@ public class NotificationSender {
     private final EventInvitationRepository invitationRepository;
     private final ChannelResolver channelResolver;
     private final NotificationCommandService notificationCommandService;
+    private final ConsentService consentService;
 
     @Value("${app.base-url:http://localhost:8080}")
     private String baseUrl;
@@ -39,9 +43,22 @@ public class NotificationSender {
     }
 
     private boolean doSend(EventInvitation invitation) {
+        Member member = invitation.getMember();
+
+        // Honour the per-member consent BEFORE attempting to send — if a member has not
+        // granted consent for event communications, the invitation is marked FAILED
+        // without touching the channel. This is required by the privacy/comms contract
+        // and by the EventConsentIntegrationTest regression.
+        if (!consentService.isConsentGranted(member, ConsentType.EVENTS)) {
+            invitation.markFailed();
+            invitationRepository.save(invitation);
+            System.out.println("[NotificationSender] Skipping invitation " + invitation.getId()
+                    + " — member " + member.getId() + " has not granted EVENTS consent");
+            return false;
+        }
+
         try {
             var event = invitation.getBandEvent();
-            var member = invitation.getMember();
 
             Channel channel = channelResolver.resolveForMember(member);
             channel.send(invitation, event, member, baseUrl);

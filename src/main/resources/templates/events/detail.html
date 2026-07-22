@@ -79,6 +79,7 @@
                 <th>Instrument</th>
                 <th>Odpowiedź</th>
                 <th>Status wysyłki</th>
+                <th>Zgoda na informacje</th>
                 <th>Akcja</th>
                 <th th:if="${event.paymentType == 'PAID_SPLIT'}">Wypłata</th>
                 <th th:if="${event.paymentType == 'PAID_SPLIT'}">Status wypłaty</th>
@@ -121,6 +122,12 @@
                         <span th:if="${p.invitationStatus == 'SENT'}" style="color:#2fb344;">✅ Wysłano</span>
                         <span th:if="${p.invitationStatus == 'FAILED'}" style="color:#dc3545;">❌ Błąd wysyłki</span>
                     </span>
+                </td>
+                <td data-label="Zgoda na informacje" class="consent-cell"
+                    th:data-member-id="${p.memberId}"
+                    th:data-consent-given="${p.emailConsentGiven}">
+                    <span th:if="${p.emailConsentGiven}" style="color:#2fb344;">✅ Wyraził zgodę</span>
+                    <span th:unless="${p.emailConsentGiven}" style="color:#dc3545;">❌ Brak zgody</span>
                 </td>
                 <td data-label="Akcja">
                     <button class="outline send-btn"

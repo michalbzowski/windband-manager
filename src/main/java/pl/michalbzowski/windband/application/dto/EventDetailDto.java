@@ -32,7 +32,8 @@ public record EventDetailDto(
             String response,
             BigDecimal paymentAmount,
             String paymentStatus,
-            String invitationStatus
+            String invitationStatus,
+            boolean emailConsentGiven
     ) {}
 
     public record InstrumentCountDto(

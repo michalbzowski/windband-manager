@@ -8,9 +8,11 @@ import pl.michalbzowski.windband.application.dto.EventDetailDto.InstrumentCountD
 import pl.michalbzowski.windband.application.dto.EventDetailDto.ParticipationDto;
 import pl.michalbzowski.windband.application.dto.GroupSummaryDto;
 import pl.michalbzowski.windband.application.query.member.GroupQueryService;
+import pl.michalbzowski.windband.application.service.ConsentService;
 import pl.michalbzowski.windband.domain.event.BandEvent;
 import pl.michalbzowski.windband.domain.event.EventInvitationRepository;
 import pl.michalbzowski.windband.domain.event.EventRepository;
+import pl.michalbzowski.windband.domain.member.ConsentType;
 import pl.michalbzowski.windband.domain.member.InstrumentRepository;
 
 import java.time.LocalDate;
@@ -26,14 +28,17 @@ public class EventQueryService {
     private final GroupQueryService groupQueryService;
     private final InstrumentRepository instrumentRepository;
     private final EventInvitationRepository invitationRepository;
+    private final ConsentService consentService;
 
     public EventQueryService(EventRepository eventRepository, GroupQueryService groupQueryService,
                              InstrumentRepository instrumentRepository,
-                             EventInvitationRepository invitationRepository) {
+                             EventInvitationRepository invitationRepository,
+                             ConsentService consentService) {
         this.eventRepository = eventRepository;
         this.groupQueryService = groupQueryService;
         this.instrumentRepository = instrumentRepository;
         this.invitationRepository = invitationRepository;
+        this.consentService = consentService;
     }
 
     public BandEvent getEventById(Long id) {
@@ -61,6 +66,7 @@ public class EventQueryService {
                     if (!hasEmail && "NOT_SENT".equals(invStatus)) {
                         invStatus = "FAILED";
                     }
+                    boolean consentGiven = consentService.isConsentGranted(p.getMember(), ConsentType.EVENTS);
                     return new ParticipationDto(
                             p.getId(),
                             memberId,
@@ -71,7 +77,8 @@ public class EventQueryService {
                             p.getResponse().name(),
                             p.getPaymentAmount(),
                             p.getPaymentStatus().name(),
-                            invStatus
+                            invStatus,
+                            consentGiven
                     );
                 })
                 .toList();
