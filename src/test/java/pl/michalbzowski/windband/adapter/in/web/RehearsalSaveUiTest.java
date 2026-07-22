@@ -51,10 +51,17 @@ class RehearsalSaveUiTest extends UiTestBase {
         wait.until(ExpectedConditions.presenceOfElementLocated(
                 By.cssSelector("#rehearsals-content form#rehearsal-form")));
 
-        // Fill required fields
+        // Fill required fields. On CI (chromium 150) a bare `input.value = '...'`
+        // assignment does not always notify HTML5 form validation, so the
+        // submit event silently does not fire. Dispatching `input`+`change`
+        // events after the assignment is the standard way to coerce the
+        // browser into treating the value as a real user input.
         String today = java.time.LocalDate.now().toString();
         ((JavascriptExecutor) driver).executeScript(
-                "document.querySelector(\"input[name='date']\").value = '" + today + "';");
+                "var d=document.querySelector(\"input[name='date']\");" +
+                "d.value='" + today + "';" +
+                "d.dispatchEvent(new Event('input',{bubbles:true}));" +
+                "d.dispatchEvent(new Event('change',{bubbles:true}));");
 
         var startTimeInput = driver.findElement(By.cssSelector("input[name='startTime']"));
         startTimeInput.clear();
@@ -65,9 +72,13 @@ class RehearsalSaveUiTest extends UiTestBase {
         endTimeInput.clear();
         endTimeInput.sendKeys("20:00");
 
-        // Set location via JS to ensure FormData picks it up
+        // Set location via JS to ensure FormData picks it up, with the
+        // same input/change event dispatch as the date field above.
         ((JavascriptExecutor) driver).executeScript(
-                "document.querySelector(\"input[name='location']\").value = 'Sala prób';");
+                "var l=document.querySelector(\"input[name='location']\");" +
+                "l.value='Sala prób';" +
+                "l.dispatchEvent(new Event('input',{bubbles:true}));" +
+                "l.dispatchEvent(new Event('change',{bubbles:true}));");
 
         // Submit the form by clicking "Zaplanuj" button
         var submitBtn = driver.findElement(
