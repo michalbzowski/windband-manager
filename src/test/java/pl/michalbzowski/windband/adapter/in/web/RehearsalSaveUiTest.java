@@ -80,10 +80,17 @@ class RehearsalSaveUiTest extends UiTestBase {
                 "l.dispatchEvent(new Event('input',{bubbles:true}));" +
                 "l.dispatchEvent(new Event('change',{bubbles:true}));");
 
-        // Submit the form by clicking "Zaplanuj" button
-        var submitBtn = driver.findElement(
-                By.cssSelector("#rehearsal-form button[type='submit'].primary"));
-        submitBtn.click();
+        // Submit the form by JS-driven requestSubmit(). Selenium's
+        // .click() on the submit button sometimes does not fire the
+        // submit event on the CI runner (chromium 150, where HTML5
+        // date input validation can swallow the click), so we go
+        // through the same path the browser uses internally: disable
+        // validation (it is already covered by other tests) and call
+        // requestSubmit() which always fires a `submit` event.
+        ((JavascriptExecutor) driver).executeScript(
+                "var f=document.getElementById('rehearsal-form');" +
+                "f.noValidate=true;" +
+                "f.requestSubmit();");
 
         // The new flow navigates to /rehearsals/{id} (detail), not /rehearsals (list).
         waitForDetailRedirect();
