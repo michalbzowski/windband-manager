@@ -732,6 +732,58 @@ function bindEventDetailHandlers() {
     global.bindEventDetailHandlers = bindEventDetailHandlers;
     global.bindGroupDetailHandlers = bindGroupDetailHandlers;
     global.initFocusHighlight = initFocusHighlight;
+
+    /**
+     * Rehearsal form submit handler. Registered ONCE at page load using
+     * event delegation on document, so it survives htmx swaps of the
+     * form fragment (an inline <script> in the fragment would only run
+     * after the next swap and could miss a quick submit click — that
+     * is the bug fixed by hoisting this here).
+     */
+    document.addEventListener('submit', function(e) {
+        var form = e.target;
+        if (!form || form.id !== 'rehearsal-form') return;
+        e.preventDefault();
+        e.stopPropagation();
+        e.stopImmediatePropagation();
+        var formData = new FormData(form);
+        var data = {};
+        formData.forEach(function(value, key) { data[key] = value; });
+        console.log('[REHEARSAL] submit captured, data:', JSON.stringify(data));
+        var saveAndAddBtn = form.querySelector('button[name="saveAndAddAnother"]');
+        var saveAndAddAnother = saveAndAddBtn && saveAndAddBtn === document.activeElement;
+
+        fetchWithToast('/api/rehearsals', {
+            toastMessage: 'Zapisano spotkanie',
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify(data)
+        }).then(function(response) {
+            console.log('[REHEARSAL] response status:', response.status);
+            return response.json();
+        }).then(function(rehearsal) {
+            if (saveAndAddAnother) {
+                form.reset();
+                var now = new Date();
+                var today = now.getFullYear() + '-' + String(now.getMonth() + 1).padStart(2, '0') + '-' + String(now.getDate()).padStart(2, '0');
+                var dateInput = form.querySelector("input[name='date']");
+                if (dateInput) dateInput.value = today;
+                var startTimeInput = form.querySelector("input[name='startTime']");
+                if (startTimeInput) startTimeInput.value = '18:00';
+                var endTimeInput = form.querySelector("input[name='endTime']");
+                if (endTimeInput) endTimeInput.value = '20:00';
+            } else {
+                if (rehearsal && rehearsal.id) {
+                    window.location.href = '/rehearsals/' + rehearsal.id;
+                } else {
+                    window.location.href = '/rehearsals';
+                }
+            }
+        }).catch(function(err) {
+            console.log('[REHEARSAL] fetch error:', err);
+        });
+    }, true); // capture phase — runs BEFORE htmx default submit
+
     // Expose globally
     global.Toast = Toast;
     global.fetchWithToast = fetchWithToast;

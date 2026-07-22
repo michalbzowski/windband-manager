@@ -32,7 +32,12 @@ class RehearsalSaveUiTest extends UiTestBase {
 
     @Test
     void shouldSaveRehearsal_andRedirectToDetail() {
-        WebDriverWait wait = new WebDriverWait(driver, Duration.ofSeconds(10));
+        // CI (chromium 150) was racing with the submit handler registration when
+        // the listener was inline in the htmx-swapped form fragment. After
+        // hoisting the handler into windband-utils.js (registered at page load
+        // via delegation), this is reliably fast, but keep a generous timeout
+        // for slower shared CI runners.
+        WebDriverWait wait = new WebDriverWait(driver, Duration.ofSeconds(30));
 
         // Navigate to rehearsals list
         loginAndNavigateTo("/rehearsals");
@@ -86,7 +91,7 @@ class RehearsalSaveUiTest extends UiTestBase {
      * Waits until the browser is on the rehearsal detail page.
      */
     private void waitForDetailRedirect() {
-        WebDriverWait wait = new WebDriverWait(driver, Duration.ofSeconds(10));
+        WebDriverWait wait = new WebDriverWait(driver, Duration.ofSeconds(30));
         wait.until(ExpectedConditions.urlMatches(".*/rehearsals/\\d+.*"));
     }
 }
