@@ -233,8 +233,13 @@ class AttributeFlowUiTest extends UiTestBase {
                 + "  }"
                 + "}");
         ((JavascriptExecutor) driver).executeScript("submitUniform();");
-        // After submit, refreshTab('uniforms') replaces #uniforms-content. The form is hidden.
+        // refreshTab('uniforms') replaces #uniforms-content via target.replaceWith(newContent).
+        // Capture the current #uniforms-content element BEFORE submit so we can wait for the
+        // swap to complete via stalenessOf. Without this, the show+visibility race on the
+        // post-swap #uniform-form (default display:none) causes CI failures under load.
+        WebElement oldUniformsContent = driver.findElement(By.id("uniforms-content"));
         wait.until(ExpectedConditions.invisibilityOfElementLocated(By.id("uniform-form")));
+        wait.until(ExpectedConditions.stalenessOf(oldUniformsContent));
         // Pattern F: text wait in helper handles tab content reload
 
         // === 6. Verify the attribute is still visible (open the form again) ===
@@ -277,7 +282,13 @@ class AttributeFlowUiTest extends UiTestBase {
                 + "  }"
                 + "}");
         ((JavascriptExecutor) driver).executeScript("submitInstrument();");
+        // refreshTab('instruments') replaces #instruments-content via target.replaceWith(newContent).
+        // Wait for the swap to complete via stalenessOf (old reference) BEFORE re-showing the form.
+        // Without this, the show+visibility race on the post-swap #instrument-form (display:none)
+        // causes CI failures under load.
+        WebElement oldInstrumentsContent = driver.findElement(By.id("instruments-content"));
         wait.until(ExpectedConditions.invisibilityOfElementLocated(By.id("instrument-form")));
+        wait.until(ExpectedConditions.stalenessOf(oldInstrumentsContent));
         // Pattern F: text wait in helper handles tab content reload
 
         ((JavascriptExecutor) driver).executeScript("showInstrumentForm();");
@@ -344,6 +355,10 @@ class AttributeFlowUiTest extends UiTestBase {
             // Order form hides via display:none after successful submit.
             // If the API call fails (e.g. auth issue), the form stays visible.
             // Use a shorter wait with a fallback — don't block the entire test on this.
+            // refreshTab('orders') replaces #orders-content via target.replaceWith — wait for the
+            // swap to complete (stalenessOf) before re-showing the form to avoid the CI race
+            // documented in the uniform/instrument/award tests above.
+            WebElement oldOrdersContent = driver.findElement(By.id("orders-content"));
             try {
                 wait.until(ExpectedConditions.invisibilityOfElementLocated(By.id("order-form")));
             } catch (org.openqa.selenium.TimeoutException e) {
@@ -351,6 +366,13 @@ class AttributeFlowUiTest extends UiTestBase {
                 // so we can still verify the attribute visibility step below.
                 System.err.println("[WARN] Order form did not close after submit — likely API error. Force-hiding.");
                 ((JavascriptExecutor) driver).executeScript("hideOrderForm();");
+            }
+            // Only wait for the tab-content swap if it actually happened (it requires the submit to
+            // succeed). If submit failed above (force-hide path), the content was never swapped.
+            try {
+                wait.until(ExpectedConditions.stalenessOf(oldOrdersContent));
+            } catch (org.openqa.selenium.TimeoutException e) {
+                System.err.println("[WARN] #orders-content did not swap — submit likely failed. Skipping swap wait.");
             }
             // Pattern F: text wait in helper handles tab content reload
         }
@@ -403,7 +425,11 @@ class AttributeFlowUiTest extends UiTestBase {
                 + "  }"
                 + "}");
         ((JavascriptExecutor) driver).executeScript("submitAward();");
+        // refreshTab('awards') replaces #awards-content via target.replaceWith(newContent).
+        // Wait for the swap to complete via stalenessOf before re-showing the form (see uniform/instrument).
+        WebElement oldAwardsContent = driver.findElement(By.id("awards-content"));
         wait.until(ExpectedConditions.invisibilityOfElementLocated(By.id("award-form")));
+        wait.until(ExpectedConditions.stalenessOf(oldAwardsContent));
         // Pattern F: text wait in helper handles tab content reload
 
         ((JavascriptExecutor) driver).executeScript("showAwardForm();");
