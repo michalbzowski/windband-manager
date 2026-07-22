@@ -17,6 +17,7 @@ import java.util.UUID;
 
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.awaitility.Awaitility.await;
 
 /**
  * Regression test for attendance persistence on rehearsals and events.
@@ -51,7 +52,13 @@ class AttendancePersistenceUiTest extends UiTestBase {
                 "document.querySelector(\"input[name='dateOfBirth']\").value = '1990-05-15';");
         driver.findElement(By.cssSelector("#member-form button[type='submit'].primary")).click();
         wait.until(ExpectedConditions.presenceOfElementLocated(By.cssSelector("#members-content table")));
-        Thread.sleep(1000);
+        // Awaitility: czekamy aż nowy członek pojawi się w DB (post-submit write musi być sflushowany
+        // zanim odpytamy jdbcTemplate o jego id)
+        await().atMost(Duration.ofSeconds(10)).untilAsserted(() -> {
+            Long id = jdbcTemplate.queryForObject(
+                    "SELECT MAX(id) FROM members WHERE first_name = ?", Long.class, firstName);
+            assertThat(id).isNotNull();
+        });
 
         // --- Create a rehearsal via UI ---
         loginAndNavigateTo("/rehearsals");
@@ -67,7 +74,13 @@ class AttendancePersistenceUiTest extends UiTestBase {
         driver.findElement(By.cssSelector("#rehearsal-form button[type='submit'].primary")).click();
         wait.until(ExpectedConditions.urlContains("/rehearsals"));
         wait.until(ExpectedConditions.not(ExpectedConditions.urlContains("/new")));
-        Thread.sleep(1000);
+        // Awaitility: czekamy aż nowy rehearsal pojawi się w DB (post-submit write musi być sflushowany
+        // zanim odpytamy jdbcTemplate o jego id)
+        await().atMost(Duration.ofSeconds(10)).untilAsserted(() -> {
+            Long id = jdbcTemplate.queryForObject(
+                    "SELECT MAX(id) FROM rehearsals WHERE date = ?", Long.class, today);
+            assertThat(id).isNotNull();
+        });
 
         Long rehearsalId = jdbcTemplate.queryForObject(
                 "SELECT MAX(id) FROM rehearsals WHERE date = ?", Long.class, today);
@@ -111,14 +124,21 @@ class AttendancePersistenceUiTest extends UiTestBase {
                 .as("Newly invited member must default to NO_RESPONSE, not PRESENT")
                 .isEqualTo("NO_RESPONSE");
 
-        // --- Change to PRESENT and save (via direct fetch, same as UI handler) ---
+        // --- Change to PRESENT and save (via sync XHR — Selenium executeScript does NOT await Promises) ---
         ((JavascriptExecutor) driver).executeScript(
-                "fetch('/api/rehearsals/" + rehearsalId + "/attendance', {" +
-                "  method: 'POST'," +
-                "  headers: {'Content-Type': 'application/json'}," +
-                "  body: JSON.stringify({rehearsalId: " + rehearsalId + ", memberId: " + memberId + ", status: 'PRESENT'})" +
-                "});");
-        Thread.sleep(2000);
+                "var xhr = new XMLHttpRequest();" +
+                "xhr.open('POST', '/api/rehearsals/" + rehearsalId + "/attendance', false);" +
+                "xhr.setRequestHeader('Content-Type', 'application/json');" +
+                "xhr.send(JSON.stringify({rehearsalId: " + rehearsalId + ", memberId: " + memberId + ", status: 'PRESENT'}));" +
+                "return xhr.status;");
+        // Awaitility: czekamy aż status attendance zostanie zapisany w DB (sync XHR gwarantuje tylko
+        // że response wrócił — zapis asynchroniczny po stronie serwera wymaga dodatkowego sprawdzenia)
+        await().atMost(Duration.ofSeconds(10)).untilAsserted(() -> {
+            String status = jdbcTemplate.queryForObject(
+                    "SELECT status FROM attendances WHERE rehearsal_id = ? AND member_id = ?",
+                    String.class, rehearsalId, memberId);
+            assertThat(status).isEqualTo("PRESENT");
+        });
 
         // --- Reload and ASSERT 2: persisted as PRESENT ---
         driver.get(baseUrl() + "/rehearsals/" + rehearsalId);
@@ -154,20 +174,27 @@ class AttendancePersistenceUiTest extends UiTestBase {
                 "document.querySelector(\"input[name='dateOfBirth']\").value = '1990-05-15';");
         driver.findElement(By.cssSelector("#member-form button[type='submit'].primary")).click();
         wait.until(ExpectedConditions.presenceOfElementLocated(By.cssSelector("#members-content table")));
-        Thread.sleep(1000);
+        // Awaitility: czekamy aż nowy członek pojawi się w DB (post-submit write musi być sflushowany
+        // zanim odpytamy jdbcTemplate o jego id)
+        await().atMost(Duration.ofSeconds(10)).untilAsserted(() -> {
+            Long id = jdbcTemplate.queryForObject(
+                    "SELECT MAX(id) FROM members WHERE first_name = ?", Long.class, firstName);
+            assertThat(id).isNotNull();
+        });
 
         Long memberId = jdbcTemplate.queryForObject(
                 "SELECT MAX(id) FROM members WHERE first_name = ?", Long.class, firstName);
         System.out.println("[TEST] memberId from db: " + memberId);
 
         // --- Create an event via API (deterministic id) ---
+        // Pattern B: sync XHR (Selenium executeScript does NOT await Promises)
         String eventIdStr = (String) ((JavascriptExecutor) driver).executeScript(
-                "return fetch('/api/events', {" +
-                "  method: 'POST', headers: {'Content-Type':'application/json'}," +
-                "  body: JSON.stringify({name: 'Wydarzenie " + uid + "', date: '" + java.time.LocalDate.now() + "'," +
-                "    startTime: '18:00', endTime: '20:00', paymentType: 'FREE', eventType: 'CONCERT', bandId: 1})" +
-                "}).then(r => r.json()).then(ev => '' + ev.id);");
-        Thread.sleep(1000);
+                "var xhr = new XMLHttpRequest();" +
+                "xhr.open('POST', '/api/events', false);" +
+                "xhr.setRequestHeader('Content-Type', 'application/json');" +
+                "xhr.send(JSON.stringify({name: 'Wydarzenie " + uid + "', date: '" + java.time.LocalDate.now() + "'," +
+                "    startTime: '18:00', endTime: '20:00', paymentType: 'FREE', eventType: 'CONCERT', bandId: 1}));" +
+                "return JSON.parse(xhr.responseText).id.toString();");
         Long eventId = eventIdStr != null ? Long.valueOf(eventIdStr) : null;
         System.out.println("[TEST] eventId from API: " + eventId);
 
@@ -184,13 +211,20 @@ class AttendancePersistenceUiTest extends UiTestBase {
         wait.until(ExpectedConditions.presenceOfElementLocated(By.id("events-content")));
         wait.until(ExpectedConditions.presenceOfElementLocated(By.id("open-invite-modal-btn")));
 
-        // Invite the member via API
+        // Invite the member via API (sync XHR so we get the request done before navigating)
         ((JavascriptExecutor) driver).executeScript(
-                "return fetch('/api/events/' + arguments[0] + '/invite', {" +
-                "  method: 'POST', headers: {'Content-Type':'application/json'}," +
-                "  body: JSON.stringify({eventId: arguments[0], memberId: parseInt(arguments[1])})" +
-                "});", eventId, String.valueOf(memberId));
-        Thread.sleep(2000);
+                "var xhr = new XMLHttpRequest();" +
+                "xhr.open('POST', '/api/events/' + arguments[0] + '/invite', false);" +
+                "xhr.setRequestHeader('Content-Type', 'application/json');" +
+                "xhr.send(JSON.stringify({eventId: arguments[0], memberId: parseInt(arguments[1])}));" +
+                "return xhr.status;", eventId, String.valueOf(memberId));
+        // Pattern A: poll DB until invite row appears (replaces Thread.sleep(2000))
+        await().atMost(Duration.ofSeconds(10)).untilAsserted(() -> {
+            Integer count = jdbcTemplate.queryForObject(
+                    "SELECT COUNT(*) FROM event_participations WHERE event_id = ? AND member_id = ?",
+                    Integer.class, eventId, memberId);
+            assertThat(count).isEqualTo(1);
+        });
 
         // Reload event detail fragment to see the newly invited participant
         driver.get(baseUrl() + "/events/" + eventId);
@@ -209,7 +243,13 @@ class AttendancePersistenceUiTest extends UiTestBase {
 
         // --- Change to CONFIRMED (fires on change) ---
         confirmedOpt.click();
-        Thread.sleep(1500);
+        // Pattern A: poll DB until response is persisted (replaces Thread.sleep(1500))
+        await().atMost(Duration.ofSeconds(10)).untilAsserted(() -> {
+            String response = jdbcTemplate.queryForObject(
+                    "SELECT response FROM event_participations WHERE event_id = ? AND member_id = ?",
+                    String.class, eventId, memberId);
+            assertThat(response).isEqualTo("CONFIRMED");
+        });
 
         // --- Reload event detail (via list, HTMX swap) and ASSERT 2: persisted as CONFIRMED ---
         driver.get(baseUrl() + "/events");

@@ -71,9 +71,11 @@ class MemberEditUxRegressionUiTest extends UiTestBase {
                     .as("Member row should have data-member-id attribute for JS targeting")
                     .isEqualTo(String.valueOf(memberId));
 
-            // Wait for the add-member success toast to auto-hide (3s + 300ms animation)
-            // so the test only counts the toasts from the EDIT operation.
-            try { Thread.sleep(3500); } catch (InterruptedException ignored) { /* intentionally ignored */ }
+            // Wait for the add-member success toast to auto-hide so the test only
+            // counts the toasts from the EDIT operation. The toast container empties
+            // out (~3s) so we wait for the container to contain no toast nodes.
+            // Selenium: czekamy aż kontener toast będzie pusty.
+            wait.until(d -> d.findElements(By.cssSelector("#toast-container .toast")).isEmpty());
 
             // === STEP 3: Open edit form ===
             clickEditForMember(wait, firstName + " " + lastName);
@@ -106,8 +108,15 @@ class MemberEditUxRegressionUiTest extends UiTestBase {
                     .isEqualTo(true);
 
             // === STEP 7: Verify only ONE success toast (not 6) ===
-            // Wait briefly to let all parallel fetches complete + give the success toast time to render
-            try { Thread.sleep(800); } catch (InterruptedException ignored) { /* intentionally ignored */ }
+            // Wait for the edit-form success toast to render (HTMX swap settles, then
+            // the shared initFocusHighlight fires the success toast after ~50ms).
+            // Selenium: czekamy na pojawienie się toastu z "Zapisano członka".
+            wait.until(d -> {
+                Object txt = ((JavascriptExecutor) d).executeScript(
+                        "var t = document.querySelector('#toast-container .toast.success');" +
+                        "return t ? t.textContent : '';");
+                return txt != null && txt.toString().toLowerCase().contains("zapisano członka");
+            });
 
             // The previous 'Dodaj członka' toast has long auto-hid (3s+). Only the edit toast
             // should be visible. Verify NO per-attribute toasts (the ones we consolidated away).
@@ -132,7 +141,14 @@ class MemberEditUxRegressionUiTest extends UiTestBase {
                     .containsIgnoringCase("Zapisano członka");
 
             // === STEP 8: Verify the highlight disappears after ~3 seconds ===
-            try { Thread.sleep(3500); } catch (InterruptedException ignored) { /* intentionally ignored */ }
+            // Selenium: czekamy aż klasa highlight-row zniknie z wiersza (auto-removal
+            // po 3s w windband-utils.js initFocusHighlight).
+            new WebDriverWait(driver, Duration.ofSeconds(10)).until(d -> {
+                Object still = ((JavascriptExecutor) d).executeScript(
+                        "var r = document.querySelector(\"tr[data-member-id='" + expectedId + "']\");"
+                                + "return r ? r.classList.contains('highlight-row') : false;");
+                return Boolean.FALSE.equals(still);
+            });
             Object stillHasHighlight = ((JavascriptExecutor) driver).executeScript(
                     "var r = document.querySelector(\"tr[data-member-id='" + expectedId + "']\");"
                             + "return r ? r.classList.contains('highlight-row') : false;");

@@ -99,9 +99,9 @@ class EventInviteModalUiTest extends UiTestBase {
         ((JavascriptExecutor) driver).executeScript(
                 "document.querySelector(\"input[name='dateOfBirth']\").value = '1990-05-15';");
         driver.findElement(By.cssSelector("#member-form button[type='submit'].primary")).click();
-        wait.until(ExpectedConditions.presenceOfElementLocated(
-                By.cssSelector("#members-content table tbody tr")));
-        try { Thread.sleep(800); } catch (InterruptedException ignored) { /* noop */ }
+        // Wait for the create form to close (post-submit settle — the modal is the indicator
+        // the request has been processed and the page is ready for the next member)
+        wait.until(ExpectedConditions.invisibilityOfElementLocated(By.cssSelector("#member-form")));
     }
 
     private void checkMember(String fullName) {

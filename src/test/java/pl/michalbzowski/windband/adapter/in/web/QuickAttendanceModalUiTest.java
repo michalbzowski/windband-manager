@@ -8,6 +8,7 @@ import org.openqa.selenium.support.ui.ExpectedConditions;
 import org.openqa.selenium.support.ui.WebDriverWait;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.testcontainers.shaded.org.awaitility.Awaitility;
 import pl.michalbzowski.windband.UiTestBase;
 
 import java.time.Duration;
@@ -54,7 +55,11 @@ class QuickAttendanceModalUiTest extends UiTestBase {
         driver.findElement(By.cssSelector("#rehearsal-form button[type='submit'].primary")).click();
         wait.until(ExpectedConditions.urlContains("/rehearsals"));
         wait.until(ExpectedConditions.not(ExpectedConditions.urlContains("/new")));
-        Thread.sleep(1000);
+        // Wait for the new rehearsal to be persisted in the DB before we read MAX(id) below
+        // (replaces fixed Thread.sleep — polls DB until row appears)
+        Awaitility.await().atMost(Duration.ofSeconds(10)).until(() ->
+                jdbcTemplate.queryForObject(
+                        "SELECT COUNT(*) FROM rehearsals WHERE date = ?", Long.class, today) > 0);
 
         Long rehearsalId = jdbcTemplate.queryForObject(
                 "SELECT MAX(id) FROM rehearsals WHERE date = ?", Long.class, today);
@@ -107,16 +112,22 @@ class QuickAttendanceModalUiTest extends UiTestBase {
         assertThat(progress1).startsWith("1 /");
 
         // --- Member 1: click PRESENT -> should advance to 2 / N ---
+        // Capture progress text BEFORE click, then wait for it to change after the save
+        // (replaces fixed Thread.sleep — waits on real DOM progress update)
+        String beforePresent1 = driver.findElement(By.id("qa-progress")).getText();
         driver.findElement(By.cssSelector(".qa-status[data-status='PRESENT']")).click();
-        Thread.sleep(600);
+        wait.until(d -> !d.findElement(By.id("qa-progress")).getText().equals(beforePresent1));
         String progress2 = driver.findElement(By.id("qa-progress")).getText();
         System.out.println("[TEST] progress after first save: " + progress2);
         assertThat(progress2).startsWith("2 /");
 
         // --- Back button: returns to 1 / N ---
+        // Capture progress text BEFORE click, then wait for it to change after the back action
+        // (replaces fixed Thread.sleep — waits on real DOM progress update)
+        String beforeBack = driver.findElement(By.id("qa-progress")).getText();
         WebElement backBtn = driver.findElement(By.id("qa-back"));
         backBtn.click();
-        Thread.sleep(600);
+        wait.until(d -> !d.findElement(By.id("qa-progress")).getText().equals(beforeBack));
         String afterBack = (String) ((JavascriptExecutor) driver).executeScript(
                 "return document.getElementById('qa-progress').textContent;");
         System.out.println("[TEST] after back: progress=" + afterBack);
@@ -179,7 +190,11 @@ class QuickAttendanceModalUiTest extends UiTestBase {
                 "document.querySelector(\"input[name='dateOfBirth']\").value = '1990-05-15';");
         driver.findElement(By.cssSelector("#member-form button[type='submit'].primary")).click();
         wait.until(ExpectedConditions.presenceOfElementLocated(By.cssSelector("#members-content table")));
-        Thread.sleep(1000);
+        // Wait for the new member to be persisted in the DB before this helper returns
+        // (replaces fixed Thread.sleep — polls DB until row appears)
+        Awaitility.await().atMost(Duration.ofSeconds(10)).until(() ->
+                jdbcTemplate.queryForObject(
+                        "SELECT COUNT(*) FROM members WHERE first_name = ?", Long.class, firstName) > 0);
     }
 
     private void inviteMember(Long rehearsalId, Long memberId) {

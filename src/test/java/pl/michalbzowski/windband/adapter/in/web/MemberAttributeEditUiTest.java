@@ -1,6 +1,9 @@
 package pl.michalbzowski.windband.adapter.in.web;
 
 import org.junit.jupiter.api.Test;
+import org.openqa.selenium.By;
+import org.openqa.selenium.support.ui.ExpectedConditions;
+import org.openqa.selenium.support.ui.WebDriverWait;
 import org.springframework.beans.factory.annotation.Autowired;
 import pl.michalbzowski.windband.UiTestBase;
 import pl.michalbzowski.windband.domain.band.Band;
@@ -8,6 +11,7 @@ import pl.michalbzowski.windband.domain.band.BandRepository;
 import pl.michalbzowski.windband.domain.band.MemberAttributeDef;
 import pl.michalbzowski.windband.domain.band.MemberAttributeDefRepository;
 
+import java.time.Duration;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -29,7 +33,8 @@ class MemberAttributeEditUiTest extends UiTestBase {
     private BandRepository bandRepository;
 
     @Test
-    void shouldOpenEditFormForMemberAttribute_withoutError() throws InterruptedException {
+    void shouldOpenEditFormForMemberAttribute_withoutError() {
+        WebDriverWait wait = new WebDriverWait(driver, Duration.ofSeconds(10));
         String unique = UUID.randomUUID().toString().substring(0, 8);
         String attrName = "MemAttr" + unique;
         Long attrId;
@@ -49,8 +54,9 @@ class MemberAttributeEditUiTest extends UiTestBase {
             System.out.println("[TEST] Navigating to edit URL: " + editUrl);
             driver.get(baseUrl() + editUrl);
 
-            // Wait for the page to load
-            Thread.sleep(3000);
+            // Selenium: czekamy na załadowanie formularza edycji atrybutu.
+            wait.until(ExpectedConditions.presenceOfElementLocated(
+                    By.cssSelector("form input[name='name']")));
 
             String pageSource = driver.getPageSource();
             System.out.println("[TEST] Page title: " + driver.getTitle());

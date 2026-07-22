@@ -8,6 +8,8 @@ import org.openqa.selenium.JavascriptExecutor;
 import org.openqa.selenium.WebElement;
 import org.openqa.selenium.support.ui.ExpectedConditions;
 import org.openqa.selenium.support.ui.WebDriverWait;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.jdbc.core.JdbcTemplate;
 import pl.michalbzowski.windband.UiTestBase;
 
 import java.time.Duration;
@@ -16,6 +18,7 @@ import java.util.Set;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.awaitility.Awaitility.await;
 
 /**
  * End-to-end UI flow tests for attribute definitions across all five types
@@ -78,6 +81,9 @@ class AttributeFlowUiTest extends UiTestBase {
 
     @org.springframework.beans.factory.annotation.Autowired
     private pl.michalbzowski.windband.domain.member.ConsentRepository consentRepo;
+
+    @Autowired
+    private JdbcTemplate jdbcTemplate;
 
     private String unique;
     private Set<Long> uniformIdsBefore;
@@ -192,7 +198,7 @@ class AttributeFlowUiTest extends UiTestBase {
     // ====================================================================
 
     @Test
-    void uniformAttribute_shouldBeVisibleInNewUniformForm_andRemainAfterSave() throws InterruptedException {
+    void uniformAttribute_shouldBeVisibleInNewUniformForm_andRemainAfterSave() {
         String attrName = "UniAttr" + unique;
         WebDriverWait wait = new WebDriverWait(driver, Duration.ofSeconds(10));
 
@@ -205,15 +211,14 @@ class AttributeFlowUiTest extends UiTestBase {
         // === 3. Navigate to inventory, switch to Ekwipunek tab, open "Dodaj ekwipunek" form ===
         driver.get(baseUrl() + "/inventory");
         wait.until(ExpectedConditions.presenceOfElementLocated(By.cssSelector("#inventory-content h2")));
-        Thread.sleep(300);
+        // Pattern E: tab click + showForm — visibility wait on #uniform-form handles form appearance
         ((JavascriptExecutor) driver).executeScript(
                 "document.querySelector('[data-tab=\"uniforms\"]').click();");
-        Thread.sleep(300);
         ((JavascriptExecutor) driver).executeScript("showUniformForm();");
         wait.until(ExpectedConditions.visibilityOfElementLocated(By.id("uniform-form")));
 
         // === 4. Verify the new attribute is visible in the uniform form ===
-        Thread.sleep(300);
+        // assertContainerHasText now waits via textToBePresentInElementLocated
         assertContainerHasText("#uniform-attributes", attrName,
                 "New uniform attribute '%s' must be visible in Dodaj ekwipunek form");
 
@@ -230,12 +235,11 @@ class AttributeFlowUiTest extends UiTestBase {
         ((JavascriptExecutor) driver).executeScript("submitUniform();");
         // After submit, refreshTab('uniforms') replaces #uniforms-content. The form is hidden.
         wait.until(ExpectedConditions.invisibilityOfElementLocated(By.id("uniform-form")));
-        Thread.sleep(800);
+        // Pattern F: text wait in helper handles tab content reload
 
         // === 6. Verify the attribute is still visible (open the form again) ===
         ((JavascriptExecutor) driver).executeScript("showUniformForm();");
         wait.until(ExpectedConditions.visibilityOfElementLocated(By.id("uniform-form")));
-        Thread.sleep(300);
         assertContainerHasText("#uniform-attributes", attrName,
                 "Attribute '%s' must still be visible in the form after a uniform was saved");
     }
@@ -245,7 +249,7 @@ class AttributeFlowUiTest extends UiTestBase {
     // ====================================================================
 
     @Test
-    void instrumentAttribute_shouldBeVisibleInNewInstrumentForm_andRemainAfterSave() throws InterruptedException {
+    void instrumentAttribute_shouldBeVisibleInNewInstrumentForm_andRemainAfterSave() {
         String attrName = "InstAttr" + unique;
         WebDriverWait wait = new WebDriverWait(driver, Duration.ofSeconds(10));
 
@@ -254,14 +258,12 @@ class AttributeFlowUiTest extends UiTestBase {
 
         driver.get(baseUrl() + "/inventory");
         wait.until(ExpectedConditions.presenceOfElementLocated(By.cssSelector("#inventory-content h2")));
-        Thread.sleep(300);
+        // Pattern E: tab click + showForm — visibility wait on #instrument-form handles form appearance
         ((JavascriptExecutor) driver).executeScript(
                 "document.querySelector('[data-tab=\"instruments\"]').click();");
-        Thread.sleep(300);
         ((JavascriptExecutor) driver).executeScript("showInstrumentForm();");
         wait.until(ExpectedConditions.visibilityOfElementLocated(By.id("instrument-form")));
 
-        Thread.sleep(300);
         assertContainerHasText("#instrument-attributes", attrName,
                 "New instrument attribute '%s' must be visible in Dodaj instrument form");
 
@@ -276,11 +278,10 @@ class AttributeFlowUiTest extends UiTestBase {
                 + "}");
         ((JavascriptExecutor) driver).executeScript("submitInstrument();");
         wait.until(ExpectedConditions.invisibilityOfElementLocated(By.id("instrument-form")));
-        Thread.sleep(800);
+        // Pattern F: text wait in helper handles tab content reload
 
         ((JavascriptExecutor) driver).executeScript("showInstrumentForm();");
         wait.until(ExpectedConditions.visibilityOfElementLocated(By.id("instrument-form")));
-        Thread.sleep(300);
         assertContainerHasText("#instrument-attributes", attrName,
                 "Attribute '%s' must still be visible after an instrument was saved");
     }
@@ -290,7 +291,7 @@ class AttributeFlowUiTest extends UiTestBase {
     // ====================================================================
 
     @Test
-    void orderAttribute_shouldBeVisibleInNewOrderForm_andRemainAfterSave() throws InterruptedException {
+    void orderAttribute_shouldBeVisibleInNewOrderForm_andRemainAfterSave() {
         // Note: The order form's "type=UNIFORM" path uses UniformAttributeDefs (not
         // OrderAttributeDefs) — the order's attribute fields mirror the underlying
         // item's attribute definitions. So this test creates a UNIFORM attribute and
@@ -304,16 +305,14 @@ class AttributeFlowUiTest extends UiTestBase {
 
         driver.get(baseUrl() + "/inventory");
         wait.until(ExpectedConditions.presenceOfElementLocated(By.cssSelector("#inventory-content h2")));
-        Thread.sleep(300);
+        // Pattern E: tab click + showForm — visibility wait on #order-form handles form appearance
         ((JavascriptExecutor) driver).executeScript(
                 "document.querySelector('[data-tab=\"orders\"]').click();");
-        Thread.sleep(300);
         ((JavascriptExecutor) driver).executeScript("showOrderForm();");
         wait.until(ExpectedConditions.visibilityOfElementLocated(By.id("order-form")));
 
         // The order-attributes are loaded by JS when type changes. Pick a member, then
         // set type to UNIFORM so the dynamic order attribute fields render.
-        Thread.sleep(300);
         String firstMemberValue = (String) ((JavascriptExecutor) driver)
                 .executeScript("var sel=document.getElementById('order-member');"
                         + "return sel.options.length > 1 ? sel.options[1].value : '';");
@@ -326,7 +325,7 @@ class AttributeFlowUiTest extends UiTestBase {
                 "document.getElementById('order-type').value = 'UNIFORM';"
                 + "document.getElementById('order-type').dispatchEvent(new Event('change', {bubbles:true}));"
                 + "updateOrderAttributes();");
-        Thread.sleep(500);
+        // Pattern G: text wait in helper handles #order-attributes render
 
         assertContainerHasText("#order-attributes", attrName,
                 "New uniform attribute '%s' must be visible in Nowe zamówienie form (type=UNIFORM)");
@@ -353,7 +352,7 @@ class AttributeFlowUiTest extends UiTestBase {
                 System.err.println("[WARN] Order form did not close after submit — likely API error. Force-hiding.");
                 ((JavascriptExecutor) driver).executeScript("hideOrderForm();");
             }
-            Thread.sleep(800);
+            // Pattern F: text wait in helper handles tab content reload
         }
 
         // Re-open order form and verify attribute persists
@@ -363,7 +362,7 @@ class AttributeFlowUiTest extends UiTestBase {
                 "document.getElementById('order-type').value = 'UNIFORM';"
                 + "document.getElementById('order-type').dispatchEvent(new Event('change', {bubbles:true}));"
                 + "updateOrderAttributes();");
-        Thread.sleep(500);
+        // Pattern G: text wait in helper handles #order-attributes render
         assertContainerHasText("#order-attributes", attrName,
                 "Attribute '%s' must still be visible after an order was saved");
     }
@@ -373,7 +372,7 @@ class AttributeFlowUiTest extends UiTestBase {
     // ====================================================================
 
     @Test
-    void awardAttribute_shouldBeVisibleInNewAwardForm_andRemainAfterSave() throws InterruptedException {
+    void awardAttribute_shouldBeVisibleInNewAwardForm_andRemainAfterSave() {
         String attrName = "AwAttr" + unique;
         WebDriverWait wait = new WebDriverWait(driver, Duration.ofSeconds(10));
 
@@ -382,14 +381,12 @@ class AttributeFlowUiTest extends UiTestBase {
 
         driver.get(baseUrl() + "/inventory");
         wait.until(ExpectedConditions.presenceOfElementLocated(By.cssSelector("#inventory-content h2")));
-        Thread.sleep(300);
+        // Pattern E: tab click + showForm — visibility wait on #award-form handles form appearance
         ((JavascriptExecutor) driver).executeScript(
                 "document.querySelector('[data-tab=\"awards\"]').click();");
-        Thread.sleep(300);
         ((JavascriptExecutor) driver).executeScript("showAwardForm();");
         wait.until(ExpectedConditions.visibilityOfElementLocated(By.id("award-form")));
 
-        Thread.sleep(300);
         assertContainerHasText("#award-attributes", attrName,
                 "New award attribute '%s' must be visible in Dodaj odznaczenie form");
 
@@ -407,11 +404,10 @@ class AttributeFlowUiTest extends UiTestBase {
                 + "}");
         ((JavascriptExecutor) driver).executeScript("submitAward();");
         wait.until(ExpectedConditions.invisibilityOfElementLocated(By.id("award-form")));
-        Thread.sleep(800);
+        // Pattern F: text wait in helper handles tab content reload
 
         ((JavascriptExecutor) driver).executeScript("showAwardForm();");
         wait.until(ExpectedConditions.visibilityOfElementLocated(By.id("award-form")));
-        Thread.sleep(300);
         assertContainerHasText("#award-attributes", attrName,
                 "Attribute '%s' must still be visible after an award was saved");
     }
@@ -421,7 +417,7 @@ class AttributeFlowUiTest extends UiTestBase {
     // ====================================================================
 
     @Test
-    void memberAttribute_shouldBeVisibleInNewMemberForm_andRemainAfterSave() throws InterruptedException {
+    void memberAttribute_shouldBeVisibleInNewMemberForm_andRemainAfterSave() {
         String attrName = "MemAttr" + unique;
         WebDriverWait wait = new WebDriverWait(driver, Duration.ofSeconds(10));
 
@@ -437,7 +433,7 @@ class AttributeFlowUiTest extends UiTestBase {
         addMemberBtn.click();
         wait.until(ExpectedConditions.presenceOfElementLocated(By.cssSelector("#member-form")));
 
-        Thread.sleep(400);
+        // Pattern H: text wait in helper handles the attribute label render inside the form
         // The "Dodatkowe atrybuty" section is inside the form. Verify the new
         // attribute label is present somewhere in the form's text.
         assertContainerHasText("#member-form", attrName,
@@ -471,9 +467,13 @@ class AttributeFlowUiTest extends UiTestBase {
         driver.findElement(By.cssSelector("form#member-form button.primary[type='submit']")).click();
         wait.until(ExpectedConditions.textToBePresentInElementLocated(
                 By.cssSelector("#members-content"), firstName));
-        // Force a fresh reload of the members list to avoid htmx transition timing issues
-        // before re-clicking the "Dodaj członka" button.
-        Thread.sleep(1000);
+        // Pattern I: poll DB for the persisted member before doing a hard reload
+        // — avoids htmx transition timing issues when re-clicking "Dodaj członka".
+        await().atMost(Duration.ofSeconds(10)).untilAsserted(() -> {
+            Long count = jdbcTemplate.queryForObject(
+                    "SELECT COUNT(*) FROM members WHERE first_name = ?", Long.class, firstName);
+            assertThat(count).isEqualTo(1L);
+        });
         driver.get(baseUrl() + "/members");
         wait.until(ExpectedConditions.presenceOfElementLocated(By.cssSelector("#members-content h2")));
 
@@ -482,12 +482,9 @@ class AttributeFlowUiTest extends UiTestBase {
                 By.xpath("//button[contains(text(), 'Dodaj członka')]"));
         addMemberBtn2.click();
         wait.until(ExpectedConditions.presenceOfElementLocated(By.cssSelector("#member-form")));
-        Thread.sleep(400);
-        String formText = (String) ((JavascriptExecutor) driver)
-                .executeScript("return document.querySelector('#member-form') ? document.querySelector('#member-form').textContent : '<FORM_NULL>';");
-        assertThat(formText)
-                .as("Attribute '%s' must still be visible in Dodaj członka form after a member was saved", attrName)
-                .contains(attrName);
+        // Pattern H: text wait in helper handles the attribute label render inside the form
+        assertContainerHasText("#member-form", attrName,
+                "Attribute '%s' must still be visible in Dodaj członka form after a member was saved");
     }
 
     // ====================================================================
@@ -516,23 +513,15 @@ class AttributeFlowUiTest extends UiTestBase {
         wait.until(ExpectedConditions.not(ExpectedConditions.urlContains("/new")));
     }
 
-    private void assertAttributeVisibleOnList(String type, String attrName, WebDriverWait wait)
-            throws InterruptedException {
+    private void assertAttributeVisibleOnList(String type, String attrName, WebDriverWait wait) {
         driver.get(baseUrl() + "/band/inventory-attributes?type=" + type);
         wait.until(ExpectedConditions.presenceOfElementLocated(By.cssSelector("#content h2")));
-        Thread.sleep(500);
-        String listContent = (String) ((JavascriptExecutor) driver)
-                .executeScript("return document.querySelector('#content').textContent;");
-        assertThat(listContent)
-                .as("Attribute '%s' should be visible on the %s attributes list", attrName, type)
-                .contains(attrName);
+        new WebDriverWait(driver, Duration.ofSeconds(10))
+                .until(ExpectedConditions.textToBePresentInElementLocated(By.cssSelector("#content"), attrName));
     }
 
     private void assertContainerHasText(String cssSelector, String expected, String message) {
-        String text = (String) ((JavascriptExecutor) driver)
-                .executeScript("return document.querySelector('" + cssSelector + "').textContent;");
-        assertThat(text)
-                .as(message, expected)
-                .contains(expected);
+        new WebDriverWait(driver, Duration.ofSeconds(10))
+                .until(ExpectedConditions.textToBePresentInElementLocated(By.cssSelector(cssSelector), expected));
     }
 }

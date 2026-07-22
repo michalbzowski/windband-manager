@@ -37,12 +37,13 @@ class GroupAddMembersModalUiTest extends UiTestBase {
         createMember(bFirst, bLast);
 
         // --- Create a group via API ---
+        // Selenium: synchroniczny XHR zwraca ID dopiero po zakończeniu zapisu grupy.
         String groupIdStr = (String) ((JavascriptExecutor) driver).executeScript(
-                "return fetch('/api/groups', {" +
-                "  method: 'POST', headers: {'Content-Type':'application/json'}," +
-                "  body: JSON.stringify({name: 'ModalTestGrp" + uid + "', description: 'test'})" +
-                "}).then(r => r.json()).then(g => '' + g.id);");
-        Thread.sleep(800);
+                "var xhr = new XMLHttpRequest();" +
+                "xhr.open('POST', '/api/groups', false);" +
+                "xhr.setRequestHeader('Content-Type', 'application/json');" +
+                "xhr.send(JSON.stringify({name: 'ModalTestGrp" + uid + "', description: 'test'}));" +
+                "return JSON.parse(xhr.responseText).id.toString();");
         Long groupId = groupIdStr != null ? Long.valueOf(groupIdStr) : null;
         assertThat(groupId).isNotNull();
 
@@ -81,8 +82,9 @@ class GroupAddMembersModalUiTest extends UiTestBase {
 
         jsClick(driver.findElement(By.id("add-selected-members-btn")));
 
-        // Wait for HTMX to complete the reload
-        try { Thread.sleep(1500); } catch (InterruptedException ignored) { /* noop - wait for reload */ }
+        // Selenium: czekamy na dwa nowe wiersze wyrenderowane po swapie HTMX.
+        wait.until(d -> d.findElements(
+                By.cssSelector("#groups-content table tbody tr")).size() >= before + 2);
 
         // Members table should now contain both added members
         int after = driver.findElements(
@@ -113,7 +115,9 @@ class GroupAddMembersModalUiTest extends UiTestBase {
         driver.findElement(By.cssSelector("#member-form button[type='submit'].primary")).click();
         wait.until(ExpectedConditions.presenceOfElementLocated(
                 By.cssSelector("#members-content table tbody tr")));
-        try { Thread.sleep(800); } catch (InterruptedException ignored) { /* noop - allow HTMX reload */ }
+        // Selenium: czekamy na dodatkowe wiersze wyrenderowane po swapie HTMX.
+        wait.until(d -> d.findElements(
+                By.cssSelector("#members-content table tbody tr")).size() > 1);
     }
 
     private void fill(String name, String value) {

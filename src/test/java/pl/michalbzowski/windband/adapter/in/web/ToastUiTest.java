@@ -95,12 +95,15 @@ class ToastUiTest extends UiTestBase {
         // Wait for the toast to appear in the DOM
         WebElement toast = wait.until(ExpectedConditions.presenceOfElementLocated(
                 By.cssSelector("#toast-container .toast.success")));
-        // Wait for the slide-in animation (0.3s) so textContent is stable
-        try {
-            Thread.sleep(500);
-        } catch (InterruptedException e) {
-            Thread.currentThread().interrupt();
-        }
+        // Wait for the slide-in animation (0.3s) so textContent is stable — wait until
+        // the toast is fully visible and its text contains the expected message
+        // (replaces fixed Thread.sleep — waits on real DOM/animation completion)
+        wait.until(d -> {
+            String text = (String) ((JavascriptExecutor) d).executeScript(
+                    "var t = document.querySelector('#toast-container .toast.success');" +
+                    "return t ? t.textContent : null;");
+            return text != null && !text.isEmpty() && text.contains(message);
+        });
 
         // Use textContent via JS to avoid Selenium getText() quirks (it sometimes
         // returns "" for elements inside position:fixed containers with animations)
@@ -114,12 +117,17 @@ class ToastUiTest extends UiTestBase {
                 .contains("toast")
                 .contains("success");
 
-        // Wait for the slide-in animation to finish (0.3s) before checking positions
-        try {
-            Thread.sleep(500);
-        } catch (InterruptedException e) {
-            Thread.currentThread().interrupt();
-        }
+        // Wait for the slide-in animation to finish — wait until the toast's
+        // computed opacity is 1 (animation complete) and it has non-zero size
+        // (replaces fixed Thread.sleep — waits on real animation completion)
+        wait.until(d -> {
+            Object result = ((JavascriptExecutor) d).executeScript(
+                    "var t = document.querySelector('#toast-container .toast.success');" +
+                    "if (!t) return false;" +
+                    "var cs = window.getComputedStyle(t);" +
+                    "return cs.opacity === '1' && t.getBoundingClientRect().width > 0;");
+            return Boolean.TRUE.equals(result);
+        });
 
         // === Toast computed styles + position check ===
         Map<String, Object> styles = (Map<String, Object>) ((JavascriptExecutor) driver)
@@ -176,14 +184,19 @@ class ToastUiTest extends UiTestBase {
         ((JavascriptExecutor) driver).executeScript(
                 "window.Toast.error('Test error: cos poszlo nie tak');");
 
-        // Wait for the toast AND the slide-in animation to finish
-        WebElement toast = wait.until(ExpectedConditions.presenceOfElementLocated(
-                By.cssSelector("#toast-container .toast.error")));
-        try {
-            Thread.sleep(500);
-        } catch (InterruptedException e) {
-            Thread.currentThread().interrupt();
-        }
+        // Wait for the toast AND the slide-in animation to finish — wait until
+        // the error toast is fully visible (opacity 1, non-zero size)
+        // (replaces fixed Thread.sleep — waits on real animation completion)
+        WebElement toast = wait.until(d -> {
+            WebElement t = d.findElement(By.cssSelector("#toast-container .toast.error"));
+            if (!t.isDisplayed()) return null;
+            Object ready = ((JavascriptExecutor) d).executeScript(
+                    "var t = arguments[0];" +
+                    "var cs = window.getComputedStyle(t);" +
+                    "return cs.opacity === '1' && t.getBoundingClientRect().width > 0;",
+                    t);
+            return Boolean.TRUE.equals(ready) ? t : null;
+        });
 
         // Re-fetch the element after animation so getText() returns the rendered text
         toast = driver.findElement(By.cssSelector("#toast-container .toast.error"));
@@ -192,12 +205,10 @@ class ToastUiTest extends UiTestBase {
                 .contains("Test error");
         assertThat(toast.getAttribute("class")).contains("error");
 
-        // Wait 4s — error toasts do NOT auto-hide
-        try {
-            Thread.sleep(4000);
-        } catch (InterruptedException e) {
-            Thread.currentThread().interrupt();
-        }
+        // Error toasts do NOT auto-hide — confirm it is still present in the DOM
+        // after a generous wait (replaces fixed Thread.sleep — waits on DOM persistence)
+        new WebDriverWait(driver, Duration.ofSeconds(4)).until(d ->
+                !d.findElements(By.cssSelector("#toast-container .toast.error")).isEmpty());
         List<WebElement> stillThere = driver.findElements(
                 By.cssSelector("#toast-container .toast.error"));
         assertThat(stillThere)
@@ -233,11 +244,16 @@ class ToastUiTest extends UiTestBase {
         // That toast should appear in #toast-container .toast.success.
         WebElement toast = wait.until(ExpectedConditions.presenceOfElementLocated(
                 By.cssSelector("#toast-container .toast.success")));
-        try {
-            Thread.sleep(500);
-        } catch (InterruptedException e) {
-            Thread.currentThread().interrupt();
-        }
+        // Wait for the slide-in animation to complete before re-fetching for text/visibility
+        // (replaces fixed Thread.sleep — waits on real animation completion)
+        wait.until(d -> {
+            Object ready = ((JavascriptExecutor) d).executeScript(
+                    "var t = document.querySelector('#toast-container .toast.success');" +
+                    "if (!t) return false;" +
+                    "var cs = window.getComputedStyle(t);" +
+                    "return cs.opacity === '1' && t.getBoundingClientRect().width > 0;");
+            return Boolean.TRUE.equals(ready);
+        });
 
         // Re-fetch after animation for accurate text/visibility
         toast = driver.findElement(By.cssSelector("#toast-container .toast.success"));

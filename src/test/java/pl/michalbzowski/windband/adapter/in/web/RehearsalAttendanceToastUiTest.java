@@ -8,6 +8,7 @@ import org.openqa.selenium.support.ui.ExpectedConditions;
 import org.openqa.selenium.support.ui.WebDriverWait;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.testcontainers.shaded.org.awaitility.Awaitility;
 import pl.michalbzowski.windband.UiTestBase;
 
 import java.time.Duration;
@@ -47,7 +48,11 @@ class RehearsalAttendanceToastUiTest extends UiTestBase {
                 "document.querySelector(\"input[name='dateOfBirth']\").value = '1990-05-15';");
         driver.findElement(By.cssSelector("#member-form button[type='submit'].primary")).click();
         wait.until(ExpectedConditions.presenceOfElementLocated(By.cssSelector("#members-content table")));
-        Thread.sleep(1000);
+        // Wait for the new member to be persisted in the DB before we read MAX(id) below
+        // (replaces fixed Thread.sleep — polls DB until row appears)
+        Awaitility.await().atMost(Duration.ofSeconds(10)).until(() ->
+                jdbcTemplate.queryForObject(
+                        "SELECT COUNT(*) FROM members WHERE first_name = ?", Long.class, firstName) > 0);
 
         // --- Create a rehearsal via UI ---
         loginAndNavigateTo("/rehearsals");
@@ -62,7 +67,11 @@ class RehearsalAttendanceToastUiTest extends UiTestBase {
         driver.findElement(By.cssSelector("#rehearsal-form button[type='submit'].primary")).click();
         wait.until(ExpectedConditions.urlContains("/rehearsals"));
         wait.until(ExpectedConditions.not(ExpectedConditions.urlContains("/new")));
-        Thread.sleep(1500);
+        // Wait for the new rehearsal to be persisted in the DB before we read MAX(id) below
+        // (replaces fixed Thread.sleep — polls DB until row appears)
+        Awaitility.await().atMost(Duration.ofSeconds(10)).until(() ->
+                jdbcTemplate.queryForObject(
+                        "SELECT COUNT(*) FROM rehearsals WHERE date = ?", Long.class, today) > 0);
 
         // --- Navigate directly to the new rehearsal by id (avoids stale-row trap:
         // clicking "Szczegóły" of the first row may open a different, older

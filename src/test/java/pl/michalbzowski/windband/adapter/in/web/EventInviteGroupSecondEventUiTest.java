@@ -52,12 +52,13 @@ class EventInviteGroupSecondEventUiTest extends UiTestBase {
         String groupName = "GrupaTest" + uid;
 
         // Manual group with both members
+        // Selenium: synchroniczny XHR zwraca ID dopiero po zakończeniu zapisu grupy.
         String groupIdStr = (String) ((org.openqa.selenium.JavascriptExecutor) driver).executeScript(
-                "return fetch('/api/groups', {"
-                        + "  method: 'POST', headers: {'Content-Type':'application/json'},"
-                        + "  body: JSON.stringify({name: 'GrupaTest" + uid + "', description: 'test'})"
-                        + "}).then(r => r.json()).then(g => '' + g.id);");
-        Thread.sleep(800);
+                "var xhr = new XMLHttpRequest();"
+                        + "xhr.open('POST', '/api/groups', false);"
+                        + "xhr.setRequestHeader('Content-Type', 'application/json');"
+                        + "xhr.send(JSON.stringify({name: 'GrupaTest" + uid + "', description: 'test'}));"
+                        + "return JSON.parse(xhr.responseText).id.toString();");
         Long groupId = groupIdStr != null ? Long.valueOf(groupIdStr) : null;
         System.out.println("[TEST] groupId=" + groupId);
         assertThat(groupId).isNotNull();
@@ -136,9 +137,9 @@ class EventInviteGroupSecondEventUiTest extends UiTestBase {
                 "//*[@id='invite-group-modal']//label[contains(text(), '" + groupName + "')]/preceding-sibling::input[@type='checkbox']"))
                 .click();
         jsClick(driver.findElement(By.id("invite-group-selected-btn")));
-        // Give HTMX reload time to settle - longer wait for CI
-        try { Thread.sleep(5000); } catch (InterruptedException ignored) { /* intentionally ignored */ }
-        // Additionally wait for any pending HTMX requests to complete
+        // Selenium: czekamy na wiersze uczestników wyrenderowane po swapie HTMX.
+        wait.until(d -> d.findElements(
+                By.cssSelector("#participants-table tbody tr[data-member-id]")).size() >= 2);
         waitForHtmxSettle();
     }
 
@@ -167,13 +168,14 @@ class EventInviteGroupSecondEventUiTest extends UiTestBase {
     }
 
     private Long createEventViaApi(WebDriver driver, String name, Long bandId) {
+        // Selenium: synchroniczny XHR zwraca ID dopiero po zakończeniu zapisu wydarzenia.
         String eventIdStr = (String) ((org.openqa.selenium.JavascriptExecutor) driver).executeScript(
-                "return fetch('/api/events', {"
-                        + "  method: 'POST', headers: {'Content-Type':'application/json'},"
-                        + "  body: JSON.stringify({name: 'Wydarzenie" + name + "', date: '" + LocalDate.now() + "',"
-                        + "    startTime: '18:00', endTime: '20:00', paymentType: 'FREE', eventType: 'CONCERT', bandId: " + bandId + "})"
-                        + "}).then(r => r.json()).then(ev => '' + ev.id);");
-        try { Thread.sleep(500); } catch (InterruptedException ignored) { /* intentionally ignored */ }
+                "var xhr = new XMLHttpRequest();"
+                        + "xhr.open('POST', '/api/events', false);"
+                        + "xhr.setRequestHeader('Content-Type', 'application/json');"
+                        + "xhr.send(JSON.stringify({name: 'Wydarzenie" + name + "', date: '" + LocalDate.now() + "',"
+                        + "  startTime: '18:00', endTime: '20:00', paymentType: 'FREE', eventType: 'CONCERT', bandId: " + bandId + "}));"
+                        + "return JSON.parse(xhr.responseText).id.toString();");
         return eventIdStr != null ? Long.valueOf(eventIdStr) : null;
     }
 
@@ -212,8 +214,12 @@ class EventInviteGroupSecondEventUiTest extends UiTestBase {
     }
 
     private void waitForHtmxSettle() {
-        try { Thread.sleep(800); } catch (InterruptedException ignored) { /* noop */ }
-        // Additional wait for any pending HTMX requests
+        // Selenium: po nawigacji HTMX czekamy na post-swapowy fragment szczegółów.
+        new WebDriverWait(driver, Duration.ofSeconds(10)).until(
+                ExpectedConditions.presenceOfElementLocated(By.id("events-content")));
+        new WebDriverWait(driver, Duration.ofSeconds(10)).until(
+                ExpectedConditions.presenceOfElementLocated(By.id("open-invite-group-modal-btn")));
+        // Selenium: czekamy również aż HTMX zakończy wszystkie żądania.
         new WebDriverWait(driver, Duration.ofSeconds(5)).until(
                 d -> (Boolean) ((org.openqa.selenium.JavascriptExecutor) d).executeScript(
                         "return typeof htmx !== 'undefined' && !Array.from(htmx.findAll(document, '[hx-trigger]')).some(function(e) { return e.closest('.htmx-request'); })"

@@ -34,12 +34,13 @@ class EventInviteGroupUiTest extends UiTestBase {
         System.out.println("[TEST] alphaId=" + alphaId + " betaId=" + betaId);
 
         // Create a manual group via API and add both members
+        // Selenium: synchroniczny XHR zwraca ID dopiero po zakończeniu zapisu grupy.
         String groupIdStr = (String) ((org.openqa.selenium.JavascriptExecutor) driver).executeScript(
-                "return fetch('/api/groups', {" +
-                "  method: 'POST', headers: {'Content-Type':'application/json'}," +
-                "  body: JSON.stringify({name: 'GrupaTest" + uid + "', description: 'test'})" +
-                "}).then(r => r.json()).then(g => '' + g.id);");
-        Thread.sleep(800);
+                "var xhr = new XMLHttpRequest();" +
+                "xhr.open('POST', '/api/groups', false);" +
+                "xhr.setRequestHeader('Content-Type', 'application/json');" +
+                "xhr.send(JSON.stringify({name: 'GrupaTest" + uid + "', description: 'test'}));" +
+                "return JSON.parse(xhr.responseText).id.toString();");
         Long groupId = groupIdStr != null ? Long.valueOf(groupIdStr) : null;
         System.out.println("[TEST] groupId=" + groupId);
         assertThat(groupId).isNotNull();
@@ -48,13 +49,14 @@ class EventInviteGroupUiTest extends UiTestBase {
         addMemberToGroupViaApi(driver, groupId, betaId);
 
         // Create an event via API
+        // Selenium: synchroniczny XHR zwraca ID dopiero po zakończeniu zapisu wydarzenia.
         String eventIdStr = (String) ((org.openqa.selenium.JavascriptExecutor) driver).executeScript(
-                "return fetch('/api/events', {" +
-                "  method: 'POST', headers: {'Content-Type':'application/json'}," +
-                "  body: JSON.stringify({name: 'Wydarzenie" + uid + "', date: '" + java.time.LocalDate.now() + "'," +
-                "    startTime: '18:00', endTime: '20:00', paymentType: 'FREE', eventType: 'CONCERT', bandId: 1})" +
-                "}).then(r => r.json()).then(ev => '' + ev.id);");
-        Thread.sleep(800);
+                "var xhr = new XMLHttpRequest();" +
+                "xhr.open('POST', '/api/events', false);" +
+                "xhr.setRequestHeader('Content-Type', 'application/json');" +
+                "xhr.send(JSON.stringify({name: 'Wydarzenie" + uid + "', date: '" + java.time.LocalDate.now() + "'," +
+                "  startTime: '18:00', endTime: '20:00', paymentType: 'FREE', eventType: 'CONCERT', bandId: 1}));" +
+                "return JSON.parse(xhr.responseText).id.toString();");
         Long eventId = eventIdStr != null ? Long.valueOf(eventIdStr) : null;
         System.out.println("[TEST] eventId=" + eventId);
         assertThat(eventId).isNotNull();

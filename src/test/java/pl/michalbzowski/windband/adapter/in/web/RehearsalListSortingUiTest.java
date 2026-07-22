@@ -15,6 +15,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.awaitility.Awaitility.await;
 
 /**
  * Verifies the rehearsal list splits into upcoming (ascending by date) and
@@ -37,10 +38,11 @@ class RehearsalListSortingUiTest extends UiTestBase {
         createRehearsal(tomorrow, "Nadchodzaca B");
         createRehearsal(in30, "Nadchodzaca C");
 
-        // Open rehearsal list (full page load)
+        // Open rehearsal list (full page load) and wait for at least one row to settle
         loginAndNavigateTo("/rehearsals");
         wait.until(ExpectedConditions.presenceOfElementLocated(By.id("rehearsals-content")));
-        Thread.sleep(800);
+        wait.until(ExpectedConditions.presenceOfElementLocated(
+                By.cssSelector("#rehearsals-content tbody tr")));
 
         // Past section must exist with the "Odbyło się" badge + dimmed rows
         List<WebElement> pastRows = driver.findElements(By.cssSelector("#rehearsals-content tr.past-item"));
@@ -108,6 +110,14 @@ class RehearsalListSortingUiTest extends UiTestBase {
         driver.findElement(By.cssSelector("#rehearsal-form button[type='submit'].primary")).click();
         wait.until(ExpectedConditions.urlContains("/rehearsals"));
         wait.until(ExpectedConditions.not(ExpectedConditions.urlContains("/new")));
-        try { Thread.sleep(1200); } catch (InterruptedException ignored) { /* intentionally ignored */ }
+        // Awaitility: czekamy aż rehearsal pojawi się w DB (post-submit write musi być sflushowany
+        // zanim następna próba go użyje albo zanim lista go odczyta)
+        String dateStr = date.toString();
+        await().atMost(Duration.ofSeconds(10)).untilAsserted(() -> {
+            Integer count = jdbcTemplate.queryForObject(
+                    "SELECT COUNT(*) FROM rehearsals WHERE date = ? AND location = ?",
+                    Integer.class, java.sql.Date.valueOf(dateStr), location);
+            assertThat(count).isEqualTo(1);
+        });
     }
 }

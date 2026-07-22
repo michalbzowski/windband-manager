@@ -5,6 +5,7 @@ import org.openqa.selenium.By;
 import org.openqa.selenium.JavascriptExecutor;
 import org.openqa.selenium.support.ui.ExpectedConditions;
 import org.openqa.selenium.support.ui.WebDriverWait;
+import org.testcontainers.shaded.org.awaitility.Awaitility;
 import pl.michalbzowski.windband.UiTestBase;
 
 import java.time.Duration;
@@ -45,8 +46,10 @@ class EventParticipationInstrumentUiTest extends UiTestBase {
                 By.cssSelector("#event-form button[type='submit'].primary"));
         submitBtn.click();
 
-        // Wait for save + redirect
-        Thread.sleep(3000);
+        // Wait for the redirect to /events (full nav) and the list container to render.
+        wait.until(ExpectedConditions.urlContains("/events"));
+        // Selenium: po pełnym przekierowaniu czekamy na listę wydarzeń.
+        wait.until(ExpectedConditions.presenceOfElementLocated(By.id("events-list-container")));
         driver.get(baseUrl() + "/events");
         wait.until(ExpectedConditions.presenceOfElementLocated(By.id("events-list-container")));
 
@@ -77,15 +80,24 @@ class EventParticipationInstrumentUiTest extends UiTestBase {
         //    and render in the detail table — that is what we assert below.
         Long memberId = 1L;
         Object inviteResult = ((JavascriptExecutor) driver).executeScript(
-                "return fetch('/api/events/' + arguments[0] + '/invite', {" +
-                "  method: 'POST', headers: {'Content-Type':'application/json'}," +
-                "  body: JSON.stringify({eventId: arguments[0], memberId: parseInt(arguments[1])})" +
-                "}).then(function(r){ return 'STATUS=' + r.status; }).catch(function(e){ return 'ERR=' + e; });",
+                "var xhr = new XMLHttpRequest();" +
+                "xhr.open('POST', '/api/events/' + arguments[0] + '/invite', false);" +
+                "xhr.setRequestHeader('Content-Type', 'application/json');" +
+                "xhr.send(JSON.stringify({eventId: parseInt(arguments[0]), memberId: parseInt(arguments[1])}));" +
+                "return 'STATUS=' + xhr.status;",
                 eventId, String.valueOf(memberId));
         System.out.println("[TEST] Invite API result: " + inviteResult);
 
-        // Give the server a moment to persist, then reload and actively wait for the row
-        Thread.sleep(2000);
+        // Selenium: czekamy aż uczestnik pojawi się w DB po synchronicznym zaproszeniu.
+        final Long finalEventId = eventId;
+        Awaitility.await().atMost(Duration.ofSeconds(10)).untilAsserted(() -> {
+            Integer count = jdbcTemplate.queryForObject(
+                    "SELECT COUNT(*) FROM event_participations WHERE event_id = ? AND member_id = ?",
+                    Integer.class, finalEventId, memberId);
+            assertThat(count)
+                    .as("Member should be persisted as event participant after invite")
+                    .isEqualTo(1);
+        });
         driver.get(baseUrl() + "/events/" + eventId);
         try {
             new WebDriverWait(driver, Duration.ofSeconds(20)).until(
@@ -124,26 +136,36 @@ class EventParticipationInstrumentUiTest extends UiTestBase {
         }
         assertThat(bubenValue).as("Bęben instrument must exist in select").isNotNull();
 
-        // Change instrument by calling the API directly via JavaScript fetch
-        // Then do a full page reload to see the updated state
-        ((JavascriptExecutor) driver).executeScript(
+        // Change instrument by calling the API directly via synchronous XHR so the
+        // PUT completes before the test reloads the page and polls the DB.
+        // Selenium: synchroniczny XHR gwarantuje zakończenie PUT przed przeładowaniem.
+        Object instrumentPutStatus = ((JavascriptExecutor) driver).executeScript(
             "var select = arguments[0]; " +
             "var memberId = select.dataset.memberId; " +
             "var instrumentId = arguments[1]; " +
             "var eventId = document.getElementById('events-content').dataset.eventId; " +
             "var csrfToken = document.cookie.split('; ').find(c => c.startsWith('XSRF-TOKEN='))?.split('=')[1]; " +
-            "fetch('/api/events/' + eventId + '/participation-instrument', { " +
-            "  method: 'PUT', " +
-            "  headers: { " +
-            "    'Content-Type': 'application/json', " +
-            "    'X-XSRF-TOKEN': csrfToken " +
-            "  }, " +
-            "  body: JSON.stringify({memberId: parseInt(memberId), instrumentId: parseInt(instrumentId)}) " +
-            "}).then(function(r) { console.log('API response:', r.status); });",
+            "var xhr = new XMLHttpRequest(); " +
+            "xhr.open('PUT', '/api/events/' + eventId + '/participation-instrument', false); " +
+            "xhr.setRequestHeader('Content-Type', 'application/json'); " +
+            "if (csrfToken) xhr.setRequestHeader('X-XSRF-TOKEN', csrfToken); " +
+            "xhr.send(JSON.stringify({memberId: parseInt(memberId), instrumentId: parseInt(instrumentId)})); " +
+            "return 'STATUS=' + xhr.status;",
             instrumentSelect, bubenValue);
+        System.out.println("[TEST] Instrument PUT status: " + instrumentPutStatus);
 
-        // Wait for API call to complete
-        Thread.sleep(2000);
+        // Selenium: czekamy aż instrument zostanie zaktualizowany w DB.
+        final Long finalEventIdForInstrument = eventId;
+        Awaitility.await().atMost(Duration.ofSeconds(10)).untilAsserted(() -> {
+            String currentInstrument = jdbcTemplate.queryForObject(
+                    "SELECT i.name FROM event_participations ep " +
+                    "JOIN instruments i ON i.id = ep.instrument_id " +
+                    "WHERE ep.event_id = ? AND ep.member_id = ?",
+                    String.class, finalEventIdForInstrument, memberId);
+            assertThat(currentInstrument)
+                    .as("Participation instrument should be updated to Bęben")
+                    .isEqualTo("Bęben");
+        });
 
         // Reload the event page to see the updated instrument
         driver.get(baseUrl() + "/events/" + eventId);

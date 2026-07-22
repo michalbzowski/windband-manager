@@ -24,8 +24,10 @@ class EventListSortingUiTest extends UiTestBase {
         WebDriverWait wait = new WebDriverWait(driver, Duration.ofSeconds(10));
 
         loginAndNavigateTo("/events");
+        // Wait for the list container AND at least one row to be rendered (post-HTMX settle)
         wait.until(ExpectedConditions.presenceOfElementLocated(By.id("events-list-container")));
-        Thread.sleep(800);
+        wait.until(ExpectedConditions.presenceOfElementLocated(
+                By.cssSelector("#events-list-container tbody tr")));
 
         // Past section: the "Parada 3 Maja" (CURRENT_DATE - 10) must be dimmed + badged
         List<WebElement> pastRows = driver.findElements(By.cssSelector("#events-list-container tr.past-item"));

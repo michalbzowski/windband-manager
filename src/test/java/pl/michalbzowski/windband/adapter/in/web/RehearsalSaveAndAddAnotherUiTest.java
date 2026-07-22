@@ -55,8 +55,14 @@ class RehearsalSaveAndAddAnotherUiTest extends UiTestBase {
                 By.cssSelector("button[name='saveAndAddAnother']"));
         saveAndAddBtn.click();
 
-        // Wait a moment for the save to complete and form to be cleared
-        Thread.sleep(2000);
+        // Wait for the location field to be cleared by the post-save form reset
+        // (replaces fixed Thread.sleep — waits on stable DOM state, not time)
+        wait.until(d -> {
+            String v = (String) ((JavascriptExecutor) d).executeScript(
+                    "var i = document.querySelector(\"input[name='location']\");" +
+                    "return i ? i.value : null;");
+            return v != null && v.isEmpty();
+        });
 
         // === Verify we are still on the form page (NOT redirected to list) ===
         // The form should still be visible
@@ -119,7 +125,6 @@ class RehearsalSaveAndAddAnotherUiTest extends UiTestBase {
 
         // Wait for redirect to list
         wait.until(ExpectedConditions.not(ExpectedConditions.urlContains("/new")));
-        Thread.sleep(1500);
 
         // === Verify we are redirected to the list ===
         String currentUrl = driver.getCurrentUrl();

@@ -48,11 +48,10 @@ class EventListFocusHighlightUiTest extends UiTestBase {
         System.out.println("[TEST] highlighted event row text: " + highlighted.getText());
         assertThat(highlighted.getText()).contains(name);
 
-        Thread.sleep(600);
-        Boolean inView = (Boolean) ((JavascriptExecutor) driver).executeScript(
+        // Wait for scroll animation: poll the bounding-rect until the row is inside the viewport
+        wait.until(d -> Boolean.TRUE.equals(((JavascriptExecutor) d).executeScript(
                 "var r = arguments[0].getBoundingClientRect();" +
-                "return r.top < window.innerHeight && r.bottom > 0;", highlighted);
-        assertThat(inView).as("New event row should be scrolled into view").isTrue();
+                "return r.top < window.innerHeight && r.bottom > 0;", highlighted)));
     }
 
     private void fill(String name, String value) {
