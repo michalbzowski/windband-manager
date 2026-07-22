@@ -58,8 +58,6 @@
         <div style="display:flex; gap:0.5rem; margin-top:1rem; flex-wrap:wrap;">
             <button type="button" class="primary" id="quick-attendance-btn"
                     onclick="window.openQuickAttendance()">⚡ Szybka obecność</button>
-            <button type="button" class="primary" id="save-attendance-btn"
-                    onclick="window.saveRehearsalAttendance()">Zapisz obecność</button>
             <button type="button" class="secondary"
                     th:hx-get="@{/rehearsals/{id}/edit(id=${rehearsal.id})}"
                     hx-target="#rehearsals-content"
@@ -254,34 +252,10 @@
             });
         }
 
-        // === Save attendance handler (existing) ===
-        window.saveRehearsalAttendance = function() {
-            var container = document.getElementById('rehearsals-content');
-            if (!container) return;
-            var rehearsalId = container.getAttribute('data-rehearsal-id');
-            var selects = document.querySelectorAll('select[id^="status_"]');
-            var promises = [];
-            selects.forEach(function(select) {
-                var memberId = select.id.replace('status_', '');
-                var status = select.value;
-                if (status !== 'NO_RESPONSE') {
-                    promises.push(fetchWithToast('/api/rehearsals/' + rehearsalId + '/attendance', {
-                        method: 'POST',
-                        headers: {'Content-Type': 'application/json'},
-                        body: JSON.stringify({rehearsalId: rehearsalId, memberId: parseInt(memberId), status: status}),
-                        toastMessage: 'Zapisano obecność',
-                        showSuccessToast: false
-                    }));
-                }
-            });
-            Promise.all(promises).then(function() {
-                Toast.success('Zapisano obecność');
-                htmx.ajax('GET', '/rehearsals/' + rehearsalId, {target: '#rehearsals-content', swap: 'innerHTML transition:true'});
-            }).catch(function() {
-                htmx.ajax('GET', '/rehearsals/' + rehearsalId, {target: '#rehearsals-content', swap: 'innerHTML transition:true'});
-            });
-        };
-
+        // Attendance auto-save is wired in windband-utils.js via event delegation
+        // on document. Any .status-select inside #rehearsals-content sends its
+        // status to /api/rehearsals/{id}/attendance on the 'change' event — the
+        // page no longer needs a "Zapisz obecność" button.
         // === Quick attendance modal (existing) ===
         // state: { members: [{id, name, status}], index, rehearsalId }
         window._qa = null;

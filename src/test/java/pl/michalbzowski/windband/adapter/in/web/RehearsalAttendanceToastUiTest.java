@@ -16,10 +16,14 @@ import java.util.UUID;
 import static org.assertj.core.api.Assertions.assertThat;
 
 /**
- * Verifies that clicking "Zapisz obecność" (Save attendance) shows a success toast.
+ * Verifies that changing a member's attendance status in the dropdown
+ * auto-saves to the database and shows a success toast.
  *
- * <p>Regression guard for the bug where {@code saveRehearsalAttendance()} used a raw
- * {@code fetch()} instead of {@code fetchWithToast}, so no toast appeared after saving.</p>
+ * <p>Previously the detail page had a "Zapisz obecność" button that the
+ * admin clicked after editing each select. Now the {@code change} event on
+ * any {@code .status-select} (delegated in {@code windband-utils.js}) sends
+ * the new status to {@code /api/rehearsals/{id}/attendance} immediately,
+ * so the page no longer needs a manual save step.</p>
  */
 class RehearsalAttendanceToastUiTest extends UiTestBase {
 
@@ -27,7 +31,7 @@ class RehearsalAttendanceToastUiTest extends UiTestBase {
     private JdbcTemplate jdbcTemplate;
 
     @Test
-    void clickingSaveAttendance_showsSuccessToast() throws Exception {
+    void changingStatusSelect_autoSavesAndShowsSuccessToast() throws Exception {
         WebDriverWait wait = new WebDriverWait(driver, Duration.ofSeconds(10));
         String uid = UUID.randomUUID().toString().substring(0, 8);
         String firstName = "Toast" + uid;
@@ -84,24 +88,28 @@ class RehearsalAttendanceToastUiTest extends UiTestBase {
                 "xhr.send(JSON.stringify({rehearsalId: arguments[0], memberId: arguments[1]}));" +
                 "return xhr.status;", rehearsalId, String.valueOf(memberId));
 
-        // Reload the detail page as a full page load so the inline <script> that
-        // defines window.saveRehearsalAttendance() is executed (HTMX-injected
-        // fragments do not run scripts).
+        // Reload the detail page so the full <script> bundle (with the delegated
+        // .status-select change listener) is loaded.
         driver.get(baseUrl() + "/rehearsals/" + rehearsalId);
         wait.until(ExpectedConditions.presenceOfElementLocated(
                 By.cssSelector("#rehearsals-content .status-select")));
 
-        // --- Change first member's status to PRESENT (so a save request is sent) ---
+        // The "Zapisz obecność" button must be gone — auto-save replaces it.
+        assertThat(driver.findElements(By.id("save-attendance-btn")))
+                .as("'Zapisz obecność' button should be removed; attendance auto-saves on change")
+                .isEmpty();
+
+        // --- Change the member's status to PRESENT and dispatch 'change' ---
+        // Selenium's native <select>.click() doesn't fire the browser 'change'
+        // event reliably in headless Chrome — set the value and dispatch the
+        // event explicitly. The delegated listener in windband-utils.js picks it
+        // up and posts to /api/rehearsals/{id}/attendance.
         WebElement select = driver.findElement(By.cssSelector("#rehearsals-content .status-select"));
         ((JavascriptExecutor) driver).executeScript(
                 "var s = arguments[0]; s.value = 'PRESENT'; s.dispatchEvent(new Event('change', {bubbles:true}));",
                 select);
 
-        // --- Click "Zapisz obecność" ---
-        WebElement saveBtn = driver.findElement(By.id("save-attendance-btn"));
-        saveBtn.click();
-
-        // --- Assert a success toast appears ---
+        // --- Assert a success toast appears (auto-save fired) ---
         wait.until(ExpectedConditions.presenceOfElementLocated(By.id("toast-container")));
         WebDriverWait toastWait = new WebDriverWait(driver, Duration.ofSeconds(8));
         toastWait.until(ExpectedConditions.textToBePresentInElementLocated(
@@ -111,8 +119,17 @@ class RehearsalAttendanceToastUiTest extends UiTestBase {
                 "return document.getElementById('toast-container').textContent;");
         System.out.println("[TEST] toast-container text: '" + toastText + "'");
         assertThat(toastText)
-                .as("Clicking 'Zapisz obecność' must show a success toast")
+                .as("Changing a status select must auto-save and show a success toast")
                 .contains("Zapisano obecność");
+
+        // --- Assert the change is persisted in the database ---
+        String persistedStatus = jdbcTemplate.queryForObject(
+                "SELECT status FROM attendances WHERE rehearsal_id = ? AND member_id = ?",
+                String.class, Long.valueOf(rehearsalId), memberId);
+        System.out.println("[TEST] persisted status: " + persistedStatus);
+        assertThat(persistedStatus)
+                .as("Status change must be persisted in the DB without a manual save step")
+                .isEqualTo("PRESENT");
     }
 
     private void fill(String name, String value) {

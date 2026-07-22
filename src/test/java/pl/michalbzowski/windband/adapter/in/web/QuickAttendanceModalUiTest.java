@@ -93,7 +93,15 @@ class QuickAttendanceModalUiTest extends UiTestBase {
                 "return document.getElementById('quick-attendance-modal').open === true;"));
         assertThat(isModalOpen()).isTrue();
 
-        // progress shows 1 / N
+        // progress shows 1 / N — wait for the JS handler to set it before reading.
+        // (quickAttendanceRender sets the textContent synchronously inside the
+        // openQuickAttendance click handler, but with 2 members the modal can
+        // sometimes be polled open before the textContent update lands.)
+        WebDriverWait progressWait = new WebDriverWait(driver, Duration.ofSeconds(5));
+        progressWait.until(d -> {
+            String text = d.findElement(By.id("qa-progress")).getText();
+            return text != null && text.startsWith("1 /");
+        });
         String progress1 = driver.findElement(By.id("qa-progress")).getText();
         System.out.println("[TEST] progress after open: " + progress1);
         assertThat(progress1).startsWith("1 /");

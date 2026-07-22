@@ -69,9 +69,14 @@ class RehearsalDetailRenderTest {
         assertThat(countSelectedFor(html, "PRESENT"))
                 .as("Fresh rehearsal must not mark any member as PRESENT")
                 .isZero();
-        // Toast container + save handler are still wired (UI is complete, just empty)
+        // Toast container is still wired (UI is complete, just empty)
         assertThat(html).contains("id=\"toast-container\"");
-        assertThat(html).contains("saveRehearsalAttendance");
+        // The "Zapisz obecność" button is gone — attendance auto-saves on
+        // .status-select change (delegated listener in windband-utils.js).
+        assertThat(html).doesNotContain("id=\"save-attendance-btn\"");
+        assertThat(html).doesNotContain("saveRehearsalAttendance");
+        // The auto-save handler is loaded as a static JS bundle on every page.
+        assertThat(html).contains("js/windband-utils.js");
     }
 
     @Test
