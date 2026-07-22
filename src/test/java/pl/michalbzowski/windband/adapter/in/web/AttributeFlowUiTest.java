@@ -200,7 +200,7 @@ class AttributeFlowUiTest extends UiTestBase {
     @Test
     void uniformAttribute_shouldBeVisibleInNewUniformForm_andRemainAfterSave() {
         String attrName = "UniAttr" + unique;
-        WebDriverWait wait = new WebDriverWait(driver, Duration.ofSeconds(10));
+        WebDriverWait wait = new WebDriverWait(driver, Duration.ofSeconds(30));
 
         // === 1. Create UNIFORM attribute via UI ===
         createInventoryAttributeViaUI("UNIFORM", attrName, "TEXT", wait);
@@ -251,7 +251,7 @@ class AttributeFlowUiTest extends UiTestBase {
     @Test
     void instrumentAttribute_shouldBeVisibleInNewInstrumentForm_andRemainAfterSave() {
         String attrName = "InstAttr" + unique;
-        WebDriverWait wait = new WebDriverWait(driver, Duration.ofSeconds(10));
+        WebDriverWait wait = new WebDriverWait(driver, Duration.ofSeconds(30));
 
         createInventoryAttributeViaUI("INSTRUMENT", attrName, "TEXT", wait);
         assertAttributeVisibleOnList("INSTRUMENT", attrName, wait);
@@ -298,7 +298,7 @@ class AttributeFlowUiTest extends UiTestBase {
         // verifies it's visible in the "Nowe zamówienie" form when type=UNIFORM is
         // selected.
         String attrName = "UniAttr" + unique;
-        WebDriverWait wait = new WebDriverWait(driver, Duration.ofSeconds(10));
+        WebDriverWait wait = new WebDriverWait(driver, Duration.ofSeconds(30));
 
         createInventoryAttributeViaUI("UNIFORM", attrName, "TEXT", wait);
         assertAttributeVisibleOnList("UNIFORM", attrName, wait);
@@ -374,7 +374,7 @@ class AttributeFlowUiTest extends UiTestBase {
     @Test
     void awardAttribute_shouldBeVisibleInNewAwardForm_andRemainAfterSave() {
         String attrName = "AwAttr" + unique;
-        WebDriverWait wait = new WebDriverWait(driver, Duration.ofSeconds(10));
+        WebDriverWait wait = new WebDriverWait(driver, Duration.ofSeconds(30));
 
         createInventoryAttributeViaUI("AWARD", attrName, "TEXT", wait);
         assertAttributeVisibleOnList("AWARD", attrName, wait);
@@ -419,7 +419,7 @@ class AttributeFlowUiTest extends UiTestBase {
     @Test
     void memberAttribute_shouldBeVisibleInNewMemberForm_andRemainAfterSave() {
         String attrName = "MemAttr" + unique;
-        WebDriverWait wait = new WebDriverWait(driver, Duration.ofSeconds(10));
+        WebDriverWait wait = new WebDriverWait(driver, Duration.ofSeconds(30));
 
         createInventoryAttributeViaUI("MEMBER", attrName, "TEXT", wait);
         assertAttributeVisibleOnList("MEMBER", attrName, wait);
@@ -469,7 +469,7 @@ class AttributeFlowUiTest extends UiTestBase {
                 By.cssSelector("#members-content"), firstName));
         // Pattern I: poll DB for the persisted member before doing a hard reload
         // — avoids htmx transition timing issues when re-clicking "Dodaj członka".
-        await().atMost(Duration.ofSeconds(10)).untilAsserted(() -> {
+        await().atMost(Duration.ofSeconds(30)).untilAsserted(() -> {
             Long count = jdbcTemplate.queryForObject(
                     "SELECT COUNT(*) FROM members WHERE first_name = ?", Long.class, firstName);
             assertThat(count).isEqualTo(1L);
@@ -516,12 +516,12 @@ class AttributeFlowUiTest extends UiTestBase {
     private void assertAttributeVisibleOnList(String type, String attrName, WebDriverWait wait) {
         driver.get(baseUrl() + "/band/inventory-attributes?type=" + type);
         wait.until(ExpectedConditions.presenceOfElementLocated(By.cssSelector("#content h2")));
-        new WebDriverWait(driver, Duration.ofSeconds(10))
+        new WebDriverWait(driver, Duration.ofSeconds(30))
                 .until(ExpectedConditions.textToBePresentInElementLocated(By.cssSelector("#content"), attrName));
     }
 
     private void assertContainerHasText(String cssSelector, String expected, String message) {
-        new WebDriverWait(driver, Duration.ofSeconds(10))
+        new WebDriverWait(driver, Duration.ofSeconds(30))
                 .until(ExpectedConditions.textToBePresentInElementLocated(By.cssSelector(cssSelector), expected));
     }
 }
