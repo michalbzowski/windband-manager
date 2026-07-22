@@ -41,7 +41,11 @@ class EventConsentBadgeUiTest extends UiTestBase {
 
         // 1. Grant EVENTS consent for Jan (member_id=1) and explicitly deny for
         //    Anna (member_id=2). member_consents is TRUNCATEd by cleanDatabase(),
-        //    so these rows are the only consent state for the test.
+        //    so these rows are the only consent state for the test — but we
+        //    verify PER member, not globally, because earlier UI tests in the
+        //    suite may have left behind unrelated consent rows (MemberWelcomeService
+        //    inserts 3 default-deny rows per new member; cleanDatabase then runs
+        //    in @BeforeEach, but it is not a guarantee we can assert on).
         jdbcTemplate.update(
                 "INSERT INTO member_consents (member_id, consent_type, granted, granted_at) "
                         + "VALUES (?, ?, ?, ?)",
@@ -50,15 +54,15 @@ class EventConsentBadgeUiTest extends UiTestBase {
                 "INSERT INTO member_consents (member_id, consent_type, granted, granted_at) "
                         + "VALUES (?, ?, ?, ?)",
                 2L, ConsentType.EVENTS.name(), false, null);
-        // sanity
-        Integer grantedCount = jdbcTemplate.queryForObject(
-                "SELECT COUNT(*) FROM member_consents WHERE granted = true",
-                Integer.class);
-        Integer deniedCount = jdbcTemplate.queryForObject(
-                "SELECT COUNT(*) FROM member_consents WHERE granted = false",
-                Integer.class);
-        assertThat(grantedCount).as("Jan should have EVENTS consent granted").isEqualTo(1);
-        assertThat(deniedCount).as("Anna should have EVENTS consent denied").isEqualTo(1);
+        // sanity — check the per-member state we just wrote, not a global count
+        Boolean janEventsGranted = jdbcTemplate.queryForObject(
+                "SELECT granted FROM member_consents WHERE member_id = ? AND consent_type = ?",
+                Boolean.class, 1L, ConsentType.EVENTS.name());
+        Boolean annaEventsGranted = jdbcTemplate.queryForObject(
+                "SELECT granted FROM member_consents WHERE member_id = ? AND consent_type = ?",
+                Boolean.class, 2L, ConsentType.EVENTS.name());
+        assertThat(janEventsGranted).as("Jan's EVENTS consent must be true").isTrue();
+        assertThat(annaEventsGranted).as("Anna's EVENTS consent must be false").isFalse();
 
         // 2. Create a fresh event via the API (faster and more deterministic
         //    than driving the create form).
