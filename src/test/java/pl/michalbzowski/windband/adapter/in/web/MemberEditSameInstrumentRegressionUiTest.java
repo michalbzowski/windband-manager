@@ -8,7 +8,7 @@ import org.openqa.selenium.support.ui.ExpectedConditions;
 import org.openqa.selenium.support.ui.WebDriverWait;
 import org.springframework.beans.factory.annotation.Autowired;
 import pl.michalbzowski.windband.UiTestBase;
-import pl.michalbzowski.windband.domain.member.Instrument;
+
 import pl.michalbzowski.windband.domain.member.InstrumentRepository;
 import pl.michalbzowski.windband.domain.member.MemberRepository;
 
@@ -46,9 +46,9 @@ class MemberEditSameInstrumentRegressionUiTest extends UiTestBase {
         String initialDob = "1990-05-15";
         String updatedDob = "1985-12-25";
 
-        // Create instrument directly in DB
-        Instrument instrument = instrumentRepository.save(Instrument.create("RegrInst" + unique));
-        Long instrumentId = instrument.getId();
+        // Create instrument directly in DB — must belong to band 1 (admin's band) so it
+        // appears in the band-scoped <select name="instrumentId"> on the member form.
+        Long instrumentId = createTestBand1Instrument("RegrInst" + unique);
 
         WebDriverWait wait = new WebDriverWait(driver, Duration.ofSeconds(10));
         Long memberId = null;

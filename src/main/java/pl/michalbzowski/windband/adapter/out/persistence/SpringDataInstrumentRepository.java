@@ -13,7 +13,7 @@ public interface SpringDataInstrumentRepository extends JpaRepository<Instrument
 
     List<Instrument> findAllByOrderBySortPriorityAsc();
 
-    @Query("SELECT i FROM Instrument i WHERE i.band.id = :bandId OR i.band IS NULL ORDER BY i.sortPriority ASC, i.name ASC")
+    @Query("SELECT i FROM Instrument i WHERE i.band.id = :bandId ORDER BY i.sortPriority ASC, i.name ASC")
     List<Instrument> findAllByBandIdOrderBySortPriorityAsc(Long bandId);
 
     @Query("SELECT i FROM Instrument i WHERE i.name = :name AND i.band.id = :bandId")

@@ -26,7 +26,7 @@ public class InstrumentCommandService {
 
 
     public Instrument createInstrument(String name, String description, Integer sortPriority) {
-        return createInstrument(name, description, sortPriority, null);
+        return createInstrument(name, description, sortPriority, 1L);
     }
 
     public Instrument createInstrument(String name, String description, Integer sortPriority, Long teamId) {

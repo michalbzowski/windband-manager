@@ -268,4 +268,44 @@ public abstract class UiTestBase {
         driver.get(baseUrl() + path);
         wait.until(ExpectedConditions.presenceOfElementLocated(By.id("content")));
     }
+
+    /**
+     * Creates a test instrument scoped to band 1 (the default Test Band).
+     *
+     * <p>After V28 the {@code instruments.band_id} column is NOT NULL and the
+     * band-scoped query in {@code MemberPageController} (which feeds the
+     * {@code <select name="instrumentId">} on the member form) returns only
+     * rows where {@code band_id = activeTeamId}. The test admin user always
+     * belongs to band 1, so any test that needs an instrument to appear in
+     * that dropdown MUST create the instrument with {@code band_id = 1}.
+     * Plain {@code Instrument.create(name)} produces a {@code band = null}
+     * row that the dropdown will never see, breaking the test.
+     *
+     * @param name unique instrument name (callers should include a UUID/random
+     *             suffix to avoid collisions across tests in the shared H2 DB)
+     * @return the auto-generated instrument id
+     */
+    protected Long createTestBand1Instrument(String name) {
+        return createTestBand1Instrument(name, 0);
+    }
+
+    protected Long createTestBand1Instrument(String name, int sortPriority) {
+        // Plain INSERT + JdbcTemplate-generated key (works on every H2/PostgreSQL version)
+        org.springframework.jdbc.support.GeneratedKeyHolder kh =
+                new org.springframework.jdbc.support.GeneratedKeyHolder();
+        jdbcTemplate.update(con -> {
+            var ps = con.prepareStatement(
+                    "INSERT INTO instruments (name, description, sort_priority, band_id) VALUES (?, ?, ?, 1)",
+                    java.sql.Statement.RETURN_GENERATED_KEYS);
+            ps.setString(1, name);
+            ps.setString(2, "test fixture");
+            ps.setInt(3, sortPriority);
+            return ps;
+        }, kh);
+        Number key = kh.getKey();
+        if (key == null) {
+            throw new IllegalStateException("Failed to obtain generated id for test instrument: " + name);
+        }
+        return key.longValue();
+    }
 }

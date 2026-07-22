@@ -9,7 +9,7 @@ import org.openqa.selenium.support.ui.WebDriverWait;
 import org.springframework.beans.factory.annotation.Autowired;
 import pl.michalbzowski.windband.UiTestBase;
 import pl.michalbzowski.windband.domain.band.BandRepository;
-import pl.michalbzowski.windband.domain.member.Instrument;
+
 import pl.michalbzowski.windband.domain.member.InstrumentRepository;
 import pl.michalbzowski.windband.domain.member.MemberRepository;
 
@@ -45,9 +45,9 @@ class MemberAddEditDateOfBirthUiTest extends UiTestBase {
         String joinedDate = "2020-03-01";
         String updatedDob = "1985-12-25";
 
-        // Create an instrument to select
-        Instrument instrument = instrumentRepository.save(Instrument.create("TestInst" + unique));
-        Long instrumentId = instrument.getId();
+        // Create an instrument to select — must belong to band 1 (admin's band) so it
+        // appears in the band-scoped <select name="instrumentId"> on the member form.
+        Long instrumentId = createTestBand1Instrument("TestInst" + unique);
 
         WebDriverWait wait = new WebDriverWait(driver, Duration.ofSeconds(10));
         Long memberId = null;

@@ -47,7 +47,9 @@ class MemberDetailUiTest extends UiTestBase {
         String dob = "1990-05-15";
 
         Band band = bandRepository.findById(1L).orElseThrow();
-        Instrument instrument = instrumentRepository.save(Instrument.create("DetailInst" + unique));
+        // Use band-scoped helper — instruments must belong to band 1 to appear in the
+        // admin's instrument dropdown on the member form (V28 + band-scoped query).
+        Long instrumentId = createTestBand1Instrument("DetailInst" + unique);
 
         WebDriverWait wait = new WebDriverWait(driver, Duration.ofSeconds(10));
         Long memberId = null;
@@ -67,7 +69,7 @@ class MemberDetailUiTest extends UiTestBase {
 
             WebElement instrumentSelect = driver.findElement(By.cssSelector("select[name='instrumentId']"));
             instrumentSelect.click();
-            driver.findElement(By.cssSelector("select[name='instrumentId'] option[value='" + instrument.getId() + "']")).click();
+            driver.findElement(By.cssSelector("select[name='instrumentId'] option[value='" + instrumentId + "']")).click();
 
             driver.findElement(By.cssSelector("form#member-form button.primary[type='submit']")).click();
 

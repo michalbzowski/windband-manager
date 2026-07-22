@@ -59,10 +59,10 @@ VALUES ('Saksofon Other', 'Selmer', 'SN002', 'Saksofon alt', 'OWNED', 'AVAILABLE
 INSERT INTO award_items (name, description, band_id, date_awarded)
 VALUES ('Medal Other', 'Medal innego zespołu', 2, CURRENT_DATE);
 
--- Instruments (global catalog — not band-specific)
-INSERT INTO instruments (name, description, sort_priority) VALUES ('Trąbka', 'Trąbka Bb', 1);
-INSERT INTO instruments (name, description, sort_priority) VALUES ('Bęben', 'Bęben wielki', 2);
-INSERT INTO instruments (name, description, sort_priority) VALUES ('Saksofon', 'Saksofon alt', 3);
+-- Instruments (band=1 — the only band seeded in data.sql)
+INSERT INTO instruments (name, description, sort_priority, band_id) VALUES ('Trąbka', 'Trąbka Bb', 1, 1);
+INSERT INTO instruments (name, description, sort_priority, band_id) VALUES ('Bęben', 'Bęben wielki', 2, 1);
+INSERT INTO instruments (name, description, sort_priority, band_id) VALUES ('Saksofon', 'Saksofon alt', 3, 1);
 
 -- Member instruments (Jan plays Trąbka, Anna plays Bęben)
 INSERT INTO member_instruments (member_id, instrument_id, is_primary)

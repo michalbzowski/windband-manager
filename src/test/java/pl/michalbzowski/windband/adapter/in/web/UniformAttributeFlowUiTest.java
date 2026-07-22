@@ -11,7 +11,7 @@ import pl.michalbzowski.windband.UiTestBase;
 import pl.michalbzowski.windband.domain.band.Band;
 import pl.michalbzowski.windband.domain.band.BandRepository;
 import pl.michalbzowski.windband.domain.inventory.*;
-import pl.michalbzowski.windband.domain.member.Instrument;
+
 import pl.michalbzowski.windband.domain.member.InstrumentRepository;
 import pl.michalbzowski.windband.domain.member.Member;
 import pl.michalbzowski.windband.domain.member.MemberRepository;
@@ -64,7 +64,9 @@ class UniformAttributeFlowUiTest extends UiTestBase {
         String dob = "1990-05-15";
 
         Band band = bandRepository.findById(1L).orElseThrow();
-        Instrument instrument = instrumentRepository.save(Instrument.create("UniInst" + unique));
+        // Use band-scoped helper — instruments must belong to band 1 (admin's band) to
+        // appear in the member form's instrument dropdown after V28.
+        Long instrumentId = createTestBand1Instrument("UniInst" + unique);
 
         WebDriverWait wait = new WebDriverWait(driver, Duration.ofSeconds(15));
         Long memberId = null;
@@ -94,7 +96,7 @@ class UniformAttributeFlowUiTest extends UiTestBase {
             // ============================================================
             // STEP 2: Create a member
             // ============================================================
-            memberId = createMemberViaUi(wait, firstName, lastName, dob, instrument.getId());
+            memberId = createMemberViaUi(wait, firstName, lastName, dob, instrumentId);
             Member member = memberRepository.findById(memberId).orElseThrow();
 
             // ============================================================
