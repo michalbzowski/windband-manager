@@ -70,7 +70,8 @@
                     body: JSON.stringify(data)
                 }).then(function(response) {
                     if (response.ok) {
-                        htmx.ajax('GET', '/rehearsals/' + rehearsalId, {target: '#rehearsals-content', swap: 'innerHTML transition:true'});
+                        // Full page reload to ensure fresh data is loaded from database
+                        window.location.href = '/rehearsals/' + rehearsalId;
                     } else {
                         console.error('Failed to update rehearsal:', response.statusText);
                     }
