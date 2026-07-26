@@ -94,6 +94,22 @@ public class RehearsalController {
         return ResponseEntity.noContent().build();
     }
 
+    /**
+     * Create an ad-hoc rehearsal for "now" (today, current time).
+     * Redirects to the rehearsal detail page so the UI can immediately
+     * invite members and take attendance.
+     */
+    @PostMapping("/adhoc")
+    public ResponseEntity<Void> createAdHocRehearsal(@AuthenticationPrincipal OidcUser oidcUser,
+                                                      HttpSession session) {
+        Long activeTeamId = resolveActiveTeamId(oidcUser, session);
+        var rehearsal = commandService.createAdHocRehearsal(activeTeamId);
+        // Redirect to the detail page via Location header
+        return ResponseEntity.status(HttpStatus.CREATED)
+                .header("Location", "/rehearsals/" + rehearsal.getId())
+                .build();
+    }
+
     private Long resolveActiveTeamId(OidcUser oidcUser, HttpSession session) {
         if (!(oidcUser instanceof WindbandOidcUser wu)) {
             return null;

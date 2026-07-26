@@ -13,3 +13,7 @@ public class ScheduleRehearsalCommand {
     private String location;
     private String notes;
 }
+
+class AdHocRehearsalCommand {
+    // Marker class for ad-hoc rehearsal creation - no fields needed
+}

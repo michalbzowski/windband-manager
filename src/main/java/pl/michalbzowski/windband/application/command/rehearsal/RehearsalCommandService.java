@@ -13,6 +13,8 @@ import pl.michalbzowski.windband.domain.member.Member;
 import pl.michalbzowski.windband.domain.member.MemberRepository;
 import pl.michalbzowski.windband.domain.rehearsal.*;
 
+import java.time.LocalDate;
+import java.time.LocalTime;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -137,5 +139,18 @@ public class RehearsalCommandService {
         Rehearsal rehearsal = rehearsalRepository.findById(id)
                 .orElseThrow(() -> new RehearsalNotFoundException(id));
         rehearsalRepository.delete(rehearsal);
+    }
+
+    /**
+     * Create an ad-hoc rehearsal for today with current time.
+     * Immediately returns the created rehearsal so the UI can redirect to detail view.
+     */
+    public Rehearsal createAdHocRehearsal(Long teamId) {
+        Band band = bandRepository.findById(teamId)
+                .orElseThrow(() -> new IllegalStateException("Band not found for team ID: " + teamId));
+        LocalDate today = LocalDate.now();
+        LocalTime now = LocalTime.now().withSecond(0).withNano(0);
+        Rehearsal rehearsal = Rehearsal.schedule(today, now, "", band);
+        return rehearsalRepository.save(rehearsal);
     }
 }
