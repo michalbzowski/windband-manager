@@ -1,0 +1,18 @@
+<!DOCTYPE html>
+<html lang="pl" xmlns:th="http://www.thymeleaf.org">
+<body>
+    <div th:if="${syncResult != null and syncResult.errors.isEmpty()}" class="toast-success">
+        ✓ Synchronizacja zakończona:
+        <span th:text="${syncResult.added}">0</span> nowych,
+        <span th:text="${syncResult.updated}">0</span> zaktualizowanych,
+        <span th:text="${syncResult.unchanged}">0</span> bez zmian
+        (z <span th:text="${syncResult.totalInSuperset}">0</span> w Superset)
+    </div>
+    <div th:if="${syncResult != null and not syncResult.errors.isEmpty()}" class="toast-error">
+        ⚠ Synchronizacja z błędami:
+        <ul>
+            <li th:each="err : ${syncResult.errors}" th:text="${err}">Błąd</li>
+        </ul>
+    </div>
+</body>
+</html>
