@@ -7,18 +7,19 @@
 4. [Project Structure](#project-structure)
 5. [Domain Model](#domain-model)
 6. [API Endpoints](#api-endpoints)
-7. [Page Controllers & Templates](#page-controllers--templates)
-8. [Security](#security)
-9. [Superset Integration](#superset-integration)
-10. [Testing](#testing)
-11. [Key Patterns & Conventions](#key-patterns--conventions)
-12. [Common Pitfalls](#common-pitfalls)
-13. [Database Migrations](#database-migrations)
-14. [Build & Deploy](#build--deploy)
-15. [Rehearsal Detail View](#rehearsal-detail-view)
-16. [List Sorting & Past Highlighting](#list-sorting--past-highlighting)
-17. [Unified Focus Highlight & Multi-Member Invite Modal](#17-unified-focus-highlight--multi-member-invite-modal)
-18. [Member Attributes & Groups](#member-attributes--groups)
+7. [JasperReports Integration (jacps-report-adapter)](#jasperreports-integration-jacps-report-adapter)
+8. [Page Controllers & Templates](#page-controllers--templates)
+9. [Security](#security)
+10. [Superset Integration](#superset-integration)
+11. [Testing](#testing)
+12. [Key Patterns & Conventions](#key-patterns--conventions)
+13. [Common Pitfalls](#common-pitfalls)
+14. [Database Migrations](#database-migrations)
+15. [Build & Deploy](#build--deploy)
+16. [Rehearsal Detail View](#rehearsal-detail-view)
+17. [List Sorting & Past Highlighting](#list-sorting--past-highlighting)
+18. [Unified Focus Highlight & Multi-Member Invite Modal](#18-unified-focus-highlight--multi-member-invite-modal)
+19. [Member Attributes & Groups](#member-attributes--groups)
 
 ---
 
@@ -207,6 +208,95 @@ All repository interfaces are in `domain/` packages. They define ALL methods —
 ## API Endpoints
 
 ### REST Controllers
+
+## JasperReports Integration (jacps-report-adapter)
+
+**Architecture:** Windband-manager uses an Anti-Corruption Layer (ACL) pattern via `jacps-report-adapter` service to generate PDF reports using JasperReports .jrxml templates. This isolates the heavy jasperreports dependency (~50MB) from the main application.
+
+### How It Works
+
+1. **User fills form** at `/reports/sprawozdanie/customize`:
+   - Band name (required for report to make sense)
+   - Instructor name (optional)
+   - Period year and month
+   
+2. **Frontend sends POST** to `/api/reports/pdf` with JSON body:
+```json
+{ "bandName": "...", "instructorName": "...", "periodYear": 2026, "periodMonth": 7 }
+```
+
+3. **Backend calculates date range**: If period specified → uses that month (1st to 28th), otherwise defaults to last complete month.
+
+4. **`JacpsReportController.generateReport()`** forwards the request to `jacps-report-adapter`:
+   - Endpoint: `${jacps.report.base-url}/api/v1/reports/generate`
+   - Report template path: `/bands/test/sprawozdanie.jrxml`
+   - Output format: PDF (default)
+
+5. **Response**: Binary PDF attachment with filename `sprawozdanie-YYYY-MM.pdf`.
+
+### Components
+
+| Component | Package | Role |
+|-----------|---------|------|
+| `ReportApiClient` | `infrastructure.jacps` | HTTP client calling jacps-report-adapter REST API |
+| `JacpsReportController` | `adapter.in.web` | Controller processing UI form → delegates to ReportApiClient |
+| `ReportGenerationRequest` | DTO inside JacpsReportController | Request model from frontend |
+
+### Configuration
+
+In `application.yml`:
+```yaml
+jacps:
+  report:
+    base-url: http://localhost:8081  # Default for local development
+```
+
+For Railway deployment, set environment variable:
+```bash
+JACPS_REPORT_BASE_URL=https://jacps-report-adapter-railway.railway.app
+```
+
+### Error Handling (Graceful Degradation)
+
+- **503 Service Unavailable**: When `jacps-report-adapter` is down or not configured, user sees friendly error instead of application crash.
+- **400 Bad Request**: Invalid parameters sent to adapter.
+- **500 Internal Server Error**: Adapter returned empty response bytes.
+
+### Report Templates
+
+Report `.jrxml` templates live in `src/main/resources/reports/`:
+```
+sprawozdanie.jrxml  → "Sprawozdanie Zespołu" (team report) with:
+                     - Statistics (active members count, minors <18, seniors >60)
+                     - Concerts list for period
+hello.jrxml        → Test template for integration verification
+```
+
+**Edit templates**: Use Jaspersoft Studio IDE. Deploy by copying to `src/main/resources/reports/` and updating the path in code configuration.
+
+---
+
+#### /api/reports/generate — JacpsReportController (JasperReports ACL)
+
+**POST /api/reports/pdf**
+
+Generuje raport PDF używając external jacps-report-adapter service (ACL do JasperReports). Accepts JSON body:
+
+```json
+{
+  "bandName": "Orkiestra Dęta Test",
+  "instructorName": "Jan Kowalski",
+  "periodYear": 2026,
+  "periodMonth": 7,
+  "format": "PDF"
+}
+```
+
+Returns: `application/pdf` binary attachment with file name like `sprawozdanie-2026-07.pdf`.
+
+**Dependencies:** Requires running jacps-report-adapter instance at `${jacps.report.base-url:http://localhost:8081}`. Returns 503 Service Unavailable when adapter is down (graceful degradation).
+
+---
 
 #### /api/members — MemberController
 | Method | Path | Description |

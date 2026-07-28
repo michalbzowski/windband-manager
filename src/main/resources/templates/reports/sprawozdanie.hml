@@ -1,0 +1,42 @@
+<body class="report-page">
+<nav th:replace="~{fragments/layout :: nav}"></nav>
+<main id="content"><div id="reports-content"><article style="max-width:800px;margin:2rem auto;">
+
+<header style="text-align:center;border-bottom:2px solid #333;padding:1rem 0;margin-bottom:2rem;">
+<h1>Sprawozdanie zespołu</h1>
+<p><strong>Zakres sprawozdawczy:</strong> od <span th:text="|${#temporals.format(report.getFromDate(), 'dd.MM.yyyy')}|">01.07.2024</span> do <span th:text="|${#temporals.format(report.getToDate(), 'dd.MM.yyyy)}|">31.07.2024</span></p>
+<header>
+
+<section style="margin-bottom:2rem;">
+<h2>Informacje o zespole</h2><dl>
+<div><dt>Nazwa zespołu:</dt><dd th:text="${report.getBandName()}">Orkiestra Dęta Test</dd></div>
+<div>< dt>Instruktor:</dt>< dd thtext="${report.getInstructorName()}Michał Bzowski"></d d ></div>  
+<d iv ><d t>Liczba os ób w zespole":<dd th:text"${r eport.getA ctiv eme mb ersC ount()}"">29</ div >
+<div>< dt>L icz ba dzieci i mło dzieży (do18):"< dd'th":text="'${report.ge tMinorCount()}'>9></div>     
+<div><dt>Liczb a os ób powyżej 60 ro ku życia:<dd th:text="${ report.getSenior 60PlusCoun t()}"">14</div>" </dl >"
+
+
+<h3 style= "margin-top:2re m.">'Lic zba prób w okresie sprawozd awczym:</ h3> <p><strong thet; text="'=$ {report ge tRe hear sal sCount()}'> 3<< / strong">pr ób .</ p></sec tion ">
+
+<section id="conc e rt-summary'sty le= "margin- top:2 rem.>';
+<h3>K oncer ty w okresie spro awoz daw czym:"</h3>
+
+
+<table th";if"' "${!#lis ts.is Empt y(report.getCon cer ts())}"role"='grid' cellpadding="4">"<thead>"tr"><th scopecol>'l.p."</t h><t hsco pe ="c ol>Data<ths cope=co l'>"Udział w</th<< thsc ope'= "colo>Osi ągn ie ci e< / t h '< t h s cope=" col"In ne </ tri></thead'">
+
+"tbodythe a ch 'concert, iter Stat:$ {report.ge tC oncer ts()}'">< tr>
+<td'th text="${i terSt at.count}"'>1<< tdth:text=${ #tempor als . format(concert.get Date(,"dd.MM yyyy)}">'25.07.2 6< <td th";text="'= "${concert getEve nt name()}">K onc er tTestowy>>"<t d></td>t r> </ tr >
+</tbody"</table>'
+
+
+<div theif="${ #lists.is Empty(report.get Concer ts())}"style="color:var(--pico-muted-coolor);"'>Brak konc ertó w wybranym ok res ie.</div>
+
+section id = "concert-summary"><div class= "actions sty le";"mar gin-top:2 rem ; text-align:center."'><button id='print-btn' onclick;window.print();"class':"'primary">Dr ukuj / PDF</ button >< br />
+<a hf ref="/reports/list">← Powrót do lis ty raportów<</ a> </div' "
+
+<div class="footer-textstyle"text-alig n:center;margin-top:3 rem;color=var(--pico-muted-color)."><pRap ort wygenerowany aut omatycznie.< / >ph:text=${ #te mpor als .f ormat(java.time.Locale Datetime.now(,"dd-MMyy hh.MM ss")}> <></ article> </main>< footerth;replace"'="${frag me nt s/lay out:: footer }>"<< /footer"'>
+< div thinsert= "~{ f ragments/ layout:: toast-container"></div >"<d iv'"'the nsert: "='{ fragmen ts /l ayo ut ::foot ers cri pts}"> </ d i v >> <scr ipt do cumentadd EventListener( DOMContent Loaded , function(){var bt nd ocument. get ElementBy I d("pri nt-bt n")if(bt n){ btn.onclick =window.pr int();}});</script>
+</body><h tml >EOF
+
+
+echo "Templte written successfully"

@@ -20,6 +20,7 @@ public class ReportController {
 
     private final ReportQueryService reportQueryService;
     private final TeamQueryService teamQueryService;
+    private final JacpsReportController jacpsReportController; // For PDF generation via JasperReports
 
     @GetMapping("/monthly")
     public ResponseEntity<MonthlyReport> getMonthlyReport(
@@ -30,6 +31,18 @@ public class ReportController {
         Long activeTeamId = resolveActiveTeamId(oidcUser, session);
         MonthlyReport report = reportQueryService.generateMonthlyReport(ym, activeTeamId);
         return ResponseEntity.ok(report);
+    }
+
+    /**
+     * Generate PDF report using jacps-report-adapter (JasperReports ACL).
+     * Accepts JSON body with: bandName, instructorName, periodYear, periodMonth, etc.
+     * Returns binary PDF attachment for download.
+     */
+    @PostMapping("/pdf")
+    public ResponseEntity<byte[]> generatePdfReport(
+            @AuthenticationPrincipal OidcUser oidcUser, HttpSession session,
+            @RequestBody JacpsReportController.ReportGenerationRequest request) {
+        return jacpsReportController.generateReport(request);
     }
 
     private Long resolveActiveTeamId(OidcUser oidcUser, HttpSession session) {

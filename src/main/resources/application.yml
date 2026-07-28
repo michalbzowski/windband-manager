@@ -87,3 +87,7 @@ superset:
 
 sendgrid:
   api-key: ${SENDGRID_API_KEY:}
+  
+jacps:
+  report:
+    base-url: ${JACPS_REPORT_BASE_URL:http://localhost:8081}
