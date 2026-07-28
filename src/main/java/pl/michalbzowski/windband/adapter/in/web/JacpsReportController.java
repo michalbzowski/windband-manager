@@ -46,7 +46,7 @@ public class JacpsReportController {
         }
 
         // Build report path
-        String reportPath = "/bands/test/sprawozdanie.jrxml";
+        String reportPath = "/bands/test/reports/sprawozdanie.jrxml";
         
         // Prepare parameters map
         Map<String, String> params = new HashMap<>();
