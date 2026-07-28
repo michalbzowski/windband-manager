@@ -8,7 +8,6 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import java.time.LocalDate;
-import java.util.HashMap;
 import java.util.Map;
 
 import org.junit.jupiter.api.BeforeEach;
@@ -28,7 +27,7 @@ class JacpsReportControllerTest {
     void setUp() {
         // Create mock for ReportApiClient
         reportApiClient = mock(pl.michalbzowski.windband.infrastructure.jacps.ReportApiClient.class);
-        
+
         // Instantiate and inject dependency via setter
         controller = new JacpsReportController();
         controller.setReportApiClient(reportApiClient);
@@ -57,10 +56,10 @@ class JacpsReportControllerTest {
         assertThat(result.getBody()).isEqualTo(mockPdfBytes);
         assertThat(result.getHeaders().getContentType())
             .satisfies(ct -> ct.toString().contains("application/pdf"));
-        
+
         verify(reportApiClient, atLeastOnce()).generateReport(
-            anyString(), 
-            eq("PDF"), 
+            anyString(),
+            eq("PDF"),
             any(Map.class)
         );
     }
@@ -77,13 +76,13 @@ class JacpsReportControllerTest {
         when(reportApiClient.generateReport(anyString(), anyString(), any(Map.class)))
             .then(invocation -> {
                 Map<String, String> params = invocation.getArgument(2);
-                
+
                 // Assert date range parameters are correctly calculated (July 1 to July 28)
                 assertThat(params).containsKey("from");
                 assertThat(params).containsKey("to");
                 assertThat(params.get("from")).isEqualTo("2026-07-01");
                 assertThat(params.get("to")).isEqualTo("2026-07-28");
-                
+
                 return mockBytes;
             });
 
@@ -102,11 +101,11 @@ class JacpsReportControllerTest {
         when(reportApiClient.generateReport(anyString(), anyString(), any(Map.class)))
             .then(invocation -> {
                 Map<String, String> params = invocation.getArgument(2);
-                
+
                 // Default should be last month
                 LocalDate expectedFrom = LocalDate.now().minusMonths(1).withDayOfMonth(1);
                 assertThat(params.get("from")).isEqualTo(expectedFrom.toString());
-                
+
                 return mockBytes;
             });
 

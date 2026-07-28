@@ -1,18 +1,12 @@
 package pl.michalbzowski.windband.infrastructure.jacps;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyString;
-import static org.mockito.Mockito.times;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.when;
 
 import java.util.HashMap;
 import java.util.Map;
 
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
-import org.springframework.http.ResponseEntity;
 import org.springframework.web.client.RestTemplate;
 
 /**
@@ -24,9 +18,9 @@ class ReportApiClientTest {
     @Test
     void constructReportApiClient_shouldInitializeWithRestTemplate() {
         RestTemplate restTemplate = new RestTemplate();
-        
+
         ReportApiClient client = new ReportApiClient(restTemplate);
-        
+
         assertThat(client).isNotNull();
     }
 
@@ -35,15 +29,15 @@ class ReportApiClientTest {
     void generateReport_withMockedSuccess_shouldReturnBytes() {
         // Given: mocked RestTemplate returning valid HTTP 200 with PDF bytes
         RestTemplate restTemplate = new RestTemplate(); // Use real instance for simpler test
-        
+
         byte[] mockPdfBytes = "%PDF-1.4 test content".getBytes();
-        
+
         ReportApiClient client = new ReportApiClient(restTemplate);
 
         // When: generate report call (will fail because no server is running, but that's expected)
         Map<String, String> params = new HashMap<>();
         params.put("bandName", "Test Band");
-        
+
         // This test verifies the method signature and structure - actual HTTP calls require a running server
         assertThat(params).isNotEmpty();
 

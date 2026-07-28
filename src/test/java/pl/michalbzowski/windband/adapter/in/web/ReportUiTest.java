@@ -8,7 +8,6 @@ import org.openqa.selenium.support.ui.WebDriverWait;
 import pl.michalbzowski.windband.UiTestBase;
 
 import java.time.Duration;
-import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -53,9 +52,9 @@ class ReportUiTest extends UiTestBase {
         // Check for the monthly report card (visible to all authenticated users)
         var cards = driver.findElements(By.cssSelector(".report-card h3"));
         var cardTitles = cards.stream().map(WebElement::getText).toList();
-        
+
         assertThat(cardTitles).anyMatch(t -> t.contains("Raport miesięczny"));
-        
+
         // Admin-only cards are hidden for non-admin users (ROLE_USER in test)
         // In a real admin test we'd check for "Sprawozdanie" and "Hello World" too
     }

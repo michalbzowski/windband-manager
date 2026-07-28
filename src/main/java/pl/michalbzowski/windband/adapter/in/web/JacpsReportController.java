@@ -16,7 +16,7 @@ import java.util.Map;
 /**
  * Component for jacps-report-adapter integration.
  * Generates reports via ACL endpoint POST /api/v1/reports/generate
- * 
+ *
  * Expected request body format:
  * {
  *   "path": "/bands/test/sprawozdanie.jrxml",
@@ -36,7 +36,7 @@ public class JacpsReportController {
 
     /**
      * Internal method to generate report bytes via jacps-report-adapter.
-     * 
+     *
      * @param request Report generation request with parameters
      * @return ResponseEntity with binary PDF/XLSX/HTML content or 503 if service unavailable
      */
@@ -47,10 +47,10 @@ public class JacpsReportController {
 
         // Build report path
         String reportPath = "/bands/test/reports/sprawozdanie.jrxml";
-        
+
         // Prepare parameters map
         Map<String, String> params = new HashMap<>();
-        
+
         if (request.getBandName() != null) {
             params.put("bandName", request.getBandName());
         }
@@ -62,15 +62,15 @@ public class JacpsReportController {
         LocalDate now = LocalDate.now();
         LocalDate from;
         LocalDate to;
-        
+
         if (request.getPeriodYear() != null && request.getPeriodMonth() != null) {
             // User specified year/month for the period - use that month (1st to 28th)
             int periodYear = request.getPeriodYear();
             int periodMonth = request.getPeriodMonth();
-            
+
             from = LocalDate.of(periodYear, periodMonth, 1);
             to = LocalDate.of(periodYear, periodMonth, 28); // Safe end date for any month
-            
+
         } else {
             // Default: last complete month (from 1st to last day of that month)
             from = now.minusMonths(1).withDayOfMonth(1);
@@ -90,7 +90,7 @@ public class JacpsReportController {
         // Period for filename generation
         int year;
         int month;
-        
+
         if (request.getPeriodYear() != null && request.getPeriodMonth() != null) {
             year = request.getPeriodYear();
             month = request.getPeriodMonth();
@@ -106,7 +106,7 @@ public class JacpsReportController {
         // Generate report via jacps-report-adapter
         try {
             byte[] bytes = reportApiClient.generateReport(reportPath, format.toUpperCase(), params);
-            
+
             if (bytes == null || bytes.length == 0) {
                 return ResponseEntity.status(500).build();
             }
