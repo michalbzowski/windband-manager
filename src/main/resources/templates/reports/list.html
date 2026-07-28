@@ -1,42 +1,349 @@
 <!DOCTYPE html>
-<html lang="pl" xmlns:th="http://www.thymeleaf.org">
+<html lang="pl" xmlns:th="http://www.thymeleaf.org" xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
 <head th:replace="~{fragments/layout :: head('Raporty')}"></head>
 <body>
 <nav th:replace="~{fragments/layout :: nav}"></nav>
 
-    <main class="container" id="content">
-        <div id="reports-content">
-            <h2>📊 Raporty</h2>
+<main class="container" id="content">
+    <div id="reports-content">
+        <header class="reports-header">
+            <h2>📊 Dostępne raporty</h2>
+            <p class="reports-subtitle">Wybierz raport do wygenerowania lub pobrania</p>
+        </header>
 
-            <article>
-                <header><strong>Raport miesięczny</strong></header>
-                <p>Wygeneruj raport dla wybranego miesiąca. Raport zawiera liczbę prób, wydarzeń oraz statystyki członków.</p>
-
-                <form hx-get="/reports/generate" hx-target="#reports-content"
-                      hx-swap="innerHTML transition:true">
-                    <div class="grid">
-                        <label>
-                            Rok
-                            <input type="number" name="year" th:value="${currentMonth.year}" min="2020" max="2099" required>
-                        </label>
-                        <label>
-                            Miesiąc
-                            <select name="month" required>
-                                <option th:each="m : ${#numbers.sequence(1,12)}"
-                                        th:value="${m}"
-                                        th:text="${m}"
-                                        th:selected="${m == currentMonth.monthValue}">1</option>
-                            </select>
-                        </label>
+        <section class="reports-grid">
+            <!-- Raport Sprawozdanie Zespołu (JasperReports) -->
+            <article class="report-card" sec:authorize="hasAnyRole('ADMIN', 'SYSTEM_ADMIN')">
+                <header class="report-card-header">
+                    <span class="report-icon">📋</span>
+                    <div class="report-title-group">
+                        <h3>Sprawozdanie zespołu</h3>
+                        <span class="report-badge jasper-badge">JasperReports</span>
                     </div>
-                    <button type="submit" class="primary">Generuj raport</button>
-                </form>
+                </header>
+                <p class="report-description">
+                    Pełne sprawozdanie działalności zespołu: lista koncertów, statystyki członków 
+                    (aktywni, niepełnoletni, seniorzy), dane instruktora. Generowany jako profesjonalny PDF.
+                </p>
+                <div class="report-meta">
+                    <span class="meta-item">📄 Format: PDF</span>
+                    <span class="meta-item">⚙️ Parametry: zakres dat, nazwa zespołu, instruktor</span>
+                </div>
+                <div class="report-actions">
+                    <a th:href="@{/reports/sprawozdanie/customize}" 
+                       class="btn-primary" 
+                       hx-target="#content" 
+                       hx-swap="innerHTML transition:true">
+                        ⚙️ Skonfiguruj i pobierz
+                    </a>
+                    <a th:href="@{/jasper-report/sprawozdanie?bandName=Zespół Dęty "Górnik"&from=2025-01-01&to=2025-12-31}" 
+                       class="btn-secondary" 
+                       target="_blank">
+                        ⬇️ Pobierz przykład (2025)
+                    </a>
+                </div>
             </article>
-        </div>
-    </main>
 
-        <footer th:replace="~{fragments/layout :: footer}"></footer>
-    <div th:insert="~{fragments/layout :: toast-container}"></div>
+            <!-- Raport Miesięczny (MonthlyReport - Thymeleaf) -->
+            <article class="report-card">
+                <header class="report-card-header">
+                    <span class="report-icon">📅</span>
+                    <div class="report-title-group">
+                        <h3>Raport miesięczny</h3>
+                        <span class="report-badge thymeleaf-badge">Thymeleaf</span>
+                    </div>
+                </header>
+                <p class="report-description">
+                    Podsumowanie aktywności w wybranym miesiącu: liczba prób, wydarzeń, statystyki członków. 
+                    Renderowany jako strona HTML z tabelami.
+                </p>
+                <div class="report-meta">
+                    <span class="meta-item">📄 Format: HTML</span>
+                    <span class="meta-item">📅 Parametry: rok, miesiąc</span>
+                </div>
+                <div class="report-actions">
+                    <form hx-get="/reports/generate" hx-target="#reports-content" hx-swap="innerHTML transition:true" class="report-form-inline">
+                        <div class="form-row">
+                            <label>
+                                Rok
+                                <input type="number" name="year" th:value="${currentMonth.year}" min="2020" max="2099" required>
+                            </label>
+                            <label>
+                                Miesiąc
+                                <select name="month" required>
+                                    <option th:each="m : ${#numbers.sequence(1,12)}"
+                                            th:value="${m}"
+                                            th:text="${m}"
+                                            th:selected="${m == currentMonth.monthValue}">1</option>
+                                </select>
+                            </label>
+                        </div>
+                        <button type="submit" class="btn-primary">📊 Generuj</button>
+                    </form>
+                </div>
+            </article>
+
+            <!-- Hello World Test (JasperReports) -->
+            <article class="report-card" sec:authorize="hasAnyRole('ADMIN', 'SYSTEM_ADMIN')">
+                <header class="report-card-header">
+                    <span class="report-icon">🧪</span>
+                    <div class="report-title-group">
+                        <h3>Test Hello World (PDF)</h3>
+                        <span class="report-badge jasper-badge">JasperReports</span>
+                    </div>
+                </header>
+                <p class="report-description">
+                    Prosty raport testowy do weryfikacji działania silnika JasperReports. 
+                    Generuje podstawowy PDF z parametrami.
+                </p>
+                <div class="report-meta">
+                    <span class="meta-item">📄 Format: PDF</span>
+                    <span class="meta-item">⚙️ Parametry: nazwa użytkownika</span>
+                </div>
+                <div class="report-actions">
+                    <a th:href="@{/jasper-report/hello(name='Michał')}" 
+                       class="btn-secondary" 
+                       target="_blank">
+                        ⬇️ Pobierz testowy PDF
+                    </a>
+                </div>
+            </article>
+        </section>
+
+        <footer class="reports-footer">
+            <p><small>💡 Raporty JasperReports (<code>.jrxml</code>) można edytować w Jaspersoft Studio i wrzucać do <code>src/main/resources/reports/</code>.</small></p>
+        </footer>
+    </div>
+</main>
+
+<footer th:replace="~{fragments/layout :: footer}"></footer>
+<div th:insert="~{fragments/layout :: toast-container}"></div>
 <div th:insert="~{fragments/layout :: footer-scripts}"></div>
 </body>
 </html>
+
+<style>
+.reports-header {
+    margin-bottom: 2rem;
+    text-align: center;
+}
+
+.reports-header h2 {
+    margin: 0 0 0.5rem;
+    font-size: clamp(1.5rem, 3vw, 2rem);
+}
+
+.reports-subtitle {
+    color: var(--pico-muted-color);
+    margin: 0;
+}
+
+.reports-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+    gap: 1.5rem;
+    margin-bottom: 2rem;
+}
+
+.report-card {
+    background: var(--pico-card-background-color, var(--pico-background-color));
+    border: 1px solid var(--pico-card-border-color, var(--pico-muted-border-color));
+    border-radius: 16px;
+    padding: 1.5rem;
+    transition: transform 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease;
+    box-shadow: var(--pico-card-box-shadow, none);
+}
+
+.report-card:hover {
+    transform: translateY(-2px);
+    border-color: var(--pico-primary);
+    box-shadow: 0 8px 24px color-mix(in srgb, var(--pico-primary) 15%, transparent);
+}
+
+.report-card-header {
+    display: flex;
+    align-items: flex-start;
+    gap: 1rem;
+    margin-bottom: 1rem;
+}
+
+.report-icon {
+    font-size: 2.5rem;
+    line-height: 1;
+    flex-shrink: 0;
+}
+
+.report-title-group {
+    flex: 1;
+    min-width: 0;
+}
+
+.report-title-group h3 {
+    margin: 0 0 0.35rem;
+    font-size: 1.15rem;
+    font-weight: 650;
+}
+
+.report-badge {
+    display: inline-block;
+    font-size: 0.65rem;
+    font-weight: 700;
+    padding: 0.15rem 0.5rem;
+    border-radius: 999px;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+}
+
+.jasper-badge {
+    background: color-mix(in srgb, #e91e63 15%, transparent);
+    color: #e91e63;
+}
+
+.thymeleaf-badge {
+    background: color-mix(in srgb, #2196f3 15%, transparent);
+    color: #2196f3;
+}
+
+.report-description {
+    color: var(--pico-muted-color);
+    font-size: 0.9rem;
+    line-height: 1.5;
+    margin: 0 0 1rem;
+}
+
+.report-meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+    margin-bottom: 1rem;
+    font-size: 0.8rem;
+    color: var(--pico-muted-color);
+}
+
+.meta-item {
+    background: var(--pico-card-sectioning-background-color, var(--pico-muted-background-color));
+    padding: 0.25rem 0.6rem;
+    border-radius: 999px;
+}
+
+.report-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+    align-items: center;
+}
+
+.report-form-inline {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    align-items: flex-end;
+    width: 100%;
+}
+
+.form-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    width: 100%;
+}
+
+.form-row label {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+    flex: 1;
+    min-width: 120px;
+    font-size: 0.85rem;
+    font-weight: 500;
+}
+
+.form-row input,
+.form-row select {
+    padding: 0.5rem 0.75rem;
+    border: 1px solid var(--pico-form-element-border-color);
+    border-radius: var(--pico-border-radius);
+    background: var(--pico-form-element-background-color);
+    color: var(--pico-color);
+    font-size: 0.9rem;
+}
+
+.btn-primary,
+.btn-secondary {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    padding: 0.6rem 1.1rem;
+    border-radius: var(--pico-border-radius);
+    font-weight: 600;
+    font-size: 0.9rem;
+    text-decoration: none;
+    transition: all 0.15s ease;
+    border: none;
+    cursor: pointer;
+    white-space: nowrap;
+}
+
+.btn-primary {
+    background: var(--pico-primary);
+    color: var(--pico-primary-inverse);
+}
+
+.btn-primary:hover {
+    filter: brightness(1.1);
+    transform: translateY(-1px);
+}
+
+.btn-secondary {
+    background: var(--pico-card-sectioning-background-color, var(--pico-muted-background-color));
+    color: var(--pico-color);
+    border: 1px solid var(--pico-muted-border-color);
+}
+
+.btn-secondary:hover {
+    background: var(--pico-muted-background-color);
+    border-color: var(--pico-primary);
+    color: var(--pico-primary);
+}
+
+.reports-footer {
+    text-align: center;
+    padding-top: 1.5rem;
+    border-top: 1px solid var(--pico-muted-border-color);
+    color: var(--pico-muted-color);
+    font-size: 0.85rem;
+}
+
+.reports-footer code {
+    background: var(--pico-code-background-color);
+    padding: 0.15rem 0.4rem;
+    border-radius: 4px;
+    font-size: 0.85em;
+}
+
+/* Mobile adjustments */
+@media (max-width: 640px) {
+    .reports-grid {
+        grid-template-columns: 1fr;
+    }
+    
+    .form-row {
+        flex-direction: column;
+    }
+    
+    .form-row label {
+        min-width: 0;
+    }
+    
+    .report-actions {
+        flex-direction: column;
+        align-items: stretch;
+    }
+    
+    .btn-primary,
+    .btn-secondary {
+        justify-content: center;
+        width: 100%;
+    }
+}
+</style>

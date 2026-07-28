@@ -1,0 +1,310 @@
+<!DOCTYPE html>
+<html lang="pl" xmlns:th="http://www.thymeleaf.org" xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
+<head th:replace="~{fragments/layout :: head('Konfiguruj Sprawozdanie')}"></head>
+<body>
+<nav th:replace="~{fragments/layout :: nav}"></nav>
+
+<main class="container" id="content">
+    <div id="reports-content">
+        <header class="reports-header">
+            <h2>⚙️ Skonfiguruj Sprawozdanie Zespołu</h2>
+            <p class="reports-subtitle">Wypełnij parametry i pobierz gotowy PDF</p>
+        </header>
+
+        <article class="report-config-card">
+            <form id="sprawozdanie-form" class="config-form">
+                <div class="form-section">
+                    <h3>📋 Informacje podstawowe</h3>
+                    <div class="form-grid">
+                        <label class="form-field">
+                            <span class="field-label">Nazwa zespołu <span class="required">*</span></span>
+                            <input type="text" name="bandName" value="Zespół Dęty "Górnik"" required>
+                        </label>
+                        <label class="form-field">
+                            <span class="field-label">Imię i nazwisko instruktora <span class="required">*</span></span>
+                            <input type="text" name="instructorName" value="Michał Bzowski" required>
+                        </label>
+                    </div>
+                </div>
+
+                <div class="form-section">
+                    <h3>📅 Zakres sprawozdawczy</h3>
+                    <div class="form-grid">
+                        <label class="form-field">
+                            <span class="field-label">Data od <span class="required">*</span></span>
+                            <input type="date" name="from" th:value="${#temporals.format(currentMonth.atDay(1), 'yyyy-MM-dd')}" required>
+                        </label>
+                        <label class="form-field">
+                            <span class="field-label">Data do <span class="required">*</span></span>
+                            <input type="date" name="to" th:value="${#temporals.format(currentMonth.atEndOfMonth(), 'yyyy-MM-dd')}" required>
+                        </label>
+                    </div>
+                </div>
+
+                <div class="form-section">
+                    <h3>👥 Statystyki członków (dane na potrzeby PDF)</h3>
+                    <p class="section-hint">Te wartości zostaną wydrukowane w sprawozdaniu. W przyszłości zostaną pobrane automatycznie z bazy.</p>
+                    <div class="form-grid">
+                        <label class="form-field">
+                            <span class="field-label">Aktywni członkowie</span>
+                            <input type="number" name="activeMembersCount" value="42" min="0">
+                        </label>
+                        <label class="form-field">
+                            <span class="field-label">Niepełnoletni (<18 lat)</span>
+                            <input type="number" name="minorCount" value="15" min="0">
+                        </label>
+                        <label class="form-field">
+                            <span class="field-label">Seniorzy (60+ lat)</span>
+                            <input type="number" name="senior60PlusCount" value="3" min="0">
+                        </label>
+                        <label class="form-field">
+                            <span class="field-label">Liczba prób w okresie</span>
+                            <input type="number" name="rehearsalsCount" value="24" min="0">
+                        </label>
+                    </div>
+                </div>
+
+                <div class="form-actions">
+                    <a th:href="@{/reports}" class="btn-secondary" hx-target="#content" hx-swap="innerHTML transition:true">
+                        ← Powrót do listy raportów
+                    </a>
+                    <button type="submit" class="btn-primary" id="generate-btn">
+                        ⬇️ Generuj i pobierz PDF
+                    </button>
+                </div>
+            </form>
+        </article>
+
+        <footer class="reports-footer">
+            <p><small>Raport generowany przez JasperReports na podstawie szablonu <code>sprawozdanie.jrxml</code>.</small></p>
+        </footer>
+    </div>
+</main>
+
+<footer th:replace="~{fragments/layout :: footer}"></footer>
+<div th:insert="~{fragments/layout :: toast-container}"></div>
+<div th:insert="~{fragments/layout :: footer-scripts}"></div>
+</body>
+</html>
+
+<style>
+.reports-header {
+    margin-bottom: 2rem;
+    text-align: center;
+}
+
+.reports-header h2 {
+    margin: 0 0 0.5rem;
+    font-size: clamp(1.5rem, 3vw, 2rem);
+}
+
+.reports-subtitle {
+    color: var(--pico-muted-color);
+    margin: 0;
+}
+
+.report-config-card {
+    background: var(--pico-card-background-color, var(--pico-background-color));
+    border: 1px solid var(--pico-card-border-color, var(--pico-muted-border-color));
+    border-radius: 16px;
+    padding: 2rem;
+    max-width: 800px;
+    margin: 0 auto 2rem;
+    box-shadow: var(--pico-card-box-shadow, none);
+}
+
+.config-form {
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+}
+
+.form-section {
+    border-bottom: 1px solid var(--pico-muted-border-color);
+    padding-bottom: 1.5rem;
+}
+
+.form-section:last-of-type {
+    border-bottom: none;
+    padding-bottom: 0;
+}
+
+.form-section h3 {
+    margin: 0 0 0.25rem;
+    font-size: 1.1rem;
+    font-weight: 600;
+}
+
+.section-hint {
+    color: var(--pico-muted-color);
+    font-size: 0.85rem;
+    margin: 0 0 1rem;
+}
+
+.form-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 1rem;
+}
+
+.form-field {
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+}
+
+.field-label {
+    display: flex;
+    align-items: center;
+    gap: 0.35rem;
+    font-size: 0.85rem;
+    font-weight: 500;
+    color: var(--pico-color);
+}
+
+.required {
+    color: var(--pico-primary);
+    font-size: 0.9em;
+}
+
+.form-field input,
+.form-field select {
+    padding: 0.6rem 0.85rem;
+    border: 1px solid var(--pico-form-element-border-color);
+    border-radius: var(--pico-border-radius);
+    background: var(--pico-form-element-background-color);
+    color: var(--pico-color);
+    font-size: 0.95rem;
+    transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.form-field input:focus,
+.form-field select:focus {
+    outline: none;
+    border-color: var(--pico-primary);
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--pico-primary) 20%, transparent);
+}
+
+.form-field input[type="date"] {
+    padding: 0.5rem 0.75rem;
+}
+
+.form-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1rem;
+    justify-content: flex-end;
+    padding-top: 1rem;
+    border-top: 1px solid var(--pico-muted-border-color);
+    margin-top: 0.5rem;
+}
+
+.btn-primary,
+.btn-secondary {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.7rem 1.4rem;
+    border-radius: var(--pico-border-radius);
+    font-weight: 600;
+    font-size: 0.95rem;
+    text-decoration: none;
+    transition: all 0.15s ease;
+    border: none;
+    cursor: pointer;
+    white-space: nowrap;
+}
+
+.btn-primary {
+    background: var(--pico-primary);
+    color: var(--pico-primary-inverse);
+}
+
+.btn-primary:hover:not(:disabled) {
+    filter: brightness(1.1);
+    transform: translateY(-1px);
+}
+
+.btn-primary:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
+.btn-secondary {
+    background: var(--pico-card-sectioning-background-color, var(--pico-muted-background-color));
+    color: var(--pico-color);
+    border: 1px solid var(--pico-muted-border-color);
+}
+
+.btn-secondary:hover {
+    background: var(--pico-muted-background-color);
+    border-color: var(--pico-primary);
+    color: var(--pico-primary);
+}
+
+.reports-footer {
+    text-align: center;
+    padding-top: 1.5rem;
+    border-top: 1px solid var(--pico-muted-border-color);
+    color: var(--pico-muted-color);
+    font-size: 0.85rem;
+}
+
+.reports-footer code {
+    background: var(--pico-code-background-color);
+    padding: 0.15rem 0.4rem;
+    border-radius: 4px;
+    font-size: 0.85em;
+}
+
+@media (max-width: 640px) {
+    .report-config-card {
+        padding: 1.25rem;
+    }
+    
+    .form-grid {
+        grid-template-columns: 1fr;
+    }
+    
+    .form-actions {
+        flex-direction: column-reverse;
+    }
+    
+    .btn-primary,
+    .btn-secondary {
+        justify-content: center;
+        width: 100%;
+    }
+}
+</style>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const form = document.getElementById('sprawozdanie-form');
+    const btn = document.getElementById('generate-btn');
+    
+    form.addEventListener('submit', function(e) {
+        e.preventDefault();
+        
+        const formData = new FormData(form);
+        const params = new URLSearchParams();
+        
+        for (const [key, value] of formData.entries()) {
+            params.append(key, value);
+        }
+        
+        // Disable button during generation
+        btn.disabled = true;
+        btn.textContent = '⏳ Generuję PDF...';
+        
+        // Navigate to the JasperReports endpoint which returns PDF as attachment
+        window.location.href = '/jasper-report/sprawozdanie?' + params.toString();
+        
+        // Re-enable after a delay (PDF download doesn't navigate away)
+        setTimeout(() => {
+            btn.disabled = false;
+            btn.textContent = '⬇️ Generuj i pobierz PDF';
+        }, 3000);
+    });
+});
+</script>

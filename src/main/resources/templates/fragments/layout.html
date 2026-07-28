@@ -158,13 +158,11 @@
 
                 <p class="app-modal-section">Wgląd</p>
                 <ul>
-                    <li><a th:href="@{/dashboards}" hx-target="#content" hx-swap="innerHTML transition:true" data-close>📊 Dashboardy</a></li>
                     <li sec:authorize="hasAnyRole('ADMIN', 'SYSTEM_ADMIN')"><a th:href="@{/reports}" hx-target="#content" hx-swap="innerHTML transition:true" data-close>📈 Raporty</a></li>
                 </ul>
 
                 <p class="app-modal-section" sec:authorize="hasAnyRole('ADMIN', 'SYSTEM_ADMIN')">Administracja</p>
                 <ul sec:authorize="hasAnyRole('ADMIN', 'SYSTEM_ADMIN')">
-                    <li><a th:href="@{/admin/dashboards}" hx-target="#content" hx-swap="innerHTML transition:true" data-close>⚙️ Dashboardy</a></li>
                     <li><a th:href="@{/admin/system-admins}" hx-target="#content" hx-swap="innerHTML transition:true" data-close>⚙️ Admini</a></li>
                     <li><a th:href="@{/band/inventory-attributes(type='MEMBER')}" hx-target="#content" hx-swap="innerHTML transition:true" data-close>⚙️ Atrybuty</a></li>
                 </ul>

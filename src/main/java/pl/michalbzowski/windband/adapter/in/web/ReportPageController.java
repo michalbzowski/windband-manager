@@ -34,6 +34,12 @@ public class ReportPageController {
         return "reports/list :: #reports-content";
     }
 
+    @GetMapping("/sprawozdanie/customize")
+    public String sprawozdanieCustomize(Model model) {
+        model.addAttribute("currentMonth", YearMonth.now());
+        return "reports/sprawozdanie-customize";
+    }
+
     @GetMapping("/generate")
     public String generateReport(@AuthenticationPrincipal OidcUser oidcUser, HttpSession session,
                                   @RequestParam int year, @RequestParam int month, Model model) {
