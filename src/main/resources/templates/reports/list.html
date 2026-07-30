@@ -110,10 +110,29 @@
             </article>
         </section>
 
-        <footer class="reports-footer">
+        <!-- Sekcja z opcjami generowania raportów --> 
+        <section class="reports-list-section">
+            <article class="report-card" sec:authorize="hasAnyRole('ADMIN', 'SYSTEM_ADMIN')">
+                <div style="display:flex; gap:1rem; align-items:center;">
+                    <span style="font-size:2.5rem;" aria-hidden>📊</span> 
+                    <div>
+                        <h3 style="margin:0">Raporty JasperReports 7.x</h3>  
+                        <p style="color:#6b7280; margin:0;">Generuj raport członków zespołu jako PDF. Zostań przekierowany do dedykowanej strony z opcją generowania.</p>
+                    </div> 
+                </div>  
+
+                <div class="report-actions" style="margin-top:1rem;">  
+<a th:href="@{/reports/jasper}" class="btn-primary">📄 Przejdz do listy raportów JasperReports</a>  
+                </div>
+
+            </article>
+        </section>
+
+
+        <footer class="reports-footer"> 
             <p><small>💡 Raporty JasperReports (<code>.jrxml</code>) można edytować w Jaspersoft Studio i wrzucać do <code>src/main/resources/reports/</code>.</small></p>
         </footer>
-    </div>
+
 </main>
 
 <footer th:replace="~{fragments/layout :: footer}"></footer>

@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="UTF-8"?> 
+
+<jasperReport name="members_report" pageWidth="595" columnWidth="555" leftMargin="20" rightMargin="20">
+    
+    <parameter name="bandName" class="java.lang.String"/>
+
+</jasperReport>

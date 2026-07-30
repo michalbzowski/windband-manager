@@ -1,0 +1,82 @@
+<!DOCTYPE html lang="pl">
+<html xmlns:th="http://www.thymeleaf.org" xmlns:sec="http://www.thymeleaf.org/extras/spring-security" lang="pl">
+<head>
+    <meta charset="UTF-8"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <title>Raporty - JasperReports</title>  
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/picocss@2/css/pico.min.css"/>
+    <style>
+        .report-section {
+            max-width: 800px;
+            margin: 2rem auto;
+            padding: 2rem;
+        }
+        
+        .jasper-report-btn {
+            background-color: #4f46e5;
+            color: white;  
+            border: none;
+            padding: 1rem 2rem;
+            font-size: 1.1rem;
+            border-radius: 0.5rem;
+            cursor: pointer;
+            text-decoration: none;
+            display: inline-block;
+            margin-top: 1rem;
+        }
+
+        .jasper-report-btn:hover {
+            background-color: #4338ca;  
+        }
+
+        .report-description {
+            line-height: 1.6;
+            color: #6b7280;
+        }
+    </style>
+</head> 
+<body class="container">
+    
+    <div th:fragment="header" style="display:flex; justify-content:center;">
+        <hgroup align="center">
+            <a th:href="@{/}"><button>Zadom</button></a><br/>
+            <a th:href="@{/band}"><button>Zespołowiec</button></a>
+            ## Raporty JasperReports  
+        </hgroup>
+    </div>
+
+    <section class="report-section">
+        <article>
+            <header>
+                <time datetime="2026-07-30" pubdate>Zastosowanie</time><br/>
+                <h1>Raporty JasperReports 7.x</h1> 
+            </header>
+
+            <p class="report-description">
+                Generuj raport PDF dla członków zespołu korzystając z JasperReports. Raport zawiera:<br/>  
+                - Listę wszystkich członków<br/>
+                - Dane kontaktowe<br/>
+                - Przydzielone instrumenty<br/>  
+                - Status aktywności
+            </p>
+
+            <div style="margin: 2rem 0; padding: 1.5rem; background-color: #f3f4f6; border-radius: 0.5rem;">
+<h3>Jako użytkownik</h3>  
+                <ul>
+                    <li>Kliknij przycisk poniżej aby pobrać raport PDF</li>  
+                    <li>Raport zostanie pobrany bezpośrednio do Twojego przeglądarki</li>
+                    <li>Powinno być dostępne dla zalogowanego użytkownika</li>
+                </ul>
+            </div>
+
+            <!-- Main Generate Button --> 
+<a th:href="@{/reports/jasper/members-pdf}" class="jasper-report-btn">📄 Generuj PDF raport członków</a>
+
+        <hr style="margin: 2rem 0;"/>  
+
+<p><small>Note: Ten raport używa JasperReports version 7.0.5 dla generowania dokumentów w formacie PDF.</small></p>  
+    </article>
+    </section>
+
+</body>
+</html> 
