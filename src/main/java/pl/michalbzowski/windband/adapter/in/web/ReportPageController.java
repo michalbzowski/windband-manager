@@ -10,7 +10,6 @@ import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import pl.michalbzowski.windband.adapter.in.security.WindbandOidcUser;
-import pl.michalbzowski.windband.application.query.report.MonthlyReport;
 import pl.michalbzowski.windband.application.query.report.ReportQueryService;
 import pl.michalbzowski.windband.application.query.team.TeamQueryService;
 import pl.michalbzowski.windband.application.report.ReportService;
