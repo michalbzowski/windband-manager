@@ -1,0 +1,40 @@
+[INFO] Replacing main artifact /home/mbzowski/windband-manager/target/windband-manager-0.1.0-SNAPSHOT.jar with repackaged archive, adding nested dependencies in BOOT-INF/.
+[INFO] The original artifact has been renamed to /home/mbzowski/windband-manager/target/windband-manager-0.1.0-SNAPSHOT.jar.original
+[INFO] 
+[INFO] --- checkstyle:3.3.1:check (checkstyle-verify) @ windband-manager ---
+[INFO] 
+[INFO] >>> spotbugs:4.8.3.0:check (spotbugs-verify) > :spotbugs @ windband-manager >>>
+[INFO] 
+[INFO] --- spotbugs:4.8.3.0:spotbugs (spotbugs) @ windband-manager ---
+[INFO] Fork Value is true
+[INFO] Done SpotBugs Analysis....
+[INFO] 
+[INFO] <<< spotbugs:4.8.3.0:check (spotbugs-verify) < :spotbugs @ windband-manager <<<
+[INFO] 
+[INFO] 
+[INFO] --- spotbugs:4.8.3.0:check (spotbugs-verify) @ windband-manager ---
+[INFO] BugInstance size is 2
+[INFO] Error size is 0
+[INFO] Total bugs: 2
+[ERROR] Medium: Possible null pointer dereference in pl.michalbzowski.windband.application.report.ReportCompiler.compileReport(String) due to return value of called method [pl.michalbzowski.windband.application.report.ReportCompiler, pl.michalbzowski.windband.application.report.ReportCompiler] Method invoked at ReportCompiler.java:[line 52]Known null at ReportCompiler.java:[line 52] NP_NULL_ON_SOME_PATH_FROM_RETURN_VALUE
+[ERROR] Medium: Possible null pointer dereference in pl.michalbzowski.windband.infrastructure.jacps.ReportApiClient.generateReport(String, String, Map) due to return value of called method [pl.michalbzowski.windband.infrastructure.jacps.ReportApiClient, pl.michalbzowski.windband.infrastructure.jacps.ReportApiClient] Dereferenced at ReportApiClient.java:[line 69]Known null at ReportApiClient.java:[line 69] NP_NULL_ON_SOME_PATH_FROM_RETURN_VALUE
+[INFO] 
+
+
+To see bug detail using the Spotbugs GUI, use the following command "mvn spotbugs:gui"
+
+
+
+[INFO] ------------------------------------------------------------------------
+[INFO] BUILD FAILURE
+[INFO] ------------------------------------------------------------------------
+[INFO] Total time:  06:28 min
+[INFO] Finished at: 2026-07-30T16:06:26+02:00
+[INFO] ------------------------------------------------------------------------
+[ERROR] Failed to execute goal com.github.spotbugs:spotbugs-maven-plugin:4.8.3.0:check (spotbugs-verify) on project windband-manager: failed with 2 bugs and 0 errors  -> [Help 1]
+[ERROR] 
+[ERROR] To see the full stack trace of the errors, re-run Maven with the -e switch.
+[ERROR] Re-run Maven using the -X switch to enable full debug logging.
+[ERROR] 
+[ERROR] For more information about the errors and possible solutions, please read the following articles:
+[ERROR] [Help 1] http://cwiki.apache.org/confluence/display/MAVEN/MojoExecutionException
