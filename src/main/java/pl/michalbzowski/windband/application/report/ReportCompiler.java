@@ -49,7 +49,23 @@ public class ReportCompiler {
 
         String jasperName = reportName.replace(".jrxml", ".jasper");
         Path outputPath = Path.of("target/classes/reports", jasperName);
-        Files.createDirectories(outputPath.getParent());
+
+        // getParent() returns null if there is no parent path element (e.g., simple path like "file.txt")
+        // Here we always have a full path, so parent should exist. But SpotBugs complains anyway.
+        // We handle it gracefully by checking before creating directories.
+        Path parentDir = outputPath.getParent();
+
+        if (parentDir != null) {
+            try {
+                Files.createDirectories(parentDir);
+            } catch (IOException ioEx) {
+                log.error("Failed to create output directory: {}", parentDir, ioEx);
+                throw ioEx; // Re-throw as it's a checked exception from the method signature
+            }
+        } else {
+            // Should never happen with Path.of(..., ...) pattern but keep compiler happy
+            log.warn("No parent directory for report output path: {}", outputPath);
+        }
 
         try (InputStream inputStream = source.getInputStream();
              OutputStream outputStream = Files.newOutputStream(outputPath)) {

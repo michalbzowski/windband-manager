@@ -65,16 +65,24 @@ public class ReportApiClient {
         try {
             ResponseEntity<byte[]> response = restTemplate.postForEntity(url, entity, byte[].class);
 
-            if (response.getStatusCode().is2xxSuccessful() && response.getBody() != null) {
-                log.debug("Report generated successfully - {} bytes", response.getBody().length);
+            if (response.getStatusCode().is2xxSuccessful()) {
+                // SpotBugs null check: body can be null even with 2xx status
+                byte[] body = response.getBody();
+                // Explicit null check to satisfy static analysis
+                if (body != null) {
+                    log.debug("Report generated successfully - {} bytes", body.length);
 
-                // Extract filename from Content-Disposition header for logging
-                String disposition = response.getHeaders().getFirst(HttpHeaders.CONTENT_DISPOSITION);
-                if (disposition != null) {
-                    log.debug("Content-Disposition: {}", disposition);
+                    // Extract filename from Content-Disposition header for logging
+                    String disposition = response.getHeaders().getFirst(HttpHeaders.CONTENT_DISPOSITION);
+                    if (disposition != null) {
+                        log.debug("Content-Disposition: {}", disposition);
+                    }
+
+                    return body;
+                } else {
+                    log.warn("Report generation returned 2xx success but empty body");
+                    return null;
                 }
-
-                return response.getBody();
             } else {
                 log.warn("Report generation failed with status: {} - headers: {}",
                         response.getStatusCode(), response.getHeaders());
