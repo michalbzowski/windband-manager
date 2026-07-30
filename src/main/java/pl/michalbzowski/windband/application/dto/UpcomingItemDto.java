@@ -12,5 +12,12 @@ public record UpcomingItemDto(
         LocalTime startTime,
         String badge,
         String href,
-        String icon
-) {}
+        String icon,
+        Integer attendancePercentage
+) {
+    // Builder-like factory for backwards compatibility
+    public static UpcomingItemDto of(String kind, Long id, String title, String subtitle,
+            LocalDate date, LocalTime startTime, String badge, String href, String icon) {
+        return new UpcomingItemDto(kind, id, title, subtitle, date, startTime, badge, href, icon, null);
+    }
+}

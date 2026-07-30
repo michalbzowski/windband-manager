@@ -75,3 +75,24 @@ INSERT INTO band_events (name, date, start_time, location, event_type, payment_t
 VALUES ('Koncert Noworoczny', CURRENT_DATE + 30, '18:00', 'Rynek', 'CONCERT', 'FREE', NULL, 'Występ plenerowy', 1);
 INSERT INTO band_events (name, date, start_time, location, event_type, payment_type, payment_amount, notes, band_id)
 VALUES ('Parada 3 Maja', CURRENT_DATE - 10, '10:00', 'Park Miejski', 'PARADE', 'FREE', NULL, 'Uczestnictwo w paradzie', 1);
+
+-- Rehearsals for Test Band (band_id=1) — for dashboard upcoming list with attendance
+INSERT INTO rehearsals (date, start_time, end_time, location, notes, band_id)
+VALUES (CURRENT_DATE + 1, '18:00', '20:00', 'Sala prób', 'Próba regularna', 1);
+INSERT INTO rehearsals (date, start_time, end_time, location, notes, band_id)
+VALUES (CURRENT_DATE + 2, '18:00', '20:00', 'Sala prób', 'Próba przed koncertem', 1);
+INSERT INTO rehearsals (date, start_time, end_time, location, notes, band_id)
+VALUES (CURRENT_DATE + 5, '19:00', '21:00', 'Sala prób', 'Próba weekendowa', 1);
+
+-- Attendance for rehearsals (member 1 = Jan, member 2 = Anna) - band_id=1
+-- Rehearsal 1 (id=1): both present
+INSERT INTO attendances (rehearsal_id, member_id, status)
+VALUES (1, 1, 'PRESENT');
+INSERT INTO attendances (rehearsal_id, member_id, status)
+VALUES (1, 2, 'PRESENT');
+-- Rehearsal 2 (id=2): Jan present, Anna unexcused
+INSERT INTO attendances (rehearsal_id, member_id, status)
+VALUES (2, 1, 'PRESENT');
+INSERT INTO attendances (rehearsal_id, member_id, status)
+VALUES (2, 2, 'UNEXCUSED');
+-- Rehearsal 3 (id=3): no attendance yet

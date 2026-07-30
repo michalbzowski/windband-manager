@@ -16,7 +16,7 @@ import static org.assertj.core.api.Assertions.assertThat;
  * (with its own <head>) for HX-Request, which HTMX swaps into #content via
  * innerHTML — that drops <link> stylesheets and nests a second #content.
  *
- * We click the dashboard buttons (which fire HTMX requests) and assert the
+ * We click the FAB on the dashboard (which fires HTMX request) and assert the
  * returned fragment is nested inside #content (not a standalone page) and that
  * app.css is still referenced by the document.
  */
@@ -26,13 +26,15 @@ class DashboardNavigationUiTest extends UiTestBase {
     void navigatingToRehearsalFormKeepsCssAndSingleContent() {
         loginAndNavigateTo("/");
 
-        var button = driver.findElement(By.xpath("//button[contains(., 'Zaplanuj spotkanie')]"));
-        button.click();
+        // Click FAB to open the add event modal/meetings/new view
+        var fab = driver.findElement(By.cssSelector(".fab"));
+        fab.click();
 
+        // Wait for the meetings/new fragment to load (navigates to type selection)
         WebDriverWait wait = new WebDriverWait(driver, Duration.ofSeconds(10));
-        wait.until(ExpectedConditions.presenceOfElementLocated(By.cssSelector("#rehearsals-content")));
+        wait.until(ExpectedConditions.presenceOfElementLocated(By.cssSelector("#meetings-content")));
 
-        assertThat(driver.findElements(By.cssSelector("#content #rehearsals-content"))).hasSize(1);
+        assertThat(driver.findElements(By.cssSelector("#content #meetings-content"))).hasSize(1);
 
         boolean appCssLoaded = driver.findElements(By.tagName("link")).stream()
                 .anyMatch(l -> l.getAttribute("href") != null && l.getAttribute("href").contains("/css/app.css"));
@@ -43,10 +45,17 @@ class DashboardNavigationUiTest extends UiTestBase {
     void navigatingToEventsListKeepsCssAndSingleContent() {
         loginAndNavigateTo("/");
 
-        var button = driver.findElement(By.xpath("//button[contains(., 'Dodaj wydarzenie')]"));
-        button.click();
+        // Click FAB then navigate to events
+        var fab = driver.findElement(By.cssSelector(".fab"));
+        fab.click();
 
         WebDriverWait wait = new WebDriverWait(driver, Duration.ofSeconds(10));
+        wait.until(ExpectedConditions.presenceOfElementLocated(By.cssSelector("#meetings-content")));
+
+        // Now click "Utwórz koncert" button in the meetings/new view
+        var eventButton = driver.findElement(By.xpath("//button[contains(., 'Utwórz koncert')]"));
+        eventButton.click();
+
         wait.until(ExpectedConditions.presenceOfElementLocated(By.cssSelector("#events-list-container")));
 
         assertThat(driver.findElements(By.cssSelector("#content #events-list-container"))).hasSize(1);

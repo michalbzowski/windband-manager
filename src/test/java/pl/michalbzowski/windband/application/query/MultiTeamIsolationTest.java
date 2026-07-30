@@ -4,6 +4,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.transaction.annotation.Transactional;
 import pl.michalbzowski.windband.application.command.event.CreateEventCommand;
 import pl.michalbzowski.windband.application.command.event.EventCommandService;
@@ -52,13 +53,21 @@ class MultiTeamIsolationTest extends BaseIntegrationTest {
     @Autowired
     private EventQueryService eventQueryService;
 
+    @Autowired
+    private JdbcTemplate jdbcTemplate;
+
     private Long band1Id;
     private Long band2Id;
 
     @BeforeEach
     void setUp() {
-        // Clean up events from previous test classes (state pollution from shared Testcontainers)
-        eventQueryService.getAllEvents(band1Id).forEach(e -> eventCommandService.deleteEvent(e.getId()));
+        // Clean up rehearsals and events from previous test classes (state pollution from shared Testcontainers)
+        // Must delete attendances first due to FK constraint
+        // Use DELETE which works in both H2 and PostgreSQL
+        jdbcTemplate.execute("DELETE FROM attendances");
+        jdbcTemplate.execute("DELETE FROM rehearsals");
+        jdbcTemplate.execute("DELETE FROM band_events");
+
         // Band 1 already exists from Flyway seed (id=1)
         // Create Band 2 for multi-team testing
         Band band2 = bandRepository.save(Band.create("Drugi Zespół", "drugi-zespol"));

@@ -137,6 +137,31 @@ public class PageController {
         List<UpcomingItemDto> upcoming = collectUpcomingItems(activeTeamId, today, 5);
         model.addAttribute("upcoming", upcoming);
 
+        // Calculate stats for mini-stats bar
+        int attendancePercent = 0;
+        int totalCount = upcoming.size();
+        long activeMembersCount = activeMembers;
+
+        if (!upcoming.isEmpty()) {
+            int sumAttendance = 0;
+            int countWithAttendance = 0;
+            for (UpcomingItemDto item : upcoming) {
+                if (item.attendancePercentage() != null) {
+                    sumAttendance += item.attendancePercentage();
+                    countWithAttendance++;
+                }
+            }
+            if (countWithAttendance > 0) {
+                attendancePercent = sumAttendance / countWithAttendance;
+            }
+        }
+
+        model.addAttribute("upcomingStats", Map.of(
+            "attendancePercent", attendancePercent,
+            "totalCount", totalCount,
+            "activeMembers", activeMembersCount
+        ));
+
         return "dashboard";
     }
 
@@ -148,6 +173,7 @@ public class PageController {
         for (Rehearsal rehearsal : rehearsalQueryService.getRehearsalsBetween(from, to, activeTeamId)) {
             long present = rehearsal.getPresentCount();
             long total = rehearsal.getAttendances().size();
+            Integer attendancePercentage = total > 0 ? (int) Math.round((present * 100.0) / total) : 0;
             items.add(new UpcomingItemDto(
                     "REHEARSAL",
                     rehearsal.getId(),
@@ -157,7 +183,8 @@ public class PageController {
                     rehearsal.getStartTime(),
                     rehearsal.getDate().isEqual(from) ? "Dziś" : formatRelativeLabel(rehearsal.getDate(), from),
                     "/rehearsals/" + rehearsal.getId(),
-                    "🎵"
+                    "🎵",
+                    attendancePercentage
             ));
         }
 
@@ -171,7 +198,8 @@ public class PageController {
                     event.getStartTime(),
                     event.getDate().isEqual(from) ? "Dziś" : formatRelativeLabel(event.getDate(), from),
                     "/events/" + event.getId(),
-                    "🎪"
+                    "🎪",
+                    null
             ));
         }
 

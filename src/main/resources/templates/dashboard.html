@@ -11,9 +11,21 @@
                 <p class="dashboard-kicker">Pierwsze, co się dzieje</p>
                 <h2>Nadchodzące</h2>
             </div>
-            <div style="display:flex; gap:0.5rem;">
-                <button hx-get="/events/new" hx-target="#content" hx-swap="innerHTML transition:true" class="primary">+ Dodaj wydarzenie</button>
-                <button hx-get="/rehearsals/new" hx-target="#content" hx-swap="innerHTML transition:true" class="secondary outline">+ Zaplanuj spotkanie</button>
+        </div>
+
+        <!-- Mini stats bar - responsive -->
+        <div class="mini-stats-bar" th:unless="${#lists.isEmpty(upcoming)}">
+            <div class="mini-stat">
+                <span class="mini-stat-value" th:text="${upcomingStats.attendancePercent} ?: 0 + '%'">0%</span>
+                <span class="mini-stat-label">Średnia obecność</span>
+            </div>
+            <div class="mini-stat">
+                <span class="mini-stat-value" th:text="${upcomingStats.totalCount} ?: 0">0</span>
+                <span class="mini-stat-label">Zdarzeń</span>
+            </div>
+            <div class="mini-stat">
+                <span class="mini-stat-value" th:text="${upcomingStats.activeMembers} ?: 0">0</span>
+                <span class="mini-stat-label">Aktywnych</span>
             </div>
         </div>
 
@@ -23,37 +35,6 @@
             </article>
         </div>
 
-        <!-- Wide view: table -->
-        <div th:unless="${#lists.isEmpty(upcoming)}" class="upcoming-table">
-            <table role="grid">
-                <thead>
-                    <tr>
-                        <th>Data</th>
-                        <th>Godzina</th>
-                        <th>Co</th>
-                        <th>Miejsce</th>
-                        <th>Kiedy</th>
-                        <th>Akcje</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <tr th:each="item : ${upcoming}">
-                        <td data-label="Data" th:text="${#temporals.format(item.date, 'dd.MM.yyyy')}">01.01.2025</td>
-                        <td data-label="Godzina" th:text="${item.startTime != null} ? ${#temporals.format(item.startTime, 'HH:mm')} : '—'">18:00</td>
-                        <td data-label="Co">
-                            <span th:text="${item.icon}">🎪</span>
-                            <span th:text="${item.title}">Koncert</span>
-                        </td>
-                        <td data-label="Miejsce" th:text="${item.subtitle}">Rynek</td>
-                        <td data-label="Kiedy"><span class="upcoming-badge" th:text="${item.badge}">Jutro</span></td>
-                        <td data-label="Akcje">
-                            <a th:href="@{${item.href}}" hx-target="#content" hx-swap="innerHTML transition:true" class="outline small">Szczegóły</a>
-                        </td>
-                    </tr>
-                </tbody>
-            </table>
-        </div>
-
         <!-- Mobile view: cards -->
         <div th:unless="${#lists.isEmpty(upcoming)}" class="upcoming-list">
             <a th:each="item : ${upcoming}" th:href="@{${item.href}}" class="upcoming-card">
@@ -61,17 +42,29 @@
                 <div class="upcoming-card-body">
                     <div class="upcoming-card-topline">
                         <h3 th:text="${item.title}">Nazwa</h3>
-                        <span th:text="${item.badge}">Jutro</span>
+                        <span th:text="${item.badge}" class="upcoming-badge">Jutro</span>
                     </div>
                     <p th:text="${item.subtitle}">Opis</p>
                     <div class="upcoming-card-meta">
                         <span th:text="${#temporals.format(item.date, 'dd.MM.yyyy')}">12.07.2026</span>
                         <span th:if="${item.startTime != null}" th:text="${#temporals.format(item.startTime, 'HH:mm')}">18:00</span>
                     </div>
+                    <!-- Progress bar for attendance -->
+                    <div class="progress-container" th:if="${item.attendancePercentage != null}">
+                        <div class="progress-track">
+                            <div class="progress-fill" 
+                                 th:classappend="${item.attendancePercentage >= 70 ? 'progress-high' : (item.attendancePercentage >= 40 ? 'progress-medium' : 'progress-low')}"
+                                 th:style="'width: ' + ${item.attendancePercentage} + '%'"></div>
+                        </div>
+                        <span class="progress-label" th:text="${item.attendancePercentage} + '%'">0%</span>
+                    </div>
                 </div>
                 <div class="upcoming-card-arrow">→</div>
             </a>
         </div>
+
+        <!-- Floating Action Button -->
+        <button class="fab" onclick="openAddEventModal()" aria-label="Dodaj wydarzenie lub próbę">+</button>
     </section>
 
     <section class="dashboard-stats">
@@ -172,6 +165,14 @@
 <footer th:replace="~{fragments/layout :: footer}"></footer>
 <div th:insert="~{fragments/layout :: toast-container}"></div>
 <div th:insert="~{fragments/layout :: footer-scripts}"></div>
+
+<script>
+    // Floating Action Button - navigates to meeting type selection
+    function openAddEventModal() {
+        // Navigate to the existing meeting type selection page
+        window.location.href = '/meetings/new';
+    }
+</script>
 
 <style>
     .dashboard-kicker {

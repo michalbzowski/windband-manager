@@ -30,6 +30,7 @@ public class MeetingQueryService {
         for (Rehearsal r : rehearsalQueryService.getUpcomingRehearsals(teamId)) {
             long present = r.getPresentCount();
             long total = r.getAttendances().size();
+            Integer attendancePercentage = total > 0 ? (int) Math.round((present * 100.0) / total) : 0;
             items.add(new UpcomingItemDto(
                     "REHEARSAL",
                     r.getId(),
@@ -39,7 +40,8 @@ public class MeetingQueryService {
                     r.getStartTime(),
                     r.getDate().isEqual(today) ? "Dziś" : formatRelativeLabel(r.getDate(), today),
                     "/rehearsals/" + r.getId(),
-                    "🎵"
+                    "🎵",
+                    attendancePercentage
             ));
         }
 
@@ -65,7 +67,8 @@ public class MeetingQueryService {
                     e.getStartTime(),
                     badge,
                     "/events/" + e.getId(),
-                    "🎪"
+                    "🎪",
+                    null
             ));
         }
 
@@ -85,6 +88,7 @@ public class MeetingQueryService {
         for (Rehearsal r : rehearsalQueryService.getPastRehearsals(teamId)) {
             long present = r.getPresentCount();
             long total = r.getAttendances().size();
+            Integer attendancePercentage = total > 0 ? (int) Math.round((present * 100.0) / total) : 0;
             items.add(new UpcomingItemDto(
                     "REHEARSAL",
                     r.getId(),
@@ -94,7 +98,8 @@ public class MeetingQueryService {
                     r.getStartTime(),
                     formatRelativeLabel(r.getDate(), today),
                     "/rehearsals/" + r.getId(),
-                    "🎵"
+                    "🎵",
+                    attendancePercentage
             ));
         }
 
@@ -111,7 +116,8 @@ public class MeetingQueryService {
                     e.getStartTime(),
                     formatRelativeLabel(e.getDate(), today),
                     "/events/" + e.getId(),
-                    "🎪"
+                    "🎪",
+                    null
             ));
         }
 

@@ -1,7 +1,9 @@
 package pl.michalbzowski.windband.application.command.rehearsal;
 
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.jdbc.core.JdbcTemplate;
 import pl.michalbzowski.windband.domain.rehearsal.Rehearsal;
 import pl.michalbzowski.windband.domain.rehearsal.RehearsalRepository;
 
@@ -32,6 +34,18 @@ class RehearsalCreationRegressionTest extends BaseIntegrationTest {
 
     @Autowired
     private RehearsalRepository rehearsalRepository;
+
+    @Autowired
+    private JdbcTemplate jdbcTemplate;
+
+    @BeforeEach
+    void cleanDatabase() {
+        // Clean rehearsals table before each test to avoid data pollution
+        // from data.sql and other tests in shared Testcontainers instance
+        // Must delete attendances first due to FK constraint
+        jdbcTemplate.execute("DELETE FROM attendances");
+        jdbcTemplate.execute("DELETE FROM rehearsals");
+    }
 
     @Test
     void shouldCreateExactlyOneRehearsalPerCall() {
