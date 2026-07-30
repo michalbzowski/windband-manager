@@ -1,5 +1,7 @@
 package pl.michalbzowski.windband.domain.member;
 
+import pl.michalbzowski.windband.domain.band.Band;
+
 import java.util.List;
 import java.util.Optional;
 
@@ -14,6 +16,9 @@ public interface MemberRepository {
     List<Member> findAllActive();
 
     List<Member> findAllActiveByBandId(Long bandId);
+
+    // FIXED: Use proper method name with Band object parameter
+    List<Member> findAllByBandOrderByLastNameAscFirstNameAsc(Band band);
 
     List<Member> findByInstrument(Instrument instrument);
 

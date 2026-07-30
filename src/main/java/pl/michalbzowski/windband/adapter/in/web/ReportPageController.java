@@ -17,7 +17,7 @@ import pl.michalbzowski.windband.application.report.ReportService;
 
 import java.time.YearMonth;
 
-@Controller  
+@Controller
 @RequestMapping("/reports")
 @RequiredArgsConstructor
 public class ReportPageController {
@@ -25,14 +25,14 @@ public class ReportPageController {
     private final ReportQueryService reportQueryService;
     private final TeamQueryService teamQueryService;
     private final ReportService reportService; // JasperReports service
-    
+
     @GetMapping
     public String reportsPage(Model model) {
         model.addAttribute("currentMonth", YearMonth.now());
         return "reports/list";
     }
 
-    @GetMapping("/jasper")  
+    @GetMapping("/jasper")
     public String jasperReportsPage() {
         return "reports/jasper-list";
     }
@@ -43,9 +43,9 @@ public class ReportPageController {
     @GetMapping("/jasper/members-pdf")
     public void downloadMembersPdf(
             HttpServletResponse response,
-            @AuthenticationPrincipal OidcUser oidcUser, 
+            @AuthenticationPrincipal OidcUser oidcUser,
             HttpSession session) throws Exception {
-        
+
         Long teamId = resolveActiveTeamId(oidcUser, session);
         if (teamId == null) {
             response.sendError(HttpServletResponse.SC_UNAUTHORIZED, "Brak dostępu do zespołu");
@@ -53,11 +53,11 @@ public class ReportPageController {
         }
 
         byte[] pdfBytes = reportService.generateMembersPdf(teamId);
-        
+
         response.setContentType("application/pdf");
         response.setHeader("Content-Disposition", "attachment; filename=\"czlonkowie-team-" + teamId + ".pdf\"");
         response.setContentLengthLong(pdfBytes.length);
-        
+
         try (var outputStream = response.getOutputStream()) {
             outputStream.write(pdfBytes);
             outputStream.flush();

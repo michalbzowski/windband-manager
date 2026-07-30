@@ -5,6 +5,8 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.oauth2.core.oidc.user.OidcUser;
+import org.springframework.stereotype.Controller;
+import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
 import pl.michalbzowski.windband.adapter.in.security.WindbandOidcUser;
 import pl.michalbzowski.windband.application.query.report.MonthlyReport;
@@ -13,14 +15,13 @@ import pl.michalbzowski.windband.application.query.team.TeamQueryService;
 
 import java.time.YearMonth;
 
-@RestController
-@RequestMapping("/api/reports")
+@Controller
+@RequestMapping("/reports")
 @RequiredArgsConstructor
 public class ReportController {
 
     private final ReportQueryService reportQueryService;
     private final TeamQueryService teamQueryService;
-    private final JacpsReportController jacpsReportController; // For PDF generation via JasperReports
 
     @GetMapping("/monthly")
     public ResponseEntity<MonthlyReport> getMonthlyReport(
@@ -33,16 +34,20 @@ public class ReportController {
         return ResponseEntity.ok(report);
     }
 
-    /**
-     * Generate PDF report using jacps-report-adapter (JasperReports ACL).
-     * Accepts JSON body with: bandName, instructorName, periodYear, periodMonth, etc.
-     * Returns binary PDF attachment for download.
-     */
-    @PostMapping("/pdf")
-    public ResponseEntity<byte[]> generatePdfReport(
-            @AuthenticationPrincipal OidcUser oidcUser, HttpSession session,
-            @RequestBody JacpsReportController.ReportGenerationRequest request) {
-        return jacpsReportController.generateReport(request);
+    /** HTMX endpoint: render monthly report page with generated data. */
+    @GetMapping("/generate")
+    public String generateMonthlyReportPage(@RequestParam int year,
+                                           @RequestParam int month,
+                                           Model model,
+                                           @AuthenticationPrincipal OidcUser oidcUser,
+                                           HttpSession session) {
+        YearMonth ym = YearMonth.of(year, month);
+        Long activeTeamId = resolveActiveTeamId(oidcUser, session);
+        MonthlyReport report = reportQueryService.generateMonthlyReport(ym, activeTeamId);
+
+        // Store year/month for the template to display
+        model.addAttribute("report", report);
+        return "reports/view :: #reports-content";
     }
 
     private Long resolveActiveTeamId(OidcUser oidcUser, HttpSession session) {

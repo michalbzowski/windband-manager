@@ -30,7 +30,7 @@ class ReportCompilerManualTest {
             System.out.println("SUCCESS: Report compiled!");
             System.out.println("Report name: " + jasperReport.getName());
         } catch (JRException e) {
-            // Print full stack trace with root cause chain  
+            // Print full stack trace with root cause chain
             System.err.println("===== ERROR COMPILING REPORT =====");
             e.printStackTrace(System.err);
 
@@ -41,7 +41,7 @@ class ReportCompilerManualTest {
                     s.printStackTrace(System.err);
                 }
             }
-            
+
             // Re-throw assertion error with more context
             throw new AssertionError("Failed to compile report", e);
         }

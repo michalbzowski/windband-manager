@@ -2,6 +2,7 @@ package pl.michalbzowski.windband.adapter.out.persistence;
 
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
+import pl.michalbzowski.windband.domain.band.Band;
 import pl.michalbzowski.windband.domain.member.Instrument;
 import pl.michalbzowski.windband.domain.member.Member;
 import pl.michalbzowski.windband.domain.member.MemberRepository;
@@ -38,6 +39,11 @@ public class MemberRepositoryAdapter implements MemberRepository {
     @Override
     public List<Member> findAllActiveByBandId(Long bandId) {
         return springDataRepo.findByActiveTrueAndBandId(bandId);
+    }
+
+    @Override
+    public List<Member> findAllByBandOrderByLastNameAscFirstNameAsc(Band band) {
+        return springDataRepo.findAllByBandOrderByLastNameAscFirstNameAsc(band);
     }
 
     @Override

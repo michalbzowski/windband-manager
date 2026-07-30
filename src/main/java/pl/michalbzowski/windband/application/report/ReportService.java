@@ -30,7 +30,8 @@ public class ReportService {
         Band band = bandRepository.findById(bandId)
                 .orElseThrow(() -> new IllegalArgumentException("Band not found: " + bandId));
 
-        List<Member> members = memberRepository.findByBandIdOrderByLastNameAscFirstNameAsc(bandId);
+        // FIX: Pass Band object instead of ID to match SpringDataMemberRepository signature
+        List<Member> members = memberRepository.findAllByBandOrderByLastNameAscFirstNameAsc(band);
         List<MemberReportDto> memberDtos = members.stream()
                 .map(MemberReportDto::fromMember)
                 .toList();
