@@ -1,13 +1,13 @@
 <!DOCTYPE html>
 <html lang="pl" xmlns:th="http://www.thymeleaf.org">
 <head th:replace="~{fragments/layout :: head('Podsumowanie')}"></head>
-<body>
+<body class="dashboard-page">
 <nav th:replace="~{fragments/layout :: nav}"></nav>
 
 <main class="container" id="content">
     <section class="dashboard-upcoming">
         <!-- Mockup-style header -->
-        <header class="dashboard-header">
+        <header class="dashboard-header" id="dashboardHeader">
             <div class="dashboard-header-top">
                 <button type="button" class="menu-btn" aria-label="Menu" onclick="openAppModal('menu-modal')">☰</button>
                 <div class="avatar" th:text="${#strings.toUpperCase(#strings.substring(#authentication.principal.wbUsername ?: 'MB', 0, 2))}">MB</div>
@@ -477,5 +477,58 @@
         }
     }
 </style>
+
+<script>
+    // Dashboard header sticky behavior
+    (function() {
+        const header = document.getElementById('dashboardHeader');
+        if (!header) return;
+
+        const headerHeight = header.offsetHeight;
+        let lastScrollY = 0;
+        let ticking = false;
+
+        function onScroll() {
+            lastScrollY = window.scrollY;
+            
+            if (!ticking) {
+                window.requestAnimationFrame(function() {
+                    const shouldBeSticky = lastScrollY > headerHeight;
+                    
+                    if (shouldBeSticky && !header.classList.contains('sticky')) {
+                        header.classList.add('sticky');
+                        // Add padding to body to prevent content jump
+                        document.body.style.paddingTop = header.offsetHeight + 'px';
+                    } else if (!shouldBeSticky && header.classList.contains('sticky')) {
+                        header.classList.remove('sticky');
+                        document.body.style.paddingTop = '';
+                    }
+                    
+                    ticking = false;
+                });
+                ticking = true;
+            }
+        }
+
+        // Initial check in case page loads scrolled
+        onScroll();
+        
+        window.addEventListener('scroll', onScroll, { passive: true });
+        
+        // Cleanup on HTMX navigation (page swap)
+        document.addEventListener('htmx:beforeSwap', function() {
+            window.removeEventListener('scroll', onScroll);
+        });
+        
+        // Re-attach after HTMX swap
+        document.addEventListener('htmx:afterSwap', function() {
+            const newHeader = document.getElementById('dashboardHeader');
+            if (newHeader && newHeader !== header) {
+                // Header was replaced, re-attach logic would go here
+                // For now, we rely on full page reload for dashboard
+            }
+        });
+    })();
+</script>
 </body>
 </html>

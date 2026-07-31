@@ -1378,9 +1378,104 @@ li.past-item > * {
     background: var(--pico-card-background-color);
     border: 1px solid var(--pico-card-border-color);
     border-radius: 12px;
+    /* Sticky behavior - becomes fixed when scrolled past */
+    position: sticky;
+    top: 0;
+    z-index: 900;
+    transition: all 0.3s ease;
+    box-shadow: none;
 }
 
-.dashboard-header-top {
+/* When dashboard header becomes sticky (scrolled) */
+.dashboard-header.sticky {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    margin: 0;
+    border-radius: 0;
+    border-bottom: 1px solid var(--pico-card-border-color);
+    box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+    z-index: 1000;
+    padding: 0.5rem 1rem;
+    background: var(--pico-background-color);
+    animation: slideDown 0.3s ease;
+}
+
+@keyframes slideDown {
+    from {
+        transform: translateY(-100%);
+        opacity: 0;
+    }
+    to {
+        transform: translateY(0);
+        opacity: 1;
+    }
+}
+
+/* Compact mode when sticky - reduces height */
+.dashboard-header.sticky .dashboard-header-top {
+    margin-bottom: 0.5rem;
+}
+
+.dashboard-header.sticky .band-name {
+    font-size: 1.1rem;
+    margin-bottom: 0.25rem;
+}
+
+.dashboard-header.sticky .current-date {
+    font-size: 0.8rem;
+}
+
+.dashboard-header.sticky .actions-bar {
+    margin-top: 0.5rem;
+    padding: 0.5rem 0;
+}
+
+.dashboard-header.sticky .section-label {
+    font-size: 0.7rem;
+}
+
+.dashboard-header.sticky .action-chip {
+    padding: 0.4rem 0.8rem;
+    font-size: 0.8rem;
+}
+
+.dashboard-header.sticky .avatar {
+    width: 32px;
+    height: 32px;
+    font-size: 0.75rem;
+}
+
+.dashboard-header.sticky .menu-btn {
+    font-size: 1.25rem;
+    padding: 0.25rem;
+}
+
+/* Hide top-nav on dashboard pages */
+body.dashboard-page .top-nav {
+    display: none;
+}
+
+/* When header is sticky, show a subtle indicator that nav is available via hamburger */
+.dashboard-header.sticky::after {
+    content: "";
+    position: absolute;
+    bottom: -2px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 40px;
+    height: 2px;
+    background: linear-gradient(90deg, transparent, var(--pico-primary), transparent);
+    border-radius: 2px;
+}
+
+/* Ensure content has space for fixed header */
+body.dashboard-page main.container {
+    padding-top: 1rem;
+}
+
+/* Mini stats bar - shows key metrics at a glance */
     display: flex;
     justify-content: space-between;
     align-items: center;
