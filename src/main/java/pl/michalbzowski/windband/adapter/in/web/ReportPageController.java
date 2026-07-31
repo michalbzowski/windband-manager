@@ -36,6 +36,12 @@ public class ReportPageController {
         return "reports/jasper-list";
     }
 
+    @GetMapping("/sprawozdanie/customize")
+    public String sprawozdanieCustomizePage(Model model) {
+        model.addAttribute("currentYear", java.time.Year.now().getValue());
+        return "reports/sprawozdanie-customize";
+    }
+
     /**
      * Endpoint pobierający PDF raport członków zespołu.
      */
