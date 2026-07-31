@@ -479,7 +479,7 @@
 </style>
 
 <script>
-    // Dashboard header sticky behavior
+    // Dashboard header scroll morph behavior
     (function() {
         const header = document.getElementById('dashboardHeader');
         if (!header) return;
@@ -493,14 +493,14 @@
             
             if (!ticking) {
                 window.requestAnimationFrame(function() {
-                    const shouldBeSticky = lastScrollY > headerHeight;
+                    const shouldBeScrolled = lastScrollY > headerHeight;
                     
-                    if (shouldBeSticky && !header.classList.contains('sticky')) {
-                        header.classList.add('sticky');
+                    if (shouldBeScrolled && !header.classList.contains('scrolled')) {
+                        header.classList.add('scrolled');
                         // Add padding to body to prevent content jump
                         document.body.style.paddingTop = header.offsetHeight + 'px';
-                    } else if (!shouldBeSticky && header.classList.contains('sticky')) {
-                        header.classList.remove('sticky');
+                    } else if (!shouldBeScrolled && header.classList.contains('scrolled')) {
+                        header.classList.remove('scrolled');
                         document.body.style.paddingTop = '';
                     }
                     

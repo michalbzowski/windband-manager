@@ -1378,16 +1378,17 @@ li.past-item > * {
     background: var(--pico-card-background-color);
     border: 1px solid var(--pico-card-border-color);
     border-radius: 12px;
-    /* Sticky behavior - becomes fixed when scrolled past */
+    /* Sticky behavior - stays at top when scrolled */
     position: sticky;
     top: 0;
     z-index: 900;
-    transition: all 0.3s ease;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     box-shadow: none;
+    will-change: padding, border-radius, box-shadow, background;
 }
 
-/* When dashboard header becomes sticky (scrolled) */
-.dashboard-header.sticky {
+/* Scrolled state - morphs to compact fixed bar */
+.dashboard-header.scrolled {
     position: fixed;
     top: 0;
     left: 0;
@@ -1399,57 +1400,54 @@ li.past-item > * {
     z-index: 1000;
     padding: 0.5rem 1rem;
     background: var(--pico-background-color);
-    animation: slideDown 0.3s ease;
+    /* No animation - pure CSS transition */
 }
 
-@keyframes slideDown {
-    from {
-        transform: translateY(-100%);
-        opacity: 0;
-    }
-    to {
-        transform: translateY(0);
-        opacity: 1;
-    }
-}
-
-/* Compact mode when sticky - reduces height */
-.dashboard-header.sticky .dashboard-header-top {
+.dashboard-header.scrolled .dashboard-header-top {
     margin-bottom: 0.5rem;
 }
 
-.dashboard-header.sticky .band-name {
+.dashboard-header.scrolled .band-name {
     font-size: 1.1rem;
     margin-bottom: 0.25rem;
 }
 
-.dashboard-header.sticky .current-date {
+.dashboard-header.scrolled .current-date {
     font-size: 0.8rem;
 }
 
-.dashboard-header.sticky .actions-bar {
+.dashboard-header.scrolled .actions-bar {
     margin-top: 0.5rem;
     padding: 0.5rem 0;
 }
 
-.dashboard-header.sticky .section-label {
+.dashboard-header.scrolled .section-label {
     font-size: 0.7rem;
 }
 
-.dashboard-header.sticky .action-chip {
+.dashboard-header.scrolled .action-chip {
     padding: 0.4rem 0.8rem;
     font-size: 0.8rem;
 }
 
-.dashboard-header.sticky .avatar {
+.dashboard-header.scrolled .avatar {
     width: 32px;
     height: 32px;
     font-size: 0.75rem;
 }
 
-.dashboard-header.sticky .menu-btn {
+.dashboard-header.scrolled .menu-btn {
     font-size: 1.25rem;
     padding: 0.25rem;
+}
+
+/* Ensure header-top uses flex properly for side-by-side layout */
+.dashboard-header-top {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 0.75rem;
+    width: 100%;
 }
 
 /* Hide top-nav on dashboard pages */
@@ -1457,20 +1455,7 @@ body.dashboard-page .top-nav {
     display: none;
 }
 
-/* When header is sticky, show a subtle indicator that nav is available via hamburger */
-.dashboard-header.sticky::after {
-    content: "";
-    position: absolute;
-    bottom: -2px;
-    left: 50%;
-    transform: translateX(-50%);
-    width: 40px;
-    height: 2px;
-    background: linear-gradient(90deg, transparent, var(--pico-primary), transparent);
-    border-radius: 2px;
-}
-
-/* Ensure content has space for fixed header */
+/* Ensure content has space for fixed header when scrolled */
 body.dashboard-page main.container {
     padding-top: 1rem;
 }
