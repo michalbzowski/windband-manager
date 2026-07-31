@@ -63,6 +63,54 @@
             </a>
         </div>
 
+        <!-- Tablet/Desktop view: table -->
+        <div th:unless="${#lists.isEmpty(upcoming)}" class="upcoming-table">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Wydarzenie</th>
+                        <th>Data / Godzina</th>
+                        <th>Obecność</th>
+                        <th></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr th:each="item : ${upcoming}">
+                        <td>
+                            <a th:href="@{${item.href}}" style="text-decoration: none; color: inherit; display: flex; align-items: center; gap: 0.75rem;">
+                                <span class="upcoming-card-icon" th:text="${item.icon}" style="width: 2.75rem; height: 2.75rem; border-radius: 999px; display: grid; place-items: center; background: color-mix(in srgb, var(--pico-primary) 12%, transparent); font-size: 1.1rem; flex: none;">🎵</span>
+                                <div>
+                                    <div style="display: flex; align-items: center; gap: 0.5rem;">
+                                        <strong th:text="${item.title}" style="font-size: 1rem; font-weight: 650;">Nazwa</strong>
+                                        <span th:text="${item.badge}" class="upcoming-badge" style="font-size: 0.7rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em; padding: 0.15rem 0.5rem; border-radius: 999px; color: var(--pico-primary); background: color-mix(in srgb, var(--pico-primary) 12%, transparent); white-space: nowrap;">Jutro</span>
+                                    </div>
+                                    <p th:text="${item.subtitle}" style="margin: 0.15rem 0 0; font-size: 0.9rem; color: var(--pico-muted-color);">Opis</p>
+                                </div>
+                            </a>
+                        </td>
+                        <td style="white-space: nowrap; font-size: 0.9rem; color: var(--pico-muted-color);">
+                            <div th:text="${#temporals.format(item.date, 'dd.MM.yyyy')}">12.07.2026</div>
+                            <div th:if="${item.startTime != null}" th:text="${#temporals.format(item.startTime, 'HH:mm')}" style="font-size: 0.85rem;">18:00</div>
+                        </td>
+                        <td th:if="${item.attendancePercentage != null}" style="min-width: 140px;">
+                            <div class="progress-container" style="margin-top: 0; padding-top: 0; border-top: none;">
+                                <div class="progress-track" style="height: 6px;">
+                                    <div class="progress-fill" 
+                                         th:classappend="${item.attendancePercentage >= 70 ? 'progress-high' : (item.attendancePercentage >= 40 ? 'progress-medium' : 'progress-low')}"
+                                         th:style="'width: ' + ${item.attendancePercentage} + '%'"></div>
+                                </div>
+                                <span class="progress-label" th:text="${item.attendancePercentage} + '%'" style="font-size: 0.7rem;">0%</span>
+                            </div>
+                        </td>
+                        <td th:unless="${item.attendancePercentage != null}" style="color: var(--pico-muted-color); font-size: 0.85rem;">—</td>
+                        <td style="text-align: right; white-space: nowrap;">
+                            <span class="upcoming-card-arrow" style="color: var(--pico-muted-color); font-size: 1.25rem;">→</span>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
         <!-- Floating Action Button -->
         <button class="fab" onclick="openAddEventModal()" aria-label="Dodaj wydarzenie lub próbę">+</button>
     </section>
