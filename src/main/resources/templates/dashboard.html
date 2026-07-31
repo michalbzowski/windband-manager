@@ -2,7 +2,6 @@
 <html lang="pl" xmlns:th="http://www.thymeleaf.org">
 <head th:replace="~{fragments/layout :: head('Podsumowanie')}"></head>
 <body class="dashboard-page">
-<nav th:replace="~{fragments/layout :: nav}"></nav>
 <div th:replace="~{fragments/layout :: dialogs}"></div>
 
 <main class="container" id="content">
@@ -480,35 +479,37 @@
 </style>
 
 <script>
-    // Dashboard header scroll morph behavior
+    // Dashboard header scroll morph behavior - single element transforms via CSS transitions
     (function() {
         const header = document.getElementById('dashboardHeader');
         if (!header) return;
 
-        const headerHeight = header.offsetHeight;
-        // Hysteresis: different thresholds for adding vs removing scrolled class
-        const SCROLL_DOWN_THRESHOLD = headerHeight;      // Add scrolled when past header
-        const SCROLL_UP_THRESHOLD = headerHeight * 0.3;  // Remove scrolled only when near top
+        // Dynamic threshold based on header's actual height when it morphs
+        const ORIGINAL_HEADER_HEIGHT = 200; // approximate initial card height
         let lastScrollY = 0;
         let ticking = false;
+        let isScrolled = false;
+
+        function updateHeaderState() {
+            const scrollY = window.scrollY;
+            
+            if (!isScrolled && scrollY > ORIGINAL_HEADER_HEIGHT) {
+                // Scrolling down past header area -> morph to compact bar
+                header.classList.add('scrolled');
+                isScrolled = true;
+            } else if (isScrolled && scrollY < ORIGINAL_HEADER_HEIGHT * 0.3) {
+                // Scrolling up near top -> restore original card style
+                header.classList.remove('scrolled');
+                isScrolled = false;
+            }
+        }
 
         function onScroll() {
             lastScrollY = window.scrollY;
             
             if (!ticking) {
                 window.requestAnimationFrame(function() {
-                    const isScrolled = header.classList.contains('scrolled');
-                    
-                    if (!isScrolled && lastScrollY > SCROLL_DOWN_THRESHOLD) {
-                        // Scrolling down past header -> add scrolled
-                        header.classList.add('scrolled');
-                        document.body.style.paddingTop = header.offsetHeight + 'px';
-                    } else if (isScrolled && lastScrollY < SCROLL_UP_THRESHOLD) {
-                        // Scrolling up near top -> remove scrolled
-                        header.classList.remove('scrolled');
-                        document.body.style.paddingTop = '';
-                    }
-                    
+                    updateHeaderState();
                     ticking = false;
                 });
                 ticking = true;
@@ -519,20 +520,6 @@
         onScroll();
         
         window.addEventListener('scroll', onScroll, { passive: true });
-        
-        // Cleanup on HTMX navigation (page swap)
-        document.addEventListener('htmx:beforeSwap', function() {
-            window.removeEventListener('scroll', onScroll);
-        });
-        
-        // Re-attach after HTMX swap
-        document.addEventListener('htmx:afterSwap', function() {
-            const newHeader = document.getElementById('dashboardHeader');
-            if (newHeader && newHeader !== header) {
-                // Header was replaced, re-attach logic would go here
-                // For now, we rely on full page reload for dashboard
-            }
-        });
     })();
 </script>
 </body>

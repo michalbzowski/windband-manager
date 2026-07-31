@@ -1378,35 +1378,54 @@ li.past-item > * {
     background: var(--pico-card-background-color);
     border: 1px solid var(--pico-card-border-color);
     border-radius: 12px;
-    /* Sticky behavior - stays at top when scrolled */
+    /* Always sticky - never changes position context */
     position: sticky;
     top: 0;
     z-index: 900;
-    transition: all 1s cubic-bezier(0.25, 0.46, 0.45, 0.94);
     box-shadow: none;
-    will-change: padding, border-radius, box-shadow, background;
+    /* Smooth morph animation via CSS transitions on individual properties */
+    transition: 
+        padding 0.5s cubic-bezier(0.25, 0.46, 0.45, 0.94),
+        margin-bottom 0.5s ease-out,
+        border-radius 0.5s ease-out,
+        box-shadow 0.5s ease-out,
+        background-color 0.3s ease,
+        width 0.5s cubic-bezier(0.25, 0.46, 0.45, 0.94),
+        left 0.5s ease-out,
+        right 0.5s ease-out;
+    will-change: padding, margin-bottom, border-radius, box-shadow, width;
 }
 
-/* Scrolled state - morphs to compact fixed bar */
+/* Scrolled state - morphs to compact sticky bar (stays sticky, just changes appearance) */
 .dashboard-header.scrolled {
-    position: fixed;
-    top: 0;
+    top: 0; /* Still at top when scrolled */
     left: 0;
     right: 0;
-    margin: 0;
+    margin-bottom: 0;
     border-radius: 0;
+    border-top: none;
+    border-left: none;
+    border-right: none;
     border-bottom: 1px solid var(--pico-card-border-color);
     box-shadow: 0 4px 20px rgba(0,0,0,0.1);
     z-index: 1000;
     padding: 0.5rem 1rem;
     background: var(--pico-background-color);
-    /* No animation - pure CSS transition */
+    /* Expand to full width while staying sticky */
+    max-width: none;
+    width: 100%;
 }
 
-.dashboard-header.scrolled .dashboard-header-top {
-    margin-bottom: 0.5rem;
+/* Ensure header-top uses flex properly for side-by-side layout */
+.dashboard-header-top {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 0.75rem;
+    width: 100%;
 }
 
+/* Compact mode when scrolled */
 .dashboard-header.scrolled .band-name {
     font-size: 1.1rem;
     margin-bottom: 0.25rem;
@@ -1439,15 +1458,6 @@ li.past-item > * {
 .dashboard-header.scrolled .menu-btn {
     font-size: 1.25rem;
     padding: 0.25rem;
-}
-
-/* Ensure header-top uses flex properly for side-by-side layout */
-.dashboard-header-top {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 0.75rem;
-    width: 100%;
 }
 
 /* Hide top-nav on dashboard pages */
