@@ -63,8 +63,10 @@ class MultiTeamIsolationTest extends BaseIntegrationTest {
     void setUp() {
         // Clean up rehearsals and events from previous test classes (state pollution from shared Testcontainers)
         // Must delete attendances first due to FK constraint
+        // Must delete event_participations before band_events due to FK constraint
         // Use DELETE which works in both H2 and PostgreSQL
         jdbcTemplate.execute("DELETE FROM attendances");
+        jdbcTemplate.execute("DELETE FROM event_participations");
         jdbcTemplate.execute("DELETE FROM rehearsals");
         jdbcTemplate.execute("DELETE FROM band_events");
 
