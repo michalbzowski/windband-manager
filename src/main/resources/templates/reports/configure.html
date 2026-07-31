@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html lang="pl" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/layout :: head('Konfiguracja raportu')}\"></head>
+<body>
+<nav th:replace="~{fragments/layout::nav}"></nav>
+
+<main class="container" id="reports-content">
+    <div style="max-width: 600px; margin: 2rem auto;">
+        <!-- Nagłówek -->
+        <header style="margin-bottom: 2rem;">
+            <h1 th:text="${report.displayName}">Konfiguracja raportu</h1>
+            <p th:text="${report.description}" 
+               th:if="${report.description != null and !report.description.isEmpty()}"
+               style="color: var(--pico-muted-color);"></p>
+        </header>
+
+        <!-- Formularz parametrów -->
+        <form id="configure-form" 
+              class="app-form-card"
+              hx-post="/api/reports/[[_key_]]/generate"
+              hx-trigger="submit"
+              hx-target="#reports-content"
+              hx-swap="outerHTML">
+            
+            <!-- Ukryte pola: klucz raportu i format -->
+            <input type="hidden" name="reportKey" th:value="${report.key}" />
+            <input type="hidden" id="format-field" name="format" value="PDF" />
+
+            <!-- Sekcja wyboru formatu -->
+            <fieldset style="margin-bottom: 1.5rem;">
+                <legend style="font-weight: bold; margin-bottom: 0.75rem;">Format raportu</legend>
+                <div style="display: flex; gap: 1rem;">
+                    <label style="display: flex; align-items: center; gap: 0.5rem;">
+                        <input type="radio" name="format" value="PDF" checked onclick="document.getElementById('format-field').value='PDF'" />
+                        PDF (Portable Document Format)
+                    </label>
+                    <label style="display: flex; align-items: center; gap: 0.5rem;">
+                        <input type="radio" name="format" value="DOCX" onclick="document.getElementById('format-field').value='DOCX'" />
+                        DOCX (Microsoft Word)
+                    </label>
+                </div>
+            </fieldset>
+
+            <div th:if="${report.parameters != null and !report.parameters.isEmpty()}" 
+                 id="parameters-section">
+                
+                <h3 style="margin-bottom: 1rem;">Parametry raportu</h3>
+                
+                <!-- Wypełnij hidden inputs dla parametrów forPrompting=false -->
+                <div th:each="param : ${report.parameters}">
+                    <!-- band_id hidden input -->
+                    <input type="hidden" 
+                           th:name="${param.name}"
+                           th:value="${activeBandId}"
+                           th:if="${param.forPrompting == false && 'band_id'.equals(param.name)}"/>
+                    
+                    <!-- band_name hidden input -->
+                    <input type="hidden" 
+                           th:if="${param.forPrompting == false && 'band_name'.equals(param.name)}"
+                           th:name="${param.name}"
+                           th:value="${activeBandName}"/>
+                
+                <fieldset class="app-form" th:each="param : ${report.parameters}">
+                    <!-- Tylko parametry z forPrompting=true -->
+                    <div th:if="${param.forPrompting}" 
+                         style="margin-bottom: 1rem;">
+                        
+                        <!-- Label -->
+                        <label th:for="'param-' + ${param.name}" 
+                               style="display: block; margin-bottom: 0.25rem; font-weight: 500;"
+                               th:text="#{labels.parameters[${param.name}] ?: ${param.name}}">Parametr</label>
+                        
+                        <!-- Input zależnie od typu -->
+                        <input type="date" 
+                               th:id="'param-' + ${param.name}" 
+                               th:name="${param.name}"
+                               th:if="${'date'.equals(param.inputType)}"
+                               style="width: 100%; padding: 0.5rem; border-radius: 4px;">
+
+                        <input type="number"
+                               th:id="'param-' + ${param.name}" 
+                               th:name="${param.name}"
+                               th:if="${'number'.equals(param.inputType)}"
+                               style="width: 100%; padding: 0.5rem; border-radius: 4px;">
+
+                        <input type="text"
+                               th:id="'param-' + ${param.name}" 
+                               th:name="${param.name}"
+                               th:if="${'text'.equals(param.inputType)}"
+                               style="width: 100%; padding: 0.5rem; border-radius: 4px;">
+
+                    </div>
+
+                    <!-- Ukryte inputy dla parametrów z forPrompting=false - wypełnione wartościami domyślnymi -->
+                    <input type="hidden" 
+                           th:name="${param.name}"
+                           th:value="${_default_value_for_hidden_params_}"
+                           th:if="${!param.forPrompting}">
+
+                </fieldset>
+
+            </div>
+
+            <!-- Przyciski akcji -->
+            <footer style="margin-top: 2rem; display: flex; gap: 1rem;">
+                <button type="submit" 
+                        class="pico-button-primary app-form-submit"
+                        th:text="#{buttons.generate ?: 'Generuj'}">
+                    Generuj raport
+                </button>
+                
+                <a href="/reports/jasper" 
+                   style="margin-left: auto; text-decoration: none;"
+                   th:text="#{buttons.back ?: '← Cofnij'}">
+                    ← Powrót do listy
+                </a>
+            </footer>
+
+        </form>
+    </div>
+</main>
+
+<th:block th:replace="~{fragments/layout :: footer-scripts}"></th:block>
+<div th:insert="~{fragments/layout::toast-container}"></div>
+
+<script>
+// Auto-fill ukryte pola z kontekstu (band_id, band_name) - mockup placeholder
+const hiddenParams = {
+    'band_id': '[[_active_band_id_]]',  // W przyszłości: pobierz z sesji/user context 
+    'band_name': '[[_active_band_name_]]'  // lub użyj reportMetadata aby ustalić default wartości
+};
+
+// Wypełnij hidden inputs z domyślnymi wartościami (placeholder)
+document.querySelectorAll('input[type="hidden"]').forEach(input => {
+    const paramName = input.name;
+    if (hiddenParams.hasOwnProperty(paramName)) {
+        input.value = hiddenParams[paramName] || '';
+    }
+});
+
+// Obsługa zmiany formatu - synchronizacja hidden inputa
+document.querySelectorAll('input[name="format"][type="radio"]').forEach(radio => {
+    radio.addEventListener('change', function() {
+        document.getElementById('format-field').value = this.value;
+    });
+});
+</script>
+
+<style>
+.app-form-card {
+  background: white;
+  padding: 1.5rem;
+  border-radius: 8px;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+@media (prefers-color-scheme: dark) {
+  .app-form-card {
+    background: #1a1a1a;
+    color: white;
+  }
+  
+  input:not([type="radio"]):not([type="checkbox"]) {
+    background: #2d2d2d !important;
+    border-color: #404040 !important;
+    color: white !important;
+  }
+}
+
+.pico-button-primary, .app-form-submit[type="submit"], input[type="submit"] {
+  background: var(--pico-primary);
+  color: white;
+  padding: 0.75rem 1.5rem;
+  border-radius: 8px;
+  font-weight: bold;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.pico-button-primary:hover, .app-form-submit[type="submit"]:hover, input[type="submit"]:hover {
+  background: var(--pico-positive);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 8px rgba(0,0,0,0.15);
+}
+
+fieldset legend {
+  font-weight: bold;
+  margin-bottom: 0.75rem;
+}
+
+input[type="date"], input[type="number"], input[type="text"] {
+  background: white !important;
+  border: 1px solid #ccc !important;
+  color: black !important;
+}
+</style>
+
+</body>
+</html>

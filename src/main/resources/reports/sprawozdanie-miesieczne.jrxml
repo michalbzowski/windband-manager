@@ -1,0 +1,270 @@
+<!-- Created with Jaspersoft Studio version 7.0.6.final using JasperReports Library version 7.0.6-5d2a603fdc6b3db8f842a83383e594f41891534d  -->
+<jasperReport name="Sprawozdanie miesięczne do rady miasta" language="java" columnCount="1" pageWidth="595" pageHeight="842" orientation="Landscape" columnWidth="555" leftMargin="20" rightMargin="20" topMargin="70" bottomMargin="20" uuid="e764eefb-88da-433a-b5d7-f210d429a595">
+	<property name="com.jaspersoft.studio.data.defaultdataadapter" value="band-manager-prod"/>
+	<property name="com.jaspersoft.studio.data.sql.tables" value=""/>
+	<property name="com.jaspersoft.studio.unit." value="cm"/>
+	<property name="com.jaspersoft.studio.unit.pageHeight" value="cm"/>
+	<property name="com.jaspersoft.studio.unit.pageWidth" value="cm"/>
+	<property name="com.jaspersoft.studio.unit.topMargin" value="cm"/>
+	<property name="com.jaspersoft.studio.unit.bottomMargin" value="cm"/>
+	<property name="com.jaspersoft.studio.unit.leftMargin" value="cm"/>
+	<property name="com.jaspersoft.studio.unit.rightMargin" value="cm"/>
+	<property name="com.jaspersoft.studio.unit.columnWidth" value="cm"/>
+	<property name="com.jaspersoft.studio.unit.columnSpacing" value="cm"/>
+	<property name="com.jaspersoft.studio.report.description" value="Raport składany co miesiąc na potrzeby rady miasta"/>
+	<style name="Table_TH" mode="Opaque" backcolor="#F0F8FF">
+		<box>
+			<pen lineWidth="0.5" lineColor="#000000"/>
+			<topPen lineWidth="0.5" lineColor="#000000"/>
+			<leftPen lineWidth="0.5" lineColor="#000000"/>
+			<bottomPen lineWidth="0.5" lineColor="#000000"/>
+			<rightPen lineWidth="0.5" lineColor="#000000"/>
+		</box>
+	</style>
+	<style name="Table_TD" mode="Opaque" backcolor="#FFFFFF">
+		<box>
+			<pen lineWidth="0.5" lineColor="#000000"/>
+			<topPen lineWidth="0.5" lineColor="#000000"/>
+			<leftPen lineWidth="0.5" lineColor="#000000"/>
+			<bottomPen lineWidth="0.5" lineColor="#000000"/>
+			<rightPen lineWidth="0.5" lineColor="#000000"/>
+		</box>
+	</style>
+	<style name="Table_CH" mode="Opaque" backcolor="#FFFFFF">
+		<box>
+			<pen lineWidth="0.5" lineColor="#000000"/>
+			<topPen lineWidth="0.5" lineColor="#000000"/>
+			<leftPen lineWidth="0.5" lineColor="#000000"/>
+			<bottomPen lineWidth="0.5" lineColor="#000000"/>
+			<rightPen lineWidth="0.5" lineColor="#000000"/>
+		</box>
+	</style>
+	<dataset name="Liczba dzieci i mlodziezy" uuid="24c47cff-a18d-4f3d-8eb0-5ef9d6a7ecee">
+		<property name="com.jaspersoft.studio.data.sql.tables" value=""/>
+		<property name="com.jaspersoft.studio.data.sql.SQLQueryDesigner.sash.w1" value="297"/>
+		<property name="com.jaspersoft.studio.data.sql.SQLQueryDesigner.sash.w2" value="703"/>
+		<property name="com.jaspersoft.studio.data.defaultdataadapter" value="band-manager-prod"/>
+		<query language="SQL"><![CDATA[SELECT *
+FROM members
+WHERE  active = true
+AND date_of_birth > NOW() - INTERVAL '18 years'; ]]></query>
+	</dataset>
+	<dataset name="Lol" uuid="92f1dded-0c5f-47e4-b2f2-aa012c33f9e1">
+		<property name="com.jaspersoft.studio.data.sql.tables" value=""/>
+		<property name="com.jaspersoft.studio.data.defaultdataadapter" value="band-manager-prod"/>
+		<query language="SQL"><![CDATA[SELECT Count(1) FROM members]]></query>
+		<field name="count" class="java.lang.Long">
+			<property name="com.jaspersoft.studio.field.name" value="count"/>
+			<property name="com.jaspersoft.studio.field.label" value="count"/>
+		</field>
+		<group name="count">
+			<expression><![CDATA[$F{count}]]></expression>
+		</group>
+	</dataset>
+	<dataset name="events" uuid="5702f4dc-001a-4186-a539-a3d821f660a6">
+		<property name="com.jaspersoft.studio.data.sql.tables" value=""/>
+		<property name="com.jaspersoft.studio.data.defaultdataadapter" value="band-manager-prod"/>
+		<parameter name="date_from" class="java.util.Date"/>
+		<parameter name="date_to" class="java.util.Date"/>
+		<query language="SQL"><![CDATA[SELECT *
+FROM band_events
+WHERE date >= CAST($P{date_from} AS DATE)::TIMESTAMP
+  AND date < CAST($P{date_to} AS DATE)::TIMESTAMP + INTERVAL '1 day'
+]]></query>
+		<field name="id" class="java.lang.Long">
+			<property name="com.jaspersoft.studio.field.name" value="id"/>
+			<property name="com.jaspersoft.studio.field.label" value="id"/>
+			<property name="com.jaspersoft.studio.field.tree.path" value="band_events"/>
+		</field>
+		<field name="name" class="java.lang.String">
+			<property name="com.jaspersoft.studio.field.name" value="name"/>
+			<property name="com.jaspersoft.studio.field.label" value="name"/>
+			<property name="com.jaspersoft.studio.field.tree.path" value="band_events"/>
+		</field>
+		<field name="date" class="java.sql.Date">
+			<property name="com.jaspersoft.studio.field.name" value="date"/>
+			<property name="com.jaspersoft.studio.field.label" value="date"/>
+			<property name="com.jaspersoft.studio.field.tree.path" value="band_events"/>
+		</field>
+		<field name="start_time" class="java.sql.Time">
+			<property name="com.jaspersoft.studio.field.name" value="start_time"/>
+			<property name="com.jaspersoft.studio.field.label" value="start_time"/>
+			<property name="com.jaspersoft.studio.field.tree.path" value="band_events"/>
+		</field>
+		<field name="location" class="java.lang.String">
+			<property name="com.jaspersoft.studio.field.name" value="location"/>
+			<property name="com.jaspersoft.studio.field.label" value="location"/>
+			<property name="com.jaspersoft.studio.field.tree.path" value="band_events"/>
+		</field>
+		<field name="event_type" class="java.lang.String">
+			<property name="com.jaspersoft.studio.field.name" value="event_type"/>
+			<property name="com.jaspersoft.studio.field.label" value="event_type"/>
+			<property name="com.jaspersoft.studio.field.tree.path" value="band_events"/>
+		</field>
+		<field name="notes" class="java.lang.String">
+			<property name="com.jaspersoft.studio.field.name" value="notes"/>
+			<property name="com.jaspersoft.studio.field.label" value="notes"/>
+			<property name="com.jaspersoft.studio.field.tree.path" value="band_events"/>
+		</field>
+		<field name="band_id" class="java.lang.Long">
+			<property name="com.jaspersoft.studio.field.name" value="band_id"/>
+			<property name="com.jaspersoft.studio.field.label" value="band_id"/>
+			<property name="com.jaspersoft.studio.field.tree.path" value="band_events"/>
+		</field>
+		<field name="payment_type" class="java.lang.String">
+			<property name="com.jaspersoft.studio.field.name" value="payment_type"/>
+			<property name="com.jaspersoft.studio.field.label" value="payment_type"/>
+			<property name="com.jaspersoft.studio.field.tree.path" value="band_events"/>
+		</field>
+		<field name="payment_amount" class="java.math.BigDecimal">
+			<property name="com.jaspersoft.studio.field.name" value="payment_amount"/>
+			<property name="com.jaspersoft.studio.field.label" value="payment_amount"/>
+			<property name="com.jarsersoft.studio.field.tree.path" value="band_events"/>
+		</field>
+	</dataset>
+	<parameter name="band_id" forPrompting="false" class="java.lang.Integer"/>
+	<parameter name="date_from" class="java.util.Date"/>
+	<parameter name="date_to" class="java.util.Date"/>
+	<parameter name="band_name" forPrompting="false" class="java.lang.String"/>
+	<parameter name="instructor_name" class="java.lang.String"/>
+	<query language="sql"><![CDATA[SELECT (
+	SELECT count(*) as members_active
+	FROM members
+	WHERE active = true
+	AND band_id = $P{band_id}
+), 
+
+ (
+	SELECT count(*) as members_younger
+	FROM members
+	WHERE active = true
+	AND band_id = $P{band_id} 
+	AND date_of_birth < NOW() - INTERVAL '18 years'
+	
+), 
+
+ (
+	SELECT count(*) as members_older
+	FROM members
+	WHERE active = true
+	 AND band_id = $P{band_id}
+AND date_of_birth is not null and date_of_birth > NOW() - INTERVAL '60 years'
+), 
+
+ (
+	SELECT count(*) as rehearsals_count
+	FROM rehearsals
+	WHERE band_id = $P{band_id}
+	AND date >= CAST($P{date_from} AS DATE)::TIMESTAMP
+    AND date < CAST($P{date_to} AS DATE)::TIMESTAMP + INTERVAL '1 day'
+)
+
+
+]]></query>
+	<field name="members_active" class="java.lang.Long">
+		<property name="com.jaspersoft.studio.field.name" value="members_active"/>
+		<property name="com.jaspersoft.studio.field.label" value="members_active"/>
+	</field>
+	<field name="members_younger" class="java.lang.Long">
+		<property name="com.jaspersoft.studio.field.name" value="members_younger"/>
+		<property name="com.jarsersoft.studio.field.label" value="members_younger"/>
+	</field>
+	<field name="members_older" class="java.lang.Long">
+		<property name="com.jaspersoft.studio.field.name" value="members_older"/>
+		<property name="com.jaspersoft.studio.field.label" value="members_older"/>
+	</field>
+	<field name="rehearsals_count" class="java.lang.Long">
+		<property name="com.jaspersoft.studio.field.name" value="rehearsals_count"/>
+		<property name="com.jaspersoft.studio.field.label" value="rehearsals_count"/>
+	</field>
+	<detail>
+		<band height="470" splitType="Stretch">
+			<element kind="textField" uuid="79e70b75-b670-4364-908b-396decb476e9" x="0" y="0" width="555" height="150" fontName="Times New Roman" fontSize="12.0">
+				<paragraph lineSpacing="1_1_2"/>
+				<expression><![CDATA["Zakres sprawozdawczy: od " + new SimpleDateFormat("yyyy-MM-dd").format($P{date_from}) + " do " +  new SimpleDateFormat("yyyy-MM-dd").format($P{date_to]) 
++ "\n\n\nNazwa zespołu " + $P{band_name}
++ "\nInstruktor: " +  $P{instructor_name}
++ "\nLiczba osób w zespole: " + $F{members_active]
++ "\nLiczba dzieci i młodzieży: " + $F{members_younger}
++ "\nLiczba osób powyżej 60 roku życia: " + $F{members_older}
++ "\nLiczba prób: " + $F{rehearsals_count]]]></expression>
+			</element>
+			<element kind="component" uuid="5f70f789-3603-48ef-862b-c5a161f250b0" x="0" y="160" width="555" height="310">
+				<component kind="table">
+					<datasetRun uuid="bc9daf0c-d8a5-4930-b114-e3a409c68a9e" subDataset="events">
+						<connectionExpression><![CDATA[$P{REPORT_CONNECTION}]]></connectionExpression>
+						
+						
+					</datasetRun>
+					<column kind="single" uuid="442959c2-f151-47dd-b052-dc436404eb2d" width="40">
+						<columnHeader height="30" rowSpan="1" style="Table_CH">
+							<element kind="staticText" uuid="533a32b2-9ebe-4920-8588-665d26e3c06f" x="0" y="0" width="40" height="30" hTextAlign="Center" vTextAlign="Middle">
+								<text><![CDATA[L.p.]]></text>
+							</element>
+						</columnHeader>
+						<columnFooter height="30" rowSpan="1" style="Table_CH"/>
+						<detailCell height="30" style="Table_TD">
+							<element kind="textField" uuid="e55089c8-d6a5-4c18-9acd-5f68d6e79e56" x="0" y="0" width="40" height="30" hTextAlign="Center" vTextAlign="Middle">
+								<expression><![CDATA[$V{REPORT_COUNT}]]></expression>
+							</element>
+						</detailCell>
+						<property name="com.jaspersoft.studio.components.table.model.column.name" value="Column1"/>
+					</column>
+					<column kind="single" uuid="1a898890-a1b8-430a-948f-e6c0062f5640" width="80">
+						<columnHeader height="30" rowSpan="1" style="Table_CH">
+							<element kind="staticText" uuid="68c1ca74-a949-4deb-b376-8e6e25b9f969" x="0" y="0" width="80" height="30" hTextAlign="Center" vTextAlign="Middle">
+								<text><![CDATA[Data]]></text>
+							</element>
+						</columnHeader>
+						<columnFooter height="30" rowSpan="1" style="Table_CH"/>
+						<detailCell height="30" style="Table_TD">
+							<element kind="textField" uuid="810ea809-517c-4a38-b222-ad3489b87ba3" x="0" y="0" width="80" height="30" hTextAlign="Center" vTextAlign="Middle">
+								<expression><![CDATA[new SimpleDateFormat("yyyy-MM-dd").format($F{date})]]></expression>
+							</element>
+						</detailCell>
+						<property name="com.jaspersoft.studio.components.table.model.column.name" value="Column2"/>
+					</column>
+					<column kind="single" uuid="a54cf609-c374-4374-b095-442df1398d98" width="250">
+						<columnHeader height="30" rowSpan="1" style="Table_CH">
+							<element kind="staticText" uuid="9c5963ea-6d27-48b8-abe6-f1843d214a31" x="0" y="0" width="250" height="30" hTextAlign="Center" vTextAlign="Middle">
+								<text><![CDATA[Udział w ...]]></text>
+							</element>
+						</columnHeader>
+						<columnFooter height="30" rowSpan="1" style="Table_CH"/>
+						<detailCell height="30" style="Table_TD">
+							<element kind="textField" uuid="a94a5ab1-4849-43d7-bdef-9dd9136c0aa6" x="0" y="0" width="250" height="30" hTextAlign="Center" vTextAlign="Middle">
+								<expression><![CDATA[$F{name}]]></expression>
+							</element>
+						</detailCell>
+						<property name="com.jaspersoft.studio.components.table.model.column.name" value="Column3"/>
+					</column>
+					<column kind="single" uuid="9c826466-8a20-4442-b237-7b56cc157e7c" width="100">
+						<columnHeader height="30" rowSpan="1" style="Table_CH">
+							<element kind="staticText" uuid="c676a092-c6bf-48a1-840b-11a3c85fc7c3" x="0" y="0" width="100" height="30" hTextAlign="Center" vTextAlign="Middle">
+								<text><![CDATA[Osiągnięcie]]></text>
+							</element>
+						</columnHeader>
+						<columnFooter height="30" rowSpan="1" style="Table_CH"/>
+						<detailCell height="30" style="Table_TD"/>
+						<property name="com.jaspersoft.studio.components.table.model.column.name" value="Column4"/>
+					</column>
+					<column kind="single" uuid="48d1d0eb-63af-48d7-abcb-b9eaf270dc1c" width="65">
+						<columnHeader height="30" rowSpan="1" style="Table_CH">
+							<element kind="staticText" uuid="5c44227b-39ee-4ea8-a8ee-e6e21dd6f9ac" x="0" y="0" width="65" height="30" hTextAlign="Center" vTextAlign="Middle">
+								<text><![CDATA[Inne]]></text>
+							</element>
+						</columnHeader>
+						<columnFooter height="30" rowSpan="1" style="Table_CH"/>
+						<detailCell height="30" style="Table_TD"/>
+						<property name="com.jaspersoft.studio.components.table.model.column.name" value="Column5"/>
+					</column>
+				</component>
+				<property name="com.jaspersoft.studio.layout" value="com.jaspersoft.studio.editor.layout.VerticalRowLayout"/>
+				<property name="com.jaspersoft.studio.table.style.detail" value="Table_TD"/>
+				<property name="com.jaspersoft.studio.table.style.column_header" value="Table_CH"/>
+				<property name="com.jaspersoft.studio.table.style.table_header" value="Table_TH"/>
+			</element>
+			<property name="com.jarsersoft.studio.layout" value="com.jaspersoft.studio.editor.layout.FreeLayout"/>
+		</band>
+	</detail>
+</jasperReport>
