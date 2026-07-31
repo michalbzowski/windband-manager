@@ -24,24 +24,27 @@ class DashboardHomeUiTest extends UiTestBase {
         assertThat(driver.getTitle()).contains("Podsumowanie");
 
         WebDriverWait wait = new WebDriverWait(driver, Duration.ofSeconds(10));
-        wait.until(ExpectedConditions.presenceOfElementLocated(
-                By.cssSelector("section.dashboard-upcoming .upcoming-list")));
+        // On desktop the table is shown, on mobile the card list - wait for either
+        wait.until(ExpectedConditions.or(
+                ExpectedConditions.presenceOfElementLocated(By.cssSelector("section.dashboard-upcoming .upcoming-list")),
+                ExpectedConditions.presenceOfElementLocated(By.cssSelector("section.dashboard-upcoming .upcoming-table"))
+        ));
 
         // Heading present
-        var heading = driver.findElement(By.cssSelector("section.dashboard-upcoming h2"));
-        assertThat(heading.getText()).contains("Nadchodzące");
+        var heading = driver.findElement(By.cssSelector("section.dashboard-upcoming .section-label"));
+        assertThat(heading.getText()).containsIgnoringCase("Nadchodzące");
 
         // Mini stats bar present
         assertThat(driver.findElements(By.cssSelector(".mini-stats-bar"))).isNotEmpty();
 
-        // Progress bars in cards for rehearsals
+        // Progress bars in cards/table for rehearsals
         var progressBars = driver.findElements(By.cssSelector("section.dashboard-upcoming .progress-fill"));
         assertThat(progressBars).isNotEmpty();
 
-        // On wide view the table is shown and the mobile card list is hidden
-        // But the desktop viewport may show table - we check at least cards exist
+        // Check that at least one view (cards or table) has content
         var cards = driver.findElements(By.cssSelector("section.dashboard-upcoming .upcoming-card"));
-        assertThat(cards).isNotEmpty();
+        var tableRows = driver.findElements(By.cssSelector("section.dashboard-upcoming .upcoming-table tbody tr"));
+        assertThat(cards.size() + tableRows.size()).isGreaterThan(0);
 
         // FAB present
         assertThat(driver.findElements(By.cssSelector(".fab"))).isNotEmpty();

@@ -162,6 +162,8 @@ public class PageController {
             "activeMembers", activeMembersCount
         ));
 
+        model.addAttribute("today", LocalDate.now());
+
         return "dashboard";
     }
 
