@@ -2,7 +2,6 @@ package pl.michalbzowski.windband.adapter.in.web;
 
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
-import net.sf.jasperreports.engine.JRException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpHeaders;
@@ -22,7 +21,6 @@ import pl.michalbzowski.windband.application.report.ReportCompiler;
 import pl.michalbzowski.windband.application.report.ReportGeneratorService;
 import pl.michalbzowski.windband.application.report.ReportMetadata;
 
-
 /**
  * REST API do zarządzania raportami Jasper.
  */
@@ -32,7 +30,6 @@ import pl.michalbzowski.windband.application.report.ReportMetadata;
 public class ReportRestController {
 
     private static final Logger log = LoggerFactory.getLogger(ReportRestController.class);
-
     private final ReportCompiler reportCompiler;
     private final ReportGeneratorService reportGeneratorService;
 
@@ -48,10 +45,9 @@ public class ReportRestController {
     @GetMapping("/{key}")
     public java.util.Optional<ReportMetadata> getReport(@PathVariable String key) {
         ReportMetadata metadata = reportCompiler.getReportMetadata(key);
-
         return metadata != null
-            ? java.util.Optional.of(metadata)
-            : java.util.Optional.empty();
+                ? java.util.Optional.of(metadata)
+                : java.util.Optional.empty();
     }
 
     /** POST /api/reports/{key}/generate - generuje raport i zwraca jako binary stream */
@@ -87,12 +83,10 @@ public class ReportRestController {
 
             // Ustaw nagłówki odpowiedzi
             String extension = format.equals("PDF") ? "pdf" : "docx";
-
             response.setContentType(MediaType.APPLICATION_PDF_VALUE);
             String filename = key + "." + extension;
             response.setHeader(HttpHeaders.CONTENT_DISPOSITION,
-                "attachment; filename=\"" + filename + "\"");
-
+                    "attachment; filename=\"" + filename + "\"");
             response.setStatus(HttpStatus.OK.value());
             response.getOutputStream().write(reportBytes);
             response.getOutputStream().flush();
@@ -101,11 +95,10 @@ public class ReportRestController {
             log.error("Error generating report: {} format {}", key, format, e);
             try {
                 response.sendError(HttpStatus.INTERNAL_SERVER_ERROR.value(),
-                    "Błąd generowania raportu: " + e.getMessage());
+                        "Błąd generowania raportu: " + e.getMessage());
             } catch (IOException ex) {
                 log.error("Failed to send error response", ex);
             }
         }
     }
-
 }

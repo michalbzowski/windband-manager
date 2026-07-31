@@ -51,16 +51,16 @@ public class ReportCompiler {
         try {
             List<String> reports = scanJrxmlFiles();
             log.info("Found {} .jrxml files: {}", reports.size(), reports);
-            
+
             for (String reportName : reports) {
                 String key = reportName.replace(".jrxml", "");
-                
+
                 // Parse metadata first
                 ReportMetadata metadata = extractMetadataFromJrxml(key);
                 if (metadata != null) {
                     this.metadataCache.put(key, metadata);
-                    log.info("Extracted metadata for {}: {} ({})", key, 
-                            metadata.getDisplayName(), 
+                    log.info("Extracted metadata for {}: {} ({})", key,
+                            metadata.getDisplayName(),
                             String.valueOf(metadata.getParameters().size()) + " params");
                 }
 
@@ -79,7 +79,7 @@ public class ReportCompiler {
     /** Skanuje katalog classpath:reports/ w poszukiwaniu plików .jrxml */
     private List<String> scanJrxmlFiles() throws IOException {
         List<String> reports = new ArrayList<>();
-        
+
         // Sprawdź znane raporty oraz sprawozdanie-miesieczne.jrxml
         String[] knownReports = {
             "sprawozdanie-miesieczne.jrxml",
@@ -107,7 +107,7 @@ public class ReportCompiler {
 
         try (InputStream is = resource.getInputStream()) {
             DocumentBuilderFactory factory = DocumentBuilderFactory.newInstance();
-            
+
             // Disable external entity resolution for security
             factory.setFeature("http://apache.org/xml/features/disallow-doctype-decl", true);
             factory.setFeature("http://xml.org/sax/features/external-general-entities", false);
@@ -115,7 +115,7 @@ public class ReportCompiler {
 
             DocumentBuilder builder = factory.newDocumentBuilder();
             Document doc = builder.parse(is);
-            ((org.w3c.dom.Document)doc).normalizeDocument();
+            ((org.w3c.dom.Document) doc).normalizeDocument();
 
             return buildReportMetadata(doc, key);
         } catch (Exception e) {
@@ -133,20 +133,20 @@ public class ReportCompiler {
         }
 
         Node reportNode = reportNodes.item(0);
-        
+
         // Ekstrahuje nazwę z atrybutu name
         String displayName = getAttribute(reportNode, "name", key);
-        
+
         // Ekstrahuje opis z <property name="com.jaspersoft.studio.report.description">
         String description = extractDescription(doc);
 
         // Ekstrahuje parametry (tylko na poziomie głównym)
         List<ReportParameter> parameters = new ArrayList<>();
         NodeList parameterNodes = doc.getElementsByTagName("parameter");
-        
+
         for (int i = 0; i < parameterNodes.getLength(); i++) {
             Node paramNode = parameterNodes.item(i);
-            
+
             // Skip parameters inside datasets - only get root-level parameters
             if (!isRootElement(paramNode)) {
                 continue;
@@ -159,8 +159,8 @@ public class ReportCompiler {
 
             if (paramName != null && !paramName.isEmpty()) {
                 parameters.add(new ReportParameter(
-                    paramName, 
-                    className, 
+                    paramName,
+                    className,
                     forPrompting
                 ));
             }
@@ -175,7 +175,7 @@ public class ReportCompiler {
         if (parent == null || "jasperReport".equals(parent.getNodeName())) {
             return true;
         }
-        
+
         String parentName = parent.getNodeName();
         List<String> childContainers = List.of("dataset", "queryString", "subdataset");
         return !childContainers.contains(parentName);
@@ -195,7 +195,7 @@ public class ReportCompiler {
 
         return defaultValue;
     }
-    
+
     private String getAttribute(Node node, String attributeName) {
         return getAttribute(node, attributeName, "");
     }
@@ -203,18 +203,18 @@ public class ReportCompiler {
     /** Ekstrahuje opis z <property> elementu */
     private String extractDescription(Document doc) {
         NodeList propertyNodes = doc.getElementsByTagName("property");
-        
+
         for (int i = 0; i < propertyNodes.getLength(); i++) {
             Node propNode = propertyNodes.item(i);
-            
+
             // Sprawdź attribute name="com.jaspersoft.studio.report.description"
             String propName = getAttribute(propNode, "name");
-            
+
             if ("com.jaspersoft.studio.report.description".equals(propName)) {
                 return getAttribute(propNode, "value", "");
             }
         }
-        
+
         return "";
     }
 
@@ -230,7 +230,7 @@ public class ReportCompiler {
         Path outputPath = Path.of("target/classes/reports", jasperName);
 
         Path parentDir = outputPath.getParent();
-        
+
         if (parentDir != null) {
             try {
                 Files.createDirectories(parentDir);

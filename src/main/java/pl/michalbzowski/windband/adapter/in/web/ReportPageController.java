@@ -1,6 +1,5 @@
 package pl.michalbzowski.windband.adapter.in.web;
 
-import jakarta.servlet.http.HttpServletResponse;
 import jakarta.servlet.http.HttpSession;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -27,7 +26,7 @@ public class ReportPageController {
     private final ReportQueryService reportQueryService;
     private final TeamQueryService teamQueryService;
     private final ReportCompiler reportCompiler; // JasperReports metadata
-    
+
     @GetMapping
     public String reportsPage(Model model) {
         model.addAttribute("currentMonth", YearMonth.now());
@@ -40,11 +39,11 @@ public class ReportPageController {
         var reports = reportCompiler.getMetadataCache().values().stream()
             .filter(m -> !m.getKey().equals("members"))
             .toList();
-        
+
         // Zserializuj do JSON dla szablonu HTML
         String jsonReports = objectMapper.writeValueAsString(reports);
         model.addAttribute("jsonReports", jsonReports);
-        
+
         return "reports/jasper-list";
     }
 
@@ -56,22 +55,22 @@ public class ReportPageController {
 
     /** Konfiguracja parametrów raportu */
     @GetMapping("/configure/{key}")
-    public String configureReport(@PathVariable String key, Model model, 
+    public String configureReport(@PathVariable String key, Model model,
                                   @AuthenticationPrincipal WindbandOidcUser oidcUser) {
         ReportMetadata metadata = reportCompiler.getReportMetadata(key);
         if (metadata == null) {
-            return "redirect:/reports/jasper"; // Wróć jeśli nie znaleziono raportu  
+            return "redirect:/reports/jasper"; // Wróć jeśli nie znaleziono raportu
         }
 
         model.addAttribute("report", metadata);
-        
-        // Pobierz kontekst użytkownika — band ID i nazwa zespołu  
+
+        // Pobierz kontekst użytkownika — band ID i nazwa zespołu
         Long activeBandId = oidcUser.getActiveTeamId();
         String activeBandName = teamQueryService.getBandName(activeBandId).orElse("Unknown Band");  // fetch from repo
-        
+
         model.addAttribute("activeBandId", activeBandId);
         model.addAttribute("activeBandName", activeBandName);
-        
+
         return "reports/configure";
     }
 
