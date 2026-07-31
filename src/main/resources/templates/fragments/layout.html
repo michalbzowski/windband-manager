@@ -127,89 +127,91 @@
     </div>
 </nav>
 
-<!-- Dialogs moved outside nav so they work even when top-nav is hidden (dashboard page) -->
-<dialog id="menu-modal" class="app-modal" sec:authorize="isAuthenticated()">
-    <div class="app-modal-content">
-        <header class="app-modal-header">
-            <div class="app-modal-header-text">
-                <strong th:text="${#authentication.principal.wbUsername}">user</strong>
-                <small th:if="${activeTeamRole}" th:text="${#strings.capitalize(activeTeamRole)}">rola</small>
+<!-- Dialogs fragment - included on every page so hamburger/team modals work even when top-nav is hidden -->
+<div th:fragment="dialogs" sec:authorize="isAuthenticated()">
+    <dialog id="menu-modal" class="app-modal">
+        <div class="app-modal-content">
+            <header class="app-modal-header">
+                <div class="app-modal-header-text">
+                    <strong th:text="${#authentication.principal.wbUsername}">user</strong>
+                    <small th:if="${activeTeamRole}" th:text="${#strings.capitalize(activeTeamRole)}">rola</small>
+                </div>
+                <button type="button" class="app-modal-close" aria-label="Zamknij" data-close>×</button>
+            </header>
+            <div class="app-modal-body">
+                <p class="app-modal-section">Najczęściej używane</p>
+                <ul>
+                    <li><a th:href="@{/}" hx-target="#content" hx-swap="innerHTML transition:true" data-close>🏠 Podsumowanie</a></li>
+                    <li><a th:href="@{/meetings}" hx-target="#content" hx-swap="innerHTML transition:true" data-close>🎵 Spotkania</a></li>
+                    <li><a th:href="@{/events}" hx-target="#content" hx-swap="innerHTML transition:true" data-close>🎭 Wydarzenia</a></li>
+                </ul>
+
+                <p class="app-modal-section">Zarządzanie zespołem</p>
+                <ul>
+                    <li><a th:href="@{/members}" hx-target="#content" hx-swap="innerHTML transition:true" data-close>👥 Członkowie</a></li>
+                    <li sec:authorize="hasAnyRole('ADMIN', 'SYSTEM_ADMIN')"><a th:href="@{/groups}" hx-target="#content" hx-swap="innerHTML transition:true" data-close>👥 Grupy</a></li>
+                    <li sec:authorize="hasAnyRole('ADMIN', 'SYSTEM_ADMIN')"><a th:href="@{/tags}" hx-target="#content" hx-swap="innerHTML transition:true" data-close>🏷 Tagi</a></li>
+                    <li><a th:href="@{/inventory}" hx-target="#content" hx-swap="innerHTML transition:true" data-close>📦 Zasoby</a></li>
+                </ul>
+
+                <p class="app-modal-section">Wgląd</p>
+                <ul>
+                    <li sec:authorize="hasAnyRole('ADMIN', 'SYSTEM_ADMIN')"><a th:href="@{/reports}" hx-target="#content" hx-swap="innerHTML transition:true" data-close>📈 Raporty</a></li>
+                </ul>
+
+                <p class="app-modal-section" sec:authorize="hasAnyRole('ADMIN', 'SYSTEM_ADMIN')">Administracja</p>
+                <ul sec:authorize="hasAnyRole('ADMIN', 'SYSTEM_ADMIN')">
+                    <li><a th:href="@{/admin/system-admins}" hx-target="#content" hx-swap="innerHTML transition:true" data-close>⚙️ Admini</a></li>
+                    <li><a th:href="@{/band/inventory-attributes(type='MEMBER')}" hx-target="#content" hx-swap="innerHTML transition:true" data-close>⚙️ Atrybuty</a></li>
+                </ul>
+
+                <p class="app-modal-section">Konto</p>
+                <ul>
+                    <li><a href="/register" hx-target="#content" hx-swap="innerHTML transition:true" data-close>➕ Nowy zespół</a></li>
+                    <li>
+                        <form th:action="@{/api/auth/logout}" method="POST" data-close>
+                            <button type="submit" class="app-modal-logout">🚪 Wyloguj</button>
+                        </form>
+                    </li>
+                </ul>
             </div>
-            <button type="button" class="app-modal-close" aria-label="Zamknij" data-close>×</button>
-        </header>
-        <div class="app-modal-body">
-            <p class="app-modal-section">Najczęściej używane</p>
-            <ul>
-                <li><a th:href="@{/}" hx-target="#content" hx-swap="innerHTML transition:true" data-close>🏠 Podsumowanie</a></li>
-                <li><a th:href="@{/meetings}" hx-target="#content" hx-swap="innerHTML transition:true" data-close>🎵 Spotkania</a></li>
-                <li><a th:href="@{/events}" hx-target="#content" hx-swap="innerHTML transition:true" data-close>🎭 Wydarzenia</a></li>
-            </ul>
-
-            <p class="app-modal-section">Zarządzanie zespołem</p>
-            <ul>
-                <li><a th:href="@{/members}" hx-target="#content" hx-swap="innerHTML transition:true" data-close>👥 Członkowie</a></li>
-                <li sec:authorize="hasAnyRole('ADMIN', 'SYSTEM_ADMIN')"><a th:href="@{/groups}" hx-target="#content" hx-swap="innerHTML transition:true" data-close>👥 Grupy</a></li>
-                <li sec:authorize="hasAnyRole('ADMIN', 'SYSTEM_ADMIN')"><a th:href="@{/tags}" hx-target="#content" hx-swap="innerHTML transition:true" data-close>🏷 Tagi</a></li>
-                <li><a th:href="@{/inventory}" hx-target="#content" hx-swap="innerHTML transition:true" data-close>📦 Zasoby</a></li>
-            </ul>
-
-            <p class="app-modal-section">Wgląd</p>
-            <ul>
-                <li sec:authorize="hasAnyRole('ADMIN', 'SYSTEM_ADMIN')"><a th:href="@{/reports}" hx-target="#content" hx-swap="innerHTML transition:true" data-close>📈 Raporty</a></li>
-            </ul>
-
-            <p class="app-modal-section" sec:authorize="hasAnyRole('ADMIN', 'SYSTEM_ADMIN')">Administracja</p>
-            <ul sec:authorize="hasAnyRole('ADMIN', 'SYSTEM_ADMIN')">
-                <li><a th:href="@{/admin/system-admins}" hx-target="#content" hx-swap="innerHTML transition:true" data-close>⚙️ Admini</a></li>
-                <li><a th:href="@{/band/inventory-attributes(type='MEMBER')}" hx-target="#content" hx-swap="innerHTML transition:true" data-close>⚙️ Atrybuty</a></li>
-            </ul>
-
-            <p class="app-modal-section">Konto</p>
-            <ul>
-                <li><a href="/register" hx-target="#content" hx-swap="innerHTML transition:true" data-close>➕ Nowy zespół</a></li>
-                <li>
-                    <form th:action="@{/api/auth/logout}" method="POST" data-close>
-                        <button type="submit" class="app-modal-logout">🚪 Wyloguj</button>
-                    </form>
-                </li>
-            </ul>
         </div>
-    </div>
-</dialog>
+    </dialog>
 
-<dialog id="team-modal" class="app-modal" sec:authorize="isAuthenticated()">
-    <div class="app-modal-content">
-        <header class="app-modal-header">
-            <div class="app-modal-header-text">
-                <strong>Wybierz zespół</strong>
-                <small th:text="${#lists.size(userTeams)} + ' dostępnych'">2 dostępnych</small>
+    <dialog id="team-modal" class="app-modal">
+        <div class="app-modal-content">
+            <header class="app-modal-header">
+                <div class="app-modal-header-text">
+                    <strong>Wybierz zespół</strong>
+                    <small th:text="${#lists.size(userTeams)} + ' dostępnych'">2 dostępnych</small>
+                </div>
+                <button type="button" class="app-modal-close" aria-label="Zamknij" data-close>×</button>
+            </header>
+            <div class="app-modal-body">
+                <ul class="app-team-list" th:if="${#lists.size(userTeams) > 0}">
+                    <li th:each="team : ${userTeams}">
+                        <button type="button"
+                                class="app-team-item"
+                                th:classappend="${team.id == activeTeamId} ? ' active' : ''"
+                                th:attr="onclick=|switchTeam(${team.id})|">
+                            <span class="app-team-avatar"
+                                  th:style="${team.color != null ? 'background-color:' + team.color : ''}"
+                                  th:text="${#strings.toUpperCase(#strings.substring(team.name, 0, 1))}">O</span>
+                            <span class="app-team-info">
+                                <span class="app-team-name" th:text="${team.name}">Zespół</span>
+                                <span class="app-team-role" th:text="${team.role}">ADMIN</span>
+                            </span>
+                            <span th:if="${team.id == activeTeamId}" class="app-team-active-badge" aria-label="Aktualny">✓</span>
+                        </button>
+                    </li>
+                </ul>
+                <p th:if="${#lists.isEmpty(userTeams)}" class="app-team-empty">
+                    Nie należysz jeszcze do żadnego zespołu. <a href="/register" data-close>Utwórz nowy</a>.
+                </p>
             </div>
-            <button type="button" class="app-modal-close" aria-label="Zamknij" data-close>×</button>
-        </header>
-        <div class="app-modal-body">
-            <ul class="app-team-list" th:if="${#lists.size(userTeams) > 0}">
-                <li th:each="team : ${userTeams}">
-                    <button type="button"
-                            class="app-team-item"
-                            th:classappend="${team.id == activeTeamId} ? ' active' : ''"
-                            th:attr="onclick=|switchTeam(${team.id})|">
-                        <span class="app-team-avatar"
-                              th:style="${team.color != null ? 'background-color:' + team.color : ''}"
-                              th:text="${#strings.toUpperCase(#strings.substring(team.name, 0, 1))}">O</span>
-                        <span class="app-team-info">
-                            <span class="app-team-name" th:text="${team.name}">Zespół</span>
-                            <span class="app-team-role" th:text="${team.role}">ADMIN</span>
-                        </span>
-                        <span th:if="${team.id == activeTeamId}" class="app-team-active-badge" aria-label="Aktualny">✓</span>
-                    </button>
-                </li>
-            </ul>
-            <p th:if="${#lists.isEmpty(userTeams)}" class="app-team-empty">
-                Nie należysz jeszcze do żadnego zespołu. <a href="/register" data-close>Utwórz nowy</a>.
-            </p>
         </div>
-    </div>
-</dialog>
+    </dialog>
+</div>
 
 <main class="container" id="content">
         <!-- treść ładowana przez HTMX -->

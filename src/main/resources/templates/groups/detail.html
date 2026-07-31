@@ -5,6 +5,7 @@
 </head>
 <body>
 <nav th:replace="~{fragments/layout :: nav}"></nav>
+<div th:replace="~{fragments/layout :: dialogs}"></div>
 
 <main class="container" id="content">
     <div id="groups-content" th:data-group-id="${group.id}" th:fragment="group-detail-content">
