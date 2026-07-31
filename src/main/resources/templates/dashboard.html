@@ -486,6 +486,9 @@
         if (!header) return;
 
         const headerHeight = header.offsetHeight;
+        // Hysteresis: different thresholds for adding vs removing scrolled class
+        const SCROLL_DOWN_THRESHOLD = headerHeight;      // Add scrolled when past header
+        const SCROLL_UP_THRESHOLD = headerHeight * 0.3;  // Remove scrolled only when near top
         let lastScrollY = 0;
         let ticking = false;
 
@@ -494,13 +497,14 @@
             
             if (!ticking) {
                 window.requestAnimationFrame(function() {
-                    const shouldBeScrolled = lastScrollY > headerHeight;
+                    const isScrolled = header.classList.contains('scrolled');
                     
-                    if (shouldBeScrolled && !header.classList.contains('scrolled')) {
+                    if (!isScrolled && lastScrollY > SCROLL_DOWN_THRESHOLD) {
+                        // Scrolling down past header -> add scrolled
                         header.classList.add('scrolled');
-                        // Add padding to body to prevent content jump
                         document.body.style.paddingTop = header.offsetHeight + 'px';
-                    } else if (!shouldBeScrolled && header.classList.contains('scrolled')) {
+                    } else if (isScrolled && lastScrollY < SCROLL_UP_THRESHOLD) {
+                        // Scrolling up near top -> remove scrolled
                         header.classList.remove('scrolled');
                         document.body.style.paddingTop = '';
                     }
