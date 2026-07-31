@@ -40,7 +40,7 @@ public class ReportRestController {
     @GetMapping
     public java.util.List<ReportMetadata> listReports() {
         return reportCompiler.getMetadataCache().values().stream()
-                .filter(m -> !m.getKey().equals("members"))  // ukryj wewn. raporty  
+                .filter(m -> !m.getKey().equals("members"))  // ukryj wewn. raporty
                 .toList();
     }
 
@@ -48,9 +48,9 @@ public class ReportRestController {
     @GetMapping("/{key}")
     public java.util.Optional<ReportMetadata> getReport(@PathVariable String key) {
         ReportMetadata metadata = reportCompiler.getReportMetadata(key);
-        
-        return metadata != null 
-            ? java.util.Optional.of(metadata) 
+
+        return metadata != null
+            ? java.util.Optional.of(metadata)
             : java.util.Optional.empty();
     }
 
@@ -60,14 +60,14 @@ public class ReportRestController {
             @PathVariable String key,
             @RequestBody Map<String, Object> requestBody,
             HttpServletResponse response) throws IOException {
-        
+
         ReportMetadata metadata = reportCompiler.getReportMetadata(key);
         if (metadata == null) {
             response.sendError(HttpStatus.NOT_FOUND.value(), "Raport nie znaleziony: " + key);
             return;
         }
 
-        // Pobierz format z requestBody (default PDF)  
+        // Pobierz format z requestBody (default PDF)
         String format = (String) requestBody.remove("format");
         if (format == null) {
             format = "PDF";
@@ -85,22 +85,22 @@ public class ReportRestController {
                 }
             };
 
-            // Ustaw nagłówki odpowiedzi  
+            // Ustaw nagłówki odpowiedzi
             String extension = format.equals("PDF") ? "pdf" : "docx";
-            
+
             response.setContentType(MediaType.APPLICATION_PDF_VALUE);
             String filename = key + "." + extension;
-            response.setHeader(HttpHeaders.CONTENT_DISPOSITION, 
+            response.setHeader(HttpHeaders.CONTENT_DISPOSITION,
                 "attachment; filename=\"" + filename + "\"");
-            
+
             response.setStatus(HttpStatus.OK.value());
             response.getOutputStream().write(reportBytes);
             response.getOutputStream().flush();
 
-        } catch (IOException e) {  
+        } catch (IOException e) {
             log.error("Error generating report: {} format {}", key, format, e);
             try {
-                response.sendError(HttpStatus.INTERNAL_SERVER_ERROR.value(), 
+                response.sendError(HttpStatus.INTERNAL_SERVER_ERROR.value(),
                     "Błąd generowania raportu: " + e.getMessage());
             } catch (IOException ex) {
                 log.error("Failed to send error response", ex);
