@@ -19,15 +19,6 @@
                 <span class="date-dot"></span>
                 <span th:text="${#temporals.format(today, 'EEEE, d MMMM yyyy', #locale.forLanguageTag('pl'))}">Dzisiaj, 30 lipca 2026</span>
             </div>
-            
-            <!-- Actions Bar -->
-            <div class="actions-bar">
-                <span class="section-label">Nadchodzące</span>
-                <div class="quick-actions">
-                    <a th:href="@{/meetings/new}" hx-target="#content" hx-swap="innerHTML transition:true" class="action-chip">▸ Próba</a>
-                    <a th:href="@{/events/new}" hx-target="#content" hx-swap="innerHTML transition:true" class="action-chip">▸ Spotkanie</a>
-                </div>
-            </div>
         </header>
 
         <!-- Mini stats bar - responsive -->
