@@ -1,11 +1,13 @@
 <!DOCTYPE html>
-<html lang="pl" xmlns:th="http://www.thymeleaf.org">
+<html lang="pl" xmlns:th="http://www.thymeleaf.org" xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
 <head th:replace="~{fragments/layout :: head('Nowy atrybut')}"></head>
-<body>
-    <nav th:replace="~{fragments/layout :: nav}"></nav>
-<div th:replace="~{fragments/layout :: dialogs}"></div>
+<body class="dashboard-page">
+    <div th:replace="~{fragments/layout :: dialogs}"></div>
 
-    <main class="container" id="content">
+<main class="container" id="content">
+    <section class="dashboard-upcoming">
+        <header th:replace="~{fragments/layout :: dashboard-header}"></header>
+
         <div style="margin-bottom:1rem;">
             <a href="/band/attributes" style="font-size:0.9rem;">← Powrót do listy atrybutów</a>
         </div>
@@ -57,37 +59,53 @@
                 </div>
             </form>
         </div>
-    </main>
+    </section>
+</main>
 
-    <script>
-        function toggleOptionsField() {
-            var typeSelect = document.getElementById('attr-type-new');
-            var optionsField = document.getElementById('options-field-new');
-            var type = typeSelect.value;
-            if (type === 'SELECT' || type === 'MULTI_SELECT') {
-                optionsField.style.display = '';
-            } else {
-                optionsField.style.display = 'none';
-            }
-        }
-
-        // Handle "Zapisz i dodaj kolejny" for attribute form
-        (function() {
-            var form = document.querySelector('form[th\\:hx-post]');
-            if (form) {
-                form.addEventListener('htmx:afterRequest', function(e) {
-                    if (e.detail.successful) {
-                        var saveAndAddAnother = form.querySelector('button[name="saveAndAddAnother"]') && 
-                                                form.querySelector('button[name="saveAndAddAnother"]') === document.activeElement;
-                        if (saveAndAddAnother) {
-                            // Reload the form for adding another attribute - redirect to /band/attributes/new
-                            window.location.href = '/band/attributes/new';
-                        }
-                    }
-                });
-            }
-        })();
-    </script>
+<footer th:replace="~{fragments/layout :: footer}"></footer>
 <div th:insert="~{fragments/layout :: toast-container}"></div>
+<div th:insert="~{fragments/layout :: footer-scripts}"></div>
+
+<script th:replace="~{fragments/layout :: dashboard-header-morph}"></script>
+
+<script>
+    function toggleOptionsField() {
+        var typeSelect = document.getElementById('attr-type-new');
+        var optionsField = document.getElementById('options-field-new');
+        var type = typeSelect.value;
+        if (type === 'SELECT' || type === 'MULTI_SELECT') {
+            optionsField.style.display = '';
+        } else {
+            optionsField.style.display = 'none';
+        }
+    }
+
+    // Handle "Zapisz i dodaj kolejny" for attribute form
+    (function() {
+        var form = document.querySelector('form[th\\:hx-post]');
+        if (form) {
+            form.addEventListener('htmx:afterRequest', function(e) {
+                if (e.detail.successful) {
+                    var saveAndAddAnother = form.querySelector('button[name="saveAndAddAnother"]') && 
+                                            form.querySelector('button[name="saveAndAddAnother"]') === document.activeElement;
+                    if (saveAndAddAnother) {
+                        // Reload the form for adding another attribute - redirect to /band/attributes/new
+                        window.location.href = '/band/attributes/new';
+                    }
+                }
+            });
+        })();
+    }
+    function toggleOptionsField() {
+        var typeSelect = document.getElementById('attr-type-new');
+        var optionsField = document.getElementById('options-field-new');
+        var type = typeSelect.value;
+        if (type === 'SELECT' || type === 'MULTI_SELECT') {
+            optionsField.style.display = '';
+        } else {
+            optionsField.style.display = 'none';
+        }
+    }
+</script>
 </body>
 </html>

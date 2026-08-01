@@ -1,11 +1,13 @@
 <!DOCTYPE html>
-<html lang="pl" xmlns:th="http://www.thymeleaf.org">
+<html lang="pl" xmlns:th="http://www.thymeleaf.org" xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
 <head th:replace="~{fragments/layout :: head('Edycja atrybutu')}"></head>
-<body>
-    <nav th:replace="~{fragments/layout :: nav}"></nav>
-<div th:replace="~{fragments/layout :: dialogs}"></div>
+<body class="dashboard-page">
+    <div th:replace="~{fragments/layout :: dialogs}"></div>
 
-    <main class="container" id="content">
+<main class="container" id="content">
+    <section class="dashboard-upcoming">
+        <header th:replace="~{fragments/layout :: dashboard-header}"></header>
+
         <div style="margin-bottom:1rem;">
             <a href="/band/attributes" style="font-size:0.9rem;">← Powrót do listy atrybutów</a>
         </div>
@@ -43,7 +45,7 @@
                         Wymagany
                     </label>
                 </div>
-                <div id="options-field-edit" th:style="${attributeDef?.type == 'SELECT' or attributeDef?.type == 'MULTI_SELECT'} ? '' : 'display:none;'">
+                <div id="options-field-edit" th:style="${attributeDef?.type == 'SELECT' or attributeDef?.type == 'MULTI_SELECT'} ? '' : 'display:none;'>
                     <label>
                         Opcje (oddzielone przecinkiem)
                         <textarea name="options" rows="3" style="font-family:monospace; font-size:0.85rem;"
@@ -57,20 +59,26 @@
                 </div>
             </form>
         </div>
-    </main>
+    </section>
+</main>
 
-    <script>
-        function toggleOptionsField() {
-            var typeSelect = document.getElementById('attr-type-edit');
-            var optionsField = document.getElementById('options-field-edit');
-            var type = typeSelect.value;
-            if (type === 'SELECT' || type === 'MULTI_SELECT') {
-                optionsField.style.display = '';
-            } else {
-                optionsField.style.display = 'none';
-            }
-        }
-    </script>
+<footer th:replace="~{fragments/layout :: footer}"></footer>
 <div th:insert="~{fragments/layout :: toast-container}"></div>
+<div th:insert="~{fragments/layout :: footer-scripts}"></div>
+
+<script th:replace="~{fragments/layout :: dashboard-header-morph}"></script>
+
+<script>
+    function toggleOptionsField() {
+        var typeSelect = document.getElementById('attr-type-edit');
+        var optionsField = document.getElementById('options-field-edit');
+        var type = typeSelect.value;
+        if (type === 'SELECT' || type === 'MULTI_SELECT') {
+            optionsField.style.display = '';
+        } else {
+            optionsField.style.display = 'none';
+        }
+    }
+</script>
 </body>
 </html>

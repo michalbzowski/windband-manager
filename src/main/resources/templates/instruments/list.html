@@ -1,17 +1,19 @@
 <!DOCTYPE html>
-<html lang="pl" xmlns:th="http://www.thymeleaf.org">
+<html lang="pl" xmlns:th="http://www.thymeleaf.org" xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
 <head th:replace="~{fragments/layout :: head('Instrumenty')}"></head>
-<body>
-<nav th:replace="~{fragments/layout :: nav}"></nav>
+<body class="dashboard-page">
 <div th:replace="~{fragments/layout :: dialogs}"></div>
 
-    <main class="container" id="content">
-        <div id="instruments-content">
-            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem;">
-                <h2>🎼 Instrumenty</h2>
-                <button hx-get="/instruments/new" hx-target="#instruments-content" hx-swap="innerHTML transition:true"
-                        class="primary">+ Dodaj instrument</button>
-            </div>
+<main class="container" id="content">
+    <section class="dashboard-upcoming">
+        <header th:replace="~{fragments/layout :: dashboard-header}"></header>
+
+    <div id="instruments-content">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem;">
+            <h2>🎼 Instrumenty</h2>
+            <button hx-get="/instruments/new" hx-target="#instruments-content" hx-swap="innerHTML transition:true"
+                    class="primary">+ Dodaj instrument</button>
+        </div>
 
             <div th:if="${#lists.isEmpty(instruments)}">
                 <article>
@@ -48,10 +50,13 @@
                 </table>
             </div>
         </div>
-    </main>
+    </section>
+</main>
 
-        <footer th:replace="~{fragments/layout :: footer}"></footer>
-    <div th:insert="~{fragments/layout :: toast-container}"></div>
+<footer th:replace="~{fragments/layout :: footer}"></footer>
+<div th:insert="~{fragments/layout :: toast-container}"></div>
 <div th:insert="~{fragments/layout :: footer-scripts}"></div>
+
+<script th:replace="~{fragments/layout :: dashboard-header-morph}"></script>
 </body>
 </html>
