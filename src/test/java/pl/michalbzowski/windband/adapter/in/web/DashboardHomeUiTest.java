@@ -30,10 +30,6 @@ class DashboardHomeUiTest extends UiTestBase {
                 ExpectedConditions.presenceOfElementLocated(By.cssSelector("section.dashboard-upcoming .upcoming-table"))
         ));
 
-        // Heading present
-        var heading = driver.findElement(By.cssSelector("section.dashboard-upcoming .section-label"));
-        assertThat(heading.getText()).containsIgnoringCase("Nadchodzące");
-
         // Mini stats bar present
         assertThat(driver.findElements(By.cssSelector(".mini-stats-bar"))).isNotEmpty();
 

@@ -6,29 +6,7 @@
 
 <main class="container" id="content">
     <section class="dashboard-upcoming">
-        <!-- Mockup-style header -->
-        <header class="dashboard-header" id="dashboardHeader">
-            <div class="dashboard-header-top">
-                <button type="button" class="menu-btn" aria-label="Menu" onclick="openAppModal('menu-modal')">☰</button>
-                <div class="avatar" th:text="${#strings.toUpperCase(#strings.substring(#authentication.principal.wbUsername ?: 'MB', 0, 2))}">MB</div>
-            </div>
-            
-            <h1 class="band-name" th:text="${activeTeamName}">Orkiestra Dęta</h1>
-            
-            <div class="current-date">
-                <span class="date-dot"></span>
-                <span th:text="${#temporals.format(today, 'EEEE, d MMMM yyyy', #locale.forLanguageTag('pl'))}">Dzisiaj, 30 lipca 2026</span>
-            </div>
-            
-            <!-- Actions Bar -->
-            <div class="actions-bar">
-                <span class="section-label">Nadchodzące</span>
-                <div class="quick-actions">
-                    <a th:href="@{/rehearsals/new}" hx-target="#content" hx-swap="innerHTML transition:true" class="action-chip">▸ Próba</a>
-                    <a th:href="@{/events/new}" hx-target="#content" hx-swap="innerHTML transition:true" class="action-chip">▸ Spotkanie</a>
-                </div>
-            </div>
-        </header>
+        <header th:replace="~{fragments/layout :: dashboard-header}"></header>
 
         <!-- Mini stats bar - responsive -->
         <div class="mini-stats-bar" th:unless="${#lists.isEmpty(upcoming)}">
