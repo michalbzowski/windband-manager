@@ -1,16 +1,14 @@
 <!DOCTYPE html>
 <html lang="pl" xmlns:th="http://www.thymeleaf.org" xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
 <head th:replace="~{fragments/layout :: head('Raporty')}"></head>
-<body>
-<nav th:replace="~{fragments/layout :: nav}"></nav>
+<body class="dashboard-page">
 <div th:replace="~{fragments/layout :: dialogs}"></div>
 
 <main class="container" id="content">
+    <section class="dashboard-upcoming">
+        <header th:replace="~{fragments/layout :: dashboard-header}"></header>
+
     <div id="reports-content">
-        <header class="reports-header">
-            <h2>📊 Dostępne raporty</h2>
-            <p class="reports-subtitle">Wybierz raport do wygenerowania lub pobrania</p>
-        </header>
 
         <section class="reports-grid">
             <!-- Raport Sprawozdanie Zespołu (JasperReports) -->
@@ -117,28 +115,26 @@
                 <div style="display:flex; gap:1rem; align-items:center;">
                     <span style="font-size:2.5rem;" aria-hidden>📊</span> 
                     <div>
-                        <h3 style="margin:0">Raporty JasperReports 7.x</h3>  
+                        <h3 style="margin:0">Raporty JasperReports 7.x</h3> 
                         <p style="color:#6b7280; margin:0;">Generuj raport członków zespołu jako PDF. Zostań przekierowany do dedykowanej strony z opcją generowania.</p>
                     </div> 
-                </div>  
+                </div> 
 
-                <div class="report-actions" style="margin-top:1rem;">  
-<a th:href="@{/reports/jasper}" class="btn-primary">📄 Przejdz do listy raportów JasperReports</a>  
+                <div class="report-actions" style="margin-top:1rem;"> 
+<a th:href="@{/reports/jasper}" class="btn-primary">📄 Przejdz do listy raportów JasperReports</a> 
                 </div>
 
             </article>
         </section>
-
-
-        <footer class="reports-footer"> 
-            <p><small>💡 Raporty JasperReports (<code>.jrxml</code>) można edytować w Jaspersoft Studio i wrzucać do <code>src/main/resources/reports/</code>.</small></p>
-        </footer>
-
+    </div>
+    </section>
 </main>
 
 <footer th:replace="~{fragments/layout :: footer}"></footer>
 <div th:insert="~{fragments/layout :: toast-container}"></div>
 <div th:insert="~{fragments/layout :: footer-scripts}"></div>
+
+<script th:replace="~{fragments/layout :: dashboard-header-morph}"></script>
 </body>
 </html>
 
