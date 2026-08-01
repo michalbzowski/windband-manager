@@ -1,5 +1,15 @@
-<div id="rehearsals-content">
-    <h2>📅 Zaplanuj spotkanie</h2>
+<!DOCTYPE html>
+<html lang="pl" xmlns:th="http://www.thymeleaf.org" xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
+<head th:replace="~{fragments/layout :: head('Zaplanuj spotkanie')}"></head>
+<body class="dashboard-page">
+<div th:replace="~{fragments/layout :: dialogs}"></div>
+
+<main class="container" id="content">
+    <section class="dashboard-upcoming">
+        <header th:replace="~{fragments/layout :: dashboard-header}"></header>
+
+    <div id="rehearsals-content">
+        <h2>📅 Zaplanuj spotkanie</h2>
 
     <form id="rehearsal-form">
 
@@ -38,5 +48,14 @@
                     hx-swap="innerHTML transition:true">Anuluj</button>
         </div>
     </form>
-    <div id="toast-container"></div>
-</div>
+    </div>
+    </section>
+</main>
+
+<footer th:replace="~{fragments/layout :: footer}"></footer>
+<div th:insert="~{fragments/layout :: toast-container}"></div>
+<div th:insert="~{fragments/layout :: footer-scripts}"></div>
+
+<script th:replace="~{fragments/layout :: dashboard-header-morph}"></script>
+</body>
+</html>

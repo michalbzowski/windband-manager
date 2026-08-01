@@ -30,6 +30,7 @@ public class RehearsalPageController {
         model.addAttribute("upcomingRehearsals", rehearsalQueryService.getUpcomingRehearsals(activeTeamId));
         model.addAttribute("pastRehearsals", rehearsalQueryService.getPastRehearsals(activeTeamId));
         model.addAttribute("focusRehearsalId", focus);
+        model.addAttribute("today", LocalDate.now());
         if ("true".equals(request.getHeader("HX-Request"))) {
             return "rehearsals/list :: #rehearsals-content";
         }
@@ -42,6 +43,7 @@ public class RehearsalPageController {
         model.addAttribute("upcomingRehearsals", rehearsalQueryService.getUpcomingRehearsals(activeTeamId));
         model.addAttribute("pastRehearsals", rehearsalQueryService.getPastRehearsals(activeTeamId));
         model.addAttribute("focusRehearsalId", focus);
+        model.addAttribute("today", LocalDate.now());
         return "rehearsals/list :: #rehearsals-content";
     }
 
