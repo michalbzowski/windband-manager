@@ -1,11 +1,13 @@
 <!DOCTYPE html>
-<html lang="pl" xmlns:th="http://www.thymeleaf.org">
+<html lang="pl" xmlns:th="http://www.thymeleaf.org" xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
 <head th:replace="~{fragments/layout :: head('Zasoby')}"></head>
-<body>
-<nav th:replace="~{fragments/layout :: nav}"></nav>
+<body class="dashboard-page">
 <div th:replace="~{fragments/layout :: dialogs}"></div>
 
     <main class="container" id="content">
+        <section class="dashboard-upcoming">
+            <header th:replace="~{fragments/layout :: dashboard-header}"></header>
+
         <div id="debug-info" style="display:none;" th:text="${debugInfo}"></div>
         <div id="inventory-content">
             <h2>📦 Zasoby</h2>
@@ -1023,5 +1025,14 @@
             .then(function(r) { if(r.ok) refreshTab('awards'); });
         }
     </script>
+
+    </section>
+</main>
+
+<footer th:replace="~{fragments/layout :: footer}"></footer>
+<div th:insert="~{fragments/layout :: toast-container}"></div>
+<div th:insert="~{fragments/layout :: footer-scripts}"></div>
+
+<script th:replace="~{fragments/layout :: dashboard-header-morph}"></script>
 </body>
 </html>
