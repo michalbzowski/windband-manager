@@ -7,6 +7,8 @@ import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
 import pl.michalbzowski.windband.application.query.meeting.MeetingQueryService;
 
+import java.time.LocalDate;
+
 @Controller
 @RequestMapping("/meetings")
 @RequiredArgsConstructor
@@ -21,6 +23,7 @@ public class MeetingPageController {
         model.addAttribute("upcomingMeetings", meetingQueryService.getUpcomingMeetings(activeTeamId));
         model.addAttribute("pastMeetings", meetingQueryService.getPastMeetings(activeTeamId));
         model.addAttribute("focusMeetingId", focus);
+        model.addAttribute("today", LocalDate.now());
         if ("true".equals(request.getHeader("HX-Request"))) {
             return "meetings/list :: #meetings-content";
         }
@@ -38,6 +41,7 @@ public class MeetingPageController {
 
     @GetMapping("/new")
     public String newMeetingForm(Model model, HttpServletRequest request) {
+        model.addAttribute("today", LocalDate.now());
         if ("true".equals(request.getHeader("HX-Request"))) {
             return "meetings/new :: #meetings-content";
         }
