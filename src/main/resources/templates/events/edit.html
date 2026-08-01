@@ -1,5 +1,15 @@
-<div id="events-list-container">
-    <h2>🎪 Edytuj wydarzenie</h2>
+<!DOCTYPE html>
+<html lang="pl" xmlns:th="http://www.thymeleaf.org" xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
+<head th:replace="~{fragments/layout :: head('Edytuj wydarzenie')}"></head>
+<body class="dashboard-page">
+<div th:replace="~{fragments/layout :: dialogs}"></div>
+
+<main class="container" id="content">
+    <section class="dashboard-upcoming">
+        <header th:replace="~{fragments/layout :: dashboard-header}"></header>
+
+    <div id="events-list-container">
+        <h2>🎪 Edytuj wydarzenie</h2>
 
     <form id="event-edit-form" onsubmit="return handleEditFormSubmit(event)">
 
@@ -122,4 +132,14 @@
         return false;
     }
     </script>
-</div>
+    </div>
+    </section>
+</main>
+
+<footer th:replace="~{fragments/layout :: footer}"></footer>
+<div th:insert="~{fragments/layout :: toast-container}"></div>
+<div th:insert="~{fragments/layout :: footer-scripts}"></div>
+
+<script th:replace="~{fragments/layout :: dashboard-header-morph}"></script>
+</body>
+</html>

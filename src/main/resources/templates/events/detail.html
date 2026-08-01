@@ -1,11 +1,13 @@
 <!DOCTYPE html>
-<html lang="pl" xmlns:th="http://www.thymeleaf.org">
+<html lang="pl" xmlns:th="http://www.thymeleaf.org" xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
 <head th:replace="~{fragments/layout :: head(${event.name})}"></head>
-<body>
-<nav th:replace="~{fragments/layout :: nav}"></nav>
+<body class="dashboard-page">
 <div th:replace="~{fragments/layout :: dialogs}"></div>
 
 <main class="container" id="content">
+    <section class="dashboard-upcoming">
+        <header th:replace="~{fragments/layout :: dashboard-header}"></header>
+
     <div id="event-detail-wrapper">
 <div id="events-content"
      th:data-event-id="${event.id}"
@@ -13,7 +15,7 @@
      th:data-payment-amount="${event.paymentAmount}"
      th:data-confirmed-count="${event.confirmedCount}"
      th:fragment="event-detail-content">
-    
+
     <h2>🎪 Szczegóły wydarzenia</h2>
 
     <article>
@@ -240,10 +242,13 @@
 </dialog>
 
 </div>
+    </section>
 </main>
 
 <footer th:replace="~{fragments/layout :: footer}"></footer>
 <div th:insert="~{fragments/layout :: toast-container}"></div>
 <div th:insert="~{fragments/layout :: footer-scripts}"></div>
+
+<script th:replace="~{fragments/layout :: dashboard-header-morph}"></script>
 </body>
 </html>

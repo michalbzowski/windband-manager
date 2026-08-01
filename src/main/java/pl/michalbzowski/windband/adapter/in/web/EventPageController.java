@@ -43,6 +43,7 @@ public class EventPageController {
         model.addAttribute("upcomingEvents", eventQueryService.getUpcomingEvents(activeTeamId));
         model.addAttribute("pastEvents", eventQueryService.getPastEvents(activeTeamId));
         model.addAttribute("focusEventId", focus);
+        model.addAttribute("today", LocalDate.now());
 
         if ("true".equals(request.getHeader("HX-Request"))) {
             return "events/list :: #events-list-container";
@@ -59,6 +60,7 @@ public class EventPageController {
         model.addAttribute("upcomingEvents", eventQueryService.getUpcomingEvents(activeTeamId));
         model.addAttribute("pastEvents", eventQueryService.getPastEvents(activeTeamId));
         model.addAttribute("focusEventId", focus);
+        model.addAttribute("today", LocalDate.now());
 
         return "events/list :: #events-list-container";
 
