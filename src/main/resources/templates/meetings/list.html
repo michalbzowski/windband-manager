@@ -4,6 +4,7 @@
 <body>
 <header th:replace="~{fragments/layout :: dashboard-header}"></header>
 <div th:replace="~{fragments/layout :: dialogs}"></div>
+<script th:replace="~{fragments/layout :: dashboard-header-morph}"></script>
 
 <main class="container" id="content">
     <div id="meetings-content" th:attr="data-focus-id=${focusMeetingId},data-focus-prefix='meeting'">

@@ -103,6 +103,51 @@
     </div>
 </header>
 
+<!-- Dashboard header scroll morph behavior - single element transforms via CSS transitions -->
+<script th:fragment="dashboard-header-morph">
+    (function() {
+        const header = document.getElementById('dashboardHeader');
+        if (!header) return;
+
+        // Dynamic threshold based on header's actual height when it morphs
+        const ORIGINAL_HEADER_HEIGHT = 200; // approximate initial card height
+        let lastScrollY = 0;
+        let ticking = false;
+        let isScrolled = false;
+
+        function updateHeaderState() {
+            const scrollY = window.scrollY;
+            
+            if (!isScrolled && scrollY > ORIGINAL_HEADER_HEIGHT) {
+                // Scrolling down past header area -> morph to compact bar
+                header.classList.add('scrolled');
+                isScrolled = true;
+            } else if (isScrolled && scrollY < ORIGINAL_HEADER_HEIGHT * 0.3) {
+                // Scrolling up near top -> restore original card style
+                header.classList.remove('scrolled');
+                isScrolled = false;
+            }
+        }
+
+        function onScroll() {
+            lastScrollY = window.scrollY;
+            
+            if (!ticking) {
+                window.requestAnimationFrame(function() {
+                    updateHeaderState();
+                    ticking = false;
+                });
+                ticking = true;
+            }
+        }
+
+        // Initial check in case page loads scrolled
+        onScroll();
+        
+        window.addEventListener('scroll', onScroll, { passive: true });
+    })();
+</script>
+
 <!-- ============================================================
      LEGACY TOP-NAV — kept for backward compatibility during transition
      Will be removed once all pages migrate to dashboard-header
