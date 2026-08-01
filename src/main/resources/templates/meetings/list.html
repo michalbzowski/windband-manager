@@ -3,7 +3,6 @@
 <head th:replace="~{fragments/layout :: head('Spotkania')}"></head>
 <body class="dashboard-page">
 <div th:replace="~{fragments/layout :: dialogs}"></div>
-<script th:replace="~{fragments/layout :: dashboard-header-morph}"></script>
 
 <main class="container" id="content">
     <section class="dashboard-upcoming">
@@ -137,5 +136,7 @@
         color: var(--pico-muted-color);
     }
 </style>
+
+<script th:replace="~{fragments/layout :: dashboard-header-morph}"></script>
 </body>
 </html>

@@ -3,7 +3,6 @@
 <head th:replace="~{fragments/layout :: head('Nowe spotkanie')}"></head>
 <body class="dashboard-page">
 <div th:replace="~{fragments/layout :: dialogs}"></div>
-<script th:replace="~{fragments/layout :: dashboard-header-morph}"></script>
 
 <main class="container" id="content">
     <section class="dashboard-upcoming">
@@ -125,5 +124,7 @@
 <footer th:replace="~{fragments/layout :: footer}"></footer>
 <div th:insert="~{fragments/layout :: toast-container}"></div>
 <div th:insert="~{fragments/layout :: footer-scripts}"></div>
+
+<script th:replace="~{fragments/layout :: dashboard-header-morph}"></script>
 </body>
 </html>
