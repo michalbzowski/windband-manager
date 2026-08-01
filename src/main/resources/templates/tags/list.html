@@ -1,54 +1,55 @@
 <!DOCTYPE html>
-<html lang="pl" xmlns:th="http://www.thymeleaf.org">
+<html lang="pl" xmlns:th="http://www.thymeleaf.org" xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
 <head th:replace="~{fragments/layout :: head('Tagi')}"></head>
-<body>
-<nav th:replace="~{fragments/layout :: nav}"></nav>
+<body class="dashboard-page">
 <div th:replace="~{fragments/layout :: dialogs}"></div>
 
-    <main class="container" id="content">
-        <div id="tags-content">
-            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem;">
-                <h2>🏷️ Tagi</h2>
-                <button hx-get="/tags/new" hx-target="#tags-content" hx-swap="innerHTML transition:true"
-                        class="primary">+ Dodaj tag</button>
-            </div>
+<main class="container" id="content">
+    <section class="dashboard-upcoming">
+        <header th:replace="~{fragments/layout :: dashboard-header}"></header>
 
-            <div th:if="${#lists.isEmpty(instruments)}">
-                <article>
-                    <p>Brak tagów w systemu. Dodaj pierwszy!</p>
-                </article>
-            </div>
-
-            <div th:unless="${#lists.isEmpty(instruments)}">
-                <table role="grid">
-                    <thead>
-                        <tr>
-                            <th>Kolejność</th>
-                            <th>Nazwa</th>
-                            <th>Opis</th>
-                            <th>Akcje</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <tr th:each="inst : ${instruments}">
-                            <td th:text="${inst.getSortPriority()}">0</td>
-                            <td th:text="${inst.getName()}">Trąbka</td>
-                            <td th:text="${inst.getDescription()}">Instrument dęty blaszany</td>
-                            <td>
-                                <button class="outline small"
-                                        th:hx-get="@{/tags/{id}/edit(id=${inst.getId()})}"
-                                        hx-target="#tags-content" hx-swap="innerHTML transition:true">Edytuj</button>
-                                <button class="outline small secondary"
-                                        th:hx-delete="@{/api/tags/{id}(id=${inst.getId()})}"
-                                        hx-confirm="Czy na pewno chcesz usunąć ten tag?"
-                                        hx-on::after-request="if (event.detail.successful) { htmx.ajax('GET', '/tags/list', {target: '#tags-content', swap: 'innerHTML transition:true'}); } else if (event.detail.xhr && event.detail.xhr.status === 409) { showTagDeleteBlockedDialog(event.detail.xhr); }">Usuń</button>
-                            </td>
-                        </tr>
-                    </tbody>
-                </table>
-            </div>
+    <div id="tags-content">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem;">
+            <h2>🏷️ Tagi</h2>
+            <button hx-get="/tags/new" hx-target="#tags-content" hx-swap="innerHTML transition:true"
+                    class="primary">+ Dodaj tag</button>
         </div>
-    </main>
+
+        <div th:if="${#lists.isEmpty(instruments)}">
+            <article>
+                <p>Brak tagów w systemu. Dodaj pierwszy!</p>
+            </article>
+        </div>
+
+        <div th:unless="${#lists.isEmpty(instruments)}">
+            <table role="grid">
+                <thead>
+                    <tr>
+                        <th>Kolejność</th>
+                        <th>Nazwa</th>
+                        <th>Opis</th>
+                        <th>Akcje</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr th:each="inst : ${instruments}">
+                        <td th:text="${inst.getSortPriority()}">0</td>
+                        <td th:text="${inst.getName()}">Trąbka</td>
+                        <td th:text="${inst.getDescription()}">Instrument dęty blaszany</td>
+                        <td>
+                            <button class="outline small"
+                                    th:hx-get="@{/tags/{id}/edit(id=${inst.getId()})}"
+                                    hx-target="#tags-content" hx-swap="innerHTML transition:true">Edytuj</button>
+                            <button class="outline small secondary"
+                                    th:hx-delete="@{/api/tags/{id}(id=${inst.getId()})}"
+                                    hx-confirm="Czy na pewno chcesz usunąć ten tag?"
+                                    hx-on::after-request="if (event.detail.successful) { htmx.ajax('GET', '/tags/list', {target: '#tags-content', swap: 'innerHTML transition:true'}); } else if (event.detail.xhr && event.detail.xhr.status === 409) { showTagDeleteBlockedDialog(event.detail.xhr); }">Usuń</button>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
 
     <dialog id="tag-delete-blocked-modal" class="app-modal">
         <div class="app-modal-content">
@@ -71,10 +72,14 @@
             </div>
         </div>
     </dialog>
+    </section>
+</main>
 
-    <footer th:replace="~{fragments/layout :: footer}"></footer>
-    <div th:insert="~{fragments/layout :: toast-container}"></div>
-    <div th:insert="~{fragments/layout :: footer-scripts}"></div>
+<footer th:replace="~{fragments/layout :: footer}"></footer>
+<div th:insert="~{fragments/layout :: toast-container}"></div>
+<div th:insert="~{fragments/layout :: footer-scripts}"></div>
+
+<script th:replace="~{fragments/layout :: dashboard-header-morph}"></script>
 
 <script>
     function showTagDeleteBlockedDialog(xhr) {
