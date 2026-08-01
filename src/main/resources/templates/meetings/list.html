@@ -2,11 +2,13 @@
 <html lang="pl" xmlns:th="http://www.thymeleaf.org" xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
 <head th:replace="~{fragments/layout :: head('Spotkania')}"></head>
 <body class="dashboard-page">
-<header th:replace="~{fragments/layout :: dashboard-header}"></header>
 <div th:replace="~{fragments/layout :: dialogs}"></div>
 <script th:replace="~{fragments/layout :: dashboard-header-morph}"></script>
 
 <main class="container" id="content">
+    <section class="dashboard-upcoming">
+        <header th:replace="~{fragments/layout :: dashboard-header}"></header>
+
     <div id="meetings-content" th:attr="data-focus-id=${focusMeetingId},data-focus-prefix='meeting'">
         <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem;">
             <h2>🎵 Spotkania</h2>
@@ -107,6 +109,7 @@
             </table>
         </div>
     </div>
+    </section>
 </main>
 
 <footer th:replace="~{fragments/layout :: footer}"></footer>
