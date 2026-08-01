@@ -1,8 +1,8 @@
 <!DOCTYPE html>
-<html lang="pl" xmlns:th="http://www.thymeleaf.org">
+<html lang="pl" xmlns:th="http://www.thymeleaf.org" xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
 <head th:replace="~{fragments/layout :: head('Nowe spotkanie')}"></head>
 <body>
-<nav th:replace="~{fragments/layout :: nav}"></nav>
+<header th:replace="~{fragments/layout :: dashboard-header}"></header>
 <div th:replace="~{fragments/layout :: dialogs}"></div>
 
 <main class="container" id="content">

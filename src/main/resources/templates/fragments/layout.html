@@ -75,6 +75,38 @@
      tablet, desktop) — icon labels are progressively added back in
      from tablet portrait up.
      ============================================================ -->
+<!-- ============================================================
+     DASHBOARD HEADER — unified header for all pages
+     Includes: menu button, avatar, band name, date, actions bar
+     Replaces the old 2-row top-nav
+     ============================================================ -->
+<header class="dashboard-header" id="dashboardHeader" th:fragment="dashboard-header" sec:authorize="isAuthenticated()">
+    <div class="dashboard-header-top">
+        <button type="button" class="menu-btn" aria-label="Menu" onclick="openAppModal('menu-modal')">☰</button>
+        <div class="avatar" th:text="${#strings.toUpperCase(#strings.substring(#authentication.principal.wbUsername ?: 'MB', 0, 2))}">MB</div>
+    </div>
+
+    <h1 class="band-name" th:text="${activeTeamName}">Orkiestra Dęta</h1>
+
+    <div class="current-date">
+        <span class="date-dot"></span>
+        <span th:text="${#temporals.format(today, 'EEEE, d MMMM yyyy', #locale.forLanguageTag('pl'))}">Dzisiaj, 30 lipca 2026</span>
+    </div>
+
+    <!-- Actions Bar -->
+    <div class="actions-bar">
+        <span class="section-label">Nadchodzące</span>
+        <div class="quick-actions">
+            <a th:href="@{/rehearsals/new}" hx-target="#content" hx-swap="innerHTML transition:true" class="action-chip">▸ Próba</a>
+            <a th:href="@{/events/new}" hx-target="#content" hx-swap="innerHTML transition:true" class="action-chip">▸ Spotkanie</a>
+        </div>
+    </div>
+</header>
+
+<!-- ============================================================
+     LEGACY TOP-NAV — kept for backward compatibility during transition
+     Will be removed once all pages migrate to dashboard-header
+     ============================================================ -->
 <nav class="top-nav" th:fragment="nav" sec:authorize="isAuthenticated()">
     <div class="nav-row nav-row-primary">
         <ul class="nav-primary">
