@@ -34,6 +34,7 @@ public class MemberPageController {
         model.addAttribute("members", memberQueryService.getAllActiveMembers(activeTeamId));
         model.addAttribute("activeTeamId", activeTeamId);
         model.addAttribute("focusMemberId", focus);
+        model.addAttribute("today", LocalDate.now());
         return "members/list";
     }
 
@@ -43,35 +44,46 @@ public class MemberPageController {
         model.addAttribute("members", memberQueryService.getAllActiveMembers(activeTeamId));
         model.addAttribute("activeTeamId", activeTeamId);
         model.addAttribute("focusMemberId", focus);
+        model.addAttribute("today", LocalDate.now());
         return "members/list :: #members-content";
     }
 
     @GetMapping("/new")
-    public String newMemberForm(@ModelAttribute("activeTeamId") Long activeTeamId, Model model) {
+    public String newMemberForm(@ModelAttribute("activeTeamId") Long activeTeamId, Model model,
+                                jakarta.servlet.http.HttpServletRequest request) {
         if (activeTeamId == null) {
             return "redirect:/register";
         }
         model.addAttribute("member", emptyMemberDto());
         model.addAttribute("todayJoinedDate", LocalDate.now().toString());
+        model.addAttribute("today", LocalDate.now());
         model.addAttribute("tags", instrumentQueryService.findAll(activeTeamId));
         Band band = bandQueryService.getBandById(activeTeamId);
         model.addAttribute("attributeDefs", attributeQueryService.getAttributeDefsForBand(band));
         model.addAttribute("attributeValues", Map.of());
+        if ("true".equals(request.getHeader("HX-Request"))) {
+            return "members/form :: #members-content";
+        }
         return "members/form";
     }
 
     @GetMapping("/{id}/edit")
-    public String editMemberForm(@PathVariable Long id, @ModelAttribute("activeTeamId") Long activeTeamId, Model model) {
+    public String editMemberForm(@PathVariable Long id, @ModelAttribute("activeTeamId") Long activeTeamId, Model model,
+                                 jakarta.servlet.http.HttpServletRequest request) {
         if (activeTeamId == null) {
             return "redirect:/register";
         }
         MemberDto dto = memberQueryService.getMemberById(id);
         model.addAttribute("member", dto);
         model.addAttribute("tags", instrumentQueryService.findAll(activeTeamId));
+        model.addAttribute("today", LocalDate.now());
         Band band = bandQueryService.getBandById(activeTeamId);
         model.addAttribute("attributeDefs", attributeQueryService.getAttributeDefsForBand(band));
         Member member = memberQueryService.getMemberEntityById(id);
         model.addAttribute("attributeValues", attributeQueryService.getAttributeValuesForMember(member));
+        if ("true".equals(request.getHeader("HX-Request"))) {
+            return "members/form :: #members-content";
+        }
         return "members/form";
     }
 
@@ -85,6 +97,7 @@ public class MemberPageController {
         model.addAttribute("uniformItems", inventoryQueryService.getUniformItemsByMember(id, activeTeamId));
         model.addAttribute("instrumentItems", inventoryQueryService.getInstrumentItemsByMember(id, activeTeamId));
         model.addAttribute("awardItems", inventoryQueryService.getAwardItemsByMember(id, activeTeamId));
+        model.addAttribute("today", LocalDate.now());
         return "members/detail :: member-detail-content";
     }
 
