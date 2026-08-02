@@ -20,6 +20,7 @@ import java.util.Map;
 import pl.michalbzowski.windband.application.report.ReportCompiler;
 import pl.michalbzowski.windband.application.report.ReportGeneratorService;
 import pl.michalbzowski.windband.application.report.ReportMetadata;
+import pl.michalbzowski.windband.application.report.exception.ReportGenerationException;
 
 /**
  * REST API do zarządzania raportami Jasper.
@@ -68,37 +69,32 @@ public class ReportRestController {
         if (format == null) {
             format = "PDF";
         }
+        // Usuń pola techniczne formularza, które nie są parametrami raportu
+        requestBody.remove("reportKey");
+
+        if (!"PDF".equalsIgnoreCase(format)) {
+            log.info("Requested unsupported format {} for report {}", format, key);
+            response.sendError(HttpStatus.BAD_REQUEST.value(),
+                    "Nieobsługiwany format: " + format + " (dostępny: PDF)");
+            return;
+        }
 
         try {
-            byte[] reportBytes = switch (format.toUpperCase()) {
-                case "DOCX" -> {
-                    log.info("Generating DOCX: {} - NOT IMPLEMENTED", key);
-                    throw new UnsupportedOperationException("DOC export not implemented");
-                }
-                default -> {
-                    log.info("Generating PDF for report: {}", key);
-                    yield reportGeneratorService.generatePdf(key, requestBody);
-                }
-            };
+            log.info("Generating PDF for report: {}", key);
+            byte[] reportBytes = reportGeneratorService.generatePdf(key, requestBody);
 
-            // Ustaw nagłówki odpowiedzi
-            String extension = format.equals("PDF") ? "pdf" : "docx";
             response.setContentType(MediaType.APPLICATION_PDF_VALUE);
-            String filename = key + "." + extension;
+            String filename = key + ".pdf";
             response.setHeader(HttpHeaders.CONTENT_DISPOSITION,
                     "attachment; filename=\"" + filename + "\"");
             response.setStatus(HttpStatus.OK.value());
             response.getOutputStream().write(reportBytes);
             response.getOutputStream().flush();
 
-        } catch (IOException e) {
+        } catch (ReportGenerationException e) {
             log.error("Error generating report: {} format {}", key, format, e);
-            try {
-                response.sendError(HttpStatus.INTERNAL_SERVER_ERROR.value(),
-                        "Błąd generowania raportu: " + e.getMessage());
-            } catch (IOException ex) {
-                log.error("Failed to send error response", ex);
-            }
+            response.sendError(HttpStatus.INTERNAL_SERVER_ERROR.value(),
+                    "Błąd generowania raportu: " + e.getMessage());
         }
     }
 }

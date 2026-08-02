@@ -3,6 +3,7 @@ package pl.michalbzowski.windband.application.report;
 import jakarta.annotation.PostConstruct;
 import net.sf.jasperreports.engine.JRException;
 import net.sf.jasperreports.engine.JasperCompileManager;
+import net.sf.jasperreports.engine.JasperReport;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.core.io.Resource;
@@ -14,9 +15,6 @@ import javax.xml.parsers.DocumentBuilder;
 import javax.xml.parsers.DocumentBuilderFactory;
 import java.io.IOException;
 import java.io.InputStream;
-import java.io.OutputStream;
-import java.nio.file.Files;
-import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -42,6 +40,14 @@ public class ReportCompiler {
     /** Cache: reportKey -> metadata */
     private final Map<String, ReportMetadata> metadataCache = new ConcurrentHashMap<>();
 
+    /**
+     * Cache: reportKey -> skompilowany JasperReport (w pamięci).
+     * Trzymamy skompilowany raport w pamięci zamiast zapisywać plik .jasper na
+     * dysk. Dzięki temu działa poprawnie także w spakowanym fat-JAR (Railway),
+     * gdzie ścieżka target/classes/reports/ nie jest zapisywalna w runtime.
+     */
+    private final Map<String, JasperReport> compiledCache = new ConcurrentHashMap<>();
+
     public ReportCompiler(ResourceLoader resourceLoader) {
         this.resourceLoader = resourceLoader;
     }
@@ -64,9 +70,12 @@ public class ReportCompiler {
                             String.valueOf(metadata.getParameters().size()) + " params");
                 }
 
-                // Then compile to .jasper
+                // Then compile to an in-memory JasperReport (fat-JAR safe)
                 try {
-                    compileReport(reportName);
+                    JasperReport compiled = compileReport(reportName);
+                    if (compiled != null) {
+                        this.compiledCache.put(key, compiled);
+                    }
                 } catch (Exception e) {
                     log.error("Failed to compile report: {}", reportName, e);
                 }
@@ -80,10 +89,12 @@ public class ReportCompiler {
     private List<String> scanJrxmlFiles() throws IOException {
         List<String> reports = new ArrayList<>();
 
-        // Sprawdź znane raporty oraz sprawozdanie-miesieczne.jrxml
+        // Znane raporty na classpath:reports/
         String[] knownReports = {
             "sprawozdanie-miesieczne.jrxml",
-            "members.jrxml"
+            "sprawozdanie.jrxml",
+            "members.jrxml",
+            "hello.jrxml"
         };
 
         for (String reportName : knownReports) {
@@ -218,34 +229,22 @@ public class ReportCompiler {
         return "";
     }
 
-    /** Kompiluje .jrxml do pliku compiled report .jasper */
-    private void compileReport(String reportName) throws JRException, IOException {
+    /**
+     * Kompiluje .jrxml do obiektu {@link JasperReport} w pamięci.
+     * NIE zapisuje pliku .jasper na dysk — kompilacja trzymana jest w cache,
+     * co jest bezpieczne dla spakowanego fat-JAR (Railway).
+     */
+    private JasperReport compileReport(String reportName) throws JRException, IOException {
         Resource source = resourceLoader.getResource("classpath:reports/" + reportName);
         if (!source.exists()) {
             log.warn("Report source not found: classpath:reports/{}", reportName);
-            return;
+            return null;
         }
 
-        String jasperName = reportName.replace(".jrxml", ".jasper");
-        Path outputPath = Path.of("target/classes/reports", jasperName);
-
-        Path parentDir = outputPath.getParent();
-
-        if (parentDir != null) {
-            try {
-                Files.createDirectories(parentDir);
-            } catch (IOException ioEx) {
-                log.error("Failed to create output directory: {}", parentDir, ioEx);
-                throw ioEx;
-            }
-        } else {
-            log.warn("No parent directory for report output path: {}", outputPath);
-        }
-
-        try (InputStream inputStream = source.getInputStream();
-             OutputStream outputStream = Files.newOutputStream(outputPath)) {
-            JasperCompileManager.compileReportToStream(inputStream, outputStream);
-            log.info("Compiled report: {} -> {}", reportName, outputPath);
+        try (InputStream inputStream = source.getInputStream()) {
+            JasperReport compiled = JasperCompileManager.compileReport(inputStream);
+            log.info("Compiled report in-memory: {}", reportName);
+            return compiled;
         }
     }
 
@@ -262,5 +261,13 @@ public class ReportCompiler {
     /** Zwraca metadane dla danego klucza, lub null jeśli nie istnieje */
     public ReportMetadata getReportMetadata(String key) {
         return metadataCache.get(key);
+    }
+
+    /**
+     * Zwraca skompilowany raport (w pamięci) dla danego klucza,
+     * lub null jeśli raport nie został wykompilowany.
+     */
+    public JasperReport getCompiledReport(String key) {
+        return compiledCache.get(key);
     }
 }

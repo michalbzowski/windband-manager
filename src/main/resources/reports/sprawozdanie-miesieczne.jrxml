@@ -119,7 +119,7 @@ WHERE date >= CAST($P{date_from} AS DATE)::TIMESTAMP
 		<field name="payment_amount" class="java.math.BigDecimal">
 			<property name="com.jaspersoft.studio.field.name" value="payment_amount"/>
 			<property name="com.jaspersoft.studio.field.label" value="payment_amount"/>
-			<property name="com.jarsersoft.studio.field.tree.path" value="band_events"/>
+			<property name="com.jaspersoft.studio.field.tree.path" value="band_events"/>
 		</field>
 	</dataset>
 	<parameter name="band_id" forPrompting="false" class="java.lang.Integer"/>
@@ -147,8 +147,8 @@ WHERE date >= CAST($P{date_from} AS DATE)::TIMESTAMP
 	SELECT count(*) as members_older
 	FROM members
 	WHERE active = true
-	 AND band_id = $P{band_id}
-AND date_of_birth is not null and date_of_birth > NOW() - INTERVAL '60 years'
+	AND band_id = $P{band_id}
+	 AND date_of_birth is not null and date_of_birth > NOW() - INTERVAL '60 years'
 ), 
 
  (
@@ -167,7 +167,7 @@ AND date_of_birth is not null and date_of_birth > NOW() - INTERVAL '60 years'
 	</field>
 	<field name="members_younger" class="java.lang.Long">
 		<property name="com.jaspersoft.studio.field.name" value="members_younger"/>
-		<property name="com.jarsersoft.studio.field.label" value="members_younger"/>
+		<property name="com.jaspersoft.studio.field.label" value="members_younger"/>
 	</field>
 	<field name="members_older" class="java.lang.Long">
 		<property name="com.jaspersoft.studio.field.name" value="members_older"/>
@@ -181,20 +181,24 @@ AND date_of_birth is not null and date_of_birth > NOW() - INTERVAL '60 years'
 		<band height="470" splitType="Stretch">
 			<element kind="textField" uuid="79e70b75-b670-4364-908b-396decb476e9" x="0" y="0" width="555" height="150" fontName="Times New Roman" fontSize="12.0">
 				<paragraph lineSpacing="1_1_2"/>
-				<expression><![CDATA["Zakres sprawozdawczy: od " + new SimpleDateFormat("yyyy-MM-dd").format($P{date_from}) + " do " +  new SimpleDateFormat("yyyy-MM-dd").format($P{date_to]) 
+				<expression><![CDATA["Zakres sprawozdawczy: od  " + new SimpleDateFormat("yyyy-MM-dd").format($P{date_from}) + " do " +  new SimpleDateFormat("yyyy-MM-dd").format($P{date_to}) 
 + "\n\n\nNazwa zespołu " + $P{band_name}
 + "\nInstruktor: " +  $P{instructor_name}
-+ "\nLiczba osób w zespole: " + $F{members_active]
++ "\nLiczba osób w zespole: " + $F{members_active}
 + "\nLiczba dzieci i młodzieży: " + $F{members_younger}
 + "\nLiczba osób powyżej 60 roku życia: " + $F{members_older}
-+ "\nLiczba prób: " + $F{rehearsals_count]]]></expression>
++ "\nLiczba prób: " + $F{rehearsals_count}]]></expression>
 			</element>
 			<element kind="component" uuid="5f70f789-3603-48ef-862b-c5a161f250b0" x="0" y="160" width="555" height="310">
 				<component kind="table">
 					<datasetRun uuid="bc9daf0c-d8a5-4930-b114-e3a409c68a9e" subDataset="events">
 						<connectionExpression><![CDATA[$P{REPORT_CONNECTION}]]></connectionExpression>
-						
-						
+						<parameter name="date_from">
+							<expression><![CDATA[$P{date_from}]]></expression>
+						</parameter>
+						<parameter name="date_to">
+							<expression><![CDATA[$P{date_to}]]></expression>
+						</parameter>
 					</datasetRun>
 					<column kind="single" uuid="442959c2-f151-47dd-b052-dc436404eb2d" width="40">
 						<columnHeader height="30" rowSpan="1" style="Table_CH">
@@ -238,7 +242,7 @@ AND date_of_birth is not null and date_of_birth > NOW() - INTERVAL '60 years'
 						</detailCell>
 						<property name="com.jaspersoft.studio.components.table.model.column.name" value="Column3"/>
 					</column>
-					<column kind="single" uuid="9c826466-8a20-4442-b237-7b56cc157e7c" width="100">
+					<column kind="single" uuid="9c826466-8a20-4442-b237-7b56cc157e8c" width="100">
 						<columnHeader height="30" rowSpan="1" style="Table_CH">
 							<element kind="staticText" uuid="c676a092-c6bf-48a1-840b-11a3c85fc7c3" x="0" y="0" width="100" height="30" hTextAlign="Center" vTextAlign="Middle">
 								<text><![CDATA[Osiągnięcie]]></text>
@@ -264,7 +268,7 @@ AND date_of_birth is not null and date_of_birth > NOW() - INTERVAL '60 years'
 				<property name="com.jaspersoft.studio.table.style.column_header" value="Table_CH"/>
 				<property name="com.jaspersoft.studio.table.style.table_header" value="Table_TH"/>
 			</element>
-			<property name="com.jarsersoft.studio.layout" value="com.jaspersoft.studio.editor.layout.FreeLayout"/>
+			<property name="com.jaspersoft.studio.layout" value="com.jaspersoft.studio.editor.layout.FreeLayout"/>
 		</band>
 	</detail>
 </jasperReport>

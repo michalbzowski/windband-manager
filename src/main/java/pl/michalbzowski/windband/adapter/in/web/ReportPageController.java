@@ -2,20 +2,29 @@ package pl.michalbzowski.windband.adapter.in.web;
 
 import jakarta.servlet.http.HttpSession;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.oauth2.core.oidc.user.OidcUser;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import pl.michalbzowski.windband.adapter.in.security.WindbandOidcUser;
 import pl.michalbzowski.windband.application.query.report.ReportQueryService;
 import pl.michalbzowski.windband.application.query.team.TeamQueryService;
 import pl.michalbzowski.windband.application.report.ReportCompiler;
+import pl.michalbzowski.windband.application.report.ReportGeneratorService;
 import pl.michalbzowski.windband.application.report.ReportMetadata;
+import pl.michalbzowski.windband.application.report.exception.ReportGenerationException;
 
 import java.time.YearMonth;
+import java.util.HashMap;
+import java.util.Map;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 @Controller
@@ -26,6 +35,7 @@ public class ReportPageController {
     private final ReportQueryService reportQueryService;
     private final TeamQueryService teamQueryService;
     private final ReportCompiler reportCompiler; // JasperReports metadata
+    private final ReportGeneratorService reportGeneratorService;
 
     @GetMapping
     public String reportsPage(Model model) {
@@ -64,14 +74,56 @@ public class ReportPageController {
 
         model.addAttribute("report", metadata);
 
-        // Pobierz kontekst użytkownika — band ID i nazwa zespołu
+        // Kontekst zespołu użytkownika — band_id i band_name dostarczane niewidocznie.
+        // Parametry z forPrompting=false (band_id, band_name) NIE są pokazywane w UI;
+        // ich wartości pochodzą z aktywnego zespołu zalogowanego użytkownika.
         Long activeBandId = oidcUser.getActiveTeamId();
-        String activeBandName = teamQueryService.getBandName(activeBandId).orElse("Unknown Band");  // fetch from repo
+        String activeBandName = teamQueryService.getBandName(activeBandId).orElse("");
 
         model.addAttribute("activeBandId", activeBandId);
         model.addAttribute("activeBandName", activeBandName);
 
         return "reports/configure";
+    }
+
+    /**
+     * Generuje raport PDF i zwraca go jako plik do pobrania.
+     *
+     * <p>Parametry widoczne (forPrompting=true) przychodzą z formularza. Parametry
+     * kontekstu zespołu (band_id, band_name) są NADPISYWANE po stronie serwera
+     * wartościami z aktywnego zespołu zalogowanego użytkownika — nie ufamy
+     * ukrytym polom formularza, aby uniemożliwić pobranie danych innego zespołu.
+     */
+    @PostMapping("/configure/{key}/download")
+    public ResponseEntity<byte[]> downloadReport(
+            @PathVariable String key,
+            @RequestParam Map<String, String> formParams,
+            @AuthenticationPrincipal WindbandOidcUser oidcUser) {
+
+        ReportMetadata metadata = reportCompiler.getReportMetadata(key);
+        if (metadata == null) {
+            return ResponseEntity.notFound().build();
+        }
+
+        Map<String, Object> parameters = new HashMap<>(formParams);
+        parameters.remove("format");
+        parameters.remove("reportKey");
+
+        // Wymuś kontekst zespołu po stronie serwera (bezpieczeństwo wielotenantowe)
+        Long activeBandId = oidcUser.getActiveTeamId();
+        String activeBandName = teamQueryService.getBandName(activeBandId).orElse("");
+        parameters.put("band_id", activeBandId != null ? String.valueOf(activeBandId) : null);
+        parameters.put("band_name", activeBandName);
+
+        try {
+            byte[] pdf = reportGeneratorService.generatePdf(key, parameters);
+            HttpHeaders headers = new HttpHeaders();
+            headers.setContentType(MediaType.APPLICATION_PDF);
+            headers.setContentDispositionFormData("attachment", key + ".pdf");
+            return ResponseEntity.ok().headers(headers).body(pdf);
+        } catch (ReportGenerationException e) {
+            return ResponseEntity.internalServerError().build();
+        }
     }
 
 
