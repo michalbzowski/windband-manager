@@ -792,6 +792,23 @@ function bindEventDetailHandlers() {
                         if (window.Toast) Toast.success('Zaproszono ' + selected.length + (selected.length === 1 ? ' osobę' : ' osób'));
                         // Reload the detail fragment to render the new attendance rows
                         htmx.ajax('GET', '/rehearsals/' + rehearsalId, {target: '#rehearsals-content[data-rehearsal-id]', swap: 'outerHTML transition:true'});
+                        // One-time handler: highlight + scroll to all newly invited members
+                        var handler = function(evt) {
+                            if (evt.detail && evt.detail.target && evt.detail.target.id === 'rehearsals-content') {
+                                setTimeout(function() {
+                                    selected.forEach(function(mid) {
+                                        var row = document.querySelector('#rehearsals-content tbody tr[data-member-id="' + mid + '"]');
+                                        if (row) {
+                                            row.classList.add('highlight-row');
+                                            setTimeout(function() { row.classList.remove('highlight-row'); }, 3000);
+                                            row.scrollIntoView({behavior: 'smooth', block: 'center'});
+                                        }
+                                    });
+                                }, 50);
+                                document.body.removeEventListener('htmx:afterSettle', handler);
+                            }
+                        };
+                        document.body.addEventListener('htmx:afterSettle', handler);
                     }).catch(function(err) {
                         console.error('Invite selected error:', err);
                         if (window.Toast) Toast.error('Błąd podczas zapraszania');
@@ -825,6 +842,11 @@ function bindEventDetailHandlers() {
                         if (window.Toast) Toast.info('Zaznacz przynajmniej jedną grupę');
                         return;
                     }
+                    // Snapshot current member IDs to detect new ones after reload
+                    var beforeIds = new Set();
+                    document.querySelectorAll('#rehearsals-content tbody tr[data-member-id]').forEach(function(row) {
+                        beforeIds.add(parseInt(row.dataset.memberId));
+                    });
                     var csrf = getCookie('XSRF-TOKEN');
                     var promises = selected.map(function(gid) {
                         var headers = {'Content-Type': 'application/json'};
@@ -835,11 +857,35 @@ function bindEventDetailHandlers() {
                             body: JSON.stringify({rehearsalId: parseInt(rehearsalId), groupId: gid})
                         });
                     });
-                    Promise.all(promises).then(function() {
-                        if (typeof closeAppModal === 'function') closeAppModal(modal);
-                        else if (modal && modal.close) modal.close();
-                        if (window.Toast) Toast.success('Zaproszono zaznaczone grupy');
-                        htmx.ajax('GET', '/rehearsals/' + rehearsalId, {target: '#rehearsals-content[data-rehearsal-id]', swap: 'outerHTML transition:true'});
+                    Promise.all(promises).then(function(responses) {
+                        var allOk = Array.from(responses).every(function(r) { return r.ok; });
+                        if (allOk) {
+                            if (typeof closeAppModal === 'function') closeAppModal(modal);
+                            else if (modal && modal.close) modal.close();
+                            if (window.Toast) Toast.success('Zaproszono zaznaczone grupy');
+                            htmx.ajax('GET', '/rehearsals/' + rehearsalId, {target: '#rehearsals-content[data-rehearsal-id]', swap: 'outerHTML transition:true'});
+                            // After reload, highlight rows that weren't in beforeIds
+                            var handler = function(evt) {
+                                if (evt.detail && evt.detail.target && evt.detail.target.id === 'rehearsals-content') {
+                                    setTimeout(function() {
+                                        var scrolled = false;
+                                        document.querySelectorAll('#rehearsals-content tbody tr[data-member-id]').forEach(function(row) {
+                                            var mid = parseInt(row.dataset.memberId);
+                                            if (!beforeIds.has(mid)) {
+                                                row.classList.add('highlight-row');
+                                                setTimeout(function() { row.classList.remove('highlight-row'); }, 3000);
+                                                if (!scrolled) {
+                                                    row.scrollIntoView({behavior: 'smooth', block: 'center'});
+                                                    scrolled = true;
+                                                }
+                                            }
+                                        });
+                                    }, 50);
+                                    document.body.removeEventListener('htmx:afterSettle', handler);
+                                }
+                            };
+                            document.body.addEventListener('htmx:afterSettle', handler);
+                        }
                     }).catch(function(err) {
                         console.error('Invite group error:', err);
                         if (window.Toast) Toast.error('Błąd podczas zapraszania grupy');
