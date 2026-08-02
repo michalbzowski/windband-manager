@@ -21,9 +21,8 @@
                         hx-target="#content" hx-swap="innerHTML transition:true">✏️ Edytuj</button>
                 <button th:if="${member.email != null and !member.email.isEmpty() and !member.emailConsentGiven}"
                         class="primary small"
-                        th:hx-post="@{/api/members/{id}/resend-welcome(id=${member.id})}"
-                        hx-target="#content" hx-swap="innerHTML transition:true"
-                        th:title="|Wyślij ponownie prośbę o zgody na email do ${member.email}|">📧 Wyślij prośbę o zgodę</button>
+                        data-member-id="${member.id}"
+                        onclick="sendWelcomeEmail(this)">📧 Wyślij prośbę o zgodę</button>
             </div>
         </div>
 

@@ -900,6 +900,41 @@ function bindEventDetailHandlers() {
     global.initFocusHighlight = initFocusHighlight;
 
     /**
+     * Send welcome/consent email for a member.
+     * Uses fetchWithToast to show success/error notification.
+     * Then reloads the member detail fragment to update consent status.
+     */
+    function sendWelcomeEmail(btn) {
+        var memberId = btn.dataset.memberId;
+        if (!memberId) return;
+        
+        btn.disabled = true;
+        btn.textContent = 'Wysyłanie...';
+        
+        fetchWithToast('/api/members/' + memberId + '/resend-welcome', {
+            toastMessage: 'Wysłano prośbę o zgodę',
+            method: 'POST'
+        }).then(function(response) {
+            if (response.ok) {
+                // Reload the member detail page to show updated consent status
+                htmx.ajax('GET', '/members/' + memberId + '/detail', {
+                    target: '#member-detail-content', 
+                    swap: 'outerHTML transition:true'
+                });
+            } else {
+                btn.disabled = false;
+                btn.textContent = '📧 Wyślij prośbę o zgodę';
+            }
+        }).catch(function(err) {
+            console.error('Send welcome error:', err);
+            btn.disabled = false;
+            btn.textContent = '📧 Wyślij prośbę o zgodę';
+        });
+    }
+
+    global.sendWelcomeEmail = sendWelcomeEmail;
+
+    /**
      * Rehearsal form submit handler. Registered ONCE at page load using
      * event delegation on document, so it survives htmx swaps of the
      * form fragment (an inline <script> in the fragment would only run
