@@ -66,6 +66,12 @@ public class ConsentService {
             consent.deny(); // optional, as default is false
         }
         consentRepository.save(consent);
+
+        // Sync with legacy emailConsentGiven field
+        // If ANY consent is granted, set emailConsentGiven to true
+        boolean anyGranted = consentRepository.findByMember(member).stream()
+                .anyMatch(Consent::isGranted);
+        member.updateEmailConsent(anyGranted);
     }
 
     @Transactional(readOnly = true)
