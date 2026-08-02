@@ -2,6 +2,8 @@ package pl.michalbzowski.windband.adapter.in.web;
 
 import jakarta.servlet.http.HttpSession;
 import lombok.RequiredArgsConstructor;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -31,6 +33,8 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 @RequestMapping("/reports")
 @RequiredArgsConstructor
 public class ReportPageController {
+
+    private static final Logger log = LoggerFactory.getLogger(ReportPageController.class);
 
     private final ReportQueryService reportQueryService;
     private final TeamQueryService teamQueryService;
@@ -122,7 +126,13 @@ public class ReportPageController {
             headers.setContentDispositionFormData("attachment", key + ".pdf");
             return ResponseEntity.ok().headers(headers).body(pdf);
         } catch (ReportGenerationException e) {
-            return ResponseEntity.internalServerError().build();
+            log.error("Error generating report {}", key, e);
+            // Return error message in response body for debugging
+            HttpHeaders headers = new HttpHeaders();
+            headers.setContentType(MediaType.TEXT_PLAIN);
+            return ResponseEntity.internalServerError().headers(headers).body(
+                    ("Błąd generowania raportu: " + e.getMessage()).getBytes(java.nio.charset.StandardCharsets.UTF_8)
+            );
         }
     }
 
