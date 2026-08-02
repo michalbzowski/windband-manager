@@ -164,199 +164,96 @@
 <script th:replace="~{fragments/layout :: dashboard-header-morph}"></script>
 
 <script>
-    document.addEventListener('DOMContentLoaded', function() {
+    // === Quick attendance modal (existing) ===
+    // state: { members: [{id, name, status}], index, rehearsalId }
+    window._qa = null;
+
+    window.openQuickAttendance = function() {
         var container = document.getElementById('rehearsals-content');
         if (!container) return;
         var rehearsalId = container.getAttribute('data-rehearsal-id');
-
-        // === Multi-member invite modal ===
-        var openInviteBtn = document.getElementById('open-invite-modal-btn');
-        if (openInviteBtn) {
-            openInviteBtn.addEventListener('click', function() {
-                if (typeof openAppModal === 'function') {
-                    openAppModal('invite-members-modal');
-                } else {
-                    var dlg = document.getElementById('invite-members-modal');
-                    if (dlg && dlg.showModal) dlg.showModal();
-                }
-            });
+        var rows = container.querySelectorAll('tbody tr');
+        var members = [];
+        rows.forEach(function(tr) {
+            var nameCell = tr.querySelector('td');
+            var name = nameCell ? nameCell.textContent.trim() : '?';
+            var select = tr.querySelector('select.status-select');
+            var id = select ? select.getAttribute('data-member-id') : null;
+            var status = select ? select.value : 'NO_RESPONSE';
+            if (id) members.push({id: id, name: name, status: status});
+        });
+        if (!members.length) {
+            Toast.error('Brak członków do odznaczenia');
+            return;
         }
-
-        var inviteSelectedBtn = document.getElementById('invite-selected-btn');
-        if (inviteSelectedBtn) {
-            inviteSelectedBtn.addEventListener('click', function() {
-                var modal = document.getElementById('invite-members-modal');
-                var checkboxes = modal ? modal.querySelectorAll('.invite-checkbox:checked') : [];
-                var selected = [];
-                checkboxes.forEach(function(cb) { selected.push(parseInt(cb.value)); });
-                if (selected.length === 0) {
-                    if (window.Toast) Toast.info('Zaznacz przynajmniej jedną osobę');
-                    return;
-                }
-                var csrf = getCookie('XSRF-TOKEN');
-                var promises = selected.map(function(mid) {
-                    var headers = {'Content-Type': 'application/json'};
-                    if (csrf) headers['X-XSRF-TOKEN'] = csrf;
-                    return fetch('/api/rehearsals/' + rehearsalId + '/invite', {
-                        method: 'POST',
-                        headers: headers,
-                        body: JSON.stringify({rehearsalId: parseInt(rehearsalId), memberId: mid})
-                    });
-                });
-                Promise.all(promises).then(function() {
-                    if (typeof closeAppModal === 'function') closeAppModal(modal);
-                    else if (modal && modal.close) modal.close();
-                    if (window.Toast) Toast.success('Zaproszono ' + selected.length + (selected.length === 1 ? ' osobę' : ' osób'));
-                    // Reload the detail fragment to render the new attendance rows
-                    htmx.ajax('GET', '/rehearsals/' + rehearsalId, {target: '#rehearsals-content[data-rehearsal-id]', swap: 'outerHTML transition:true'});
-                }).catch(function(err) {
-                    console.error('Invite selected error:', err);
-                    if (window.Toast) Toast.error('Błąd podczas zapraszania');
-                });
-            });
+        window._qa = { members: members, index: 0, rehearsalId: rehearsalId };
+        window.quickAttendanceRender();
+        if (typeof openAppModal === 'function') {
+            openAppModal('quick-attendance-modal');
+        } else {
+            var dlg = document.getElementById('quick-attendance-modal');
+            if (dlg) dlg.setAttribute('open', '');
         }
+    };
 
-        // === Group invite modal ===
-        var openInviteGroupBtn = document.getElementById('open-invite-group-modal-btn');
-        if (openInviteGroupBtn) {
-            openInviteGroupBtn.addEventListener('click', function() {
-                if (typeof openAppModal === 'function') {
-                    openAppModal('invite-group-modal');
-                } else {
-                    var dlg = document.getElementById('invite-group-modal');
-                    if (dlg && dlg.showModal) dlg.showModal();
-                }
-            });
-        }
-
-        var inviteGroupSelectedBtn = document.getElementById('invite-group-selected-btn');
-        if (inviteGroupSelectedBtn) {
-            inviteGroupSelectedBtn.addEventListener('click', function() {
-                var modal = document.getElementById('invite-group-modal');
-                var checkboxes = modal ? modal.querySelectorAll('.invite-group-checkbox:checked') : [];
-                var selected = [];
-                checkboxes.forEach(function(cb) { selected.push(parseInt(cb.value)); });
-                if (selected.length === 0) {
-                    if (window.Toast) Toast.info('Zaznacz przynajmniej jedną grupę');
-                    return;
-                }
-                var csrf = getCookie('XSRF-TOKEN');
-                var promises = selected.map(function(gid) {
-                    var headers = {'Content-Type': 'application/json'};
-                    if (csrf) headers['X-XSRF-TOKEN'] = csrf;
-                    return fetch('/api/rehearsals/' + rehearsalId + '/invite-group', {
-                        method: 'POST',
-                        headers: headers,
-                        body: JSON.stringify({rehearsalId: parseInt(rehearsalId), groupId: gid})
-                    });
-                });
-                Promise.all(promises).then(function() {
-                    if (typeof closeAppModal === 'function') closeAppModal(modal);
-                    else if (modal && modal.close) modal.close();
-                    if (window.Toast) Toast.success('Zaproszono zaznaczone grupy');
-                    htmx.ajax('GET', '/rehearsals/' + rehearsalId, {target: '#rehearsals-content[data-rehearsal-id]', swap: 'outerHTML transition:true'});
-                }).catch(function(err) {
-                    console.error('Invite group error:', err);
-                    if (window.Toast) Toast.error('Błąd podczas zapraszania grupy');
-                });
-            });
-        }
-
-        // Attendance auto-save is wired in windband-utils.js via event delegation
-        // on document. Any .status-select inside #rehearsals-content sends its
-        // status to /api/rehearsals/{id}/attendance on the 'change' event — the
-        // page no longer needs a "Zapisz obecność" button.
-        // === Quick attendance modal (existing) ===
-        // state: { members: [{id, name, status}], index, rehearsalId }
-        window._qa = null;
-
-        window.openQuickAttendance = function() {
-            var container = document.getElementById('rehearsals-content');
-            if (!container) return;
-            var rehearsalId = container.getAttribute('data-rehearsal-id');
-            var rows = container.querySelectorAll('tbody tr');
-            var members = [];
-            rows.forEach(function(tr) {
-                var nameCell = tr.querySelector('td');
-                var name = nameCell ? nameCell.textContent.trim() : '?';
-                var select = tr.querySelector('select.status-select');
-                var id = select ? select.getAttribute('data-member-id') : null;
-                var status = select ? select.value : 'NO_RESPONSE';
-                if (id) members.push({id: id, name: name, status: status});
-            });
-            if (!members.length) {
-                Toast.error('Brak członków do odznaczenia');
-                return;
-            }
-            window._qa = { members: members, index: 0, rehearsalId: rehearsalId };
-            window.quickAttendanceRender();
-            if (typeof openAppModal === 'function') {
-                openAppModal('quick-attendance-modal');
+    window.quickAttendanceRender = function() {
+        var qa = window._qa;
+        if (!qa) return;
+        var m = qa.members[qa.index];
+        var nameEl = document.getElementById('qa-member-name');
+        var progressEl = document.getElementById('qa-progress');
+        var backEl = document.getElementById('qa-back');
+        if (nameEl) nameEl.textContent = (qa.index + 1) + '. ' + m.name;
+        if (progressEl) progressEl.textContent = (qa.index + 1) + ' / ' + qa.members.length;
+        if (backEl) backEl.disabled = (qa.index === 0);
+        document.querySelectorAll('.qa-status').forEach(function(btn) {
+            if (btn.getAttribute('data-status') === m.status) {
+                btn.classList.add('selected');
             } else {
-                var dlg = document.getElementById('quick-attendance-modal');
-                if (dlg) dlg.setAttribute('open', '');
+                btn.classList.remove('selected');
             }
-        };
+        });
+    };
 
-        window.quickAttendanceRender = function() {
-            var qa = window._qa;
-            if (!qa) return;
-            var m = qa.members[qa.index];
-            var nameEl = document.getElementById('qa-member-name');
-            var progressEl = document.getElementById('qa-progress');
-            var backEl = document.getElementById('qa-back');
-            if (nameEl) nameEl.textContent = (qa.index + 1) + '. ' + m.name;
-            if (progressEl) progressEl.textContent = (qa.index + 1) + ' / ' + qa.members.length;
-            if (backEl) backEl.disabled = (qa.index === 0);
-            document.querySelectorAll('.qa-status').forEach(function(btn) {
-                if (btn.getAttribute('data-status') === m.status) {
-                    btn.classList.add('selected');
-                } else {
-                    btn.classList.remove('selected');
+    window.quickAttendanceSelect = function(status) {
+        var qa = window._qa;
+        if (!qa) return;
+        var m = qa.members[qa.index];
+        fetchWithToast('/api/rehearsals/' + qa.rehearsalId + '/attendance', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({rehearsalId: qa.rehearsalId, memberId: parseInt(m.id), status: status}),
+            toastMessage: 'Zapisano obecność',
+            showSuccessToast: false
+        }).then(function(resp) {
+            if (!resp.ok) throw new Error('HTTP ' + resp.status);
+            qa.members[qa.index].status = status;
+            var sel = document.querySelector('select.status-select[data-member-id="' + m.id + '"]');
+            if (sel) sel.value = status;
+            if (qa.index < qa.members.length - 1) {
+                qa.index++;
+                window.quickAttendanceRender();
+            } else {
+                Toast.success('Zapisano obecność');
+                var dlg = document.getElementById('quick-attendance-modal');
+                if (typeof closeAppModal === 'function') {
+                    closeAppModal(dlg);
+                } else if (dlg) {
+                    dlg.removeAttribute('open');
                 }
-            });
-        };
+                htmx.ajax('GET', '/rehearsals/' + qa.rehearsalId, {target: '#rehearsals-content', swap: 'innerHTML transition:true'});
+            }
+        }).catch(function(err) {
+            Toast.error('Błąd zapisu: ' + (err && err.message ? err.message : 'spróbuj ponownie'));
+        });
+    };
 
-        window.quickAttendanceSelect = function(status) {
-            var qa = window._qa;
-            if (!qa) return;
-            var m = qa.members[qa.index];
-            fetchWithToast('/api/rehearsals/' + qa.rehearsalId + '/attendance', {
-                method: 'POST',
-                headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({rehearsalId: qa.rehearsalId, memberId: parseInt(m.id), status: status}),
-                toastMessage: 'Zapisano obecność',
-                showSuccessToast: false
-            }).then(function(resp) {
-                if (!resp.ok) throw new Error('HTTP ' + resp.status);
-                qa.members[qa.index].status = status;
-                var sel = document.querySelector('select.status-select[data-member-id="' + m.id + '"]');
-                if (sel) sel.value = status;
-                if (qa.index < qa.members.length - 1) {
-                    qa.index++;
-                    window.quickAttendanceRender();
-                } else {
-                    Toast.success('Zapisano obecność');
-                    var dlg = document.getElementById('quick-attendance-modal');
-                    if (typeof closeAppModal === 'function') {
-                        closeAppModal(dlg);
-                    } else if (dlg) {
-                        dlg.removeAttribute('open');
-                    }
-                    htmx.ajax('GET', '/rehearsals/' + qa.rehearsalId, {target: '#rehearsals-content', swap: 'innerHTML transition:true'});
-                }
-            }).catch(function(err) {
-                Toast.error('Błąd zapisu: ' + (err && err.message ? err.message : 'spróbuj ponownie'));
-            });
-        };
-
-        window.quickAttendanceBack = function() {
-            var qa = window._qa;
-            if (!qa || qa.index === 0) return;
-            qa.index--;
-            window.quickAttendanceRender();
-        };
-    });
+    window.quickAttendanceBack = function() {
+        var qa = window._qa;
+        if (!qa || qa.index === 0) return;
+        qa.index--;
+        window.quickAttendanceRender();
+    };
 </script>
 </body>
 </html>

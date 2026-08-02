@@ -402,6 +402,15 @@
     document.addEventListener('DOMContentLoaded', bindGroupDetailIfPresent);
     document.addEventListener('htmx:afterSwap', bindGroupDetailIfPresent);
 
+    // Re-bind rehearsal-detail page handlers after every HTMX swap (and on initial
+    // load) so they survive HTMX navigation to rehearsal details and the in-page
+    // reloads the detail page triggers after each action (e.g., after quick attendance).
+    function bindRehearsalDetailIfPresent() {
+        if (window.bindRehearsalDetailHandlers) window.bindRehearsalDetailHandlers();
+    }
+    document.addEventListener('DOMContentLoaded', bindRehearsalDetailIfPresent);
+    document.addEventListener('htmx:afterSwap', bindRehearsalDetailIfPresent);
+
     // Re-run list focus/highlight after every HTMX swap (and on initial load)
     // so newly created/edited members/events/rehearsals scroll into view and
     // pulse green. Mirrors the event-detail binding above.

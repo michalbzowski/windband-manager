@@ -727,10 +727,130 @@ function bindEventDetailHandlers() {
                 });
             });
         }
-    }
+        }
 
-    global.bindEventDetailHandlers = bindEventDetailHandlers;
+        /**
+         * Bind rehearsal-detail page handlers (invite member/group, quick attendance).
+         * Called on DOMContentLoaded AND on every htmx:afterSwap so handlers survive
+         * HTMX navigation to rehearsal details and the in-page reloads the detail
+         * page triggers after each action (e.g., after quick attendance completes).
+         */
+        function bindRehearsalDetailHandlers() {
+            // Initialize from DOM attributes (works after HTMX swap)
+            var container = document.querySelector('#rehearsals-content[data-rehearsal-id]');
+            if (!container) return;
+    
+            // For innerHTML swaps, the container element persists but content changes.
+            // We need to re-bind handlers every time because buttons/modals are recreated.
+            // Use a timestamp-based check to avoid double-binding on the same swap cycle.
+            var now = Date.now();
+            if (container.dataset.detailBoundAt && (now - parseInt(container.dataset.detailBoundAt)) < 100) return;
+            container.dataset.detailBoundAt = now.toString();
+
+            var rehearsalId = container.dataset.rehearsalId;
+            console.log("Rehearsal detail script loaded, rehearsalId:", rehearsalId);
+
+            // Open the multi-member invite modal
+            var openInviteBtn = document.getElementById('open-invite-modal-btn');
+            if (openInviteBtn) {
+                openInviteBtn.addEventListener('click', function() {
+                    if (typeof openAppModal === 'function') {
+                        openAppModal('invite-members-modal');
+                    } else {
+                        var fallbackDlg = document.getElementById('invite-members-modal');
+                        if (fallbackDlg && fallbackDlg.showModal) fallbackDlg.showModal();
+                    }
+                });
+            }
+
+            // Invite all checked members from the modal
+            var inviteSelectedBtn = document.getElementById('invite-selected-btn');
+            if (inviteSelectedBtn) {
+                inviteSelectedBtn.addEventListener('click', function() {
+                    var modal = document.getElementById('invite-members-modal');
+                    var checkboxes = modal ? modal.querySelectorAll('.invite-checkbox:checked') : [];
+                    var selected = [];
+                    checkboxes.forEach(function(cb) { selected.push(parseInt(cb.value)); });
+                    console.log('Invite selected clicked, count=' + selected.length + ', rehearsalId=' + rehearsalId);
+                    if (selected.length === 0) {
+                        if (window.Toast) Toast.info('Zaznacz przynajmniej jedną osobę');
+                        return;
+                    }
+                    var csrf = getCookie('XSRF-TOKEN');
+                    var promises = selected.map(function(mid) {
+                        var headers = {'Content-Type': 'application/json'};
+                        if (csrf) headers['X-XSRF-TOKEN'] = csrf;
+                        return fetch('/api/rehearsals/' + rehearsalId + '/invite', {
+                            method: 'POST',
+                            headers: headers,
+                            body: JSON.stringify({rehearsalId: parseInt(rehearsalId), memberId: mid})
+                        });
+                    });
+                    Promise.all(promises).then(function() {
+                        if (typeof closeAppModal === 'function') closeAppModal(modal);
+                        else if (modal && modal.close) modal.close();
+                        if (window.Toast) Toast.success('Zaproszono ' + selected.length + (selected.length === 1 ? ' osobę' : ' osób'));
+                        // Reload the detail fragment to render the new attendance rows
+                        htmx.ajax('GET', '/rehearsals/' + rehearsalId, {target: '#rehearsals-content[data-rehearsal-id]', swap: 'outerHTML transition:true'});
+                    }).catch(function(err) {
+                        console.error('Invite selected error:', err);
+                        if (window.Toast) Toast.error('Błąd podczas zapraszania');
+                    });
+                });
+            }
+
+            // Open the group invite modal
+            var openInviteGroupBtn = document.getElementById('open-invite-group-modal-btn');
+            if (openInviteGroupBtn) {
+                openInviteGroupBtn.addEventListener('click', function() {
+                    if (typeof openAppModal === 'function') {
+                        openAppModal('invite-group-modal');
+                    } else {
+                        var fallbackDlg = document.getElementById('invite-group-modal');
+                        if (fallbackDlg && fallbackDlg.showModal) fallbackDlg.showModal();
+                    }
+                });
+            }
+
+            // Invite all checked groups from the modal
+            var inviteGroupSelectedBtn = document.getElementById('invite-group-selected-btn');
+            if (inviteGroupSelectedBtn) {
+                inviteGroupSelectedBtn.addEventListener('click', function() {
+                    var modal = document.getElementById('invite-group-modal');
+                    var checkboxes = modal ? modal.querySelectorAll('.invite-group-checkbox:checked') : [];
+                    var selected = [];
+                    checkboxes.forEach(function(cb) { selected.push(parseInt(cb.value)); });
+                    console.log('Invite group selected clicked, count=' + selected.length + ', rehearsalId=' + rehearsalId);
+                    if (selected.length === 0) {
+                        if (window.Toast) Toast.info('Zaznacz przynajmniej jedną grupę');
+                        return;
+                    }
+                    var csrf = getCookie('XSRF-TOKEN');
+                    var promises = selected.map(function(gid) {
+                        var headers = {'Content-Type': 'application/json'};
+                        if (csrf) headers['X-XSRF-TOKEN'] = csrf;
+                        return fetch('/api/rehearsals/' + rehearsalId + '/invite-group', {
+                            method: 'POST',
+                            headers: headers,
+                            body: JSON.stringify({rehearsalId: parseInt(rehearsalId), groupId: gid})
+                        });
+                    });
+                    Promise.all(promises).then(function() {
+                        if (typeof closeAppModal === 'function') closeAppModal(modal);
+                        else if (modal && modal.close) modal.close();
+                        if (window.Toast) Toast.success('Zaproszono zaznaczone grupy');
+                        htmx.ajax('GET', '/rehearsals/' + rehearsalId, {target: '#rehearsals-content[data-rehearsal-id]', swap: 'outerHTML transition:true'});
+                    }).catch(function(err) {
+                        console.error('Invite group error:', err);
+                        if (window.Toast) Toast.error('Błąd podczas zapraszania grupy');
+                    });
+                });
+            }
+        }
+
+        global.bindEventDetailHandlers = bindEventDetailHandlers;
     global.bindGroupDetailHandlers = bindGroupDetailHandlers;
+    global.bindRehearsalDetailHandlers = bindRehearsalDetailHandlers;
     global.initFocusHighlight = initFocusHighlight;
 
     /**
