@@ -14,6 +14,7 @@ import pl.michalbzowski.windband.application.query.member.MemberQueryService;
 import pl.michalbzowski.windband.domain.band.Band;
 import pl.michalbzowski.windband.domain.member.Group;
 
+import java.time.LocalDate;
 import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -31,17 +32,20 @@ public class GroupPageController {
     @GetMapping
     public String listPage(@ModelAttribute("activeTeamId") Long activeTeamId, Model model) {
         model.addAttribute("groups", groupQueryService.getAllGroups(activeTeamId));
+        model.addAttribute("today", LocalDate.now());
         return "groups/list";
     }
 
     @GetMapping("/list")
     public String listFragment(@ModelAttribute("activeTeamId") Long activeTeamId, Model model) {
         model.addAttribute("groups", groupQueryService.getAllGroups(activeTeamId));
+        model.addAttribute("today", LocalDate.now());
         return "groups/list :: #groups-content";
     }
 
     @GetMapping("/new")
-    public String newGroupForm() {
+    public String newGroupForm(Model model) {
+        model.addAttribute("today", LocalDate.now());
         return "groups/form";
     }
 

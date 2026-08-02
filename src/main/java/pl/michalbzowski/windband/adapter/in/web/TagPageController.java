@@ -8,6 +8,7 @@ import pl.michalbzowski.windband.application.command.member.InstrumentCommandSer
 import pl.michalbzowski.windband.application.query.instrument.InstrumentQueryService;
 import pl.michalbzowski.windband.domain.member.Instrument;
 
+import java.time.LocalDate;
 import java.util.List;
 
 @Controller
@@ -22,6 +23,7 @@ public class TagPageController {
     public String listPage(@ModelAttribute("activeTeamId") Long activeTeamId, Model model) {
         List<Instrument> instruments = instrumentQueryService.findAll(activeTeamId);
         model.addAttribute("instruments", instruments);
+        model.addAttribute("today", LocalDate.now());
         return "tags/list";
     }
 
@@ -29,12 +31,14 @@ public class TagPageController {
     public String listFragment(@ModelAttribute("activeTeamId") Long activeTeamId, Model model) {
         List<Instrument> instruments = instrumentQueryService.findAll(activeTeamId);
         model.addAttribute("instruments", instruments);
+        model.addAttribute("today", LocalDate.now());
         return "tags/list :: #tags-content";
     }
 
     @GetMapping("/new")
     public String newInstrumentForm(Model model) {
         model.addAttribute("instrument", new InstrumentForm(null, "", "", 0));
+        model.addAttribute("today", LocalDate.now());
         return "tags/form";
     }
 
@@ -42,6 +46,7 @@ public class TagPageController {
     public String editInstrumentForm(@PathVariable Long id, @ModelAttribute("activeTeamId") Long activeTeamId, Model model) {
         Instrument instrument = instrumentCommandService.getInstrumentById(id, activeTeamId);
         model.addAttribute("instrument", new InstrumentForm(instrument.getId(), instrument.getName(), instrument.getDescription(), instrument.getSortPriority()));
+        model.addAttribute("today", LocalDate.now());
         return "tags/form";
     }
 

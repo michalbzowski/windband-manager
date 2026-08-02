@@ -23,6 +23,7 @@ import pl.michalbzowski.windband.domain.inventory.InstrumentItem;
 import pl.michalbzowski.windband.domain.inventory.OrderStatus;
 import pl.michalbzowski.windband.domain.inventory.UniformItem;
 
+import java.time.LocalDate;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -59,6 +60,7 @@ public class InventoryPageController {
             model.addAttribute("orders", List.of());
             model.addAttribute("members", List.of());
             model.addAttribute("orderStatuses", OrderStatus.values());
+            model.addAttribute("today", LocalDate.now());
             return "inventory/list";
         }
 
@@ -83,6 +85,8 @@ public class InventoryPageController {
         for (UniformItem item : uniformItemsEntities) {
             uniformAttrValues.put(item.getId(), inventoryAttributeQueryService.getUniformAttributeValues(item));
         }
+
+        model.addAttribute("today", LocalDate.now());
 
         Map<Long, Map<Long, String>> instrumentAttrValues = new HashMap<>();
         for (InstrumentItem item : instrumentItemsEntities) {
@@ -142,6 +146,7 @@ public class InventoryPageController {
         model.addAttribute("orders", inventoryQueryService.getAllOrders(activeTeamId));
         model.addAttribute("members", memberQueryService.getAllActiveMembers(activeTeamId));
         model.addAttribute("orderStatuses", OrderStatus.values());
+        model.addAttribute("today", LocalDate.now());
         return "inventory/list :: #orders-content";
     }
 
@@ -157,6 +162,7 @@ public class InventoryPageController {
             model.addAttribute("uniformAttributeDefs", List.of());
             model.addAttribute("uniformAttributeValues", Map.of());
             model.addAttribute("members", List.of());
+            model.addAttribute("today", LocalDate.now());
             return "inventory/list :: #uniforms-content";
         }
 
@@ -172,6 +178,7 @@ public class InventoryPageController {
         model.addAttribute("uniformAttributeDefs", uniformDefs);
         model.addAttribute("uniformAttributeValues", uniformAttrValues);
         model.addAttribute("members", memberQueryService.getAllActiveMembers(teamId));
+        model.addAttribute("today", LocalDate.now());
         return "inventory/list :: #uniforms-content";
     }
 
@@ -185,6 +192,7 @@ public class InventoryPageController {
             model.addAttribute("instrumentAttributeDefs", List.of());
             model.addAttribute("instrumentAttributeValues", Map.of());
             model.addAttribute("members", List.of());
+            model.addAttribute("today", LocalDate.now());
             return "inventory/list :: #instruments-content";
         }
 
@@ -200,6 +208,7 @@ public class InventoryPageController {
         model.addAttribute("instrumentAttributeDefs", instrumentDefs);
         model.addAttribute("instrumentAttributeValues", instrumentAttrValues);
         model.addAttribute("members", memberQueryService.getAllActiveMembers(teamId));
+        model.addAttribute("today", LocalDate.now());
         return "inventory/list :: #instruments-content";
     }
 
@@ -213,6 +222,7 @@ public class InventoryPageController {
             model.addAttribute("awardAttributeDefs", List.of());
             model.addAttribute("awardAttributeValues", Map.of());
             model.addAttribute("members", List.of());
+            model.addAttribute("today", LocalDate.now());
             return "inventory/list :: #awards-content";
         }
 
@@ -228,6 +238,7 @@ public class InventoryPageController {
         model.addAttribute("awardAttributeDefs", awardDefs);
         model.addAttribute("awardAttributeValues", awardAttrValues);
         model.addAttribute("members", memberQueryService.getAllActiveMembers(teamId));
+        model.addAttribute("today", LocalDate.now());
         return "inventory/list :: #awards-content";
     }
 
