@@ -1,11 +1,13 @@
 <!DOCTYPE html>
-<html lang="pl" xmlns:th="http://www.thymeleaf.org">
+<html lang="pl" xmlns:th="http://www.thymeleaf.org" xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
 <head th:replace="~{fragments/layout :: head('Konfiguruj Sprawozdanie')}"></head>
-<body>
-<nav th:replace="~{fragments/layout :: nav}"></nav>
+<body class="dashboard-page">
 <div th:replace="~{fragments/layout :: dialogs}"></div>
 
 <main class="container" id="content">
+    <section class="dashboard-upcoming">
+        <header th:replace="~{fragments/layout :: dashboard-header}"></header>
+
     <div id="reports-content">
         <header class="reports-header">
             <h2>⚙️ Skonfiguruj Sprawozdanie Zespołu</h2>
@@ -71,11 +73,14 @@
             <div id="error-message" class="alert alert-error" style="display: none;"></div>
         </article>
     </div>
+    </section>
 </main>
 
 <footer th:replace="~{fragments/layout :: footer}"></footer>
 <div th:insert="~{fragments/layout :: toast-container}"></div>
 <div th:insert="~{fragments/layout :: footer-scripts}"></div>
+
+<script th:replace="~{fragments/layout :: dashboard-header-morph}"></script>
 
 <script>
 document.addEventListener('DOMContentLoaded', function() {
@@ -127,7 +132,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 periodMonth: parseInt(formData.get('periodMonth')),
                 format: 'PDF'
             };
-
+            
             const response = await fetch('/api/reports/pdf', {
                 method: 'POST',
                 headers: {
@@ -135,7 +140,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 },
                 body: JSON.stringify(requestBody)
             });
-
+            
             if (!response.ok) {
                 if (response.status === 503) {
                     throw new Error('Usługa generowania raportów jest chwilowo niedostępna. Spróbuj ponownie za chwilę.');
@@ -147,19 +152,19 @@ document.addEventListener('DOMContentLoaded', function() {
                     throw new Error(`Błąd serwera podczas generowania raportu: ${response.statusText}`);
                 }
             }
-
+            
             // Download the PDF file
             const blob = await response.blob();
             const dispositionHeader = response.headers.get('Content-Disposition');
             
             let filename = 'sprawozdanie.pdf';
             if (dispositionHeader && dispositionHeader.indexOf('attachment') !== -1) {
-                const filenameMatch = /filename[^;=\n]*=((['"]).*?\2|[^;\n]*)/.exec(dispositionHeader);
+                const filenameMatch = /filename[^;=\n]*=((['\"]).*?\2|[^;\n]*)/.exec(dispositionHeader);
                 if (filenameMatch && filenameMatch[1]) {
                     filename = filenameMatch[1].replace(/['"]/g, '');
                 }
             }
-
+            
             // Create download link and trigger it
             const url = window.URL.createObjectURL(blob);
             const a = document.createElement('a');
@@ -171,7 +176,7 @@ document.addEventListener('DOMContentLoaded', function() {
             // Cleanup
             window.URL.revokeObjectURL(url);
             document.body.removeChild(a);
-
+            
         } catch (error) {
             errorMessage.textContent = error.message || 'Wystąpił błąd podczas generowania raportu.';
             errorMessage.style.display = 'block';
@@ -186,8 +191,17 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     });
 });
-
 </script>
+</section>
+</main>
+
+<footer th:replace="~{fragments/layout :: footer}"></footer>
+<div th:insert="~{fragments/layout :: toast-container}"></div>
+<div th:insert="~{fragments/layout :: footer-scripts}"></div>
+
+<script th:replace="~{fragments/layout :: dashboard-header-morph}"></script>
+</body>
+</html>
 
 <style>
 .reports-header {
@@ -354,7 +368,4 @@ document.addEventListener('DOMContentLoaded', function() {
         justify-content: center;
     }
 }
-
 </style>
-
-</html>

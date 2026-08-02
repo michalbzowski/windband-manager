@@ -1,1 +1,52 @@
-<!DOCTYPE html><html lang="pl" xmlns:th="http://www.thymeleaf.org"><head th:replace="~{fragments/layout :: head('Raport Zespołu')}\"></head>
+<!DOCTYPE html>
+<html lang="pl" xmlns:th="http://www.thymeleaf.org" xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
+<head th:replace="~{fragments/layout :: head('Raport Zespołu')}"></head>
+<body class="dashboard-page">
+<div th:replace="~{fragments/layout :: dialogs}"></div>
+
+<main class="container" id="content">
+    <section class="dashboard-upcoming">
+        <header th:replace="~{fragments/layout :: dashboard-header}"></header>
+
+    <div id="reports-content">
+        <header class="reports-header">
+            <h2>📊 Raport Zespołu</h2>
+            <p class="reports-subtitle">Generuj raport PDF członków zespołu</p>
+        </header>
+
+        <article class="report-config-card">
+            <p class="report-description">
+                Generuj raport PDF dla członków zespołu korzystając z JasperReports. Raport zawiera:<br/>
+                - Listę wszystkich członków<br/>
+                - Dane kontaktowe<br/>
+                - Przydzielone instrumenty<br/>
+                - Status aktywności
+            </p>
+
+            <div style="margin: 2rem 0; padding: 1.5rem; background-color: #f3f4f6; border-radius: 0.5rem;">
+                <h3>Jako użytkownik</h3>
+                <ul>
+                    <li>Kliknij przycisk poniżej aby pobrać raport PDF</li>
+                    <li>Raport zostanie pobrany bezpośrednio do Twojej przeglądarki</li>
+                    <li>Powinno być dostępne dla zalogowanego użytkownika</li>
+                </ul>
+            </div>
+
+            <!-- Main Generate Button -->
+            <a th:href="@{/reports/jasper/members-pdf}" class="btn-primary" style="display: inline-block; margin-top: 1rem;">📄 Generuj PDF raport członków</a>
+
+            <hr style="margin: 2rem 0;"/>
+
+            <p><small>Note: Ten raport używa JasperReports version 7.0.5 dla generowania dokumentów w formacie PDF.</small></p>
+        </article>
+    </div>
+    </section>
+</main>
+
+<footer th:replace="~{fragments/layout :: footer}"></footer>
+<div th:insert="~{fragments/layout :: toast-container}"></div>
+<div th:insert="~{fragments/layout :: footer-scripts}"></div>
+
+<script th:replace="~{fragments/layout :: dashboard-header-morph}"></script>
+</body>
+</html>

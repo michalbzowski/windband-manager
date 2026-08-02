@@ -1,13 +1,15 @@
 <!DOCTYPE html>
-<html lang="pl" xmlns:th="http://www.thymeleaf.org">
+<html lang="pl" xmlns:th="http://www.thymeleaf.org" xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
 <head th:replace="~{fragments/layout :: head(${group.name})}">
     <title>Grupa</title>
 </head>
-<body>
-<nav th:replace="~{fragments/layout :: nav}"></nav>
+<body class="dashboard-page">
 <div th:replace="~{fragments/layout :: dialogs}"></div>
 
 <main class="container" id="content">
+    <section class="dashboard-upcoming">
+        <header th:replace="~{fragments/layout :: dashboard-header}"></header>
+
     <div id="groups-content" th:data-group-id="${group.id}" th:fragment="group-detail-content">
         <h2>🎼 <span th:text="${group.name}">Sekcja dęta</span></h2>
 
@@ -101,10 +103,13 @@
             </div>
         </dialog>
     </div>
+    </section>
 </main>
 
 <footer th:replace="~{fragments/layout :: footer}"></footer>
 <div th:insert="~{fragments/layout :: toast-container}"></div>
 <div th:insert="~{fragments/layout :: footer-scripts}"></div>
+
+<script th:replace="~{fragments/layout :: dashboard-header-morph}"></script>
 </body>
 </html>
