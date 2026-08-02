@@ -23,7 +23,7 @@
                         class="primary small"
                         th:hx-post="@{/api/members/{id}/resend-welcome(id=${member.id})}"
                         hx-target="#content" hx-swap="innerHTML transition:true"
-                        th:title="Wyślij ponownie prośbę o zgody na email do ${member.email}">📧 Wyślij prośbę o zgodę</button>
+                        th:title="|Wyślij ponownie prośbę o zgody na email do ${member.email}|">📧 Wyślij prośbę o zgodę</button>
             </div>
         </div>
 
