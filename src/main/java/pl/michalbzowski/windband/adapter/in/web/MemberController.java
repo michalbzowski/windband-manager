@@ -16,6 +16,7 @@ import pl.michalbzowski.windband.application.command.member.UpdateMemberCommand;
 import pl.michalbzowski.windband.application.dto.MemberDto;
 import pl.michalbzowski.windband.application.query.member.MemberQueryService;
 import pl.michalbzowski.windband.application.query.team.TeamQueryService;
+import pl.michalbzowski.windband.application.security.CurrentUser;
 
 import java.util.List;
 
@@ -79,6 +80,15 @@ public class MemberController {
     public ResponseEntity<Void> deactivateMember(@PathVariable Long id) {
         commandService.deactivateMember(id);
         return ResponseEntity.noContent().build();
+    }
+
+    @PostMapping("/{id}/resend-welcome")
+    public ResponseEntity<Void> resendWelcomeEmail(@PathVariable Long id,
+                                                    @AuthenticationPrincipal OidcUser oidcUser,
+                                                    HttpSession session) {
+        CurrentUser currentUser = (oidcUser instanceof WindbandOidcUser wu) ? wu : null;
+        commandService.resendWelcomeEmail(id, currentUser);
+        return ResponseEntity.ok().build();
     }
 
     private Long resolveActiveTeamId(OidcUser oidcUser, HttpSession session) {

@@ -154,4 +154,16 @@ public class MemberCommandService {
         memberRepository.save(member);
         eventPublisher.publishEvent(new MemberActivatedEvent(member.getId(), member.getBand().getId()));
     }
+
+    /**
+     * Resends the welcome/consent email to a member.
+     * This is useful when a member hasn't clicked the consent link yet.
+     */
+    public void resendWelcomeEmail(Long memberId, CurrentUser currentUser) {
+        Member member = memberRepository.findById(memberId)
+                .orElseThrow(() -> new MemberNotFoundException(memberId));
+
+        String teamName = member.getBand() != null ? member.getBand().getName() : null;
+        memberWelcomeService.sendWelcomeIfNeeded(member, teamName, currentUser);
+    }
 }

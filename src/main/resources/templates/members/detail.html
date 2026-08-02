@@ -19,6 +19,11 @@
                 <button class="outline small"
                         th:hx-get="@{/members/{id}/edit(id=${member.id})}"
                         hx-target="#content" hx-swap="innerHTML transition:true">✏️ Edytuj</button>
+                <button th:if="${member.email != null and !member.email.isEmpty() and !member.emailConsentGiven}"
+                        class="primary small"
+                        th:hx-post="@{/api/members/{id}/resend-welcome(id=${member.id})}"
+                        hx-target="#content" hx-swap="innerHTML transition:true"
+                        th:title="Wyślij ponownie prośbę o zgody na email do ${member.email}">📧 Wyślij prośbę o zgodę</button>
             </div>
         </div>
 
@@ -51,6 +56,13 @@
                 <div>
                     <small style="color:var(--pico-muted-color);">Telefon</small>
                     <p style="margin:0;" th:text="${member.phone} ?: '-'">123456789</p>
+                </div>
+                <div>
+                    <small style="color:var(--pico-muted-color);">Zgoda na informacje email</small>
+                    <p style="margin:0;">
+                        <span th:if="${member.emailConsentGiven}" style="color:#2fb344;">✅ Wyraził zgodę</span>
+                        <span th:unless="${member.emailConsentGiven}" style="color:#dc3545;">❌ Brak zgody</span>
+                    </p>
                 </div>
                 <div>
                     <small style="color:var(--pico-muted-color);">Status</small>
