@@ -153,14 +153,16 @@
             <table th:unless="${#lists.isEmpty(awardItems)}" role="grid">
                 <thead>
                     <tr>
-                        <th>Nazwa</th>
+                        <th th:each="attr : ${awardAttributeDefs}" th:if="${attr.displayInList}" th:text="${attr.name}">Atrybut</th>
                         <th>Opis</th>
                         <th>Data przyznania</th>
                     </tr>
                 </thead>
                 <tbody>
                     <tr th:each="item : ${awardItems}">
-                        <td th:text="${item.name}">Odznaka</td>
+                        <td th:each="attr : ${awardAttributeDefs}" th:if="${attr.displayInList}" th:with="val=${awardAttributeValues?.get(item.id)?.get(attr.id)}">
+                            <span th:text="${val != null ? val : '—'}" style="color:#999;">—</span>
+                        </td>
                         <td th:text="${item.description} ?: '-'">Odznaka honorowa</td>
                         <td th:text="${item.dateAwarded} ? ${#temporals.format(item.dateAwarded, 'dd-MM-yyyy')} : '-'">01-01-2024</td>
                     </tr>

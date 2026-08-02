@@ -20,9 +20,6 @@ public class AwardItem {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(nullable = false)
-    private String name;
-
     private String description;
 
     @ManyToOne(fetch = FetchType.LAZY)
@@ -39,13 +36,12 @@ public class AwardItem {
     @Column(name = "order_number")
     private String orderNumber;
 
-    private AwardItem(String name, Band band) {
-        this.name = Objects.requireNonNull(name, "name required");
+    protected AwardItem(Band band) {
         this.band = Objects.requireNonNull(band, "band required");
     }
 
-    public static AwardItem create(String name, Band band) {
-        return new AwardItem(name, band);
+    public static AwardItem create(Band band) {
+        return new AwardItem(band);
     }
 
     public void assignTo(Member member) {
@@ -57,7 +53,7 @@ public class AwardItem {
     }
 
     public void updateDetails(String name, String description) {
-        this.name = Objects.requireNonNull(name);
+        // name parameter kept for backward compatibility but ignored
         this.description = description;
     }
 

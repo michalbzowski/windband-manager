@@ -192,7 +192,7 @@ public class InventoryController {
     @PostMapping("/awards")
     public ResponseEntity<?> addAwardItem(@RequestBody AddAwardRequest request) {
         var item = commandService.addAwardItem(
-                request.getTeamId(), request.getName(), request.getDescription(),
+                request.getTeamId(), request.getDescription(),
                 request.getMemberId(), request.getAttributes());
         return ResponseEntity.status(HttpStatus.CREATED).body(item);
     }
@@ -286,7 +286,6 @@ public class InventoryController {
     @Data
     public static class AddAwardRequest {
         private Long teamId;
-        private String name;
         private String description;
         private Long memberId;
         private Map<String, String> attributes;

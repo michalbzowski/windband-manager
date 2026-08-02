@@ -9,13 +9,16 @@ import pl.michalbzowski.windband.application.query.band.BandQueryService;
 import pl.michalbzowski.windband.application.query.band.MemberAttributeQueryService;
 import pl.michalbzowski.windband.application.query.instrument.InstrumentQueryService;
 import pl.michalbzowski.windband.application.query.inventory.InventoryQueryService;
+import pl.michalbzowski.windband.application.query.inventory.InventoryAttributeQueryService;
 import pl.michalbzowski.windband.application.query.member.MemberQueryService;
 import pl.michalbzowski.windband.domain.band.Band;
+import pl.michalbzowski.windband.domain.inventory.AwardItem;
 import pl.michalbzowski.windband.domain.member.Member;
 
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Map;
+import java.util.HashMap;
 
 @Controller
 @RequestMapping("/members")
@@ -27,6 +30,7 @@ public class MemberPageController {
     private final BandQueryService bandQueryService;
     private final MemberAttributeQueryService attributeQueryService;
     private final InventoryQueryService inventoryQueryService;
+    private final InventoryAttributeQueryService inventoryAttributeQueryService;
 
     @GetMapping
     public String listPage(@ModelAttribute("activeTeamId") Long activeTeamId, Model model,
@@ -97,6 +101,17 @@ public class MemberPageController {
         model.addAttribute("uniformItems", inventoryQueryService.getUniformItemsByMember(id, activeTeamId));
         model.addAttribute("instrumentItems", inventoryQueryService.getInstrumentItemsByMember(id, activeTeamId));
         model.addAttribute("awardItems", inventoryQueryService.getAwardItemsByMember(id, activeTeamId));
+        // Award attributes for detail view
+        Band band = bandQueryService.getBandById(activeTeamId);
+        if (band != null) {
+            model.addAttribute("awardAttributeDefs", inventoryAttributeQueryService.getAwardAttributeDefs(band));
+            List<AwardItem> awards = inventoryQueryService.getAwardItemsByMember(id, activeTeamId);
+            Map<Long, Map<Long, String>> awardAttrValues = new HashMap<>();
+            for (AwardItem item : awards) {
+                awardAttrValues.put(item.getId(), inventoryAttributeQueryService.getAwardAttributeValues(item));
+            }
+            model.addAttribute("awardAttributeValues", awardAttrValues);
+        }
         model.addAttribute("today", LocalDate.now());
         return "members/detail :: member-detail-content";
     }

@@ -265,8 +265,10 @@ public class InventoryQueryService {
     }
 
     private InventoryItemDto toAwardItemDto(AwardItem item) {
+        // Awards don't have a name column anymore - use empty string or first displayInList attribute
+        // For now use empty string since it's attribute-based
         return new InventoryItemDto(
-                item.getId(), item.getName(), "AWARD",
+                item.getId(), "", "AWARD",
                 null, null, item.getDescription(),
                 item.getAssignedMember() != null
                         ? item.getAssignedMember().getFirstName() + " " + item.getAssignedMember().getLastName()

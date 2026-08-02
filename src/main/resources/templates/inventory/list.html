@@ -418,10 +418,6 @@
                             <h4>Nowe odznaczenie</h4>
                             <div style="display:flex; gap:0.5rem; flex-wrap:wrap; align-items:flex-end;">
                                 <div>
-                                    <label for="award-name">Nazwa</label>
-                                    <input type="text" id="award-name" placeholder="Np. Medal za 10 lat">
-                                </div>
-                                <div>
                                     <label for="award-member">Przydziel do</label>
                                     <select id="award-member">
                                         <option value="">— Wolny —</option>
@@ -980,9 +976,8 @@
         function showAwardForm() { document.getElementById('award-form').style.display = 'block'; }
         function hideAwardForm() { document.getElementById('award-form').style.display = 'none'; }
         function submitAward() {
-            var name = document.getElementById('award-name').value;
             var memberId = document.getElementById('award-member').value;
-            if (!name) { alert('Podaj nazwę odznaczenia'); return; }
+            // No name validation needed - everything is attribute-based now
 
             var attributes = {};
             var attrInputs = document.querySelectorAll('#award-attributes input[id^="award-attr-"], #award-attributes select[id^="award-attr-"]');
@@ -997,7 +992,7 @@
 
             fetchWithToast('/api/inventory/awards', { toastMessage: 'Dodano odznaczenie', method: 'POST',
                 headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({teamId: /*[[${activeTeamId}]]*/ null, name: name, description: '', memberId: memberId ? parseInt(memberId) : null, attributes: attributes})
+                body: JSON.stringify({teamId: /*[[${activeTeamId}]]*/ null, description: '', memberId: memberId ? parseInt(memberId) : null, attributes: attributes})
             }).then(function(r) { if(r.ok) { hideAwardForm(); refreshTab('awards'); } });
         }
         function assignAward(awardId) {

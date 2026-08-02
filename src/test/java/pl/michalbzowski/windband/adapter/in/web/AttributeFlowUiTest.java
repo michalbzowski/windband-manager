@@ -412,12 +412,9 @@ class AttributeFlowUiTest extends UiTestBase {
         assertContainerHasText("#award-attributes", attrName,
                 "New award attribute '%s' must be visible in Dodaj odznaczenie form");
 
-        String awardName = "Award-" + unique;
         String uniqueValue = "val" + unique;
         ((JavascriptExecutor) driver).executeScript(
-                "document.getElementById('award-name').value = '" + awardName + "';"
-                + "document.getElementById('award-name').dispatchEvent(new Event('input', {bubbles:true}));"
-                + "var inputs = document.querySelectorAll('#award-attributes input[type=\"text\"]');"
+                "var inputs = document.querySelectorAll('#award-attributes input[type=\"text\"]');"
                 + "for (var i=0; i<inputs.length; i++) {"
                 + "  if (inputs[i].id && inputs[i].id.startsWith('award-attr-')) {"
                 + "    inputs[i].value = '" + uniqueValue + "';"

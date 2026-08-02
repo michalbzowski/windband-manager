@@ -39,6 +39,12 @@ class MemberDetailUiTest extends UiTestBase {
     @Autowired
     private AwardItemRepository awardItemRepository;
 
+    @Autowired
+    private AwardAttributeDefRepository awardAttributeDefRepository;
+
+    @Autowired
+    private AwardAttributeValueRepository awardAttrValueRepo;
+
     @Test
     void shouldOpenMemberDetailAndShowBasicInfoAndInventory() {
         String unique = UUID.randomUUID().toString().substring(0, 8);
@@ -93,8 +99,15 @@ class MemberDetailUiTest extends UiTestBase {
             inventoryRepository.saveInstrumentItem(instrItem);
             instrumentItemId = instrItem.getId();
 
-            AwardItem awardItem = awardItemRepository.save(AwardItem.create("Award-" + unique, band));
+            AwardItem awardItem = awardItemRepository.save(AwardItem.create(band));
             awardItem.assignTo(member);
+            // Add an attribute value for the award so it shows in the UI
+            // First create an award attribute definition in the database with displayInList=true
+            // Method signature: create(Band band, String name, String type, boolean required, boolean displayInList, int displayOrder, String options)
+            AwardAttributeDef attrDef = AwardAttributeDef.create(band, "Nazwa", "TEXT", false, true, 0, null);
+            attrDef = awardAttributeDefRepository.save(attrDef);
+            AwardAttributeValue attrValue = AwardAttributeValue.create(awardItem, attrDef, "Award-" + unique);
+            awardAttrValueRepo.save(attrValue);
             awardItemRepository.save(awardItem);
             awardItemId = awardItem.getId();
 
@@ -164,7 +177,12 @@ class MemberDetailUiTest extends UiTestBase {
                         });
             }
             if (awardItemId != null) {
-                awardItemRepository.findById(awardItemId).ifPresent(awardItemRepository::delete);
+                final Long finalAwardItemId = awardItemId;
+                awardItemRepository.findById(finalAwardItemId).ifPresent(awardItem -> {
+                    // Delete award attribute values first (FK constraint)
+                    awardAttrValueRepo.findByAwardItemId(finalAwardItemId).forEach(awardAttrValueRepo::delete);
+                    awardItemRepository.delete(awardItem);
+                });
             }
         }
     }

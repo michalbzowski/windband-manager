@@ -48,16 +48,16 @@ INSERT INTO uniform_items (name, description, ownership_status, lifecycle_status
 VALUES ('Bluza Test', 'Bluza orkiestrowa', 'OWNED', 'AVAILABLE', 1);
 INSERT INTO instrument_items (name, brand, serial_number, description, ownership_status, lifecycle_status, band_id)
 VALUES ('Trąbka Test', 'Yamaha', 'SN001', 'Trąbka Bb', 'OWNED', 'AVAILABLE', 1);
-INSERT INTO award_items (name, description, band_id, date_awarded)
-VALUES ('Medal Test', 'Medal za zasługi', 1, CURRENT_DATE);
+INSERT INTO award_items (description, band_id, date_awarded)
+VALUES ('Medal za zasługi', 1, CURRENT_DATE);
 
 -- Inventory items for Other Band — must NOT appear in Test Band views
 INSERT INTO uniform_items (name, description, ownership_status, lifecycle_status, band_id)
 VALUES ('Bluza Other', 'Bluza innego zespołu', 'OWNED', 'AVAILABLE', 2);
 INSERT INTO instrument_items (name, brand, serial_number, description, ownership_status, lifecycle_status, band_id)
 VALUES ('Saksofon Other', 'Selmer', 'SN002', 'Saksofon alt', 'OWNED', 'AVAILABLE', 2);
-INSERT INTO award_items (name, description, band_id, date_awarded)
-VALUES ('Medal Other', 'Medal innego zespołu', 2, CURRENT_DATE);
+INSERT INTO award_items (description, band_id, date_awarded)
+VALUES ('Medal innego zespołu', 2, CURRENT_DATE);
 
 -- Instruments (band=1 — the only band seeded in data.sql)
 INSERT INTO instruments (name, description, sort_priority, band_id) VALUES ('Trąbka', 'Trąbka Bb', 1, 1);

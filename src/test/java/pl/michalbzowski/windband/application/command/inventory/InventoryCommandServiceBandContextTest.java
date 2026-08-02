@@ -170,7 +170,7 @@ class InventoryCommandServiceBandContextTest extends BaseIntegrationTest {
         InstrumentItem instrument = commandService.addInstrumentItem(null, null, band2);
         commandService.assignInstrumentToMember(instrument.getId(), member.getId(), "dobry");
 
-        AwardItem award = commandService.addAwardItem(band2.getId(), "Medal", "za zasługi", member.getId(), null);
+        AwardItem award = commandService.addAwardItem(band2.getId(), "za zasługi", member.getId(), null);
 
         // When: query items by band (the same path used by inventory/list.html)
         List<UniformItem> uniforms = inventoryRepository.findAllUniformItemsByBandId(savedBand2Id);

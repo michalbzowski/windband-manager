@@ -399,11 +399,11 @@ public class InventoryCommandService {
 
     // === Award operations ===
 
-    public AwardItem addAwardItem(Long teamId, String name, String description, Long memberId, Map<String, String> attributeValues) {
+    public AwardItem addAwardItem(Long teamId, String description, Long memberId, Map<String, String> attributeValues) {
         Band band = bandRepository.findById(teamId)
                 .orElseThrow(() -> new IllegalArgumentException("Band not found: " + teamId));
-        AwardItem item = AwardItem.create(name, band);
-        item.updateDetails(name, description);
+        AwardItem item = AwardItem.create(band);
+        item.updateDetails(null, description);
         if (memberId != null) {
             Member member = memberRepository.findById(memberId)
                     .orElseThrow(() -> new IllegalArgumentException("Member not found: " + memberId));
