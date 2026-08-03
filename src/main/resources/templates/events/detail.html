@@ -67,6 +67,13 @@
 
 <h3>Uczestnicy</h3>
 
+    <!-- Filter input -->
+    <div style="margin-bottom:0.75rem;">
+        <label for="participant-filter" class="text-muted" style="font-size:0.85rem; margin-bottom:0.25rem; display:block;">Filtruj uczestników (imię, nazwisko, tagi)</label>
+        <input type="text" id="participant-filter" placeholder="Wpisz imię, nazwisko lub tag..." 
+               style="width:100%; max-width:400px; padding:0.5rem; border:1px solid var(--pico-muted-border-color); border-radius:4px;">
+    </div>
+
     <!-- Stats summary bar -->
     <div class="event-stats" role="status" aria-live="polite">
         <span class="stat confirmed" title="Potwierdzeni">✅ <span th:text="${event.confirmedCount}">0</span></span>
@@ -250,5 +257,36 @@
 <div th:insert="~{fragments/layout :: footer-scripts}"></div>
 
 <script th:replace="~{fragments/layout :: dashboard-header-morph}"></script>
+
+<script>
+    // Participant filter for events detail
+    document.addEventListener('DOMContentLoaded', function() {
+        var filterInput = document.getElementById('participant-filter');
+        if (!filterInput) return;
+        
+        var table = document.getElementById('participants-table');
+        if (!table) return;
+        
+        var rows = table.querySelectorAll('tbody tr');
+        
+        filterInput.addEventListener('input', function() {
+            var searchTerm = this.value.toLowerCase().trim();
+            
+            rows.forEach(function(row) {
+                var memberNameCell = row.querySelector('td:first-child');
+                var tagsCell = row.querySelector('td[data-label="Zgoda na informacje"]');
+                
+                var memberName = memberNameCell ? memberNameCell.textContent.toLowerCase() : '';
+                var tags = tagsCell ? tagsCell.textContent.toLowerCase() : '';
+                
+                var matches = !searchTerm || 
+                    memberName.includes(searchTerm) || 
+                    tags.includes(searchTerm);
+                
+                row.style.display = matches ? '' : 'none';
+            });
+        });
+    });
+</script>
 </body>
 </html>

@@ -30,7 +30,14 @@
 
         <h3>Lista obecności</h3>
 
-        <p th:if="${#lists.isEmpty(invitedMembers)}" class="text-muted">
+            <!-- Filter input -->
+            <div style="margin-bottom:0.75rem;">
+                <label for="attendance-filter" class="text-muted" style="font-size:0.85rem; margin-bottom:0.25rem; display:block;">Filtruj uczestników (imię, nazwisko, tagi)</label>
+                <input type="text" id="attendance-filter" placeholder="Wpisz imię, nazwisko lub tag..." 
+                       style="width:100%; max-width:400px; padding:0.5rem; border:1px solid var(--pico-muted-border-color); border-radius:4px;">
+            </div>
+
+            <p th:if="${#lists.isEmpty(invitedMembers)}" class="text-muted">
             Brak zaproszonych uczestników. Użyj przycisków powyżej, aby zaprosić osoby lub grupy.
         </p>
 
@@ -254,6 +261,30 @@
         qa.index--;
         window.quickAttendanceRender();
     };
+
+    // Attendance filter for rehearsals detail
+    document.addEventListener('DOMContentLoaded', function() {
+        var filterInput = document.getElementById('attendance-filter');
+        if (!filterInput) return;
+        
+        var table = document.querySelector('table[role="grid"]');
+        if (!table) return;
+        
+        var rows = table.querySelectorAll('tbody tr');
+        
+        filterInput.addEventListener('input', function() {
+            var searchTerm = this.value.toLowerCase().trim();
+            
+            rows.forEach(function(row) {
+                var memberNameCell = row.querySelector('td:first-child');
+                var memberName = memberNameCell ? memberNameCell.textContent.toLowerCase() : '';
+                
+                var matches = !searchTerm || memberName.includes(searchTerm);
+                
+                row.style.display = matches ? '' : 'none';
+            });
+        });
+    });
 </script>
 </body>
 </html>
