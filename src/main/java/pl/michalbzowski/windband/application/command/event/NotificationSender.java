@@ -60,7 +60,7 @@ public class NotificationSender {
 
         try {
             var event = invitation.getBandEvent();
-            
+
             // Find the EventParticipation to get the event-specific instrument (if changed)
             var participation = participationRepository.findByEventIdAndMemberId(
                     event.getId(), member.getId()).orElse(null);
