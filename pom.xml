@@ -291,7 +291,9 @@
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-surefire-plugin</artifactId>
                 <configuration>
-                    <argLine>-Dnet.sf.jasperreports.jackson.xml.enabled=false</argLine>
+                    <systemPropertyVariables>
+                        <net.sf.jasperreports.jackson.xml.enabled>false</net.sf.jasperreports.jackson.xml.enabled>
+                    </systemPropertyVariables>
                 </configuration>
             </plugin>
 

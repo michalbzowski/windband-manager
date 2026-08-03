@@ -2,6 +2,8 @@ package pl.michalbzowski.windband.adapter.in.web;
 
 import jakarta.servlet.http.HttpSession;
 import lombok.RequiredArgsConstructor;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -12,6 +14,7 @@ import pl.michalbzowski.windband.application.command.member.AssignInstrumentComm
 import pl.michalbzowski.windband.application.command.member.ChangeInstrumentCommand;
 import pl.michalbzowski.windband.application.command.member.CreateMemberCommand;
 import pl.michalbzowski.windband.application.command.member.MemberCommandService;
+import pl.michalbzowski.windband.application.command.member.MemberNotFoundException;
 import pl.michalbzowski.windband.application.command.member.UpdateMemberCommand;
 import pl.michalbzowski.windband.application.dto.MemberDto;
 import pl.michalbzowski.windband.application.query.member.MemberQueryService;
@@ -24,6 +27,8 @@ import java.util.List;
 @RequestMapping("/api/members")
 @RequiredArgsConstructor
 public class MemberController {
+
+    private static final Logger log = LoggerFactory.getLogger(MemberController.class);
 
     private final MemberCommandService commandService;
     private final MemberQueryService queryService;
@@ -83,13 +88,20 @@ public class MemberController {
     }
 
     @PostMapping("/{id}/resend-welcome")
-    public ResponseEntity<Void> resendWelcomeEmail(@PathVariable Long id,
-                                                    @AuthenticationPrincipal OidcUser oidcUser,
-                                                    HttpSession session) {
-        CurrentUser currentUser = (oidcUser instanceof WindbandOidcUser wu) ? wu : null;
-        commandService.resendWelcomeEmail(id, currentUser);
-        return ResponseEntity.ok().build();
-    }
+        public ResponseEntity<Void> resendWelcomeEmail(@PathVariable Long id,
+                                                       @AuthenticationPrincipal OidcUser oidcUser,
+                                                       HttpSession session) {
+            try {
+                CurrentUser currentUser = (oidcUser instanceof WindbandOidcUser wu) ? wu : null;
+                commandService.resendWelcomeEmail(id, currentUser);
+                return ResponseEntity.ok().build();
+            } catch (MemberNotFoundException ex) {
+                return ResponseEntity.notFound().build();
+            } catch (Exception ex) {
+                log.error("Failed to resend welcome email for member {}", id, ex);
+                return ResponseEntity.internalServerError().build();
+            }
+        }
 
     private Long resolveActiveTeamId(OidcUser oidcUser, HttpSession session) {
         if (!(oidcUser instanceof WindbandOidcUser wu)) {
