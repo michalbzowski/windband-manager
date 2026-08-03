@@ -149,17 +149,19 @@ class MemberDetailWithEmailUiTest extends UiTestBase {
 
             memberId = readMemberIdFromEditButton(wait, firstName + " " + lastName);
 
-            // === STEP 2: Update existing consent entries to granted ===
-            // MemberWelcomeService already created consent entries with granted=false when member was created
-            // We update them to granted=true (simulating what ConsentService.updateConsents() does)
+            // === STEP 2: Grant all three consents (MERGE to handle INSERT or UPDATE) ===
+            // MemberWelcomeService creates consent entries with granted=false in an @Async method,
+            // which may not have completed yet. Use MERGE to handle both cases (H2 syntax).
             for (String consentType : List.of("EVENTS", "MANAGER_MESSAGES", "INVENTORY_SUMMARY")) {
                 jdbcTemplate.update(
-                        "UPDATE member_consents SET granted = ?, granted_at = ? WHERE member_id = ? AND consent_type = ?",
-                        true, java.time.Instant.now(), memberId, consentType);
+                        "MERGE INTO member_consents (member_id, consent_type, granted, granted_at) " +
+                        "KEY(member_id, consent_type) VALUES (?, ?, ?, ?)",
+                        memberId, consentType, true, java.time.Instant.now());
             }
 
             // Also update Member.emailConsentGiven to true (normally done by ConsentService.updateConsents())
             // The template uses member.emailConsentGiven which is synced by ConsentService
+            // when ANY consent is granted. We need to simulate this behavior in the test.
             jdbcTemplate.update(
                     "UPDATE members SET email_consent_given = ? WHERE id = ?",
                     true, memberId);
@@ -171,6 +173,12 @@ class MemberDetailWithEmailUiTest extends UiTestBase {
                         Boolean.class, memberId, consentType);
                 assertThat(granted).as("Consent %s must be granted", consentType).isTrue();
             }
+
+            // Verify emailConsentGiven is also true
+            Boolean emailConsentGiven = jdbcTemplate.queryForObject(
+                    "SELECT email_consent_given FROM members WHERE id = ?",
+                    Boolean.class, memberId);
+            assertThat(emailConsentGiven).as("emailConsentGiven must be true when consents granted").isTrue();
 
             // === STEP 3: Navigate to member detail page ===
             driver.get(baseUrl() + "/members");
