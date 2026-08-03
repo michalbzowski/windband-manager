@@ -2,6 +2,7 @@ package pl.michalbzowski.windband.application.command.event;
 
 import pl.michalbzowski.windband.domain.event.EventInvitation;
 import pl.michalbzowski.windband.domain.event.BandEvent;
+import pl.michalbzowski.windband.domain.event.EventParticipation;
 import pl.michalbzowski.windband.domain.member.Member;
 
 /**
@@ -16,11 +17,12 @@ public interface Channel {
     /**
      * Sends an event invitation notification to a member.
      *
-     * @param invitation the invitation record with token
-     * @param event      the event details
-     * @param member     the recipient member
-     * @param baseUrl    application base URL for constructing magic links
+     * @param invitation  the invitation record with token
+     * @param event       the event details
+     * @param member      the recipient member
+     * @param participation the event participation (contains per-event instrument override, if any)
+     * @param baseUrl     application base URL for constructing magic links
      * @throws ChannelException if sending fails
      */
-    void send(EventInvitation invitation, BandEvent event, Member member, String baseUrl);
+    void send(EventInvitation invitation, BandEvent event, Member member, EventParticipation participation, String baseUrl);
 }

@@ -208,7 +208,9 @@ class EventConsentIntegrationTest extends BaseIntegrationTest {
         @Override
         public void send(EventInvitation invitation,
                          pl.michalbzowski.windband.domain.event.BandEvent event,
-                         Member member, String baseUrl) {
+                         Member member,
+                         pl.michalbzowski.windband.domain.event.EventParticipation participation,
+                         String baseUrl) {
             callCount.incrementAndGet();
             sentToMembers.add(member.getId());
         }

@@ -14,6 +14,7 @@ import pl.michalbzowski.windband.domain.member.Member;
 public class NotificationSender {
 
     private final EventInvitationRepository invitationRepository;
+    private final EventParticipationRepository participationRepository;
     private final ChannelResolver channelResolver;
     private final NotificationCommandService notificationCommandService;
     private final ConsentService consentService;
@@ -59,9 +60,13 @@ public class NotificationSender {
 
         try {
             var event = invitation.getBandEvent();
+            
+            // Find the EventParticipation to get the event-specific instrument (if changed)
+            var participation = participationRepository.findByEventIdAndMemberId(
+                    event.getId(), member.getId()).orElse(null);
 
             Channel channel = channelResolver.resolveForMember(member);
-            channel.send(invitation, event, member, baseUrl);
+            channel.send(invitation, event, member, participation, baseUrl);
 
             invitation.markSent();
             invitationRepository.save(invitation);

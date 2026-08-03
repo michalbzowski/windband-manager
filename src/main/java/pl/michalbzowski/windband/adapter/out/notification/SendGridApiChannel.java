@@ -15,6 +15,7 @@ import pl.michalbzowski.windband.application.command.event.Channel;
 import pl.michalbzowski.windband.application.command.event.ChannelException;
 import pl.michalbzowski.windband.domain.event.BandEvent;
 import pl.michalbzowski.windband.domain.event.EventInvitation;
+import pl.michalbzowski.windband.domain.event.EventParticipation;
 import pl.michalbzowski.windband.domain.member.Member;
 
 import java.net.URLEncoder;
@@ -63,7 +64,7 @@ public class SendGridApiChannel implements Channel {
     }
 
     @Override
-    public void send(EventInvitation invitation, BandEvent event, Member member, String baseUrlIgnored) {
+    public void send(EventInvitation invitation, BandEvent event, Member member, EventParticipation participation, String baseUrlIgnored) {
         if (apiKey == null || apiKey.isBlank()) {
             throw new ChannelException("SendGrid API key not configured — set SENDGRID_API_KEY environment variable",
                     new IllegalStateException("Missing sendgrid.api-key"));
@@ -74,7 +75,7 @@ public class SendGridApiChannel implements Channel {
         }
 
         try {
-            String htmlContent = buildEmailHtml(invitation, event, member);
+            String htmlContent = buildEmailHtml(invitation, event, member, participation);
 
             ObjectNode body = objectMapper.createObjectNode();
 
@@ -127,15 +128,21 @@ public class SendGridApiChannel implements Channel {
         }
     }
 
-    private String buildEmailHtml(EventInvitation invitation, BandEvent event, Member member) {
+    private String buildEmailHtml(EventInvitation invitation, BandEvent event, Member member, EventParticipation participation) {
         String token = URLEncoder.encode(invitation.getToken(), StandardCharsets.UTF_8);
         String baseEventUrl = baseUrl + "/public/events/" + token;
         String confirmUrl = baseEventUrl + "?response=CONFIRMED";
         String declineUrl = baseEventUrl + "?response=DECLINED";
         String laterUrl = baseEventUrl + "?response=LATER";
 
-        String instrumentName = member.getPrimaryInstrument()
-                .map(i -> i.getName()).orElse(null);
+        // Use the event-specific instrument if set on EventParticipation, otherwise fall back to member's primary
+        String instrumentName = null;
+        if (participation != null && participation.getInstrument() != null) {
+            instrumentName = participation.getInstrument().getName();
+        } else {
+            instrumentName = member.getPrimaryInstrument()
+                    .map(i -> i.getName()).orElse(null);
+        }
 
         String paymentTypeDisplay = switch (event.getPaymentType().name()) {
             case "FREE" -> "Granie bezpłatne";

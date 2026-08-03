@@ -10,6 +10,7 @@ import org.thymeleaf.context.Context;
 import org.thymeleaf.spring6.SpringTemplateEngine;
 import pl.michalbzowski.windband.domain.event.BandEvent;
 import pl.michalbzowski.windband.domain.event.EventInvitation;
+import pl.michalbzowski.windband.domain.event.EventParticipation;
 import pl.michalbzowski.windband.domain.member.Member;
 
 import java.net.URLEncoder;
@@ -43,7 +44,7 @@ public class EmailChannel implements Channel {
     }
 
     @Override
-    public void send(EventInvitation invitation, BandEvent event, Member member, String baseUrlIgnored) {
+    public void send(EventInvitation invitation, BandEvent event, Member member, EventParticipation participation, String baseUrlIgnored) {
         if (member.getEmail() == null || member.getEmail().isBlank()) {
             throw new ChannelException("Member " + member.getId() + " has no email address",
                     new IllegalArgumentException("Email required"));
@@ -56,8 +57,14 @@ public class EmailChannel implements Channel {
             String declineUrl = baseEventUrl + "?response=DECLINED";
             String laterUrl = baseEventUrl + "?response=LATER";
 
-            String instrumentName = member.getPrimaryInstrument()
-                    .map(i -> i.getName()).orElse(null);
+            // Use the event-specific instrument if set on EventParticipation, otherwise fall back to member's primary
+            String instrumentName = null;
+            if (participation != null && participation.getInstrument() != null) {
+                instrumentName = participation.getInstrument().getName();
+            } else {
+                instrumentName = member.getPrimaryInstrument()
+                        .map(i -> i.getName()).orElse(null);
+            }
 
             String paymentTypeDisplay = switch (event.getPaymentType().name()) {
                 case "FREE" -> "Granie bezpłatne";

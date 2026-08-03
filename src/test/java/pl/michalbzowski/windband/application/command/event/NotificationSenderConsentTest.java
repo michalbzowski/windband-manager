@@ -9,6 +9,7 @@ import pl.michalbzowski.windband.application.service.ConsentService;
 import pl.michalbzowski.windband.domain.event.BandEvent;
 import pl.michalbzowski.windband.domain.event.EventInvitation;
 import pl.michalbzowski.windband.domain.event.EventInvitationRepository;
+import pl.michalbzowski.windband.domain.event.EventParticipationRepository;
 import pl.michalbzowski.windband.domain.event.NotificationStatus;
 import pl.michalbzowski.windband.domain.member.ConsentType;
 import pl.michalbzowski.windband.domain.member.Member;
@@ -39,6 +40,7 @@ import static org.mockito.Mockito.when;
 class NotificationSenderConsentTest {
 
     @Mock EventInvitationRepository invitationRepository;
+    @Mock EventParticipationRepository participationRepository;
     @Mock ChannelResolver channelResolver;
     @Mock NotificationCommandService notificationCommandService;
     @Mock ConsentService consentService;
@@ -62,7 +64,7 @@ class NotificationSenderConsentTest {
         // then — channel NEVER called, invitation marked FAILED
         assertThat(invitation.getStatus()).isEqualTo(NotificationStatus.FAILED);
         verify(channelResolver, never()).resolveForMember(any());
-        verify(emailChannel, never()).send(any(), any(), any(), any());
+        verify(emailChannel, never()).send(any(), any(), any(), any(), any());
         verify(invitationRepository).save(invitation);
     }
 
@@ -82,7 +84,7 @@ class NotificationSenderConsentTest {
 
         // then — channel IS called, invitation marked SENT
         verify(emailChannel, times(1))
-                .send(eq(invitation), eq(event), eq(member), any());
+                .send(eq(invitation), eq(event), eq(member), any(), any());
         assertThat(invitation.getStatus()).isEqualTo(NotificationStatus.SENT);
         verify(invitationRepository).save(invitation);
     }
@@ -111,9 +113,9 @@ class NotificationSenderConsentTest {
         assertThat(invConsenting.getStatus()).isEqualTo(NotificationStatus.SENT);
         assertThat(invRefusing.getStatus()).isEqualTo(NotificationStatus.FAILED);
         verify(emailChannel, times(1))
-                .send(eq(invConsenting), any(), any(), any());
+                .send(eq(invConsenting), any(), any(), any(), any());
         verify(emailChannel, never())
-                .send(eq(invRefusing), any(), any(), any());
+                .send(eq(invRefusing), any(), any(), any(), any());
     }
 
     @Test
