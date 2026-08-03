@@ -106,26 +106,38 @@
         let ticking = false;
         let isScrolled = false;
 
+        function updateStickyFilterOffset() {
+            // Update CSS custom property for sticky filter position
+            const headerRect = header.getBoundingClientRect();
+            const headerBottom = headerRect.bottom;
+            // Use max of header bottom and 60px (for compact bar state)
+            const offset = Math.max(headerBottom, 60);
+            document.documentElement.style.setProperty('--sticky-filter-top', offset + 'px');
+        }
+
         function updateHeaderState() {
             const scrollY = window.scrollY;
-            
+
             if (!isScrolled && scrollY > ORIGINAL_HEADER_HEIGHT) {
                 // Scrolling down past header area -> morph to compact bar
                 header.classList.add('scrolled');
                 isScrolled = true;
+                updateStickyFilterOffset();
             } else if (isScrolled && scrollY < ORIGINAL_HEADER_HEIGHT * 0.3) {
                 // Scrolling up near top -> restore original card style
                 header.classList.remove('scrolled');
                 isScrolled = false;
+                updateStickyFilterOffset();
             }
         }
 
         function onScroll() {
             lastScrollY = window.scrollY;
-            
+
             if (!ticking) {
                 window.requestAnimationFrame(function() {
                     updateHeaderState();
+                    updateStickyFilterOffset();
                     ticking = false;
                 });
                 ticking = true;
@@ -135,6 +147,9 @@
         // Initial check in case page loads scrolled
         onScroll();
         
+        // Set initial sticky filter offset
+        updateStickyFilterOffset();
+
         window.addEventListener('scroll', onScroll, { passive: true });
     })();
 </script>
