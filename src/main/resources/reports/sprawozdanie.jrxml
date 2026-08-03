@@ -1,5 +1,4 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<!DOCTYPE jasperReport PUBLIC "-//Jasper Reports//DTD JASPER REPORT //EN" "http://jasperreports.sourceforge.net/dtds/jasperreport.dtd">
 <jasperReport name="SprawozdanieZespolu" pageWidth="595" columnWidth="555" pageHeight="842" leftMargin="20" rightMargin="20" topMargin="20" bottomMargin="20">
 
   <!-- Parameters -->
