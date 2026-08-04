@@ -74,13 +74,17 @@
                style="width:100%; max-width:400px; padding:0.5rem; border:1px solid var(--pico-muted-border-color); border-radius:4px;">
     </div>
 
-    <!-- Stats summary bar -->
-    <div class="event-stats" role="status" aria-live="polite">
-        <span class="stat confirmed" title="Potwierdzeni">✅ <span th:text="${event.confirmedCount}">0</span></span>
-        <span class="stat declined" title="Nie biorą udziału">❌ <span th:text="${event.declinedCount}">0</span></span>
-        <span class="stat later" title="Dam znać później" th:if="${#lists.size(event.participations.?[response == 'LATER']) > 0}">⏳ <span th:text="${#lists.size(event.participations.?[response == 'LATER'])}">0</span></span>
-        <span class="stat no-response" title="Brak odpowiedzi">❓ <span th:text="${event.noResponseCount}">0</span></span>
+    <!-- Response status filter - sticky on scroll, below text filter -->
+    <div id="response-filter-container" class="response-filter-container" role="group" aria-label="Filtruj według statusu odpowiedzi">
+        <span class="response-filter-label text-muted" style="font-size:0.75rem; margin-right:0.5rem;">Status:</span>
+        <span class="stat confirmed response-filter-btn" title="Potwierdzeni (Będę)" data-response-filter="CONFIRMED">✅ <span th:text="${event.confirmedCount}">0</span></span>
+        <span class="stat declined response-filter-btn" title="Nie biorą udziału (Nie będę)" data-response-filter="DECLINED">❌ <span th:text="${event.declinedCount}">0</span></span>
+        <span class="stat later response-filter-btn" title="Dam znać później" data-response-filter="LATER" th:if="${#lists.size(event.participations.?[response == 'LATER']) > 0}">⏳ <span th:text="${#lists.size(event.participations.?[response == 'LATER'])}">0</span></span>
+        <span class="stat no-response response-filter-btn" title="Brak odpowiedzi" data-response-filter="NO_RESPONSE">❓ <span th:text="${event.noResponseCount}">0</span></span>
     </div>
+
+    <!-- Hidden input to track selected response filters -->
+    <input type="hidden" id="active-response-filters" value="">
 
     <table role="grid" id="participants-table">
         <thead>
@@ -286,6 +290,87 @@
                 row.style.display = matches ? '' : 'none';
             });
         });
+    });
+
+    // Response status filter for events detail
+    document.addEventListener('DOMContentLoaded', function() {
+        var responseFilterContainer = document.getElementById('response-filter-container');
+        if (!responseFilterContainer) return;
+        
+        var table = document.getElementById('participants-table');
+        if (!table) return;
+        
+        var rows = table.querySelectorAll('tbody tr');
+        var activeFiltersInput = document.getElementById('active-response-filters');
+        var filterBtns = responseFilterContainer.querySelectorAll('.response-filter-btn');
+        
+        // Initialize active filters from hidden input
+        var activeFilters = activeFiltersInput.value ? activeFiltersInput.value.split(',') : [];
+        
+        function updateFilterButtons() {
+            filterBtns.forEach(function(btn) {
+                var filterValue = btn.getAttribute('data-response-filter');
+                if (activeFilters.includes(filterValue)) {
+                    btn.classList.add('active');
+                } else {
+                    btn.classList.remove('active');
+                }
+            });
+        }
+        
+        function applyFilters() {
+            var searchTerm = document.getElementById('participant-filter') 
+                ? document.getElementById('participant-filter').value.toLowerCase().trim() 
+                : '';
+            
+            rows.forEach(function(row) {
+                var memberNameCell = row.querySelector('td:first-child');
+                var tagsCell = row.querySelector('td[data-label="Zgoda na informacje"]');
+                var responseCell = row.querySelector('td[data-label="Odpowiedź"] select');
+                
+                var memberName = memberNameCell ? memberNameCell.textContent.toLowerCase() : '';
+                var tags = tagsCell ? tagsCell.textContent.toLowerCase() : '';
+                var response = responseCell ? responseCell.value : '';
+                
+                var textMatches = !searchTerm || 
+                    memberName.includes(searchTerm) || 
+                    tags.includes(searchTerm);
+                
+                var responseMatches = activeFilters.length === 0 || 
+                    activeFilters.length === filterBtns.length || 
+                    activeFilters.includes(response);
+                
+                row.style.display = (textMatches && responseMatches) ? '' : 'none';
+            });
+        }
+        
+        // Add click handlers to filter buttons
+        filterBtns.forEach(function(btn) {
+            btn.style.cursor = 'pointer';
+            btn.addEventListener('click', function() {
+                var filterValue = this.getAttribute('data-response-filter');
+                var index = activeFilters.indexOf(filterValue);
+                
+                if (index > -1) {
+                    activeFilters.splice(index, 1);
+                } else {
+                    activeFilters.push(filterValue);
+                }
+                
+                activeFiltersInput.value = activeFilters.join(',');
+                updateFilterButtons();
+                applyFilters();
+            });
+        });
+        
+        // Re-apply text filter when it changes
+        var filterInput = document.getElementById('participant-filter');
+        if (filterInput) {
+            filterInput.addEventListener('input', applyFilters);
+        }
+        
+        // Initialize button states
+        updateFilterButtons();
     });
 </script>
 </body>

@@ -1,0 +1,482 @@
+package pl.michalbzowski.windband.adapter.in.web;
+
+import org.junit.jupiter.api.Test;
+import org.openqa.selenium.By;
+import org.openqa.selenium.JavascriptExecutor;
+import org.openqa.selenium.WebElement;
+import org.openqa.selenium.support.ui.ExpectedConditions;
+import org.openqa.selenium.support.ui.WebDriverWait;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.jdbc.core.JdbcTemplate;
+import org.testcontainers.shaded.org.awaitility.Awaitility;
+import pl.michalbzowski.windband.UiTestBase;
+
+import java.time.Duration;
+import java.time.LocalDate;
+import java.util.List;
+import java.util.UUID;
+
+import static org.assertj.core.api.Assertions.assertThat;
+
+/**
+ * UI tests for filtering participants on the rehearsal detail page.
+ * Tests text filtering (first name, last name) and attendance status filtering.
+ */
+class RehearsalDetailFilterUiTest extends UiTestBase {
+
+    @Autowired
+    private JdbcTemplate jdbcTemplate;
+
+    @Test
+    void textFilterShouldFilterByFirstName() throws Exception {
+        WebDriverWait wait = new WebDriverWait(driver, Duration.ofSeconds(10));
+        String uid = UUID.randomUUID().toString().substring(0, 8);
+        String firstName = "FilterFirst" + uid;
+        String lastName = "Test" + uid;
+
+        // --- Create members via UI ---
+        createMember(firstName, lastName, wait);
+        createMember("OtherFirst" + uid, "OtherLast" + uid, wait);
+
+        // --- Create a rehearsal via UI ---
+        loginAndNavigateTo("/rehearsals");
+        driver.findElement(By.xpath("//button[contains(text(), 'Zaplanuj spotkanie')]")).click();
+        wait.until(ExpectedConditions.presenceOfElementLocated(By.cssSelector("#rehearsal-form")));
+
+        String today = LocalDate.now().toString();
+        ((JavascriptExecutor) driver).executeScript(
+                "document.querySelector(\"input[name='date']\").value = arguments[0];" +
+                "document.querySelector(\"input[name='startTime']\").value = '18:00';" +
+                "document.querySelector(\"input[name='endTime']\").value = '20:00';" +
+                "document.querySelector(\"input[name='location']\").value = 'Sala prób';",
+                today);
+        driver.findElement(By.cssSelector("#rehearsal-form button[type='submit'].primary")).click();
+        wait.until(ExpectedConditions.urlContains("/rehearsals"));
+        wait.until(ExpectedConditions.not(ExpectedConditions.urlContains("/new")));
+
+        // Wait for rehearsal to be persisted
+        Awaitility.await().atMost(Duration.ofSeconds(10)).until(() ->
+                jdbcTemplate.queryForObject(
+                        "SELECT COUNT(*) FROM rehearsals WHERE date = ?", Long.class, today) > 0);
+
+        Long rehearsalId = jdbcTemplate.queryForObject(
+                "SELECT MAX(id) FROM rehearsals WHERE date = ?", Long.class, today);
+
+        Long memberId1 = jdbcTemplate.queryForObject(
+                "SELECT MAX(id) FROM members WHERE first_name = ?", Long.class, firstName);
+
+        Long memberId2 = jdbcTemplate.queryForObject(
+                "SELECT MAX(id) FROM members WHERE first_name = ?", Long.class, "OtherFirst" + uid);
+
+        assertThat(rehearsalId).isNotNull();
+        assertThat(memberId1).isNotNull();
+        assertThat(memberId2).isNotNull();
+
+        // --- Invite both members to the rehearsal ---
+        inviteMemberToRehearsal(rehearsalId, memberId1);
+        inviteMemberToRehearsal(rehearsalId, memberId2);
+
+        // --- Navigate to rehearsal detail ---
+        driver.get(baseUrl() + "/rehearsals/" + rehearsalId);
+        wait.until(ExpectedConditions.presenceOfElementLocated(By.id("rehearsals-content")));
+
+        // Wait for attendance table to load
+        wait.until(ExpectedConditions.presenceOfElementLocated(By.cssSelector("table[role='grid']")));
+
+        // --- Test text filter by first name ---
+        WebElement filterInput = wait.until(ExpectedConditions.presenceOfElementLocated(By.id("attendance-filter")));
+        filterInput.clear();
+        filterInput.sendKeys(firstName);
+
+        // Wait for filter to apply
+        Awaitility.await().atMost(Duration.ofSeconds(3)).until(() -> {
+            List<WebElement> visibleRows = driver.findElements(
+                    By.cssSelector("table[role='grid'] tbody tr[style=''], table[role='grid'] tbody tr:not([style*='display: none'])"));
+            return visibleRows.size() == 1;
+        });
+
+        List<WebElement> visibleRows = driver.findElements(
+                By.cssSelector("table[role='grid'] tbody tr[style=''], table[role='grid'] tbody tr:not([style*='display: none'])"));
+        assertThat(visibleRows).hasSize(1);
+        assertThat(visibleRows.get(0).findElement(By.cssSelector("td:first-child")).getText())
+                .contains(firstName);
+    }
+
+    @Test
+    void textFilterShouldFilterByLastName() throws Exception {
+        WebDriverWait wait = new WebDriverWait(driver, Duration.ofSeconds(10));
+        String uid = UUID.randomUUID().toString().substring(0, 8);
+        String firstName = "Test" + uid;
+        String lastName = "FilterLast" + uid;
+
+        // --- Create members via UI ---
+        createMember(firstName, lastName, wait);
+        createMember("Test" + uid, "OtherLast" + uid, wait);
+
+        // --- Create a rehearsal via UI ---
+        loginAndNavigateTo("/rehearsals");
+        driver.findElement(By.xpath("//button[contains(text(), 'Zaplanuj spotkanie')]")).click();
+        wait.until(ExpectedConditions.presenceOfElementLocated(By.cssSelector("#rehearsal-form")));
+
+        String today = LocalDate.now().toString();
+        ((JavascriptExecutor) driver).executeScript(
+                "document.querySelector(\"input[name='date']\").value = arguments[0];" +
+                "document.querySelector(\"input[name='startTime']\").value = '18:00';" +
+                "document.querySelector(\"input[name='endTime']\").value = '20:00';" +
+                "document.querySelector(\"input[name='location']\").value = 'Sala prób';",
+                today);
+        driver.findElement(By.cssSelector("#rehearsal-form button[type='submit'].primary")).click();
+        wait.until(ExpectedConditions.urlContains("/rehearsals"));
+        wait.until(ExpectedConditions.not(ExpectedConditions.urlContains("/new")));
+
+        // Wait for rehearsal to be persisted
+        Awaitility.await().atMost(Duration.ofSeconds(10)).until(() ->
+                jdbcTemplate.queryForObject(
+                        "SELECT COUNT(*) FROM rehearsals WHERE date = ?", Long.class, today) > 0);
+
+        Long rehearsalId = jdbcTemplate.queryForObject(
+                "SELECT MAX(id) FROM rehearsals WHERE date = ?", Long.class, today);
+
+        Long memberId1 = jdbcTemplate.queryForObject(
+                "SELECT MAX(id) FROM members WHERE last_name = ?", Long.class, lastName);
+
+        Long memberId2 = jdbcTemplate.queryForObject(
+                "SELECT MAX(id) FROM members WHERE last_name = ?", Long.class, "OtherLast" + uid);
+
+        assertThat(rehearsalId).isNotNull();
+        assertThat(memberId1).isNotNull();
+        assertThat(memberId2).isNotNull();
+
+        // --- Invite both members to the rehearsal ---
+        inviteMemberToRehearsal(rehearsalId, memberId1);
+        inviteMemberToRehearsal(rehearsalId, memberId2);
+
+        // --- Navigate to rehearsal detail ---
+        driver.get(baseUrl() + "/rehearsals/" + rehearsalId);
+        wait.until(ExpectedConditions.presenceOfElementLocated(By.id("rehearsals-content")));
+
+        // Wait for attendance table to load
+        wait.until(ExpectedConditions.presenceOfElementLocated(By.cssSelector("table[role='grid']")));
+
+        // --- Test text filter by last name ---
+        WebElement filterInput = wait.until(ExpectedConditions.presenceOfElementLocated(By.id("attendance-filter")));
+        filterInput.clear();
+        filterInput.sendKeys(lastName);
+
+        // Wait for filter to apply
+        Awaitility.await().atMost(Duration.ofSeconds(3)).until(() -> {
+            List<WebElement> visibleRows = driver.findElements(
+                    By.cssSelector("table[role='grid'] tbody tr[style=''], table[role='grid'] tbody tr:not([style*='display: none'])"));
+            return visibleRows.size() == 1;
+        });
+
+        List<WebElement> visibleRows = driver.findElements(
+                By.cssSelector("table[role='grid'] tbody tr[style=''], table[role='grid'] tbody tr:not([style*='display: none'])"));
+        assertThat(visibleRows).hasSize(1);
+        assertThat(visibleRows.get(0).findElement(By.cssSelector("td:first-child")).getText())
+                .contains(lastName);
+    }
+
+    @Test
+    void attendanceFilterShouldFilterByPresent() throws Exception {
+        WebDriverWait wait = new WebDriverWait(driver, Duration.ofSeconds(10));
+        String uid = UUID.randomUUID().toString().substring(0, 8);
+        String firstName = "AttFilter" + uid;
+        String lastName = "Test" + uid;
+
+        // --- Create members via UI ---
+        createMember(firstName + "1", lastName, wait);
+        createMember(firstName + "2", lastName, wait);
+        createMember(firstName + "3", lastName, wait);
+
+        // --- Create a rehearsal via UI ---
+        loginAndNavigateTo("/rehearsals");
+        driver.findElement(By.xpath("//button[contains(text(), 'Zaplanuj spotkanie')]")).click();
+        wait.until(ExpectedConditions.presenceOfElementLocated(By.cssSelector("#rehearsal-form")));
+
+        String today = LocalDate.now().toString();
+        ((JavascriptExecutor) driver).executeScript(
+                "document.querySelector(\"input[name='date']\").value = arguments[0];" +
+                "document.querySelector(\"input[name='startTime']\").value = '18:00';" +
+                "document.querySelector(\"input[name='endTime']\").value = '20:00';" +
+                "document.querySelector(\"input[name='location']\").value = 'Sala prób';",
+                today);
+        driver.findElement(By.cssSelector("#rehearsal-form button[type='submit'].primary")).click();
+        wait.until(ExpectedConditions.urlContains("/rehearsals"));
+        wait.until(ExpectedConditions.not(ExpectedConditions.urlContains("/new")));
+
+        // Wait for rehearsal to be persisted
+        Awaitility.await().atMost(Duration.ofSeconds(10)).until(() ->
+                jdbcTemplate.queryForObject(
+                        "SELECT COUNT(*) FROM rehearsals WHERE date = ?", Long.class, today) > 0);
+
+        Long rehearsalId = jdbcTemplate.queryForObject(
+                "SELECT MAX(id) FROM rehearsals WHERE date = ?", Long.class, today);
+
+        List<Long> memberIds = jdbcTemplate.query(
+                "SELECT id FROM members WHERE first_name LIKE ? ORDER BY id",
+                (rs, rowNum) -> rs.getLong("id"),
+                firstName + "%");
+
+        assertThat(rehearsalId).isNotNull();
+        assertThat(memberIds).hasSize(3);
+
+        // --- Invite all three members to the rehearsal ---
+        for (Long memberId : memberIds) {
+            inviteMemberToRehearsal(rehearsalId, memberId);
+        }
+
+        // --- Set attendance statuses: 1 PRESENT, 1 EXCUSED, 1 NO_RESPONSE ---
+        setRehearsalAttendance(rehearsalId, memberIds.get(0), "PRESENT");
+        setRehearsalAttendance(rehearsalId, memberIds.get(1), "EXCUSED");
+        // memberIds.get(2) stays as NO_RESPONSE
+
+        // --- Navigate to rehearsal detail ---
+        driver.get(baseUrl() + "/rehearsals/" + rehearsalId);
+        wait.until(ExpectedConditions.presenceOfElementLocated(By.id("rehearsals-content")));
+
+        // Wait for attendance table to load
+        wait.until(ExpectedConditions.presenceOfElementLocated(By.cssSelector("table[role='grid']")));
+
+        // --- Test attendance filter: click PRESENT (✅) ---
+        WebElement presentBtn = wait.until(ExpectedConditions.presenceOfElementLocated(
+                By.cssSelector("#attendance-response-filter-container .response-filter-btn[data-response-filter='PRESENT']")));
+        ((JavascriptExecutor) driver).executeScript("arguments[0].click();", presentBtn);
+
+        // Wait for filter to apply
+        Awaitility.await().atMost(Duration.ofSeconds(3)).until(() -> {
+            List<WebElement> visibleRows = driver.findElements(
+                    By.cssSelector("table[role='grid'] tbody tr[style=''], table[role='grid'] tbody tr:not([style*='display: none'])"));
+            return visibleRows.size() == 1;
+        });
+
+        List<WebElement> visibleRows = driver.findElements(
+                By.cssSelector("table[role='grid'] tbody tr[style=''], table[role='grid'] tbody tr:not([style*='display: none'])"));
+        assertThat(visibleRows).hasSize(1);
+
+        // Verify the visible row has PRESENT status
+        WebElement statusSelect = visibleRows.get(0).findElement(By.cssSelector("td select.status-select"));
+        assertThat(statusSelect.getAttribute("value")).isEqualTo("PRESENT");
+
+        // --- Click PRESENT again to deselect (should show all) ---
+        ((JavascriptExecutor) driver).executeScript("arguments[0].click();", presentBtn);
+
+        Awaitility.await().atMost(Duration.ofSeconds(3)).until(() -> {
+            List<WebElement> visibleRows2 = driver.findElements(
+                    By.cssSelector("table[role='grid'] tbody tr[style=''], table[role='grid'] tbody tr:not([style*='display: none'])"));
+            return visibleRows2.size() == 3;
+        });
+
+        List<WebElement> allVisibleRows = driver.findElements(
+                By.cssSelector("table[role='grid'] tbody tr[style=''], table[role='grid'] tbody tr:not([style*='display: none'])"));
+        assertThat(allVisibleRows).hasSize(3);
+    }
+
+    @Test
+    void attendanceFilterShouldFilterByMultipleStatuses() throws Exception {
+        WebDriverWait wait = new WebDriverWait(driver, Duration.ofSeconds(10));
+        String uid = UUID.randomUUID().toString().substring(0, 8);
+        String firstName = "MultiAtt" + uid;
+        String lastName = "Test" + uid;
+
+        // --- Create members via UI ---
+        createMember(firstName + "1", lastName, wait);
+        createMember(firstName + "2", lastName, wait);
+        createMember(firstName + "3", lastName, wait);
+        createMember(firstName + "4", lastName, wait);
+
+        // --- Create a rehearsal via UI ---
+        loginAndNavigateTo("/rehearsals");
+        driver.findElement(By.xpath("//button[contains(text(), 'Zaplanuj spotkanie')]")).click();
+        wait.until(ExpectedConditions.presenceOfElementLocated(By.cssSelector("#rehearsal-form")));
+
+        String today = LocalDate.now().toString();
+        ((JavascriptExecutor) driver).executeScript(
+                "document.querySelector(\"input[name='date']\").value = arguments[0];" +
+                "document.querySelector(\"input[name='startTime']\").value = '18:00';" +
+                "document.querySelector(\"input[name='endTime']\").value = '20:00';" +
+                "document.querySelector(\"input[name='location']\").value = 'Sala prób';",
+                today);
+        driver.findElement(By.cssSelector("#rehearsal-form button[type='submit'].primary")).click();
+        wait.until(ExpectedConditions.urlContains("/rehearsals"));
+        wait.until(ExpectedConditions.not(ExpectedConditions.urlContains("/new")));
+
+        // Wait for rehearsal to be persisted
+        Awaitility.await().atMost(Duration.ofSeconds(10)).until(() ->
+                jdbcTemplate.queryForObject(
+                        "SELECT COUNT(*) FROM rehearsals WHERE date = ?", Long.class, today) > 0);
+
+        Long rehearsalId = jdbcTemplate.queryForObject(
+                "SELECT MAX(id) FROM rehearsals WHERE date = ?", Long.class, today);
+
+        List<Long> memberIds = jdbcTemplate.query(
+                "SELECT id FROM members WHERE first_name LIKE ? ORDER BY id",
+                (rs, rowNum) -> rs.getLong("id"),
+                firstName + "%");
+
+        assertThat(rehearsalId).isNotNull();
+        assertThat(memberIds).hasSize(4);
+
+        // --- Invite all four members to the rehearsal ---
+        for (Long memberId : memberIds) {
+            inviteMemberToRehearsal(rehearsalId, memberId);
+        }
+
+        // --- Set attendance statuses: PRESENT, EXCUSED, UNEXCUSED, NO_RESPONSE ---
+        setRehearsalAttendance(rehearsalId, memberIds.get(0), "PRESENT");
+        setRehearsalAttendance(rehearsalId, memberIds.get(1), "EXCUSED");
+        setRehearsalAttendance(rehearsalId, memberIds.get(2), "UNEXCUSED");
+        // memberIds.get(3) stays as NO_RESPONSE
+
+        // --- Navigate to rehearsal detail ---
+        driver.get(baseUrl() + "/rehearsals/" + rehearsalId);
+        wait.until(ExpectedConditions.presenceOfElementLocated(By.id("rehearsals-content")));
+
+        // Wait for attendance table to load
+        wait.until(ExpectedConditions.presenceOfElementLocated(By.cssSelector("table[role='grid']")));
+
+        // --- Test attendance filter: click PRESENT AND EXCUSED ---
+        WebElement presentBtn = wait.until(ExpectedConditions.presenceOfElementLocated(
+                By.cssSelector("#attendance-response-filter-container .response-filter-btn[data-response-filter='PRESENT']")));
+        WebElement excusedBtn = driver.findElement(
+                By.cssSelector("#attendance-response-filter-container .response-filter-btn[data-response-filter='EXCUSED']"));
+
+        ((JavascriptExecutor) driver).executeScript("arguments[0].click();", presentBtn);
+        ((JavascriptExecutor) driver).executeScript("arguments[0].click();", excusedBtn);
+
+        // Wait for filter to apply
+        Awaitility.await().atMost(Duration.ofSeconds(3)).until(() -> {
+            List<WebElement> visibleRows = driver.findElements(
+                    By.cssSelector("table[role='grid'] tbody tr[style=''], table[role='grid'] tbody tr:not([style*='display: none'])"));
+            return visibleRows.size() == 2;
+        });
+
+        List<WebElement> visibleRows = driver.findElements(
+                By.cssSelector("table[role='grid'] tbody tr[style=''], table[role='grid'] tbody tr:not([style*='display: none'])"));
+        assertThat(visibleRows).hasSize(2);
+
+        // Verify statuses
+        for (WebElement row : visibleRows) {
+            WebElement statusSelect = row.findElement(By.cssSelector("td select.status-select"));
+            String status = statusSelect.getAttribute("value");
+            assertThat(status).isIn("PRESENT", "EXCUSED");
+        }
+    }
+
+    @Test
+    void combinedTextAndAttendanceFilterShouldWork() throws Exception {
+        WebDriverWait wait = new WebDriverWait(driver, Duration.ofSeconds(10));
+        String uid = UUID.randomUUID().toString().substring(0, 8);
+        String firstName = "Combined" + uid;
+        String lastName = "Filter" + uid;
+
+        // --- Create members via UI ---
+        createMember(firstName + "1", lastName + "A", wait);
+        createMember(firstName + "2", lastName + "B", wait);
+        createMember("Other" + uid, "Person" + uid, wait);
+
+        // --- Create a rehearsal via UI ---
+        loginAndNavigateTo("/rehearsals");
+        driver.findElement(By.xpath("//button[contains(text(), 'Zaplanuj spotkanie')]")).click();
+        wait.until(ExpectedConditions.presenceOfElementLocated(By.cssSelector("#rehearsal-form")));
+
+        String today = LocalDate.now().toString();
+        ((JavascriptExecutor) driver).executeScript(
+                "document.querySelector(\"input[name='date']\").value = arguments[0];" +
+                "document.querySelector(\"input[name='startTime']\").value = '18:00';" +
+                "document.querySelector(\"input[name='endTime']\").value = '20:00';" +
+                "document.querySelector(\"input[name='location']\").value = 'Sala prób';",
+                today);
+        driver.findElement(By.cssSelector("#rehearsal-form button[type='submit'].primary")).click();
+        wait.until(ExpectedConditions.urlContains("/rehearsals"));
+        wait.until(ExpectedConditions.not(ExpectedConditions.urlContains("/new")));
+
+        // Wait for rehearsal to be persisted
+        Awaitility.await().atMost(Duration.ofSeconds(10)).until(() ->
+                jdbcTemplate.queryForObject(
+                        "SELECT COUNT(*) FROM rehearsals WHERE date = ?", Long.class, today) > 0);
+
+        Long rehearsalId = jdbcTemplate.queryForObject(
+                "SELECT MAX(id) FROM rehearsals WHERE date = ?", Long.class, today);
+
+        List<Long> memberIds = jdbcTemplate.query(
+                "SELECT id FROM members WHERE first_name LIKE ? ORDER BY id",
+                (rs, rowNum) -> rs.getLong("id"),
+                firstName + "%");
+
+        Long otherMemberId = jdbcTemplate.queryForObject(
+                "SELECT id FROM members WHERE first_name = ?", Long.class, "Other" + uid);
+
+        assertThat(rehearsalId).isNotNull();
+        assertThat(memberIds).hasSize(2);
+        assertThat(otherMemberId).isNotNull();
+
+        // --- Invite all members to the rehearsal ---
+        for (Long memberId : memberIds) {
+            inviteMemberToRehearsal(rehearsalId, memberId);
+        }
+        inviteMemberToRehearsal(rehearsalId, otherMemberId);
+
+        // --- Set attendance statuses ---
+        setRehearsalAttendance(rehearsalId, memberIds.get(0), "PRESENT");
+        setRehearsalAttendance(rehearsalId, memberIds.get(1), "EXCUSED");
+        setRehearsalAttendance(rehearsalId, otherMemberId, "PRESENT");
+
+        // --- Navigate to rehearsal detail ---
+        driver.get(baseUrl() + "/rehearsals/" + rehearsalId);
+        wait.until(ExpectedConditions.presenceOfElementLocated(By.id("rehearsals-content")));
+
+        // Wait for attendance table to load
+        wait.until(ExpectedConditions.presenceOfElementLocated(By.cssSelector("table[role='grid']")));
+
+        // --- Apply text filter for first name ---
+        WebElement filterInput = wait.until(ExpectedConditions.presenceOfElementLocated(By.id("attendance-filter")));
+        filterInput.clear();
+        filterInput.sendKeys(firstName);
+
+        // --- Apply attendance filter for PRESENT ---
+        WebElement presentBtn = driver.findElement(
+                By.cssSelector("#attendance-response-filter-container .response-filter-btn[data-response-filter='PRESENT']"));
+        ((JavascriptExecutor) driver).executeScript("arguments[0].click();", presentBtn);
+
+        // Wait for both filters to apply
+        Awaitility.await().atMost(Duration.ofSeconds(3)).until(() -> {
+            List<WebElement> visibleRows = driver.findElements(
+                    By.cssSelector("table[role='grid'] tbody tr[style=''], table[role='grid'] tbody tr:not([style*='display: none'])"));
+            return visibleRows.size() == 1;
+        });
+
+        List<WebElement> visibleRows = driver.findElements(
+                By.cssSelector("table[role='grid'] tbody tr[style=''], table[role='grid'] tbody tr:not([style*='display: none'])"));
+        assertThat(visibleRows).hasSize(1);
+
+        // Verify it's the member with matching first name AND PRESENT status
+        WebElement nameCell = visibleRows.get(0).findElement(By.cssSelector("td:first-child"));
+        WebElement statusSelect = visibleRows.get(0).findElement(By.cssSelector("td select.status-select"));
+        assertThat(nameCell.getText()).contains(firstName + "1");
+        assertThat(statusSelect.getAttribute("value")).isEqualTo("PRESENT");
+    }
+
+    private void createMember(String firstName, String lastName, WebDriverWait wait) throws Exception {
+        loginAndNavigateTo("/members");
+        driver.findElement(By.xpath("//button[contains(text(), 'Dodaj członka')]")).click();
+        wait.until(ExpectedConditions.presenceOfElementLocated(By.cssSelector("#member-form")));
+        fill("firstName", firstName);
+        fill("lastName", lastName);
+        ((JavascriptExecutor) driver).executeScript(
+                "document.querySelector(\"input[name='dateOfBirth']\").value = '1990-05-15';");
+        driver.findElement(By.cssSelector("#member-form button[type='submit'].primary")).click();
+        wait.until(ExpectedConditions.presenceOfElementLocated(By.cssSelector("#members-content table")));
+
+        // Wait for the new member to be persisted in the DB
+        Awaitility.await().atMost(Duration.ofSeconds(10)).until(() ->
+                jdbcTemplate.queryForObject(
+                        "SELECT COUNT(*) FROM members WHERE first_name = ?", Long.class, firstName) > 0);
+    }
+
+    private void fill(String name, String value) {
+        WebElement el = driver.findElement(By.cssSelector("input[name='" + name + "']"));
+        el.clear();
+        el.sendKeys(value);
+    }
+}

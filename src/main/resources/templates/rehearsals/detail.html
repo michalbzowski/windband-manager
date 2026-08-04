@@ -37,6 +37,18 @@
                        style="width:100%; max-width:400px; padding:0.5rem; border:1px solid var(--pico-muted-border-color); border-radius:4px;">
             </div>
 
+            <!-- Response status filter - sticky on scroll, below text filter -->
+            <div th:if="${not #lists.isEmpty(invitedMembers)}" id="attendance-response-filter-container" class="response-filter-container" role="group" aria-label="Filtruj według statusu obecności">
+                <span class="response-filter-label text-muted" style="font-size:0.75rem; margin-right:0.5rem;">Status:</span>
+                <span class="stat confirmed response-filter-btn" title="Obecny" data-response-filter="PRESENT">✅ <span class="filter-count-present">0</span></span>
+                <span class="stat declined response-filter-btn" title="Usprawiedliwiony" data-response-filter="EXCUSED">🕓 <span class="filter-count-excused">0</span></span>
+                <span class="stat declined response-filter-btn" title="Nieobecny" data-response-filter="UNEXCUSED">✕ <span class="filter-count-unexcused">0</span></span>
+                <span class="stat no-response response-filter-btn" title="Brak odpowiedzi" data-response-filter="NO_RESPONSE">? <span class="filter-count-no-response">0</span></span>
+            </div>
+
+            <!-- Hidden input to track selected response filters -->
+            <input th:if="${not #lists.isEmpty(invitedMembers)}" type="hidden" id="active-attendance-response-filters" value="">
+
             <p th:if="${#lists.isEmpty(invitedMembers)}" class="text-muted">
             Brak zaproszonych uczestników. Użyj przycisków powyżej, aby zaprosić osoby lub grupy.
         </p>
@@ -284,6 +296,83 @@
                 row.style.display = matches ? '' : 'none';
             });
         });
+    });
+
+    // Attendance response status filter for rehearsals detail
+    document.addEventListener('DOMContentLoaded', function() {
+        var responseFilterContainer = document.getElementById('attendance-response-filter-container');
+        if (!responseFilterContainer) return;
+        
+        var table = document.querySelector('table[role="grid"]');
+        if (!table) return;
+        
+        var rows = table.querySelectorAll('tbody tr');
+        var activeFiltersInput = document.getElementById('active-attendance-response-filters');
+        var filterBtns = responseFilterContainer.querySelectorAll('.response-filter-btn');
+        
+        // Initialize active filters from hidden input
+        var activeFilters = activeFiltersInput.value ? activeFiltersInput.value.split(',') : [];
+        
+        function updateFilterButtons() {
+            filterBtns.forEach(function(btn) {
+                var filterValue = btn.getAttribute('data-response-filter');
+                if (activeFilters.includes(filterValue)) {
+                    btn.classList.add('active');
+                } else {
+                    btn.classList.remove('active');
+                }
+            });
+        }
+        
+        function applyFilters() {
+            var searchTerm = document.getElementById('attendance-filter') 
+                ? document.getElementById('attendance-filter').value.toLowerCase().trim() 
+                : '';
+            
+            rows.forEach(function(row) {
+                var memberNameCell = row.querySelector('td:first-child');
+                var statusSelect = row.querySelector('select.status-select');
+                
+                var memberName = memberNameCell ? memberNameCell.textContent.toLowerCase() : '';
+                var status = statusSelect ? statusSelect.value : '';
+                
+                var textMatches = !searchTerm || memberName.includes(searchTerm);
+                
+                var responseMatches = activeFilters.length === 0 || 
+                    activeFilters.length === filterBtns.length || 
+                    activeFilters.includes(status);
+                
+                row.style.display = (textMatches && responseMatches) ? '' : 'none';
+            });
+        }
+        
+        // Add click handlers to filter buttons
+        filterBtns.forEach(function(btn) {
+            btn.style.cursor = 'pointer';
+            btn.addEventListener('click', function() {
+                var filterValue = this.getAttribute('data-response-filter');
+                var index = activeFilters.indexOf(filterValue);
+                
+                if (index > -1) {
+                    activeFilters.splice(index, 1);
+                } else {
+                    activeFilters.push(filterValue);
+                }
+                
+                activeFiltersInput.value = activeFilters.join(',');
+                updateFilterButtons();
+                applyFilters();
+            });
+        });
+        
+        // Re-apply text filter when it changes
+        var filterInput = document.getElementById('attendance-filter');
+        if (filterInput) {
+            filterInput.addEventListener('input', applyFilters);
+        }
+        
+        // Initialize button states
+        updateFilterButtons();
     });
 </script>
 </body>

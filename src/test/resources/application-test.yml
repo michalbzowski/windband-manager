@@ -68,3 +68,17 @@ app:
     realm: windband
     client-id: test-client
     client-secret: test-secret
+
+superset:
+  base-url: http://localhost:8088
+  username: admin
+  password: admin
+  guest-token-jwt-secret: WindbandGuestToken2026!ChangeMe#VeryLongSecretForSecurity
+
+keycloak:
+  url: http://localhost:8180
+  realm: windband
+  superset:
+    client:
+      id: superset
+      secret: supersetsecret

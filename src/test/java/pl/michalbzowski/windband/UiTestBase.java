@@ -308,4 +308,68 @@ public abstract class UiTestBase {
         }
         return key.longValue();
     }
+
+    /**
+     * Helper: invite a member to an event via API (synchronous XHR).
+     * Used in UI tests that need to set up event participants before testing filters.
+     */
+    protected void inviteMemberToEvent(Long eventId, Long memberId) {
+        org.openqa.selenium.JavascriptExecutor js = (org.openqa.selenium.JavascriptExecutor) driver;
+        js.executeScript(
+                "var xhr = new XMLHttpRequest();" +
+                "xhr.open('POST', '/api/events/' + arguments[0] + '/invite', false);" +
+                "xhr.setRequestHeader('Content-Type', 'application/json');" +
+                "var csrf = document.cookie.split('; ').find(c => c.startsWith('XSRF-TOKEN='));" +
+                "if (csrf) xhr.setRequestHeader('X-XSRF-TOKEN', csrf.split('=')[1]);" +
+                "xhr.send(JSON.stringify({eventId: arguments[0], memberId: arguments[1]}));" +
+                "return xhr.status;", eventId, memberId);
+    }
+
+    /**
+     * Helper: set event response (CONFIRMED, DECLINED, LATER, NO_RESPONSE) via API.
+     * Used in UI tests that need to configure participation responses before testing filters.
+     */
+    protected void setEventResponse(Long eventId, Long memberId, String response) {
+        org.openqa.selenium.JavascriptExecutor js = (org.openqa.selenium.JavascriptExecutor) driver;
+        js.executeScript(
+                "var xhr = new XMLHttpRequest();" +
+                "xhr.open('POST', '/api/events/' + arguments[0] + '/response', false);" +
+                "xhr.setRequestHeader('Content-Type', 'application/json');" +
+                "var csrf = document.cookie.split('; ').find(c => c.startsWith('XSRF-TOKEN='));" +
+                "if (csrf) xhr.setRequestHeader('X-XSRF-TOKEN', csrf.split('=')[1]);" +
+                "xhr.send(JSON.stringify({eventId: arguments[0], memberId: arguments[1], response: arguments[2]}));" +
+                "return xhr.status;", eventId, memberId, response);
+    }
+
+    /**
+     * Helper: invite a member to a rehearsal via API (synchronous XHR).
+     * Used in UI tests that need to set up rehearsal participants before testing filters.
+     */
+    protected void inviteMemberToRehearsal(Long rehearsalId, Long memberId) {
+        org.openqa.selenium.JavascriptExecutor js = (org.openqa.selenium.JavascriptExecutor) driver;
+        js.executeScript(
+                "var xhr = new XMLHttpRequest();" +
+                "xhr.open('POST', '/api/rehearsals/' + arguments[0] + '/invite', false);" +
+                "xhr.setRequestHeader('Content-Type', 'application/json');" +
+                "var csrf = document.cookie.split('; ').find(c => c.startsWith('XSRF-TOKEN='));" +
+                "if (csrf) xhr.setRequestHeader('X-XSRF-TOKEN', csrf.split('=')[1]);" +
+                "xhr.send(JSON.stringify({rehearsalId: arguments[0], memberId: arguments[1]}));" +
+                "return xhr.status;", rehearsalId, memberId);
+    }
+
+    /**
+     * Helper: set rehearsal attendance status (PRESENT, EXCUSED, UNEXCUSED, NO_RESPONSE) via API.
+     * Used in UI tests that need to configure attendance before testing filters.
+     */
+    protected void setRehearsalAttendance(Long rehearsalId, Long memberId, String status) {
+        org.openqa.selenium.JavascriptExecutor js = (org.openqa.selenium.JavascriptExecutor) driver;
+        js.executeScript(
+                "var xhr = new XMLHttpRequest();" +
+                "xhr.open('POST', '/api/rehearsals/' + arguments[0] + '/attendance', false);" +
+                "xhr.setRequestHeader('Content-Type', 'application/json');" +
+                "var csrf = document.cookie.split('; ').find(c => c.startsWith('XSRF-TOKEN='));" +
+                "if (csrf) xhr.setRequestHeader('X-XSRF-TOKEN', csrf.split('=')[1]);" +
+                "xhr.send(JSON.stringify({rehearsalId: arguments[0], memberId: arguments[1], status: arguments[2]}));" +
+                "return xhr.status;", rehearsalId, memberId, status);
+    }
 }
