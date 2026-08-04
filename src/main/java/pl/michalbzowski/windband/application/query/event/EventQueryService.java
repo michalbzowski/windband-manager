@@ -74,7 +74,7 @@ public class EventQueryService {
                             p.getMember().getEmail(),
                             p.getInstrument() != null ? p.getInstrument().getName()
                                 : p.getMember().getPrimaryInstrument().map(i -> i.getName()).orElse(null),
-                            p.getResponse().name(),
+                            p.getResponse() != null ? p.getResponse().name() : "NO_RESPONSE",
                             p.getPaymentAmount(),
                             p.getPaymentStatus().name(),
                             invStatus,
@@ -111,9 +111,9 @@ public class EventQueryService {
         // Calculate instrument summary from confirmed participants
         List<InstrumentCountDto> instrumentSummary = participationDtos.stream()
                 .filter(p -> "CONFIRMED".equals(p.response()))
+                .filter(p -> p.instrumentName() != null)  // Filter out null instruments BEFORE grouping
                 .collect(Collectors.groupingBy(ParticipationDto::instrumentName, Collectors.counting()))
                 .entrySet().stream()
-                .filter(e -> e.getKey() != null)
                 .map(e -> new InstrumentCountDto(e.getKey(), e.getValue()))
                 .sorted(Comparator.comparing(InstrumentCountDto::count).reversed())
                 .toList();

@@ -231,7 +231,7 @@ class EventDetailFilterUiTest extends UiTestBase {
                         for (Long memberId : memberIds) {
                             inviteMemberToEvent(eventId, memberId);
                         }
-        
+
                 // Wait for participations to be created
                 Awaitility.await().atMost(Duration.ofSeconds(5)).until(() -> {
                     Long count = jdbcTemplate.queryForObject(
@@ -252,13 +252,13 @@ class EventDetailFilterUiTest extends UiTestBase {
         System.out.println("Page title: " + driver.getTitle());
         System.out.println("Page source length: " + driver.getPageSource().length());
         System.out.println("Page source preview: " + driver.getPageSource().substring(0, Math.min(2000, driver.getPageSource().length())));
-        
+
         // Check if we got an error page
         String pageSource = driver.getPageSource();
         if (pageSource.contains("xml-viewer-style") || pageSource.contains("404") || pageSource.contains("Error") || pageSource.contains("Whitelabel")) {
             System.out.println("ERROR PAGE DETECTED!");
             System.out.println("FULL ERROR PAGE SOURCE: " + pageSource);
-            
+
             if (pageSource.contains("Whitelabel Error Page")) {
                 System.out.println("WHITELABEL ERROR PAGE DETECTED");
             }
@@ -278,7 +278,7 @@ class EventDetailFilterUiTest extends UiTestBase {
                 System.out.println("SPRING ERROR RESPONSE DETECTED (XML/JSON)");
             }
         }
-        
+
         System.out.println("About to wait for events-content element...");
         wait.until(ExpectedConditions.presenceOfElementLocated(By.id("events-content")));
 
