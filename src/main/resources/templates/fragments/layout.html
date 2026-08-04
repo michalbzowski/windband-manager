@@ -137,6 +137,30 @@
             }
         }
 
+        function updateHeaderPosition() {
+            // Dynamic header positioning: push header off-screen when filters touch it
+            const headerRect = header.getBoundingClientRect();
+            const filterContainer = document.querySelector('.participant-filter-container, .attendance-filter-container, .response-filter-container');
+            
+            let headerTopValue = 0;  // Default: stick to top
+            
+            if (filterContainer) {
+                const filterRect = filterContainer.getBoundingClientRect();
+                // If filter is touching/above header bottom, push header up
+                if (filterRect.top <= headerRect.bottom && filterRect.top > 0) {
+                    // Calculate how much to push header up
+                    // We want to push it just enough so filter doesn't overlap
+                    const headerHeight = headerRect.height;
+                    const overlapAmount = headerRect.bottom - filterRect.top;
+                    
+                    // Push header up by the overlap amount (or full height, whichever smaller)
+                    headerTopValue = Math.min(-overlapAmount, -headerHeight);
+                }
+            }
+            
+            document.documentElement.style.setProperty('--header-top', headerTopValue + 'px');
+        }
+
         function updateHeaderState() {
             const scrollY = window.scrollY;
             
@@ -181,6 +205,7 @@
                 window.requestAnimationFrame(function() {
                     updateHeaderState();
                     updateStickyFilterOffset();
+                    updateHeaderPosition();  // NEW: dynamically push header when filters touch it
                     ticking = false;
                 });
                 ticking = true;
@@ -190,8 +215,9 @@
         // Initial check in case page loads scrolled
         onScroll();
         
-        // Set initial sticky filter offset
+        // Set initial sticky filter offset and header position
         updateStickyFilterOffset();
+        updateHeaderPosition();  // NEW: initial header position
 
         window.addEventListener('scroll', onScroll, { passive: true });
     })();
