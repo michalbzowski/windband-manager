@@ -110,8 +110,20 @@
             // Update CSS custom property for sticky filter position
             const headerRect = header.getBoundingClientRect();
             const headerBottom = headerRect.bottom;
-            // Use max of header bottom and 60px (for compact bar state)
-            const offset = Math.max(headerBottom, 60);
+            
+            // Logic:
+            // - If header is partially visible: filter sticks below header
+            // - If header is scrolled completely off-screen (top): filter moves to top of viewport
+            let offset;
+            if (headerBottom <= 0) {
+                // Header completely scrolled off-screen (above viewport)
+                // Filter should now stick to top of viewport for maximum space savings
+                offset = 0;
+            } else {
+                // Header is still visible or morphing
+                // Filter sticks below the visible header portion
+                offset = headerBottom;
+            }
             document.documentElement.style.setProperty('--sticky-filter-top', offset + 'px');
 
             // Also calculate offset for response filter (below text filter)
@@ -119,7 +131,8 @@
             if (textFilterContainer) {
                 const textFilterRect = textFilterContainer.getBoundingClientRect();
                 // Response filter should stick below the text filter
-                const responseFilterOffset = Math.max(headerBottom + textFilterRect.height, 60 + textFilterRect.height);
+                // When header is gone (offset=0), response filter sticks at 0 + text-filter height
+                const responseFilterOffset = offset + textFilterRect.height;
                 document.documentElement.style.setProperty('--sticky-response-filter-top', responseFilterOffset + 'px');
             }
         }
