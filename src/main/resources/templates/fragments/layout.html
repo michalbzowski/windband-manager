@@ -139,14 +139,35 @@
 
         function updateHeaderState() {
             const scrollY = window.scrollY;
+            
+            // Check for collision between header and filters
+            // If filters are approaching/touching header, force header to collapse
+            const headerRect = header.getBoundingClientRect();
+            const filterContainer = document.querySelector('.participant-filter-container, .attendance-filter-container, .response-filter-container');
+            
+            let shouldCollapse = false;
+            if (filterContainer) {
+                const filterRect = filterContainer.getBoundingClientRect();
+                // If filter is at or above header bottom, force header collapse
+                // This prevents filter from overlapping with header
+                if (filterRect.top <= headerRect.bottom && filterRect.top >= 0) {
+                    shouldCollapse = true;
+                }
+            }
+            
+            // Standard scroll-based logic
+            const standardScrollThreshold = scrollY > ORIGINAL_HEADER_HEIGHT;
+            
+            // Apply whichever is more aggressive (scroll OR collision)
+            const shouldBeCollapsed = shouldCollapse || standardScrollThreshold;
 
-            if (!isScrolled && scrollY > ORIGINAL_HEADER_HEIGHT) {
-                // Scrolling down past header area -> morph to compact bar
+            if (!isScrolled && shouldBeCollapsed) {
+                // Scrolling down past header area OR filter collision detected -> morph to compact bar
                 header.classList.add('scrolled');
                 isScrolled = true;
                 updateStickyFilterOffset();
-            } else if (isScrolled && scrollY < ORIGINAL_HEADER_HEIGHT * 0.3) {
-                // Scrolling up near top -> restore original card style
+            } else if (isScrolled && !shouldBeCollapsed && scrollY < ORIGINAL_HEADER_HEIGHT * 0.3) {
+                // Scrolling up near top AND no collision -> restore original card style
                 header.classList.remove('scrolled');
                 isScrolled = false;
                 updateStickyFilterOffset();
