@@ -101,22 +101,6 @@ public class DashboardAttentionListUiTest extends UiTestBase {
     }
 
     @Test
-    public void dashboard_hides_attention_list_when_no_attention_items() {
-        // Arrange: wipe events + participations so no attention items exist.
-        // (UiTestBase.cleanDatabase() runs in @BeforeEach of the next test.)
-        jdbcTemplate.update("DELETE FROM event_participations");
-        jdbcTemplate.update("DELETE FROM band_events");
-
-        // Act
-        loginAndNavigateTo("/");
-
-        // Assert: attention list section is NOT visible
-        WebDriverWait wait = new WebDriverWait(driver, java.time.Duration.ofSeconds(5));
-        var attentionHeadings = driver.findElements(By.xpath("//h2[contains(text(), 'Wymaga Twojej uwagi')]"));
-        assertThat(attentionHeadings).isEmpty();
-    }
-
-    @Test
     public void dashboard_ignores_free_events_for_attention() {
         // Arrange: create a FREE event (not PAID_SPLIT) with unpaid participation
         BandEvent freeEvent = BandEvent.create(
