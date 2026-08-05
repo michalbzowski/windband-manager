@@ -1477,8 +1477,8 @@ li.past-item > * {
 }
 
 /* Scrolled state - morphs to compact sticky bar (stays sticky, just changes appearance) */
+/* NOTE: top is controlled by --header-top CSS variable (can be negative to push off-screen) */
 .dashboard-header.scrolled {
-    top: 0; /* Still at top when scrolled */
     left: 0;
     right: 0;
     margin-bottom: 0;

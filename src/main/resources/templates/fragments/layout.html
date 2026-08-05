@@ -105,6 +105,8 @@
         let lastScrollY = 0;
         let ticking = false;
         let isScrolled = false;
+        let headerReleased = false;  // Track if header has been released (non-sticky)
+        let headerOriginalTop = null; // Store header's original position in document flow
 
         function updateStickyFilterOffset() {
             // Update CSS custom property for sticky filter position
@@ -143,7 +145,7 @@
             const filterContainer = document.querySelector('.participant-filter-container, .attendance-filter-container, .response-filter-container');
             
             let headerTopValue = 0;  // Default: stick to top
-            
+
             if (filterContainer) {
                 const filterRect = filterContainer.getBoundingClientRect();
                 // If filter is touching/above header bottom, push header up
@@ -157,8 +159,29 @@
                     headerTopValue = Math.min(-overlapAmount, -headerHeight);
                 }
             }
-            
-            document.documentElement.style.setProperty('--header-top', headerTopValue + 'px');
+
+            // Check if header is completely off-screen (pushed up fully)
+            // If so, release it from sticky positioning so it scrolls away with page
+            if (headerRect.bottom <= 0 && !headerReleased) {
+                // Header is completely above viewport - release it
+                header.style.position = 'relative';
+                headerReleased = true;
+                // Store original top for potential restoration when scrolling up
+                headerOriginalTop = header.offsetTop;
+            } else if (headerReleased && window.scrollY < (headerOriginalTop || ORIGINAL_HEADER_HEIGHT)) {
+                // Scrolling back up - restore sticky positioning
+                header.style.position = 'sticky';
+                headerReleased = false;
+                headerOriginalTop = null;
+            }
+
+            // Only update --header-top if header is still sticky (not released)
+            if (!headerReleased) {
+                document.documentElement.style.setProperty('--header-top', headerTopValue + 'px');
+            } else {
+                // Header is released - reset the CSS variable
+                document.documentElement.style.setProperty('--header-top', '0px');
+            }
         }
 
         function updateHeaderState() {
@@ -184,7 +207,7 @@
             
             // Apply whichever is more aggressive (scroll OR collision)
             const shouldBeCollapsed = shouldCollapse || standardScrollThreshold;
-
+            
             if (!isScrolled && shouldBeCollapsed) {
                 // Scrolling down past header area OR filter collision detected -> morph to compact bar
                 header.classList.add('scrolled');
@@ -200,12 +223,12 @@
 
         function onScroll() {
             lastScrollY = window.scrollY;
-
+            
             if (!ticking) {
                 window.requestAnimationFrame(function() {
                     updateHeaderState();
                     updateStickyFilterOffset();
-                    updateHeaderPosition();  // NEW: dynamically push header when filters touch it
+                    updateHeaderPosition();  // Dynamically push header when filters touch it
                     ticking = false;
                 });
                 ticking = true;
@@ -217,7 +240,7 @@
         
         // Set initial sticky filter offset and header position
         updateStickyFilterOffset();
-        updateHeaderPosition();  // NEW: initial header position
+        updateHeaderPosition();  // Initial header position
 
         window.addEventListener('scroll', onScroll, { passive: true });
     })();
