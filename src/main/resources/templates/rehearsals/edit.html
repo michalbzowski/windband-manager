@@ -50,6 +50,51 @@
                         hx-swap="innerHTML transition:true">Anuluj</button>
             </div>
         </form>
+
+        <!-- Inline script must live INSIDE the #rehearsals-content fragment.
+             When the user navigates via HTMX (detail page -> "Edytuj" button),
+             the controller returns `rehearsals/edit :: #rehearsals-content` and
+             HTMX swaps only the fragment content. Any <script> tag placed
+             OUTSIDE this div is stripped from the swapped result, so the
+             submit handler is never registered and the form falls back to a
+             native HTML GET submit (which posts the form fields into the
+             current URL's query string and silently drops the data — exactly
+             the bug Owner reported: "Klikam zapisz zmiany. Nic się nie
+             zapisało a zostałem przeniesiony na listę spotkań."). Keeping
+             the script inside the fragment ensures it is re-executed every
+             time the edit form is rendered, regardless of how it got there. -->
+        <script th:inline="javascript">
+            // Guard: prevent duplicate event listeners when form is reloaded via htmx
+            if (!window._rehearsalEditFormHandlerAttached) {
+                window._rehearsalEditFormHandlerAttached = true;
+                document.body.addEventListener('submit', function(e) {
+                    if (e.target.id === 'rehearsal-edit-form') {
+                        e.preventDefault();
+                        var form = e.target;
+                        var formData = new FormData(form);
+                        var data = {};
+                        formData.forEach(function(value, key) { data[key] = value; });
+
+                        var rehearsalId = [[${rehearsal.id}]];
+
+                        fetchWithToast('/api/rehearsals/' + rehearsalId, {
+                            method: 'PUT',
+                            headers: {'Content-Type': 'application/json'},
+                            body: JSON.stringify(data)
+                        }).then(function(response) {
+                            if (response.ok) {
+                                // Full page reload to ensure fresh data is loaded from database
+                                window.location.href = '/rehearsals/' + rehearsalId;
+                            } else {
+                                console.error('Failed to update rehearsal:', response.statusText);
+                            }
+                        }).catch(function(error) {
+                            console.error('Error updating rehearsal:', error);
+                        });
+                    }
+                });
+            }
+        </script>
     </div>
     </section>
 </main>
@@ -59,38 +104,5 @@
 <div th:insert="~{fragments/layout :: footer-scripts}"></div>
 
 <script th:replace="~{fragments/layout :: dashboard-header-morph}"></script>
-
-<script th:inline="javascript">
-    // Guard: prevent duplicate event listeners when form is reloaded via htmx
-    if (!window._rehearsalEditFormHandlerAttached) {
-        window._rehearsalEditFormHandlerAttached = true;
-        document.body.addEventListener('submit', function(e) {
-            if (e.target.id === 'rehearsal-edit-form') {
-                e.preventDefault();
-                var form = e.target;
-                var formData = new FormData(form);
-                var data = {};
-                formData.forEach(function(value, key) { data[key] = value; });
-
-                var rehearsalId = [[${rehearsal.id}]];
-
-                fetchWithToast('/api/rehearsals/' + rehearsalId, {
-                    method: 'PUT',
-                    headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify(data)
-                }).then(function(response) {
-                    if (response.ok) {
-                        // Full page reload to ensure fresh data is loaded from database
-                        window.location.href = '/rehearsals/' + rehearsalId;
-                    } else {
-                        console.error('Failed to update rehearsal:', response.statusText);
-                    }
-                }).catch(function(error) {
-                    console.error('Error updating rehearsal:', error);
-                });
-            }
-        });
-    }
-</script>
 </body>
 </html>

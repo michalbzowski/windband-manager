@@ -255,4 +255,172 @@ public class RehearsalEditUiTest extends UiTestBase {
         }
         return Long.valueOf(m.group(1));
     }
+
+    /**
+     * Owner-flow regression: navigate to /meetings, click "Szczegóły"
+     * (REHEARSAL button has hx-target="#content"), then click "Edytuj"
+     * inside the swapped detail (which has hx-target="#rehearsals-content"),
+     * then click "Zapisz zmiany" on the swapped edit form.
+     *
+     * Before the fix, the inline <script> that registers the submit
+     * handler lived OUTSIDE the #rehearsals-content fragment, so when
+     * HTMX swapped the fragment the handler was never registered. The
+     * form fell back to a native HTML GET submit, which posted the form
+     * fields into the current URL's query string (e.g.
+     * /meetings?date=...&startTime=...&...) and silently dropped the
+     * data — the exact Owner report.
+     *
+     * After the fix (the script is moved INSIDE the fragment), this
+     * test passes: the URL stays on /meetings (the script intercepts
+     * the submit, PUTs the data, then redirects), and the database
+     * has the new start time.
+     */
+    @Test
+    public void editingRehearsalViaHtmxSwap_persistsTheNewValue() {
+        // Login + create a rehearsal via API.
+        loginAndNavigateTo("/");
+        long uid = System.nanoTime();
+        Long rehearsalId = createRehearsalViaApi("EditHtmx " + uid, "2026-12-31", "18:00", "20:00", "Sala H");
+        assertThat(rehearsalId).isNotNull();
+
+        // Navigate to /meetings (full page, Owner-style). We use
+        // loginAndNavigateTo so the same auth flow that the Owner used
+        // is exercised here; this also creates a new page state
+        // (clean DOM, fresh HTMX) which the per-test @BeforeEach
+        // driver.quit() then driver setup guarantees.
+        loginAndNavigateTo("/meetings");
+        WebDriverWait wait = new WebDriverWait(driver, Duration.ofSeconds(10));
+        wait.until(ExpectedConditions.presenceOfElementLocated(
+                By.cssSelector("#meetings-content")));
+
+        // Debug: log htmx global availability. In the full suite, a
+        // previous test's page state can leak into the next (selenium
+        // session), so we sanity-check that HTMX is initialised.
+        Boolean htmxReady = (Boolean) ((JavascriptExecutor) driver).executeScript(
+                "return typeof htmx !== 'undefined' && typeof htmx.ajax === 'function';");
+        System.err.println("[DEBUG] htmx global available = " + htmxReady);
+        // Debug: how many meeting-rehearsal rows are on the page right now?
+        // data.sql seeds 3 rehearsals, but cleanDatabase() should have
+        // wiped them. If we see more, that's the state-leak issue.
+        Long meetingRehearsalRowCount = (Long) ((JavascriptExecutor) driver).executeScript(
+                "return document.querySelectorAll('tr.meeting-rehearsal').length;");
+        System.err.println("[DEBUG] tr.meeting-rehearsal rows = " + meetingRehearsalRowCount);
+        // Debug: does the row for OUR rehearsal id exist?
+        Long ourRowExists = (Long) ((JavascriptExecutor) driver).executeScript(
+                "return document.querySelectorAll('tr#meeting-" + rehearsalId + "').length;");
+        System.err.println("[DEBUG] tr#meeting-" + rehearsalId + " count = " + ourRowExists);
+
+        // Click "Szczegóły" on OUR REHEARSAL ROW — use the unique id we
+        // just created (the row has th:id="'meeting-' + ${m.id}"). This
+        // is critical: a bare `//tr[contains(@class, 'meeting-rehearsal')]`
+        // matches the FIRST row, which is a data.sql seed with id=1 and
+        // a hard-coded startTime=18:00 — and the inline script binds
+        // rehearsalId from that row's [[${rehearsal.id}]], not from our
+        // freshly-created rehearsal. Use the specific id to avoid that
+        // race.
+        WebElement detailButton = driver.findElement(
+                By.xpath("//tr[@id='meeting-" + rehearsalId + "']//button[contains(text(), 'Szczegóły')]"));
+        // Scroll the row to the top of the viewport so the button is
+        // not obscured by the sticky dashboard header (skill: "ElementClick
+        // Intercepted in the FULL suite but not solo: Fix: click via JS
+        // and scrollIntoView"). Using block:'start' (not 'center') because
+        // the sticky header eats the top of the page — 'center' would
+        // put the button right under the header.
+        ((JavascriptExecutor) driver).executeScript(
+                "var row = document.getElementById('meeting-" + rehearsalId + "');" +
+                "if (row) row.scrollIntoView({block:'start'});" +
+                "window.scrollBy(0, -150);" +
+                "var btn = document.querySelector('tr#meeting-" + rehearsalId + " button');" +
+                "if (btn) btn.click();",
+                new Object[]{});
+
+        // The detail swaps into #content. The detail has an "Edytuj"
+        // button with hx-target="#rehearsals-content". Wait for it.
+        // Use presenceOfElementLocated (DOM present) rather than
+        // visibilityOf (which can flake in full-suite runs when the
+        // sticky header overlaps the button).
+        // 15s instead of the default 10s — full-suite runs can be slow
+        // when HTMX needs to process a swap through several layers.
+        new WebDriverWait(driver, Duration.ofSeconds(15)).until(
+                ExpectedConditions.presenceOfElementLocated(
+                        By.xpath("//button[contains(text(), 'Edytuj')]")));
+
+        // Click "Edytuj" — another HTMX GET, this time to
+        // /rehearsals/{id}/edit, swapping #rehearsals-content with the
+        // edit form fragment.
+        WebElement editButton = driver.findElement(
+                By.xpath("//button[contains(text(), 'Edytuj')]"));
+        ((JavascriptExecutor) driver).executeScript(
+                "arguments[0].scrollIntoView({block:'start'});" +
+                "window.scrollBy(0, -120);" +
+                "arguments[0].click();",
+                editButton);
+
+        // The edit form has id="rehearsal-edit-form" — wait for it to
+        // appear in the DOM after the swap.
+        wait.until(ExpectedConditions.presenceOfElementLocated(
+                By.cssSelector("#rehearsal-edit-form")));
+
+        // CRITICAL: after the swap the inline <script> tag must have
+        // been re-inserted into the DOM (and ideally executed). Before
+        // the fix this count was 0 because the script was OUTSIDE the
+        // swapped fragment, so no submit handler was registered and
+        // the form fell back to a native GET submit.
+        Long scriptCount = (Long) ((JavascriptExecutor) driver).executeScript(
+                "return document.querySelectorAll('#rehearsals-content script').length;");
+        assertThat(scriptCount)
+                .as("after HTMX swap the inline <script> tag must be inside #rehearsals-content (and so re-inserted by HTMX)")
+                .isGreaterThan(0L);
+
+        // Sanity: the form is visible with the existing values.
+        WebElement startTimeInput = driver.findElement(
+                By.cssSelector("input[name='startTime']"));
+        assertThat(startTimeInput.getAttribute("value"))
+                .as("edit form should pre-populate the existing start time")
+                .isEqualTo("18:00");
+
+        // JS-set the new time. Skill rule: sendKeys on <input type="time">
+        // is unreliable in headless Chrome.
+        ((JavascriptExecutor) driver).executeScript(
+                "var el = document.querySelector(\"input[name='startTime']\");" +
+                "el.value = '20:30';" +
+                "el.dispatchEvent(new Event('input', {bubbles: true}));" +
+                "el.dispatchEvent(new Event('change', {bubbles: true}));",
+                new Object[]{});
+
+        // Snapshot the URL before submit.
+        String urlBeforeSubmit = driver.getCurrentUrl();
+
+        // Click "Zapisz zmiany".
+        WebElement saveButton = driver.findElement(
+                By.xpath("//button[contains(text(), 'Zapisz zmiany')]"));
+        ((JavascriptExecutor) driver).executeScript(
+                "arguments[0].scrollIntoView({block:'center'});" +
+                "arguments[0].click();",
+                saveButton);
+
+        // Owner symptom: after submit the URL stays at /meetings but the
+        // form fields appear as a query string. After the fix the inline
+        // submit handler intercepts, PUTs the data, then redirects with
+        // window.location.href = '/rehearsals/{id}'. Wait for the URL
+        // to leave /meetings and land on the detail page.
+        wait.until(d -> d.getCurrentUrl().matches(".*/rehearsals/\\d+(?!.*/meetings).*"));
+        assertThat(driver.getCurrentUrl())
+                .as("after save the URL must NOT be /meetings?... query-string fallback")
+                .doesNotMatch(".*/meetings\\?.*date=.*");
+        assertThat(driver.getCurrentUrl())
+                .as("after save we should land on the detail page (a full page reload triggered by the inline handler)")
+                .matches(".*/rehearsals/\\d+$");
+
+        // The authoritative persistence check.
+        java.sql.Time persistedStart = jdbcTemplate.queryForObject(
+                "SELECT start_time FROM rehearsals WHERE id = ?",
+                java.sql.Time.class, rehearsalId);
+        assertThat(persistedStart)
+                .as("the new start time should be persisted in the database")
+                .isNotNull();
+        assertThat(persistedStart.toLocalTime())
+                .as("the new start time should be persisted in the database")
+                .isEqualTo(java.time.LocalTime.of(20, 30));
+    }
 }
