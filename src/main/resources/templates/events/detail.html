@@ -175,12 +175,12 @@
 
     <div style="margin-top:1rem; display:flex; gap:0.5rem;">
         <button type="button" class="secondary"
-                hx-get="/events/list" hx-target="#events-list-container"
-                hx-swap="innerHTML transition:true">Powrót</button>
+                hx-get="/events/list" hx-target="#content"
+                hx-swap="outerHTML transition:true">Powrót</button>
         <button type="button" class="outline"
                 th:hx-get="@{/events/{id}/edit(id=${event.id})}"
-                hx-target="#events-list-container"
-                hx-swap="innerHTML transition:true">✏️ Edytuj</button>
+                hx-target="#content"
+                hx-swap="outerHTML transition:true">✏️ Edytuj</button>
         <button type="button" class="outline danger" id="delete-event-btn">🗑️ Usuń wydarzenie</button>
     </div>
 
