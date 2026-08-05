@@ -102,6 +102,16 @@ public class RehearsalPageController {
                 ));
         model.addAttribute("attendanceMap", attendanceMap);
 
+        // Attendance status counts for the filter badges
+        long presentCount = attendanceMap.values().stream().filter(s -> s == AttendanceStatus.PRESENT).count();
+        long excusedCount = attendanceMap.values().stream().filter(s -> s == AttendanceStatus.EXCUSED).count();
+        long unexcusedCount = attendanceMap.values().stream().filter(s -> s == AttendanceStatus.UNEXCUSED).count();
+        long noResponseCount = attendanceMap.values().stream().filter(s -> s == AttendanceStatus.NO_RESPONSE).count();
+        model.addAttribute("presentCount", presentCount);
+        model.addAttribute("excusedCount", excusedCount);
+        model.addAttribute("unexcusedCount", unexcusedCount);
+        model.addAttribute("noResponseCount", noResponseCount);
+
         if ("true".equals(request.getHeader("HX-Request"))) {
             return "rehearsals/detail :: #rehearsals-content";
         }

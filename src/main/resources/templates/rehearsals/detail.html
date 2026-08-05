@@ -40,10 +40,10 @@
             <!-- Response status filter - sticky on scroll, below text filter -->
             <div th:if="${not #lists.isEmpty(invitedMembers)}" id="attendance-response-filter-container" class="response-filter-container" role="group" aria-label="Filtruj według statusu obecności">
                 <span class="response-filter-label text-muted" style="font-size:0.75rem; margin-right:0.5rem;">Status:</span>
-                <span class="stat confirmed response-filter-btn" title="Obecny" data-response-filter="PRESENT">✅ <span class="filter-count-present">0</span></span>
-                <span class="stat declined response-filter-btn" title="Usprawiedliwiony" data-response-filter="EXCUSED">🕓 <span class="filter-count-excused">0</span></span>
-                <span class="stat declined response-filter-btn" title="Nieobecny" data-response-filter="UNEXCUSED">✕ <span class="filter-count-unexcused">0</span></span>
-                <span class="stat no-response response-filter-btn" title="Brak odpowiedzi" data-response-filter="NO_RESPONSE">? <span class="filter-count-no-response">0</span></span>
+                <span class="stat confirmed response-filter-btn" title="Obecny" data-response-filter="PRESENT">✅ <span class="filter-count-present" th:text="${presentCount}">0</span></span>
+                <span class="stat declined response-filter-btn" title="Usprawiedliwiony" data-response-filter="EXCUSED">🕓 <span class="filter-count-excused" th:text="${excusedCount}">0</span></span>
+                <span class="stat declined response-filter-btn" title="Nieobecny" data-response-filter="UNEXCUSED">✕ <span class="filter-count-unexcused" th:text="${unexcusedCount}">0</span></span>
+                <span class="stat no-response response-filter-btn" title="Brak odpowiedzi" data-response-filter="NO_RESPONSE">? <span class="filter-count-no-response" th:text="${noResponseCount}">0</span></span>
             </div>
 
             <!-- Hidden input to track selected response filters -->
