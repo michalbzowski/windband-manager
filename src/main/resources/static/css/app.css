@@ -1477,7 +1477,6 @@ li.past-item > * {
 }
 
 /* Scrolled state - morphs to compact sticky bar (stays sticky, just changes appearance) */
-/* NOTE: top is controlled by --header-top CSS variable (can be negative to push off-screen) */
 .dashboard-header.scrolled {
     left: 0;
     right: 0;
@@ -1491,9 +1490,18 @@ li.past-item > * {
     z-index: 1000;
     padding: 0.5rem 1rem;
     background: var(--pico-background-color);
-    /* Expand to full width while staying sticky */
     max-width: none;
     width: 100%;
+}
+
+/* Released state - header stops being sticky and leaves viewport normally during scroll */
+/* Used on detail pages when filters take over the sticky position */
+.dashboard-header.released {
+    position: static !important;
+    top: auto !important;
+    left: auto !important;
+    right: auto !important;
+    margin-bottom: 1rem;
 }
 
 /* Ensure header-top uses flex properly for side-by-side layout */

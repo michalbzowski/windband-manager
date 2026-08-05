@@ -94,115 +94,127 @@
     </div>
 </header>
 
-<!-- Dashboard header scroll morph behavior - single element transforms via CSS transitions -->
+<!-- Dashboard header scroll morph behavior with double-push-off for detail pages -->
 <script th:fragment="dashboard-header-morph">(function() {
     const header = document.getElementById('dashboardHeader');
     if (!header) return;
-
-    // Dynamic threshold based on header's actual height when it morphs
-    const ORIGINAL_HEADER_HEIGHT = 200; // approximate initial card height
+    
+    // Detect page type based on presence of filters
+    const filterContainer = document.querySelector('.participant-filter-container, .attendance-filter-container');
+    const isDetailPage = !!filterContainer;  // Events/Rehearsals have participant filters
+    
     let lastScrollY = 0;
     let ticking = false;
-    let isScrolled = false;
-    let headerReleased = false;  // Track if header has been released (non-sticky)
-    let headerOriginalTop = null; // Store header's original position in document flow
-
+    let isScrolled = false;     // Header morphed to compact "scrolled" state (small bar)
+    let isReleased = false;      // Header released from sticky, leaving viewport normally
+    
     function updateStickyFilterOffset() {
-        // Update CSS custom property for sticky filter position
+        if (!isDetailPage || !filterContainer) return;
+        
         const headerRect = header.getBoundingClientRect();
-        const headerBottom = headerRect.bottom;
-
-        // Logic:
-        // - If header is partially visible: filter sticks below header
-        // - If header is scrolled completely off-screen (top): filter moves to top of viewport
+        const filterRect = filterContainer.getBoundingClientRect();
         let offset;
-        if (headerBottom <= 0) {
-            // Header completely scrolled off-screen (above viewport)
-            // Filter should now stick to top of viewport for maximum space savings
+        
+        // Filter positioning logic based on header state:
+        // - Released state: filters at top of viewport (0px)  
+        // - Not released & header still visible: filters stick below header bottom
+        if (header.classList.contains('released')) {
             offset = 0;
+        } else if (headerRect.bottom <= 0) {
+            offset = 0;  
         } else {
-            // Header is still visible or morphing
-            // Filter sticks below the visible header portion
-            offset = headerBottom;
+            offset = headerRect.bottom;
         }
+        
         document.documentElement.style.setProperty('--sticky-filter-top', offset + 'px');
+        
+        // Response filter sticks below text filter
+        const responseFilterOffset = offset + filterRect.height;
+        document.documentElement.style.setProperty('--sticky-response-filter-top', responseFilterOffset + 'px');
+    }
 
-        // Also calculate offset for response filter (below text filter)
-        const textFilterContainer = document.querySelector('.participant-filter-container, .attendance-filter-container');
-        if (textFilterContainer) {
-            const textFilterRect = textFilterContainer.getBoundingClientRect();
-            // Response filter should stick below the text filter
-            // When header is gone (offset=0), response filter sticks at 0 + text-filter height
-            const responseFilterOffset = offset + textFilterRect.height;
-            document.documentElement.style.setProperty('--sticky-response-filter-top', responseFilterOffset + 'px');
+    function updateDetailPageState() {
+        if (!isDetailPage || !filterContainer) return;
+        
+        const scrollY = window.scrollY;
+        const headerRect = header.getBoundingClientRect();
+        const filterRect = filterContainer.getBoundingClientRect();
+        
+        // PHASE 1: COLLAPSE - filters touch/overlap header bottom during initial scroll down
+        if (!isScrolled && !isReleased && filterRect.top <= headerRect.bottom) {
+            isScrolled = true;          // Morph to small sticky bar
+        } 
+        
+        // PHASE 2: RELEASE TRIGGER - filters reach top of viewport, header stops being sticky
+        if (isScrolled && !isReleased && filterRect.top <= 5 && scrollY > lastScrollY) {
+            isReleased = true;          // Stop being sticky, let header exit naturally
+            header.classList.add('released');
+            return;
+        }
+        
+        // SCROLL BACK HANDLING: restore previous states
+        
+        if (isReleased && filterRect.top > 100) {
+            isReleased = false;
+            header.classList.remove('released');
+        }
+        
+        if (isScrolled && !isReleased && filterRect.top > headerRect.bottom + 20) {
+            isScrolled = false;
+            header.classList.remove('scrolled');
         }
     }
 
-    function updateHeaderPosition() {
-        // Dynamic header positioning: push header off-screen when filters touch it
+    function updateDashboardState() {
+        const scrollY = window.scrollY;
         const headerRect = header.getBoundingClientRect();
-        const filterContainer = document.querySelector('.participant-filter-container, .attendance-filter-container, .response-filter-container');
-
-        let headerTopValue = 0;  // Default: stick to top
-
-        if (filterContainer) {
-            const filterRect = filterContainer.getBoundingClientRect();
-            // If filter is touching/above header bottom, push header up
-            if (filterRect.top <= headerRect.bottom && filterRect.top > 0) {
-                // Calculate how much to push header up
-                // We want to push it just enough so filter doesn't overlap
-                const headerHeight = headerRect.height;
-                const overlapAmount = headerRect.bottom - filterRect.top;
-
-                // Push header up by the overlap amount (or full height, whichever smaller)
-                headerTopValue = Math.min(-overlapAmount, -headerHeight);
+        
+        // Find push-off trigger element (first content section after WYDARZENIA/SPOTKANIA)
+        const pushOffTrigger = document.querySelector('.dashboard-attention, .mini-stats-bar');
+        
+        if (!pushOffTrigger) {
+            // Fallback: just use scroll position threshold
+            if (scrollY > 100 && !isScrolled) isScrolled = true;
+            else if (scrollY <= 30 && isScrolled) isScrolled = false;
+        } else {
+            const triggerRect = pushOffTrigger.getBoundingClientRect();
+            
+            // COLLAPSE - content touches header during scroll -> collapse to small bar
+            if (!isScrolled && triggerRect.top <= headerRect.bottom + 50) {
+                isScrolled = true;
+            }
+            
+            // RESTORE during scroll back
+            if (isScrolled && triggerRect.top > 150) {
+                isScrolled = false;
             }
         }
+    }
 
-        // Only update --header-top if header is still sticky (not released)
-        if (!headerReleased) {
-            document.documentElement.style.setProperty('--header-top', headerTopValue + 'px');
+    function updateHeaderClasses() {
+        if (isDetailPage) {
+            if (isScrolled && !header.classList.contains('scrolled')) header.classList.add('scrolled');
+            else if (!isScrolled && header.classList.contains('scrolled') && !isReleased) header.classList.remove('scrolled');
         } else {
-            // Header is released - reset the CSS variable
-            document.documentElement.style.setProperty('--header-top', '0px');
+            // Dashboard mode  
+            if (isScrolled && !header.classList.contains('scrolled')) header.classList.add('scrolled');
+            else if (!isScrolled && header.classList.contains('scrolled')) header.classList.remove('scrolled');
         }
     }
 
     function updateHeaderState() {
         const scrollY = window.scrollY;
-
-        // Check for collision between header and filters
-        const headerRect = header.getBoundingClientRect();
-        const filterContainer = document.querySelector('.participant-filter-container, .attendance-filter-container, .response-filter-container');
-
-        let shouldCollapse = false;
-        if (filterContainer) {
-            const filterRect = filterContainer.getBoundingClientRect();
-            // If filter is at or above header bottom, force header to collapse
-            if (filterRect.top <= headerRect.bottom && filterRect.top >= 0) {
-                shouldCollapse = true;
-            }
-        }
-
-        // We only collapse the header when the filter container touches it (no scroll-based trigger)
-        if (!isScrolled && shouldCollapse) {
-            // Filter collision detected -> morph to compact bar
-            header.classList.add('scrolled');
-            isScrolled = true;
-        } else if (isScrolled && !shouldCollapse) {
-            // No collision -> restore original card style
-            header.classList.remove('scrolled');
-            isScrolled = false;
-        }
-
-        // Update the sticky filter offset and header position
+        
+        // Update appropriate mode based on page type
+        if (isDetailPage) updateDetailPageState();
+        else updateDashboardState();
+        
+        updateHeaderClasses();
         updateStickyFilterOffset();
-        updateHeaderPosition();
     }
 
     function onScroll() {
         lastScrollY = window.scrollY;
-
         if (!ticking) {
             window.requestAnimationFrame(function() {
                 updateHeaderState();
@@ -214,11 +226,10 @@
 
     // Initial check in case page loads scrolled
     onScroll();
-
-    // Set initial sticky filter offset and header position
+    
+    // Set initial sticky filter offset (detail pages only)
     updateStickyFilterOffset();
-    updateHeaderPosition();
-
+    
     window.addEventListener('scroll', onScroll, { passive: true });
 });
 </script>
