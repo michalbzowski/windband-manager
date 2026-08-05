@@ -56,6 +56,10 @@ public class Rehearsal {
         this.endTime = endTime;
     }
 
+    public void updateDate(LocalDate date) {
+        this.date = date;
+    }
+
     public void updateLocation(String location) {
         this.location = location;
     }

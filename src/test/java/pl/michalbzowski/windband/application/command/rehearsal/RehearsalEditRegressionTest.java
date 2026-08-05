@@ -41,9 +41,10 @@ class RehearsalEditRegressionTest extends BaseIntegrationTest {
         assertThat(id).isNotNull();
         assertThat(original.getLocation()).isEqualTo("Sala 1");
 
-        // Now update the rehearsal
+        // Now update the rehearsal — change EVERY field (date, time, location, notes)
         ScheduleRehearsalCommand updateCmd = new ScheduleRehearsalCommand();
-        updateCmd.setDate(LocalDate.now().plusDays(1));
+        LocalDate newDate = LocalDate.now().plusDays(2);
+        updateCmd.setDate(newDate);
         updateCmd.setStartTime(LocalTime.of(19, 0));
         updateCmd.setEndTime(LocalTime.of(21, 0));
         updateCmd.setLocation("Sala 2");
@@ -53,10 +54,41 @@ class RehearsalEditRegressionTest extends BaseIntegrationTest {
 
         assertThat(updated).isNotNull();
         assertThat(updated.getId()).isEqualTo(id);
+        assertThat(updated.getDate())
+                .as("date should be updated too — bug #5 regression")
+                .isEqualTo(newDate);
         assertThat(updated.getStartTime()).isEqualTo(LocalTime.of(19, 0));
         assertThat(updated.getEndTime()).isEqualTo(LocalTime.of(21, 0));
         assertThat(updated.getLocation()).isEqualTo("Sala 2");
         assertThat(updated.getNotes()).isEqualTo("Próba generalna — zmieniona lokalizacja");
+    }
+
+    @Test
+    void shouldUpdateOnlyDate() {
+        // Targeted regression: the original updateRehearsal only called
+        // updateTime / updateLocation / updateNotes, silently dropping
+        // the date. This test fails until updateDate is wired in.
+        ScheduleRehearsalCommand createCmd = new ScheduleRehearsalCommand();
+        createCmd.setDate(LocalDate.now().plusDays(7));
+        createCmd.setStartTime(LocalTime.of(18, 0));
+        createCmd.setLocation("Stara lokalizacja");
+
+        Rehearsal original = commandService.scheduleRehearsal(createCmd, 1L);
+        Long id = original.getId();
+
+        ScheduleRehearsalCommand updateCmd = new ScheduleRehearsalCommand();
+        LocalDate newDate = LocalDate.now().plusDays(14);
+        updateCmd.setDate(newDate);
+        updateCmd.setStartTime(LocalTime.of(18, 0));
+        updateCmd.setLocation("Stara lokalizacja");
+
+        Rehearsal updated = commandService.updateRehearsal(id, updateCmd);
+
+        assertThat(updated.getDate())
+                .as("the date should be updated")
+                .isEqualTo(newDate);
+        assertThat(updated.getLocation()).isEqualTo("Stara lokalizacja");
+        assertThat(updated.getStartTime()).isEqualTo(LocalTime.of(18, 0));
     }
 
     @Test

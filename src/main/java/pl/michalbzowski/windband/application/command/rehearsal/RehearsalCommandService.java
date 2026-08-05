@@ -62,6 +62,7 @@ public class RehearsalCommandService {
     public Rehearsal updateRehearsal(Long id, ScheduleRehearsalCommand cmd) {
         Rehearsal rehearsal = rehearsalRepository.findById(id)
                 .orElseThrow(() -> new RehearsalNotFoundException(id));
+        rehearsal.updateDate(cmd.getDate());
         rehearsal.updateTime(cmd.getStartTime(), cmd.getEndTime());
         rehearsal.updateLocation(cmd.getLocation());
         rehearsal.updateNotes(cmd.getNotes());
