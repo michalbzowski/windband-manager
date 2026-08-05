@@ -24,19 +24,20 @@
             </div>
         </div>
         <!-- Attention list -->
-        <div th:unless="${#lists.isEmpty(attentionItems)}">
-            <header class="section-head">
-                <h2>Wymaga Twojej uwagi</h2>
+        <div th:unless="${#lists.isEmpty(attentionItems)}" class="attention-section">
+            <header class="section-head attention-head">
+                <h2><span class="attention-head-icon" aria-hidden="true">⚠️</span>Wymaga Twojej uwagi</h2>
+                <span class="attention-head-count" th:text="${#lists.size(attentionItems)} + ' ' + (${#lists.size(attentionItems)} == 1 ? 'pozycja' : 'pozycji')">0 pozycji</span>
             </header>
 
             <!-- Mobile view: cards -->
-            <div th:unless="${#lists.isEmpty(attentionItems)}" class="upcoming-list">
-                <a th:each="item : ${attentionItems}" th:href="@{${item.href}}" class="upcoming-card">
-                    <div class="upcoming-card-icon" th:text="${item.icon}">🎵</div>
+            <div th:unless="${#lists.isEmpty(attentionItems)}" class="upcoming-list attention-list">
+                <a th:each="item : ${attentionItems}" th:href="@{${item.href}}" class="upcoming-card attention-card" data-attention-kind="${item.kind}">
+                    <div class="upcoming-card-icon attention-icon" th:text="${item.icon}">🎵</div>
                     <div class="upcoming-card-body">
                         <div class="upcoming-card-topline">
                             <h3 th:text="${item.title}">Nazwa</h3>
-                            <span th:text="${item.badge}" class="upcoming-badge">Uwaga</span>
+                            <span th:text="${item.badge}" class="upcoming-badge attention-badge">Uwaga</span>
                         </div>
                         <p th:text="${item.subtitle}">Opis</p>
                         <div class="upcoming-card-meta">
@@ -46,7 +47,7 @@
                         <!-- Progress bar for attendance -->
                         <div class="progress-container" th:if="${item.attendancePercentage != null}">
                             <div class="progress-track">
-                                <div class="progress-fill" 
+                                <div class="progress-fill"
                                      th:classappend="${item.attendancePercentage >= 70 ? 'progress-high' : (item.attendancePercentage >= 40 ? 'progress-medium' : 'progress-low')}"
                                      th:style="'width: ' + ${item.attendancePercentage} + '%'"></div>
                             </div>
@@ -58,7 +59,7 @@
             </div>
 
             <!-- Tablet/Desktop view: table -->
-            <div th:unless="${#lists.isEmpty(attentionItems)}" class="upcoming-table">
+            <div th:unless="${#lists.isEmpty(attentionItems)}" class="upcoming-table attention-table">
                 <table>
                     <thead>
                         <tr>
@@ -72,11 +73,11 @@
                         <tr th:each="item : ${attentionItems}">
                             <td>
                                 <a th:href="@{${item.href}}" style="text-decoration: none; color: inherit; display: flex; align-items: center; gap: 0.75rem;">
-                                    <span class="upcoming-card-icon" th:text="${item.icon}" style="width: 2.75rem; height: 2.75rem; border-radius: 999px; display: grid; place-items: center; background: color-mix(in srgb, var(--pico-primary) 12%, transparent); font-size: 1.1rem; flex: none;">🎵</span>
+                                    <span class="upcoming-card-icon attention-icon" th:text="${item.icon}" style="width: 2.75rem; height: 2.75rem; border-radius: 999px; display: grid; place-items: center; background: var(--pico-del-color); color: #fff; font-size: 1.1rem; flex: none;">🎵</span>
                                     <div>
                                         <div style="display: flex; align-items: center; gap: 0.5rem;">
                                             <strong th:text="${item.title}" style="font-size: 1rem; font-weight: 650;">Nazwa</strong>
-                                            <span th:text="${item.badge}" class="upcoming-badge" style="font-size: 0.7rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em; padding: 0.15rem 0.5rem; border-radius: 999px; color: var(--pico-primary); background: color-mix(in srgb, var(--pico-primary) 12%, transparent); white-space: nowrap;">Uwaga</span>
+                                            <span th:text="${item.badge}" class="upcoming-badge attention-badge" style="font-size: 0.7rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em; padding: 0.15rem 0.5rem; border-radius: 999px; color: #fff; background: var(--pico-del-color); white-space: nowrap;">Uwaga</span>
                                         </div>
                                         <p th:text="${item.subtitle}" style="margin: 0.15rem 0 0; font-size: 0.9rem; color: var(--pico-muted-color);">Opis</p>
                                     </div>
@@ -89,7 +90,7 @@
                             <td th:if="${item.attendancePercentage != null}" style="min-width: 140px;">
                                 <div class="progress-container" style="margin-top: 0; padding-top: 0; border-top: none;">
                                     <div class="progress-track" style="height: 6px;">
-                                        <div class="progress-fill" 
+                                        <div class="progress-fill"
                                              th:classappend="${item.attendancePercentage >= 70 ? 'progress-high' : (item.attendancePercentage >= 40 ? 'progress-medium' : 'progress-low')}"
                                              th:style="'width: ' + ${item.attendancePercentage} + '%'"></div>
                                     </div>
@@ -113,8 +114,14 @@
             </article>
         </div>
 
+        <!-- Upcoming section header — always shown when there are upcoming items
+             (the empty-state above already covers the all-empty case) -->
+        <header th:unless="${#lists.isEmpty(upcoming)}" class="section-head upcoming-head">
+            <h2><span class="upcoming-head-icon" aria-hidden="true">📅</span>Nadchodzące</h2>
+        </header>
+
         <!-- Mobile view: cards -->
-        <div th:unless="${#lists.isEmpty(upcoming)}" class="upcoming-list">
+        <div th:unless="${#lists.isEmpty(upcoming)}" class="upcoming-list upcoming-list--upcoming">
             <a th:each="item : ${upcoming}" th:href="@{${item.href}}" class="upcoming-card">
                 <div class="upcoming-card-icon" th:text="${item.icon}">🎵</div>
                 <div class="upcoming-card-body">
@@ -370,6 +377,81 @@
     .upcoming-card:hover {
         transform: translateY(-1px);
         border-color: var(--pico-primary);
+    }
+
+    /* ===== Attention section — visually distinct from upcoming ===== */
+
+    .attention-section {
+        margin-bottom: 1.25rem;
+        padding-bottom: 1.5rem;
+        border-bottom: 1px dashed var(--pico-muted-border-color);
+    }
+
+    .attention-head h2 {
+        color: var(--pico-del-color);
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        font-weight: 700;
+    }
+
+    .attention-head-icon {
+        font-size: 1.4em;
+        line-height: 1;
+    }
+
+    .attention-head-count {
+        font-size: 0.8rem;
+        font-weight: 600;
+        color: var(--pico-del-color);
+        background: color-mix(in srgb, var(--pico-del-color) 12%, transparent);
+        padding: 0.2rem 0.6rem;
+        border-radius: 999px;
+        text-transform: lowercase;
+        white-space: nowrap;
+    }
+
+    .upcoming-head h2 {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        color: var(--pico-muted-color);
+        font-size: 1.1rem;
+        font-weight: 600;
+    }
+
+    .upcoming-head-icon {
+        font-size: 1.1em;
+        line-height: 1;
+    }
+
+    /* Attention card: thick warning-coloured left border + faint red wash */
+    .upcoming-card.attention-card {
+        border-left: 4px solid var(--pico-del-color);
+        background: color-mix(in srgb, var(--pico-del-color) 6%, var(--pico-card-background-color, var(--pico-card-sectioning-background-color)));
+    }
+
+    .upcoming-card.attention-card:hover {
+        border-color: var(--pico-del-color);
+        border-left-width: 4px;
+    }
+
+    /* Attention icon: full warning colour background, white emoji */
+    .upcoming-card-icon.attention-icon {
+        background: var(--pico-del-color);
+        color: #fff;
+    }
+
+    /* Attention badge: solid red, white text — opposite of the soft-primary upcoming badge */
+    .upcoming-badge.attention-badge {
+        color: #fff;
+        background: var(--pico-del-color);
+        border: 1px solid color-mix(in srgb, #000 18%, var(--pico-del-color));
+    }
+
+    /* Attention table (desktop): leftmost column has the same warning wash */
+    .upcoming-table.attention-table table tbody tr td:first-child {
+        border-left: 4px solid var(--pico-del-color);
     }
 
     .upcoming-card-icon {
