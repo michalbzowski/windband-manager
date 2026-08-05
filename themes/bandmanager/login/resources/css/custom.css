@@ -310,6 +310,9 @@ hr {
     border-top: 1px solid var(--pico-muted-border-color);
     color: var(--pico-muted-color);
     font-size: 0.8rem;
+    max-width: 400px;
+    margin-left: auto;
+    margin-right: auto;
 }
 
 /* ── Remember me row ──────────────────────────────────────────── */
