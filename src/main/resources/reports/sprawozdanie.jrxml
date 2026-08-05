@@ -111,7 +111,7 @@
         <staticText>
           <reportElement x="5" y="17" width="70" height="12"/>
           <textElement verticalAlignment="Middle"><font size="9"/></textElement>
-          <textExpression><![CDATA["Dzieci i młodzież< 18"]]]>]]></textExpression>
+          <textExpression><![CDATA["Dzieci i młodzież< 18"]]></textExpression>
         </staticText>
 
         <textField>
@@ -124,7 +124,7 @@
         <staticText>
           <reportElement x="5" y="31" width="70" height="12"/>
           <textElement verticalAlignment="Middle"><font size="9"/></textElement>
-          <textExpression><![CDATA["Osoby 60+"]]]>]]></textExpression>
+          <textExpression><![CDATA["Osoby 60+"]]></textExpression>
 
         </staticText>
 
