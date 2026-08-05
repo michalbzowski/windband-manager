@@ -198,18 +198,15 @@
                 // If filter is at or above header bottom, force header collapse
                 // This prevents filter from overlapping with header
                 if (filterRect.top <= headerRect.bottom && filterRect.top >= 0) {
-                    shouldCollapse = true;
-                }
-            }
+                    if (filterRect.top <= headerRect.bottom && filterRect.top >= 0) {
+                        shouldCollapse = true;
+                    }
             
-            // Standard scroll-based logic
-            const standardScrollThreshold = scrollY > ORIGINAL_HEADER_HEIGHT;
+                    // We only collapse the header when the filter container touches it (no scroll-based trigger)
+                    const shouldBeCollapsed = shouldCollapse;
             
-            // Apply whichever is more aggressive (scroll OR collision)
-            const shouldBeCollapsed = shouldCollapse || standardScrollThreshold;
-            
-            if (!isScrolled && shouldBeCollapsed) {
-                // Scrolling down past header area OR filter collision detected -> morph to compact bar
+                    if (!isScrolled && shouldBeCollapsed) {
+                    // Scrolling down past header area OR filter collision detected -> morph to compact bar
                 header.classList.add('scrolled');
                 isScrolled = true;
                 updateStickyFilterOffset();
