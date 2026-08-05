@@ -4,6 +4,7 @@ import org.junit.jupiter.api.Test;
 import org.openqa.selenium.By;
 import org.openqa.selenium.JavascriptExecutor;
 import org.openqa.selenium.WebElement;
+import org.openqa.selenium.StaleElementReferenceException;
 import org.openqa.selenium.support.ui.ExpectedConditions;
 import org.openqa.selenium.support.ui.WebDriverWait;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -148,8 +149,13 @@ class QuickAttendanceModalUiTest extends UiTestBase {
                 boolean closed = !(Boolean) ((JavascriptExecutor) d).executeScript(
                         "return document.getElementById('quick-attendance-modal').open === true;");
                 if (closed) return true;
-                String now = d.findElement(By.id("qa-progress")).getText();
-                return !now.equals(before);
+                try {
+                    String now = d.findElement(By.id("qa-progress")).getText();
+                    return !now.equals(before);
+                } catch (StaleElementReferenceException e) {
+                    // element is stale, meaning the DOM updated -> treat as changed
+                    return true;
+                }
             });
             clicks++;
             System.out.println("[TEST] click " + clickNo + " done, modalOpen=" + isModalOpen());
