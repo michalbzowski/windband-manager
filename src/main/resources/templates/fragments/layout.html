@@ -109,29 +109,41 @@
     let isReleased = false;      // Header released from sticky, leaving viewport normally
     
     function updateStickyFilterOffset() {
-        if (!isDetailPage || !filterContainer) return;
+            if (!isDetailPage || !filterContainer) return;
         
-        const headerRect = header.getBoundingClientRect();
-        const filterRect = filterContainer.getBoundingClientRect();
-        let offset;
+            const headerRect = header.getBoundingClientRect();
+            const filterRect = filterContainer.getBoundingClientRect();
+            let offset;
         
-        // Filter positioning logic based on header state:
-        // - Released state: filters at top of viewport (0px)  
-        // - Not released & header still visible: filters stick below header bottom
-        if (header.classList.contains('released')) {
-            offset = 0;
-        } else if (headerRect.bottom <= 0) {
-            offset = 0;  
-        } else {
-            offset = headerRect.bottom;
+            // Filter positioning logic based on header state:
+            // - Released state: filters at top of viewport (0px) 
+            // - Not released & header still visible: filters stick below header bottom
+            if (header.classList.contains('released')) {
+                offset = 0;
+            } else if (headerRect.bottom <= 0) {
+                offset = 0; 
+            } else {
+                offset = headerRect.bottom;
+            }
+        
+            document.documentElement.style.setProperty('--sticky-filter-top', offset + 'px');
+        
+            // Also push header up when filter touches it (so filter can eventually reach viewport top)
+            // This allows the "released" state to trigger
+            if (!header.classList.contains('released') && filterRect.top <= headerRect.bottom && filterRect.top > 0) {
+                const overlapAmount = headerRect.bottom - filterRect.top;
+                const headerHeight = headerRect.height;
+                const headerTopValue = Math.max(-headerHeight, -overlapAmount);
+                document.documentElement.style.setProperty('--header-top', headerTopValue + 'px');
+            } else if (!header.classList.contains('released')) {
+                // Reset header top when filter is not touching
+                document.documentElement.style.setProperty('--header-top', '0px');
+            }
+        
+            // Response filter sticks below text filter
+            const responseFilterOffset = offset + filterRect.height;
+            document.documentElement.style.setProperty('--sticky-response-filter-top', responseFilterOffset + 'px');
         }
-        
-        document.documentElement.style.setProperty('--sticky-filter-top', offset + 'px');
-        
-        // Response filter sticks below text filter
-        const responseFilterOffset = offset + filterRect.height;
-        document.documentElement.style.setProperty('--sticky-response-filter-top', responseFilterOffset + 'px');
-    }
 
     function updateDetailPageState() {
         if (!isDetailPage || !filterContainer) return;
