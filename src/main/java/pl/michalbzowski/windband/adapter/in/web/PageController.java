@@ -9,6 +9,7 @@ import org.springframework.web.bind.annotation.GetMapping;
 import lombok.RequiredArgsConstructor;
 import jakarta.servlet.http.HttpSession;
 import pl.michalbzowski.windband.adapter.in.security.WindbandOidcUser;
+import pl.michalbzowski.windband.application.query.attention.AttentionItemCollector;
 import pl.michalbzowski.windband.application.query.band.BandQueryService;
 import pl.michalbzowski.windband.application.query.band.MemberAttributeQueryService;
 import pl.michalbzowski.windband.application.dto.UpcomingItemDto;
@@ -26,10 +27,6 @@ import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
-import pl.michalbzowski.windband.domain.event.PaymentType;
-import pl.michalbzowski.windband.domain.event.PaymentStatus;
-import java.util.stream.Collectors;
-import pl.michalbzowski.windband.domain.event.ParticipationResponse;
 
 @Controller
 @RequiredArgsConstructor
@@ -42,6 +39,7 @@ public class PageController {
     private final BandQueryService bandQueryService;
     private final TeamQueryService teamQueryService;
     private final MemberAttributeQueryService attributeQueryService;
+    private final AttentionItemCollector attentionItemCollector;
 
     private Band getDefaultBand() {
         return bandQueryService.getDefaultBand();
@@ -166,31 +164,8 @@ public class PageController {
             "activeMembers", activeMembersCount
         ));
 
-    // Attention items: past paid split events with at least one unpaid payment
-    List<BandEvent> pastEvents = eventQueryService.getPastEvents(activeTeamId);
-    List<BandEvent> pastPaidSplitEvents = pastEvents.stream()
-            .filter(event -> event.getPaymentType() == PaymentType.PAID_SPLIT)
-            .collect(Collectors.toList());
-    List<UpcomingItemDto> attentionItems = new ArrayList<>();
-    for (BandEvent event : pastPaidSplitEvents) {
-        boolean hasUnpaid = event.getParticipations().stream()
-                .anyMatch(p -> p.getResponse() == ParticipationResponse.CONFIRMED
-                        && p.getPaymentStatus() == PaymentStatus.PENDING);
-        if (hasUnpaid) {
-            attentionItems.add(new UpcomingItemDto(
-                    "ATTENTION",
-                    event.getId(),
-                    event.getName(),
-                    "Wypłata nie została rozdysponowana",
-                    event.getDate(),
-                    null,
-                    "Uwaga",
-                    "/events/" + event.getId(),
-                    "🚨",
-                    null));
-        }
-    }
-    model.addAttribute("attentionItems", attentionItems);
+        // Attention items: collect using pluggable conditions
+        List<UpcomingItemDto> attentionItems = attentionItemCollector.collect(activeTeamId);
         model.addAttribute("attentionItems", attentionItems);
 
         return "dashboard";
