@@ -5,6 +5,7 @@ import org.openqa.selenium.By;
 import org.openqa.selenium.JavascriptExecutor;
 import org.openqa.selenium.WebElement;
 import org.openqa.selenium.support.ui.ExpectedConditions;
+import org.openqa.selenium.support.ui.Select;
 import org.openqa.selenium.support.ui.WebDriverWait;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -361,6 +362,110 @@ class RehearsalDetailFilterUiTest extends UiTestBase {
             String status = statusSelect.getAttribute("value");
             assertThat(status).isIn("PRESENT", "EXCUSED");
         }
+    }
+
+    @Test
+    void attendanceFilterCountsShouldUpdateAfterStatusChange() throws Exception {
+        WebDriverWait wait = new WebDriverWait(driver, Duration.ofSeconds(10));
+        String uid = UUID.randomUUID().toString().substring(0, 8);
+        String firstName = "CountUpdate" + uid;
+        String lastName = "Test" + uid;
+
+        // --- Create members via UI ---
+        createMember(firstName + "1", lastName, wait);
+        createMember(firstName + "2", lastName, wait);
+
+        // --- Create a rehearsal via UI ---
+        loginAndNavigateTo("/rehearsals");
+        driver.findElement(By.xpath("//button[contains(text(), 'Zaplanuj spotkanie')]")).click();
+        wait.until(ExpectedConditions.presenceOfElementLocated(By.cssSelector("#rehearsal-form")));
+
+        String today = LocalDate.now().toString();
+        ((JavascriptExecutor) driver).executeScript(
+                "document.querySelector(\"input[name='date']\").value = arguments[0];" +
+                "document.querySelector(\"input[name='startTime']\").value = '18:00';" +
+                "document.querySelector(\"input[name='endTime']\").value = '20:00';" +
+                "document.querySelector(\"input[name='location']\").value = 'Sala prób';",
+                today);
+        driver.findElement(By.cssSelector("#rehearsal-form button[type='submit'].primary")).click();
+        wait.until(ExpectedConditions.urlContains("/rehearsals"));
+        wait.until(ExpectedConditions.not(ExpectedConditions.urlContains("/new")));
+
+        // Wait for rehearsal to be persisted
+        Awaitility.await().atMost(Duration.ofSeconds(10)).until(() ->
+                jdbcTemplate.queryForObject(
+                        "SELECT COUNT(*) FROM rehearsals WHERE date = ?", Long.class, today) > 0);
+
+        Long rehearsalId = jdbcTemplate.queryForObject(
+                "SELECT MAX(id) FROM rehearsals WHERE date = ?", Long.class, today);
+
+        List<Long> memberIds = jdbcTemplate.query(
+                "SELECT id FROM members WHERE first_name LIKE ? ORDER BY id",
+                (rs, rowNum) -> rs.getLong("id"),
+                firstName + "%");
+
+        assertThat(rehearsalId).isNotNull();
+        assertThat(memberIds).hasSize(2);
+
+        // --- Invite both members to the rehearsal ---
+        for (Long memberId : memberIds) {
+            inviteMemberToRehearsal(rehearsalId, memberId);
+        }
+
+        // --- Navigate to rehearsal detail ---
+        driver.get(baseUrl() + "/rehearsals/" + rehearsalId);
+        wait.until(ExpectedConditions.presenceOfElementLocated(By.id("rehearsals-content")));
+
+        // Wait for attendance table to load
+        wait.until(ExpectedConditions.presenceOfElementLocated(By.cssSelector("table[role='grid']")));
+
+        // --- Verify initial filter counts: 2 NO_RESPONSE ---
+        WebElement noResponseCount = wait.until(ExpectedConditions.presenceOfElementLocated(
+                By.cssSelector(".filter-count-no-response")));
+        assertThat(noResponseCount.getText()).isEqualTo("2");
+
+        WebElement presentCount = driver.findElement(By.cssSelector(".filter-count-present"));
+        assertThat(presentCount.getText()).isEqualTo("0");
+
+        // --- Change first member status to PRESENT ---
+        WebElement statusSelect1 = driver.findElement(By.cssSelector("select.status-select[data-member-id='" + memberIds.get(0) + "']"));
+        new Select(statusSelect1).selectByValue("PRESENT");
+
+        // Wait for HTMX reload to complete and filter counts to update
+        Awaitility.await().atMost(Duration.ofSeconds(10)).until(() -> {
+            try {
+                var countEl = driver.findElement(By.cssSelector(".filter-count-present"));
+                return "1".equals(countEl.getText());
+            } catch (Exception e) {
+                return false;
+            }
+        });
+
+        // --- Verify filter counts updated: 1 PRESENT, 1 NO_RESPONSE ---
+        presentCount = driver.findElement(By.cssSelector(".filter-count-present"));
+        noResponseCount = driver.findElement(By.cssSelector(".filter-count-no-response"));
+        assertThat(presentCount.getText()).isEqualTo("1");
+        assertThat(noResponseCount.getText()).isEqualTo("1");
+
+        // --- Change second member status to PRESENT ---
+        WebElement statusSelect2 = driver.findElement(By.cssSelector("select.status-select[data-member-id='" + memberIds.get(1) + "']"));
+        new Select(statusSelect2).selectByValue("PRESENT");
+
+        // Wait for HTMX reload to complete and filter counts to update
+        Awaitility.await().atMost(Duration.ofSeconds(10)).until(() -> {
+            try {
+                var countEl = driver.findElement(By.cssSelector(".filter-count-present"));
+                return "2".equals(countEl.getText());
+            } catch (Exception e) {
+                return false;
+            }
+        });
+
+        // --- Verify filter counts updated: 2 PRESENT, 0 NO_RESPONSE ---
+        presentCount = driver.findElement(By.cssSelector(".filter-count-present"));
+        noResponseCount = driver.findElement(By.cssSelector(".filter-count-no-response"));
+        assertThat(presentCount.getText()).isEqualTo("2");
+        assertThat(noResponseCount.getText()).isEqualTo("0");
     }
 
     @Test

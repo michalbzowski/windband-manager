@@ -990,34 +990,50 @@ function bindEventDetailHandlers() {
     global.getCookie = getCookie;
 
     /**
-     * Rehearsal attendance auto-save. Registered ONCE at page load using
-     * event delegation on document, so it survives htmx swaps of the
-     * #rehearsals-content fragment (an inline listener on each <select>
-     * would be lost on swap). The `change` event is dispatched by both
-     * human and Selenium-driven dropdown changes.
-     *
-     * Replaces the old "Zapisz obecność" button + window.saveRehearsalAttendance()
-     * handler. NO_RESPONSE is still allowed — admin can reset a member's status
-     * back to "no response" by re-selecting it.
-     */
-    document.addEventListener('change', function(e) {
-        var target = e.target;
-        if (!target || !target.classList || !target.classList.contains('status-select')) return;
-        var container = target.closest('#rehearsals-content');
-        if (!container) return;
-        var rehearsalId = container.getAttribute('data-rehearsal-id');
-        var memberId = target.getAttribute('data-member-id');
-        var status = target.value;
-        if (!rehearsalId || !memberId || !status) return;
-        fetchWithToast('/api/rehearsals/' + rehearsalId + '/attendance', {
-            method: 'POST',
-            headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({rehearsalId: parseInt(rehearsalId), memberId: parseInt(memberId), status: status}),
-            toastMessage: 'Zapisano obecność',
-            showSuccessToast: true
-        }).catch(function(err) {
-            console.error('[REHEARSAL] auto-save failed:', err);
-            if (window.Toast) Toast.error('Błąd zapisu obecności');
+         * Rehearsal attendance auto-save. Registered ONCE at page load using
+         * event delegation on document, so it survives htmx swaps of the
+         * #rehearsals-content fragment (an inline listener on each <select>
+         * would be lost on swap). The `change` event is dispatched by both
+         * human and Selenium-driven dropdown changes.
+         *
+         * Replaces the old "Zapisz obecność" button + window.saveRehearsalAttendance() handler.
+         * NO_RESPONSE is still allowed — admin can reset a member's status
+         * back to "no response" by re-selecting it.
+         */
+        document.addEventListener('change', function(e) {
+            var target = e.target;
+            if (!target || !target.classList || !target.classList.contains('status-select')) return;
+            var container = target.closest('#rehearsals-content');
+            if (!container) return;
+            var rehearsalId = container.getAttribute('data-rehearsal-id');
+            var memberId = target.getAttribute('data-member-id');
+            var status = target.value;
+            if (!rehearsalId || !memberId || !status) return;
+            fetchWithToast('/api/rehearsals/' + rehearsalId + '/attendance', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({rehearsalId: parseInt(rehearsalId), memberId: parseInt(memberId), status: status}),
+                toastMessage: 'Zapisano obecność',
+                showSuccessToast: true
+            }).then(function(response) {
+                if (!response.ok) {
+                    console.error('[REHEARSAL] auto-save failed:', response.status);
+                    return;
+                }
+                // Reload the detail fragment to refresh filter counts (like events do)
+                var scrollY = window.scrollY;
+                htmx.ajax('GET', '/rehearsals/' + rehearsalId, {target: '#rehearsals-content[data-rehearsal-id]', swap: 'outerHTML transition:true'});
+                // Restore scroll position after swap settles
+                var settleHandler = function(evt) {
+                    if (evt.detail && evt.detail.target && evt.detail.target.id === 'rehearsals-content') {
+                        window.scrollTo(0, scrollY);
+                        document.body.removeEventListener('htmx:afterSettle', settleHandler);
+                    }
+                };
+                document.body.addEventListener('htmx:afterSettle', settleHandler);
+            }).catch(function(err) {
+                console.error('[REHEARSAL] auto-save failed:', err);
+                if (window.Toast) Toast.error('Błąd zapisu obecności');
+            });
         });
-    });
 })(window);
