@@ -94,7 +94,7 @@
       <box>
         <reportElement x="5" y="23" width="640" height="47"/>
         
-        <!-- Row 1: Active members */}
+        <!-- Row 1: Active members -->
         <staticText>
           <reportElement x="5" y="3" width="70" height="12"/>
           <textElement verticalAlignment="Middle"><font size="9"/></textElement>
@@ -107,7 +107,7 @@
           <textFieldExpression><![CDATA[$P{activeMembersCount}]]></textFieldExpression>
         </textField>
 
-        <!-- Row 2: Minors */}
+        <!-- Row 2: Minors -->
         <staticText>
           <reportElement x="5" y="17" width="70" height="12"/>
           <textElement verticalAlignment="Middle"><font size="9"/></textElement>
@@ -120,7 +120,7 @@
           <textFieldExpression><![CDATA[$P{minorCount}]]></textFieldExpression>
         </textField>
 
-        <!-- Row 3: Seniors */}
+        <!-- Row 3: Seniors -->
         <staticText>
           <reportElement x="5" y="31" width="70" height="12"/>
           <textElement verticalAlignment="Middle"><font size="9"/></textElement>
