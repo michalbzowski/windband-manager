@@ -291,12 +291,25 @@
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-surefire-plugin</artifactId>
                 <configuration>
+                    <!-- OPTIMIZATION #1: Parallel test execution (classes in separate JVMs) -->
+                    <parallel>classes</parallel>
+                    
+                    <!-- 
+                        forkCount: Controls parallelism. Default = 1 means sequential class execution within one JVM per fork
+                        Local development: Set to "2C" or higher for faster feedback (CPU=cores; 2C=doubled cores).
+                        GitHub Actions: Keep at 1 to avoid OOM on limited runners with @SpringBootTest + ChromeDriver.
+                    -->
+                    <forkCount>1</forkCount>
+                    
+                    <!-- Reuse forks between test classes to reduce JVM startup overhead -->
+                    <reuseForks>true</reuseForks>
+                    
+                    <!-- JasperReports configuration (existing) -->
                     <systemPropertyVariables>
                         <net.sf.jasperreports.jackson.xml.enabled>false</net.sf.jasperreports.jackson.xml.enabled>
                     </systemPropertyVariables>
                 </configuration>
             </plugin>
-
             <!-- Checkstyle: style/formatting enforcement during every build -->
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
