@@ -7,10 +7,18 @@ import pl.michalbzowski.windband.domain.event.PaymentType;
 import pl.michalbzowski.windband.domain.event.ParticipationResponse;
 
 /**
- * Attention condition: past paid-split event with unpaid confirmed participations.
+ * Attention condition: past paid-split event with at least one confirmed
+ * participant whose payment status is not {@link PaymentStatus#PAID}.
  *
  * Rule: Event date is in the past AND payment type is PAID_SPLIT
- *       AND at least one confirmed participant has payment status PENDING.
+ *       AND at least one CONFIRMED participant has paymentStatus
+ *       that is not PAID — that is, either PENDING (admin called
+ *       recordPayment) or NOT_APPLICABLE (admin never registered a
+ *       payment for this confirmed person at all).
+ *
+ * DECLINED and NO_RESPONSE participants are ignored: a person who
+ * declined isn't on the hook for money, and a person who hasn't
+ * responded yet isn't either.
  */
 public class PastPaidSplitUnpaidCondition implements AttentionCondition {
 
@@ -32,12 +40,12 @@ public class PastPaidSplitUnpaidCondition implements AttentionCondition {
             return null;
         }
 
-        // Check: at least one confirmed member with PENDING payment
-        boolean hasUnpaid = event.getParticipations().stream()
+        // Check: at least one CONFIRMED member whose payment is not yet PAID
+        boolean hasUnpaidConfirmed = event.getParticipations().stream()
                 .anyMatch(p -> p.getResponse() == ParticipationResponse.CONFIRMED
-                        && p.getPaymentStatus() == PaymentStatus.PENDING);
+                        && p.getPaymentStatus() != PaymentStatus.PAID);
 
-        if (!hasUnpaid) {
+        if (!hasUnpaidConfirmed) {
             return null;
         }
 

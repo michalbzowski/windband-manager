@@ -13,6 +13,7 @@ import pl.michalbzowski.windband.domain.band.Band;
 import pl.michalbzowski.windband.domain.event.BandEvent;
 import pl.michalbzowski.windband.domain.event.EventParticipation;
 import pl.michalbzowski.windband.domain.event.EventType;
+import pl.michalbzowski.windband.domain.event.PaymentStatus;
 import pl.michalbzowski.windband.domain.event.PaymentType;
 import pl.michalbzowski.windband.domain.event.ParticipationResponse;
 import pl.michalbzowski.windband.domain.member.Member;
@@ -133,6 +134,137 @@ class AttentionItemCollectorTest {
         var result = collector.collect(1L);
 
         assertThat(result).isEmpty();
+    }
+
+    @Test
+    void collect_returns_attention_item_for_past_paid_split_with_confirmed_but_payment_not_recorded() {
+        // Owner requirement: an event qualifies for attention as long as ONE
+        // confirmed participant does NOT have paymentStatus == PAID. The
+        // payment status can be PENDING (recordPayment called) OR
+        // NOT_APPLICABLE (recordPayment never called — the admin has yet
+        // to register a payment for this confirmed person at all).
+        BandEvent paidEvent = BandEvent.create(
+                "Paid Concert",
+                LocalDate.now().minusDays(2),
+                LocalTime.of(18, 0),
+                "Concert Hall",
+                EventType.CONCERT,
+                band,
+                PaymentType.PAID_SPLIT,
+                BigDecimal.valueOf(100)
+        );
+        setEventId(paidEvent, 77L);
+
+        // Invite + CONFIRM but DO NOT call recordPayment.
+        // The participation's paymentStatus stays at the default NOT_APPLICABLE.
+        Member member = Member.create("John", "Doe", LocalDate.of(2000, 1, 1), band);
+        setMemberId(member, 1L);
+        paidEvent.inviteMember(member);
+        var participation = findParticipation(paidEvent, member);
+        setParticipationResponse(participation, ParticipationResponse.CONFIRMED);
+        // Sanity: paymentStatus is still NOT_APPLICABLE here.
+        assertThat(participation.getPaymentStatus())
+                .as("paymentStatus should remain NOT_APPLICABLE since recordPayment was never called")
+                .isEqualTo(PaymentStatus.NOT_APPLICABLE);
+
+        when(eventQueryService.getPastEvents(anyLong())).thenReturn(List.of(paidEvent));
+        when(rehearsalQueryService.getPastRehearsals(anyLong())).thenReturn(new ArrayList<>());
+
+        var result = collector.collect(1L);
+
+        assertThat(result)
+                .as("any confirmed member with paymentStatus != PAID should trigger attention")
+                .hasSize(1);
+        UpcomingItemDto item = result.get(0);
+        assertThat(item.kind()).isEqualTo("ATTENTION_PAYMENT");
+        assertThat(item.id()).isEqualTo(77L);
+        assertThat(item.title()).isEqualTo("Paid Concert");
+    }
+
+    @Test
+    void collect_returns_attention_item_when_one_of_three_confirmed_is_unpaid() {
+        // Owner requirement: even ONE unpaid confirmed person is enough.
+        // 3 confirmed members, 2 marked as PAID, 1 still PENDING → attention.
+        BandEvent paidEvent = BandEvent.create(
+                "Paid Concert",
+                LocalDate.now().minusDays(3),
+                LocalTime.of(18, 0),
+                "Concert Hall",
+                EventType.CONCERT,
+                band,
+                PaymentType.PAID_SPLIT,
+                BigDecimal.valueOf(300)
+        );
+        setEventId(paidEvent, 88L);
+
+        Member alice = Member.create("Alice", "A", LocalDate.of(2000, 1, 1), band);
+        Member bob = Member.create("Bob", "B", LocalDate.of(2000, 1, 1), band);
+        Member carol = Member.create("Carol", "C", LocalDate.of(2000, 1, 1), band);
+        setMemberId(alice, 1L);
+        setMemberId(bob, 2L);
+        setMemberId(carol, 3L);
+
+        paidEvent.inviteMember(alice);
+        paidEvent.inviteMember(bob);
+        paidEvent.inviteMember(carol);
+
+        // Alice & Bob: CONFIRMED + PAID (fully settled)
+        var alicePart = findParticipation(paidEvent, alice);
+        setParticipationResponse(alicePart, ParticipationResponse.CONFIRMED);
+        markPaymentPaid(alicePart);
+
+        var bobPart = findParticipation(paidEvent, bob);
+        setParticipationResponse(bobPart, ParticipationResponse.CONFIRMED);
+        markPaymentPaid(bobPart);
+
+        // Carol: CONFIRMED + PENDING (only one unpaid is enough)
+        var carolPart = findParticipation(paidEvent, carol);
+        setParticipationResponse(carolPart, ParticipationResponse.CONFIRMED);
+        recordPayment(carolPart, BigDecimal.valueOf(100));
+
+        when(eventQueryService.getPastEvents(anyLong())).thenReturn(List.of(paidEvent));
+        when(rehearsalQueryService.getPastRehearsals(anyLong())).thenReturn(new ArrayList<>());
+
+        var result = collector.collect(1L);
+
+        assertThat(result)
+                .as("a single unpaid confirmed person is enough to trigger attention")
+                .hasSize(1);
+        assertThat(result.get(0).id()).isEqualTo(88L);
+    }
+
+    @Test
+    void collect_ignores_only_declined_participations() {
+        // All invited members DECLINED → no one is paying → no attention needed.
+        // (Past PAID_SPLIT events where everyone said "no" don't have an
+        // outstanding payment to chase — the payout is moot.)
+        BandEvent paidEvent = BandEvent.create(
+                "Paid Concert",
+                LocalDate.now().minusDays(1),
+                LocalTime.of(18, 0),
+                "Concert Hall",
+                EventType.CONCERT,
+                band,
+                PaymentType.PAID_SPLIT,
+                BigDecimal.valueOf(100)
+        );
+        setEventId(paidEvent, 99L);
+
+        Member member = Member.create("John", "Doe", LocalDate.of(2000, 1, 1), band);
+        setMemberId(member, 1L);
+        paidEvent.inviteMember(member);
+        var participation = findParticipation(paidEvent, member);
+        setParticipationResponse(participation, ParticipationResponse.DECLINED);
+        recordPayment(participation, BigDecimal.valueOf(100)); // sets status to PENDING
+
+        when(eventQueryService.getPastEvents(anyLong())).thenReturn(List.of(paidEvent));
+        when(rehearsalQueryService.getPastRehearsals(anyLong())).thenReturn(new ArrayList<>());
+
+        var result = collector.collect(1L);
+
+        assertThat(result)
+                .as("declined members don't owe money — no attention needed")
+                .isEmpty();
     }
 
     @Test
