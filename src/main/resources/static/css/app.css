@@ -1,13 +1,15 @@
 /* ============================================================
    STICKY FILTER INPUTS — managed by StickyManager library
    ============================================================ */
-/* uber-filter-container is managed by StickyManager (position: fixed via JS) */
+/* uber-filter-container is managed by sticky positioning via dashboard-header-morph script */
 #uber-filter-container {
     background: var(--pico-background-color, white);
     z-index: 100;
+    position: sticky;
+    top: var(--sticky-filter-top, 60px);
 }
 
-/* Individual filter containers inside uber-filter-container - no sticky, StickyManager handles it */
+/* Individual filter containers inside uber-filter-container - sticky positioning handled by parent */
 .participant-filter-container,
 .attendance-filter-container {
     padding-top: 0.5rem;
@@ -19,6 +21,9 @@
     padding-top: 0.5rem;
     padding-bottom: 0.5rem;
     margin-bottom: 0.75rem;
+    position: sticky;
+    top: var(--sticky-response-filter-top, 120px);
+    z-index: 99;
 }
 
 /* StickyManager adds these classes automatically */

@@ -321,16 +321,58 @@ public class RehearsalEditUiTest extends UiTestBase {
         // NOTE: The controller returns the fragment "rehearsals/detail :: #rehearsals-content"
         // which is the INNER HTML of the #rehearsals-content div. After an innerHTML swap
         // into #content, the #rehearsals-content element itself does NOT exist in the DOM.
-        // Wait for #content to receive the detail fragment, then for an element that IS
-        // present in the fragment (like the invite button), then for the Edytuj button.
+        // Wait for an element that IS present in the swapped fragment content (like the
+        // h2 header or the invite button), then for the Edytuj button. The #content element
+        // already exists from the /meetings page load, so waiting for it is useless.
         // 30s instead of the default 10s — full-suite runs can be slow
         // when HTMX needs to process a swap through several layers.
-        new WebDriverWait(driver, Duration.ofSeconds(15)).until(
-                ExpectedConditions.presenceOfElementLocated(
-                        By.id("content")));
+        
+        // Wait for HTMX to complete the swap (body has htmx-request class during request)
+        new WebDriverWait(driver, Duration.ofSeconds(10)).until(
+                d -> (Boolean) ((JavascriptExecutor) d).executeScript(
+                        "return document.body.classList.contains('htmx-request') === false;"));
+        
+        // Give HTMX a moment to process the swap and insert the fragment
+        try { Thread.sleep(1000); } catch (InterruptedException ignored) {}
+        
+        // Debug: log what's in the DOM after the swap
+        String domState = (String) ((JavascriptExecutor) driver).executeScript(
+                "return 'content children: ' + document.getElementById('content').children.length + " +
+                "' | h2 count: ' + document.querySelectorAll('h2').length + " +
+                "' | h2 texts: ' + Array.from(document.querySelectorAll('h2')).map(h => h.textContent).join(', ') + " +
+                "' | invite-btn: ' + (document.getElementById('open-invite-modal-btn') !== null) + " +
+                "' | htmx-request: ' + document.body.classList.contains('htmx-request') + " +
+                "' | current URL: ' + window.location.href;");
+        System.err.println("[DEBUG] DOM state after Szczegóły click: " + domState);
+        
+        // Wait for the fragment content to appear - check via JS for multiple indicators
+        // The h2 might have encoding issues, so fall back to the button which has a stable ID
+        new WebDriverWait(driver, Duration.ofSeconds(30)).until(
+                d -> {
+                    // Check for h2 text content (handles encoding issues better than XPath)
+                    Object h2 = ((JavascriptExecutor) d).executeScript(
+                            "var h2s = document.querySelectorAll('h2'); for (var i=0; i<h2s.length; i++) { if (h2s[i].textContent.includes('Szczeg')) return true; } return false;");
+                    // Check for invite button
+                    Object btn = ((JavascriptExecutor) d).executeScript(
+                            "return document.getElementById('open-invite-modal-btn') !== null;");
+                    boolean result = (Boolean) h2 || (Boolean) btn;
+                    
+                    if (!result) {
+                        // Log what we're seeing
+                        String debugState = (String) ((JavascriptExecutor) d).executeScript(
+                                "return 'h2 count: ' + document.querySelectorAll('h2').length + " +
+                                "' | h2 texts: ' + Array.from(document.querySelectorAll('h2')).map(h => h.textContent).join(', ') + " +
+                                "' | invite-btn: ' + (document.getElementById('open-invite-modal-btn') !== null) + " +
+                                "' | content innerHTML preview: ' + document.getElementById('content').innerHTML.substring(0, 500);");
+                        System.err.println("[DEBUG] Waiting for fragment... " + debugState);
+                    }
+                    return result;
+                });
+        
         new WebDriverWait(driver, Duration.ofSeconds(15)).until(
                 ExpectedConditions.presenceOfElementLocated(
                         By.id("open-invite-modal-btn"))); // element inside the fragment
+        
         new WebDriverWait(driver, Duration.ofSeconds(15)).until(
                 ExpectedConditions.presenceOfElementLocated(
                         By.xpath("//button[contains(text(), 'Edytuj')]")));

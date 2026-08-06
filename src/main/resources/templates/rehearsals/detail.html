@@ -186,16 +186,11 @@
 <script th:replace="~{fragments/layout :: dashboard-header-morph}"></script>
 
 <script>
-    // Initialize StickyManager for rehearsal detail page
-    document.addEventListener('DOMContentLoaded', function() {
-        // StickyManager handles: dashboardHeader, uber-filter-container (which contains both attendance and response filters)
-        if (typeof StickyManager !== 'undefined') {
-            new StickyManager(['dashboardHeader', 'uber-filter-container'], {
-                offset: 0,
-                debug: false
-            });
-        }
+    // Rehearsal detail page uses the dashboard-header-morph script from layout.html
+    // which handles the double-push-off behavior (collapse -> release -> filter takeover)
+    // No StickyManager initialization needed here.
 
+    document.addEventListener('DOMContentLoaded', function() {
         // Attendance filter for rehearsals detail
         var filterInput = document.getElementById('attendance-filter');
         if (filterInput) {

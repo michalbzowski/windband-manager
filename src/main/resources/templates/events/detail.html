@@ -266,16 +266,11 @@
 <script th:replace="~{fragments/layout :: dashboard-header-morph}"></script>
 
 <script>
-    // Initialize StickyManager for event detail page
-    document.addEventListener('DOMContentLoaded', function() {
-        // StickyManager handles: dashboardHeader, uber-filter-container (which contains both participant and response filters)
-        if (typeof StickyManager !== 'undefined') {
-            new StickyManager(['dashboardHeader', 'uber-filter-container'], {
-                offset: 0,
-                debug: false
-            });
-        }
+    // Event detail page uses the dashboard-header-morph script from layout.html
+    // which handles the double-push-off behavior (collapse -> release -> filter takeover)
+    // No StickyManager initialization needed here.
 
+    document.addEventListener('DOMContentLoaded', function() {
         // Participant filter for events detail
         var filterInput = document.getElementById('participant-filter');
         if (filterInput) {

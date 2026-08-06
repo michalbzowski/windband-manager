@@ -95,24 +95,20 @@
     </div>
 </header>
 
-<!-- Dashboard header scroll morph behavior - detail pages use StickyManager, dashboard uses custom logic -->
+<!-- Dashboard header scroll morph behavior - detail pages use custom double-push-off logic -->
 <script th:fragment="dashboard-header-morph">(function() {
     const header = document.getElementById('dashboardHeader');
     if (!header) return;
 
-    // Detect page type based on presence of uber-filter-container (detail pages with StickyManager)
+    // Detect page type based on presence of uber-filter-container (detail pages with filters)
     const uberFilterContainer = document.getElementById('uber-filter-container');
-    const isDetailPage = !!uberFilterContainer;  // Events/Rehearsals use StickyManager
+    const isDetailPage = !!uberFilterContainer;  // Events/Rehearsals have uber-filter-container
 
-    // If StickyManager is handling this page, don't run custom logic
-    if (isDetailPage && typeof StickyManager !== 'undefined') {
-        // StickyManager will handle header + filters - just ensure header is managed
-        // The page's inline script initializes StickyManager with ['dashboardHeader', 'uber-filter-container']
-        return;
-    }
+    // Detail pages (events/rehearsals) use the double-push-off logic below
+    // Dashboard and other pages without uber-filter-container use custom logic below
 
-    // Dashboard page (or pages without StickyManager) - use custom logic
-    const filterContainer = document.querySelector('.participant-filter-container, .attendance-filter-container');
+    // Use uberFilterContainer as the reference element for collision detection
+    const filterContainer = uberFilterContainer;
     const hasFilters = !!filterContainer;
 
     let lastScrollY = 0;
