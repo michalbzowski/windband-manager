@@ -88,7 +88,8 @@ class RehearsalInviteAfterQuickAttendanceUiTest extends UiTestBase {
 
         // --- Now open quick attendance modal and complete it ---
         // This will trigger an HTMX reload at the end
-        driver.findElement(By.id("quick-attendance-btn")).click();
+        WebElement quickAttendanceBtn = driver.findElement(By.id("quick-attendance-btn"));
+        ((JavascriptExecutor) driver).executeScript("arguments[0].scrollIntoView({block:'center'}); arguments[0].click();", quickAttendanceBtn);
         wait.until(ExpectedConditions.presenceOfElementLocated(By.id("quick-attendance-modal")));
         wait.until(d -> (Boolean) ((JavascriptExecutor) d).executeScript(
                 "return document.getElementById('quick-attendance-modal').open === true;"));
@@ -122,7 +123,7 @@ class RehearsalInviteAfterQuickAttendanceUiTest extends UiTestBase {
         // --- TRY TO OPEN INVITE MEMBER MODAL ---
         // This should work but currently doesn't because click handlers aren't re-attached
         WebElement inviteBtn = driver.findElement(By.id("open-invite-modal-btn"));
-        ((JavascriptExecutor) driver).executeScript("arguments[0].click();", inviteBtn);
+        ((JavascriptExecutor) driver).executeScript("arguments[0].scrollIntoView({block:'center'}); arguments[0].click();", inviteBtn);
 
         // Wait for modal to open - this will fail with the bug
         wait.until(ExpectedConditions.presenceOfElementLocated(By.id("invite-members-modal")));
@@ -143,7 +144,7 @@ class RehearsalInviteAfterQuickAttendanceUiTest extends UiTestBase {
 
         // --- TRY TO OPEN INVITE GROUP MODAL ---
         WebElement inviteGroupBtn = driver.findElement(By.id("open-invite-group-modal-btn"));
-        ((JavascriptExecutor) driver).executeScript("arguments[0].click();", inviteGroupBtn);
+        ((JavascriptExecutor) driver).executeScript("arguments[0].scrollIntoView({block:'center'}); arguments[0].click();", inviteGroupBtn);
 
         wait.until(ExpectedConditions.presenceOfElementLocated(By.id("invite-group-modal")));
         wait.until(d -> (Boolean) ((JavascriptExecutor) d).executeScript(

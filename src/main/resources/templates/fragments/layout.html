@@ -307,7 +307,7 @@
         <button type="button"
                 class="nav-team-label"
                 th:text="${activeTeamName}"
-                th:attr="aria-label=|Przełącz zespół: ${activeTeamName ?: 'brak'}|\"
+                th:attr="aria-label='Przełącz zespół: ' + ${activeTeamName ?: 'brak'}"
                 onclick="openAppModal('team-modal')">Orkiestra Dęta</button>
         <span class="nav-team-role" th:if="${currentUserName}" th:text="${currentUserName}">user</span>
     </div>

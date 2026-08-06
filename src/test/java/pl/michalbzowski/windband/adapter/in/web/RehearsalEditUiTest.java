@@ -335,12 +335,38 @@ public class RehearsalEditUiTest extends UiTestBase {
                 new Object[]{});
 
         // The detail swaps into #content. The detail has an "Edytuj"
-        // button with hx-target="#rehearsals-content". Wait for it.
-        // Use presenceOfElementLocated (DOM present) rather than
-        // visibilityOf (which can flake in full-suite runs when the
-        // sticky header overlaps the button).
-        // 15s instead of the default 10s — full-suite runs can be slow
+        // button with hx-target="#rehearsals-content". 
+        // NOTE: The controller returns the fragment "rehearsals/detail :: #rehearsals-content"
+        // which is the INNER HTML of the #rehearsals-content div. After an innerHTML swap
+        // into #content, the #rehearsals-content element itself does NOT exist in the DOM.
+        // Wait for #content to receive the detail fragment, then for an element that IS
+        // present in the fragment (like the invite button), then for the Edytuj button.
+        // 30s instead of the default 10s — full-suite runs can be slow
         // when HTMX needs to process a swap through several layers.
+        new WebDriverWait(driver, Duration.ofSeconds(15)).until(
+                ExpectedConditions.presenceOfElementLocated(
+                        By.id("content")));
+        // Wait for HTMX swap to complete - poll for the presence of elements 
+        // that should appear in the fragment after the innerHTML swap completes.
+        // Use a more generous timeout and check every 100ms.
+        new WebDriverWait(driver, Duration.ofSeconds(30)).until(
+                d -> {
+                    try {
+                        WebElement content = d.findElement(By.id("content"));
+                        // The fragment contains the "Zaproś na spotkanie" header and invite buttons
+                        String html = content.getAttribute("innerHTML");
+                        if (html == null) return false;
+                        // Check for multiple markers to be more robust
+                        return html.contains("Zaproś na spotkanie") 
+                            || html.contains("open-invite-modal-btn")
+                            || html.contains("rehearsal-invite-actions");
+                    } catch (org.openqa.selenium.StaleElementReferenceException e) {
+                        return false; // Element was replaced, try again
+                    }
+                });
+        new WebDriverWait(driver, Duration.ofSeconds(15)).until(
+                ExpectedConditions.presenceOfElementLocated(
+                        By.id("open-invite-modal-btn"))); // element inside the fragment
         new WebDriverWait(driver, Duration.ofSeconds(15)).until(
                 ExpectedConditions.presenceOfElementLocated(
                         By.xpath("//button[contains(text(), 'Edytuj')]")));
