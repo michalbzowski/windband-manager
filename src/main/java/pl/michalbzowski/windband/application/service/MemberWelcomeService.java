@@ -35,17 +35,18 @@ public class MemberWelcomeService {
     private final SpringTemplateEngine templateEngine;
     private final ConsentRepository consentRepository;
     private final ConsentTokenRepository consentTokenRepository;
-    @Value("${app.base-url:http://localhost:8080}")
-    private String baseUrl;
+    private final String baseUrl;
 
     public MemberWelcomeService(EmailSender emailSender,
                                 SpringTemplateEngine templateEngine,
                                 ConsentRepository consentRepository,
-                                ConsentTokenRepository consentTokenRepository) {
+                                ConsentTokenRepository consentTokenRepository,
+                                @Value("${app.base-url:http://localhost:8080}") String baseUrl) {
         this.emailSender = emailSender;
         this.templateEngine = templateEngine;
         this.consentRepository = consentRepository;
         this.consentTokenRepository = consentTokenRepository;
+        this.baseUrl = baseUrl;
     }
 
     /**

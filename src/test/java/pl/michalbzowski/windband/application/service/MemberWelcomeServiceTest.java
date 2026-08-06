@@ -22,7 +22,6 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.test.util.ReflectionTestUtils;
 import org.thymeleaf.spring6.SpringTemplateEngine;
 
 import pl.michalbzowski.windband.application.security.CurrentUser;
@@ -69,8 +68,7 @@ class MemberWelcomeServiceTest {
         lenient().when(currentUser.getName()).thenReturn("admin");
         lenient().when(currentUser.getDisplayName()).thenReturn("Admin User");
 
-        welcomeService = new MemberWelcomeService(emailSender, templateEngine, consentRepository, tokenRepository);
-        ReflectionTestUtils.setField(welcomeService, "baseUrl", BASE_URL);
+        welcomeService = new MemberWelcomeService(emailSender, templateEngine, consentRepository, tokenRepository, BASE_URL);
 
         lenient().when(templateEngine.process(eq("email/member-welcome"), any()))
                 .thenReturn("<html><body>Test</body></html>");

@@ -12,6 +12,7 @@
         <h2>✏️ Edytuj spotkanie</h2>
 
         <form id="rehearsal-edit-form"
+              hx-put="/api/rehearsals/[[${rehearsal.id}]]"
               hx-target="#rehearsals-content"
               hx-swap="innerHTML transition:true">
 
@@ -64,34 +65,33 @@
              the script inside the fragment ensures it is re-executed every
              time the edit form is rendered, regardless of how it got there. -->
         <script th:inline="javascript">
-            // Guard: prevent duplicate event listeners when form is reloaded via htmx
-            if (!window._rehearsalEditFormHandlerAttached) {
-                window._rehearsalEditFormHandlerAttached = true;
-                document.body.addEventListener('submit', function(e) {
-                    if (e.target.id === 'rehearsal-edit-form') {
-                        e.preventDefault();
-                        var form = e.target;
-                        var formData = new FormData(form);
-                        var data = {};
-                        formData.forEach(function(value, key) { data[key] = value; });
-
-                        var rehearsalId = [[${rehearsal.id}]];
-
-                        fetchWithToast('/api/rehearsals/' + rehearsalId, {
-                            method: 'PUT',
-                            headers: {'Content-Type': 'application/json'},
-                            body: JSON.stringify(data)
-                        }).then(function(response) {
-                            if (response.ok) {
-                                // Full page reload to ensure fresh data is loaded from database
-                                window.location.href = '/rehearsals/' + rehearsalId;
-                            } else {
-                                console.error('Failed to update rehearsal:', response.statusText);
-                            }
-                        }).catch(function(error) {
-                            console.error('Error updating rehearsal:', error);
-                        });
-                    }
+            if (!window._rehearsalEditHtmxBound) {
+                window._rehearsalEditHtmxBound = true;
+                document.addEventListener('submit', function(event) {
+                    const form = event.target;
+                    if (!(form instanceof HTMLFormElement)) return;
+                    if (form.id !== 'rehearsal-edit-form') return;
+                    event.preventDefault();
+                    const rehearsalId = /*[[${rehearsal.id}]]*/ 0;
+                    const payload = {
+                        date: form.date.value,
+                        startTime: form.startTime.value,
+                        endTime: form.endTime.value || null,
+                        location: form.location.value || null,
+                        notes: form.notes.value || null
+                    };
+                    fetch('/api/rehearsals/' + rehearsalId, {
+                        method: 'PUT',
+                        headers: {'Content-Type': 'application/json'},
+                        body: JSON.stringify(payload)
+                    }).then(function(response) {
+                        if (!response.ok) {
+                            throw new Error('HTTP ' + response.status);
+                        }
+                        window.location.href = '/rehearsals/' + rehearsalId;
+                    }).catch(function(error) {
+                        console.error('Failed to update rehearsal:', error);
+                    });
                 });
             }
         </script>
