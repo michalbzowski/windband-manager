@@ -328,17 +328,21 @@ public class RehearsalEditUiTest extends UiTestBase {
         // already exists from the /meetings page load, so waiting for it is useless.
         // 30s instead of the default 10s — full-suite runs can be slow
         // when HTMX needs to process a swap through several layers.
-        
+        //
         // In full suite, previous tests may leave the page in a state where HTMX
         // handlers aren't properly registered. Force a fresh page load to ensure
         // HTMX is initialized and event handlers are bound.
         driver.get(baseUrl() + "/meetings");
         wait.until(ExpectedConditions.presenceOfElementLocated(
                 By.cssSelector("#meetings-content")));
-        
+
         // Small pause to let HTMX fully initialize
-        try { Thread.sleep(500); } catch (InterruptedException ignored) {}
-        
+        try {
+            Thread.sleep(500);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+        }
+
         // Re-find our row and click Szczegóły again (fresh page = fresh HTMX)
         meetingRehearsalRowCount = (Long) ((JavascriptExecutor) driver).executeScript(
                 "return document.querySelectorAll('tr.meeting-rehearsal').length;");
@@ -346,7 +350,7 @@ public class RehearsalEditUiTest extends UiTestBase {
         ourRowExists = (Long) ((JavascriptExecutor) driver).executeScript(
                 "return document.querySelectorAll('tr#meeting-" + rehearsalId + "').length;");
         System.err.println("[DEBUG] tr#meeting-" + rehearsalId + " count after reload = " + ourRowExists);
-        
+
         detailButton = driver.findElement(
                 By.xpath("//tr[@id='meeting-" + rehearsalId + "']//button[contains(text(), 'Szczegóły')]"));
         ((JavascriptExecutor) driver).executeScript(
@@ -356,15 +360,19 @@ public class RehearsalEditUiTest extends UiTestBase {
                 "var btn = document.querySelector('tr#meeting-" + rehearsalId + " button');" +
                 "if (btn) btn.click();",
                 new Object[]{});
-        
+
         // Wait for HTMX to complete the swap (body has htmx-request class during request)
         new WebDriverWait(driver, Duration.ofSeconds(15)).until(
                 d -> (Boolean) ((JavascriptExecutor) d).executeScript(
                         "return document.body.classList.contains('htmx-request') === false;"));
-        
+
         // Give HTMX a moment to process the swap and insert the fragment
-        try { Thread.sleep(1500); } catch (InterruptedException ignored) {}
-        
+        try {
+            Thread.sleep(1500);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+        }
+
         // Debug: log what's in the DOM after the swap
         String domState = (String) ((JavascriptExecutor) driver).executeScript(
                 "return 'content children: ' + document.getElementById('content').children.length + " +
@@ -376,7 +384,7 @@ public class RehearsalEditUiTest extends UiTestBase {
                 "' | body classes: ' + document.body.className + " +
                 "' | content innerHTML (first 500): ' + document.getElementById('content').innerHTML.substring(0, 500);");
         System.err.println("[DEBUG] DOM state after Szczegóły click: " + domState);
-        
+
         // Wait for the fragment content to appear - check via JS for multiple indicators
         // The h2 might have encoding issues, so fall back to the button which has a stable ID
         new WebDriverWait(driver, Duration.ofSeconds(45)).until(
@@ -388,7 +396,7 @@ public class RehearsalEditUiTest extends UiTestBase {
                     Object btn = ((JavascriptExecutor) d).executeScript(
                             "return document.getElementById('open-invite-modal-btn') !== null;");
                     boolean result = (Boolean) h2 || (Boolean) btn;
-                    
+
                     if (!result) {
                         // Log what we're seeing
                         String debugState = (String) ((JavascriptExecutor) d).executeScript(
@@ -401,11 +409,11 @@ public class RehearsalEditUiTest extends UiTestBase {
                     }
                     return result;
                 });
-        
+
         new WebDriverWait(driver, Duration.ofSeconds(15)).until(
                 ExpectedConditions.presenceOfElementLocated(
                         By.id("open-invite-modal-btn"))); // element inside the fragment
-        
+
         new WebDriverWait(driver, Duration.ofSeconds(15)).until(
                 ExpectedConditions.presenceOfElementLocated(
                         By.xpath("//button[contains(text(), 'Edytuj')]")));
