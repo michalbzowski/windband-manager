@@ -1539,6 +1539,12 @@ li.past-item > * {
     position: relative;
 }
 
+.team-name-display {
+    color: var(--pico-color) !important;
+    -webkit-text-fill-color: var(--pico-color);
+    text-shadow: none;
+}
+
 .team-switcher:hover {
     color: var(--pico-primary);
 }

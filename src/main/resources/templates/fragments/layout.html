@@ -88,18 +88,18 @@
     </div>
 
     <div class="band-name-wrapper">
-        <h1 class="band-name" 
+        <h1 class="band-name team-name-display"
             th:text="${activeTeamName}"
             th:if="${#lists.size(userTeams) < 2}">Orkiestra Dęta</h1>
-        
-        <button type="button" class="band-name team-switcher"
+
+        <button type="button" class="band-name team-switcher team-name-display"
                 th:if="${#lists.size(userTeams) >= 2}"
                 th:text="${activeTeamName}"
                 th:attr="aria-label='Przełącz zespół: ' + ${activeTeamName}"
                 onclick="openAppModal('team-modal')"
                 aria-haspopup="dialog"
                 aria-expanded="false">Orkiestra Dęta</button>
-        
+
         <span class="team-switcher-arrow" th:if="${#lists.size(userTeams) >= 2}" aria-hidden="true">▼</span>
     </div>
 

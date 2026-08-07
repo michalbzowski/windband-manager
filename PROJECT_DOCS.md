@@ -7,7 +7,7 @@
 4. [Project Structure](#project-structure)
 5. [Domain Model](#domain-model)
 6. [API Endpoints](#api-endpoints)
-7. [JasperReports Integration (jacps-report-adapter)](#jasperreports-integration-jacps-report-adapter)
+7. [JasperReports Integration (local, in-app)](#jasperreports-integration-local-in-app)
 8. [Page Controllers & Templates](#page-controllers--templates)
 9. [Security](#security)
 10. [Superset Integration](#superset-integration)
@@ -209,94 +209,59 @@ All repository interfaces are in `domain/` packages. They define ALL methods —
 
 ### REST Controllers
 
-## JasperReports Integration (jacps-report-adapter)
+## JasperReports Integration (local, in-app)
 
-**Architecture:** Windband-manager uses an Anti-Corruption Layer (ACL) pattern via `jacps-report-adapter` service to generate PDF reports using JasperReports .jrxml templates. This isolates the heavy jasperreports dependency (~50MB) from the main application.
+Windband-manager renders simple JasperReports directly from `src/main/resources/reports/` and compiles them in-process at application startup. No external report service is required for bundled reports.
+
+### Supported flow
+- `ReportCompiler` scans `classpath:reports/*.jrxml`.
+- `ReportGeneratorService` fills the compiled report and exports PDF.
+- `ReportController` serves the download response from `/reports/configure/{key}/download`.
+- `ReportRestController` exposes API access to the same local generation flow.
 
 ### How It Works
 
-1. **User fills form** at `/reports/sprawozdanie/customize`:
-   - Band name (required for report to make sense)
-   - Instructor name (optional)
-   - Period year and month
-   
-2. **Frontend sends POST** to `/api/reports/pdf` with JSON body:
-```json
-{ "bandName": "...", "instructorName": "...", "periodYear": 2026, "periodMonth": 7 }
-```
-
-3. **Backend calculates date range**: If period specified → uses that month (1st to 28th), otherwise defaults to last complete month.
-
-4. **`JacpsReportController.generateReport()`** forwards the request to `jacps-report-adapter`:
-   - Endpoint: `${jacps.report.base-url}/api/v1/reports/generate`
-   - Report template path: `/bands/test/sprawozdanie.jrxml`
-   - Output format: PDF (default)
-
-5. **Response**: Binary PDF attachment with filename `sprawozdanie-YYYY-MM.pdf`.
+1. The `.jrxml` file lives in `src/main/resources/reports/`.
+2. `ReportCompiler` scans the classpath, extracts metadata, and compiles the template into an in-memory `JasperReport`.
+3. `ReportGeneratorService` or `ReportService` fills the report with application data and exports a PDF.
+4. `ReportPageController.downloadReport()` returns the PDF as an attachment.
 
 ### Components
 
 | Component | Package | Role |
 |-----------|---------|------|
-| `ReportApiClient` | `infrastructure.jacps` | HTTP client calling jacps-report-adapter REST API |
-| `JacpsReportController` | `adapter.in.web` | Controller processing UI form → delegates to ReportApiClient |
-| `ReportGenerationRequest` | DTO inside JacpsReportController | Request model from frontend |
+| `ReportCompiler` | `application.report` | Scans `.jrxml`, extracts metadata, compiles to in-memory `JasperReport` |
+| `ReportGeneratorService` | `application.report` | Fills compiled report and exports PDF |
+| `ReportService` | `application.report` | Example service for report generation |
+| `ReportPageController` | `adapter.in.web` | UI flow for configuring and downloading reports |
+| `ReportRestController` | `adapter.in.web` | API endpoint for report generation |
+| `ReportQueryService` | `application.query.report` | Supplies report UI data |
 
-### Configuration
+### Report templates
 
-In `application.yml`:
-```yaml
-jacps:
-  report:
-    base-url: http://localhost:8081  # Default for local development
+Templates are stored in:
+```text
+src/main/resources/reports/
 ```
 
-For Railway deployment, set environment variable:
-```bash
-JACPS_REPORT_BASE_URL=https://jacps-report-adapter-railway.railway.app
+Current known template:
+```text
+sprawozdanie.jrxml  → "Sprawozdanie Zespołu" (team report)
 ```
 
-### Error Handling (Graceful Degradation)
+### Error Handling
 
-- **503 Service Unavailable**: When `jacps-report-adapter` is down or not configured, user sees friendly error instead of application crash.
-- **400 Bad Request**: Invalid parameters sent to adapter.
-- **500 Internal Server Error**: Adapter returned empty response bytes.
+- **400 Bad Request**: Invalid parameters or missing report metadata.
+- **500 Internal Server Error**: Report compilation/fill/export failure.
+- **Binary response**: successful generation returns `application/pdf` as an attachment.
 
-### Report Templates
+### API endpoint
 
-Report `.jrxml` templates live in `src/main/resources/reports/`:
-```
-sprawozdanie.jrxml  → "Sprawozdanie Zespołu" (team report) with:
-                     - Statistics (active members count, minors <18, seniors >60)
-                     - Concerts list for period
-hello.jrxml        → Test template for integration verification
-```
+#### `/reports/configure/{key}/download` — `ReportPageController`
 
-**Edit templates**: Use Jaspersoft Studio IDE. Deploy by copying to `src/main/resources/reports/` and updating the path in code configuration.
+Generates a PDF inside windband using the local `.jrxml` template from `src/main/resources/reports/`.
 
----
-
-#### /api/reports/generate — JacpsReportController (JasperReports ACL)
-
-**POST /api/reports/pdf**
-
-Generuje raport PDF używając external jacps-report-adapter service (ACL do JasperReports). Accepts JSON body:
-
-```json
-{
-  "bandName": "Orkiestra Dęta Test",
-  "instructorName": "Jan Kowalski",
-  "periodYear": 2026,
-  "periodMonth": 7,
-  "format": "PDF"
-}
-```
-
-Returns: `application/pdf` binary attachment with file name like `sprawozdanie-2026-07.pdf`.
-
-**Dependencies:** Requires running jacps-report-adapter instance at `${jacps.report.base-url:http://localhost:8081}`. Returns 503 Service Unavailable when adapter is down (graceful degradation).
-
----
+**Dependencies:** Uses the application `DataSource` and in-memory compiled Jasper reports. No external report service is required.
 
 #### /api/members — MemberController
 | Method | Path | Description |

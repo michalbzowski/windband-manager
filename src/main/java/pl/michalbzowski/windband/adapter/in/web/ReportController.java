@@ -1,66 +1,76 @@
 package pl.michalbzowski.windband.adapter.in.web;
 
-import jakarta.servlet.http.HttpSession;
-import lombok.RequiredArgsConstructor;
+import java.time.LocalDate;
+import java.time.format.DateTimeFormatter;
+import java.util.HashMap;
+import java.util.Map;
+import lombok.Data;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.http.ContentDisposition;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.core.annotation.AuthenticationPrincipal;
-import org.springframework.security.oauth2.core.oidc.user.OidcUser;
-import org.springframework.stereotype.Controller;
-import org.springframework.ui.Model;
-import org.springframework.web.bind.annotation.*;
-import pl.michalbzowski.windband.adapter.in.security.WindbandOidcUser;
-import pl.michalbzowski.windband.application.query.report.MonthlyReport;
-import pl.michalbzowski.windband.application.query.report.ReportQueryService;
-import pl.michalbzowski.windband.application.query.team.TeamQueryService;
+import org.springframework.stereotype.Component;
+import pl.michalbzowski.windband.application.report.ReportGeneratorService;
 
-import java.time.YearMonth;
+@Component
+class ReportController {
 
-@Controller
-@RequestMapping("/reports")
-@RequiredArgsConstructor
-public class ReportController {
+    private static final Logger log = LoggerFactory.getLogger(ReportController.class);
 
-    private final ReportQueryService reportQueryService;
-    private final TeamQueryService teamQueryService;
+    private final ReportGeneratorService reportGeneratorService;
 
-    @GetMapping("/monthly")
-    public ResponseEntity<MonthlyReport> getMonthlyReport(
-            @AuthenticationPrincipal OidcUser oidcUser, HttpSession session,
-            @RequestParam int year,
-            @RequestParam int month) {
-        YearMonth ym = YearMonth.of(year, month);
-        Long activeTeamId = resolveActiveTeamId(oidcUser, session);
-        MonthlyReport report = reportQueryService.generateMonthlyReport(ym, activeTeamId);
-        return ResponseEntity.ok(report);
+    ReportController(ReportGeneratorService reportGeneratorService) {
+        this.reportGeneratorService = reportGeneratorService;
     }
 
-    /** HTMX endpoint: render monthly report page with generated data. */
-    @GetMapping("/generate")
-    public String generateMonthlyReportPage(@RequestParam int year,
-                                           @RequestParam int month,
-                                           Model model,
-                                           @AuthenticationPrincipal OidcUser oidcUser,
-                                           HttpSession session) {
-        YearMonth ym = YearMonth.of(year, month);
-        Long activeTeamId = resolveActiveTeamId(oidcUser, session);
-        MonthlyReport report = reportQueryService.generateMonthlyReport(ym, activeTeamId);
+    public ResponseEntity<byte[]> generateReport(ReportGenerationRequest request) {
+        LocalDate now = LocalDate.now();
+        LocalDate from = request.getPeriodYear() != null && request.getPeriodMonth() != null
+                ? LocalDate.of(request.getPeriodYear(), request.getPeriodMonth(), 1)
+                : now.minusMonths(1).withDayOfMonth(1);
+        LocalDate to = request.getPeriodYear() != null && request.getPeriodMonth() != null
+                ? LocalDate.of(request.getPeriodYear(), request.getPeriodMonth(), 28)
+                : now.minusMonths(1).withDayOfMonth(now.minusMonths(1).lengthOfMonth());
 
-        // Store year/month for the template to display
-        model.addAttribute("report", report);
-        return "reports/view :: #reports-content";
-    }
+        Map<String, Object> params = new HashMap<>();
+        params.put("bandName", request.getBandName() != null ? request.getBandName() : "");
+        params.put("instructorName", request.getInstructorName() != null ? request.getInstructorName() : "");
+        params.put("paramFrom", from.format(DateTimeFormatter.ISO_DATE));
+        params.put("paramTo", to.format(DateTimeFormatter.ISO_DATE));
+        params.put("activeMembersCount", request.getActiveMembersCount() != null ? request.getActiveMembersCount().longValue() : 0L);
+        params.put("minorCount", request.getMinorCount() != null ? request.getMinorCount().longValue() : 0L);
+        params.put("senior60PlusCount", request.getSenior60PlusCount() != null ? request.getSenior60PlusCount().longValue() : 0L);
+        params.put("rehearsalsCount", request.getRehearsalsCount() != null ? request.getRehearsalsCount() : 0);
 
-    private Long resolveActiveTeamId(OidcUser oidcUser, HttpSession session) {
-        if (!(oidcUser instanceof WindbandOidcUser wu)) {
-            return null;
-        }
-        Long sessionTeamId = (Long) session.getAttribute("activeTeamId");
-        if (sessionTeamId != null) {
-            boolean stillBelongs = teamQueryService.getUserTeam(wu.getUserId(), sessionTeamId).isPresent();
-            if (stillBelongs) {
-                return sessionTeamId;
+        try {
+            byte[] bytes = reportGeneratorService.generatePdf("sprawozdanie", params);
+            if (bytes == null || bytes.length == 0) {
+                return ResponseEntity.status(500).build();
             }
+            HttpHeaders headers = new HttpHeaders();
+            headers.setContentType(MediaType.APPLICATION_PDF);
+            headers.setContentDisposition(ContentDisposition.builder("attachment")
+                    .filename("sprawozdanie.pdf")
+                    .build());
+            return ResponseEntity.ok().headers(headers).body(bytes);
+        } catch (Exception e) {
+            log.error("Report generation failed: {}", e.getMessage(), e);
+            return ResponseEntity.internalServerError().build();
         }
-        return wu.getActiveTeamId();
     }
+
+    @Data
+    public static class ReportGenerationRequest {
+        private String bandName;
+        private String instructorName;
+        private Integer periodYear;
+        private Integer periodMonth;
+        private Integer activeMembersCount;
+        private Integer minorCount;
+        private Integer senior60PlusCount;
+        private Integer rehearsalsCount;
+    }
+
 }
