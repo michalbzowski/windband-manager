@@ -198,6 +198,11 @@
             <artifactId>jasperreports-fonts</artifactId>
             <version>${jasperreports.version}</version>
         </dependency>
+        <dependency>
+            <groupId>org.codehaus.janino</groupId>
+            <artifactId>janino</artifactId>
+            <version>3.1.9</version>
+        </dependency>
     </dependencies>
 
     <dependencyManagement>
@@ -334,7 +339,7 @@
                 <executions>
                     <execution>
                         <id>checkstyle-verify</id>
-                        <phase>verify</phase>
+                        <phase>validate</phase>
                         <goals>
                             <goal>check</goal>
                         </goals>
