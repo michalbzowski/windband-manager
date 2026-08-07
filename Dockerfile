@@ -5,6 +5,7 @@ COPY pom.xml .
 COPY mvnw .
 COPY .mvn ./.mvn
 COPY checkstyle-suppressions.xml .
+COPY checkstyle.xml .
 COPY src ./src
 
 RUN ./mvnw -B clean package -DskipTests
