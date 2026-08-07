@@ -1,6 +1,8 @@
 package pl.michalbzowski.windband.adapter.in.web;
 
 import lombok.Data;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ContentDisposition;
 import org.springframework.http.HttpHeaders;
@@ -27,6 +29,8 @@ import java.util.Map;
 @Component
 public class JacpsReportController {
 
+    private static final Logger log = LoggerFactory.getLogger(JacpsReportController.class);
+
     private ReportApiClient reportApiClient; // Optional — gracefully degrades when jacps-report-adapter is unavailable
 
     @Autowired(required = false)
@@ -42,6 +46,7 @@ public class JacpsReportController {
      */
     public ResponseEntity<byte[]> generateReport(ReportGenerationRequest request) {
         if (reportApiClient == null) {
+            log.warn("Jacps report adapter is not available, returning 503");
             return ResponseEntity.status(503).build(); // Service unavailable — jacps-report-adapter not running
         }
 
@@ -105,11 +110,15 @@ public class JacpsReportController {
 
         // Generate report via jacps-report-adapter
         try {
+            log.info("Generating report with path: {}, format: {}, params: {}", reportPath, format, params);
             byte[] bytes = reportApiClient.generateReport(reportPath, format.toUpperCase(), params);
 
             if (bytes == null || bytes.length == 0) {
+                log.error("Report generation returned empty or null bytes");
                 return ResponseEntity.status(500).build();
             }
+
+            log.info("Report generated successfully, size: {} bytes", bytes.length);
 
             // Prepare response headers
             HttpHeaders headers = new HttpHeaders();
@@ -125,6 +134,7 @@ public class JacpsReportController {
                 .body(bytes);
 
         } catch (Exception e) {
+            log.error("Report generation failed: {}", e.getMessage(), e);
             throw new RuntimeException("Report generation failed: " + e.getMessage(), e);
         }
     }

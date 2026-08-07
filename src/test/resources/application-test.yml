@@ -1,3 +1,9 @@
+# Disable Jackson XML parsing in JasperReports 7.x to avoid UnrecognizedPropertyException on "band" field
+jasperreports:
+  jackson:
+    xml:
+      enabled: false
+
 spring:
   application:
     name: windband-manager

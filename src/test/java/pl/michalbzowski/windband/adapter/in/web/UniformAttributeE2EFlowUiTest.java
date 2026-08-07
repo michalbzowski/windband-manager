@@ -185,7 +185,9 @@ class UniformAttributeE2EFlowUiTest extends UiTestBase {
             // Find the "Przydziel" button for our uniform
             WebElement assignBtn = driver.findElement(
                     By.cssSelector("#uniforms-content button[onclick^='assignUniform']"));
-            assignBtn.click();
+            // Click via JS to avoid ElementClickIntercepted by sticky dashboard header
+            ((JavascriptExecutor) driver).executeScript(
+                    "arguments[0].scrollIntoView({block:'start'}); window.scrollBy(0, -150); arguments[0].click();", assignBtn);
 
             // Wait for assign modal
             wait.until(ExpectedConditions.presenceOfElementLocated(By.cssSelector("#uni-assign-modal")));
