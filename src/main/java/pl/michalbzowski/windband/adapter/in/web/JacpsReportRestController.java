@@ -34,7 +34,12 @@ public class JacpsReportRestController {
         // periodYear/periodMonth will default to last month in controller
         ResponseEntity<byte[]> result = jacpsReportController.generateReport(request);
         if (result.getStatusCode().is2xxSuccessful()) {
-            log.info("Sample report generated successfully, size: {} bytes", result.getBody().length);
+            byte[] body = result.getBody();
+            if (body != null) {
+                log.info("Sample report generated successfully, size: {} bytes", body.length);
+            } else {
+                log.info("Sample report generated successfully but body is null");
+            }
             return ResponseEntity.ok("Test endpoint executed. Check logs for JacpsReportController activity.");
         } else {
             log.warn("Sample report generation returned status: {}", result.getStatusCode());
