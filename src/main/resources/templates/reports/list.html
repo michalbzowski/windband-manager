@@ -135,10 +135,8 @@
 <div th:insert="~{fragments/layout :: footer-scripts}"></div>
 
 <script th:replace="~{fragments/layout :: dashboard-header-morph}"></script>
-</body>
-</html>
 
-<style>
+<style th:inline="css">
 .reports-header {
     margin-bottom: 2rem;
     text-align: center;
@@ -363,3 +361,5 @@
     }
 }
 </style>
+</body>
+</html>
