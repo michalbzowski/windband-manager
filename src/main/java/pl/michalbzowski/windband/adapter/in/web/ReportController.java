@@ -12,6 +12,8 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Component;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import pl.michalbzowski.windband.application.report.ReportGeneratorService;
 
 @Component
@@ -23,6 +25,11 @@ class ReportController {
 
     ReportController(ReportGeneratorService reportGeneratorService) {
         this.reportGeneratorService = reportGeneratorService;
+    }
+
+    @GetMapping("/generate")
+    public String generateMonthlyReport(@RequestParam int year, @RequestParam int month) {
+        return "reports/monthly-report";
     }
 
     public ResponseEntity<byte[]> generateReport(ReportGenerationRequest request) {
