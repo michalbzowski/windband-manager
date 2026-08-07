@@ -3,9 +3,10 @@ WORKDIR /app
 RUN apk add --no-cache curl bash
 COPY pom.xml .
 COPY mvnw .
-COPY .mvn .mvn
+COPY .mvn ./.mvn
+COPY checkstyle-suppressions.xml .
 COPY src ./src
-# Force rebuild: 2026-06-25T14:27
+
 RUN ./mvnw -B clean package -DskipTests
 
 FROM eclipse-temurin:21-jre-alpine
