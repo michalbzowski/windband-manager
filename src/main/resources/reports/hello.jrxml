@@ -6,27 +6,26 @@
     <parameter name="user" class="java.lang.String"/>
     <parameter name="generatedDate" class="java.time.LocalDate"/>
 
-    <!-- Title band -->
+    <!-- Title band - using legacy structure without nested band element -->
     <title>
-        <band height="100">
-            <staticText>
-                <reportElement x="20" y="25" width="400" height="30"/>
-                <textElement verticalAlignment="Middle"><font size="24"/></textElement>
-                <text><![CDATA[$P{message}]]></text>
-            </staticText>
+        <reportElement x="0" y="0" width="555" height="100"/>
+        <staticText>
+            <reportElement x="20" y="25" width="400" height="30"/>
+            <textElement verticalAlignment="Middle"><font size="24"/></textElement>
+            <text><![CDATA[$P{message}]]></text>
+        </staticText>
 
-            <textField>
-                <reportElement x="20" y="55" width="500" height="25"/>
-                <textElement verticalAlignment="Middle"><font size="14"/></textElement>
-                <textFieldExpression><![CDATA["Witaj, " + $P{user} + "!"]]></textFieldExpression>
-            </textField>
+        <textField>
+            <reportElement x="20" y="55" width="500" height="25"/>
+            <textElement verticalAlignment="Middle"><font size="14"/></textElement>
+            <textFieldExpression><![CDATA["Witaj, " + $P{user} + "!"]]></textFieldExpression>
+        </textField>
 
-            <staticText>
-                <reportElement x="20" y="80" width="300" height="15"/>
-                <textElement verticalAlignment="Middle"><font size="10"/></textElement>
-                <text><![CDATA["Generowano: " + $P{generatedDate}]]></text>
-            </staticText>
-        </band>
+        <staticText>
+            <reportElement x="20" y="80" width="300" height="15"/>
+            <textElement verticalAlignment="Middle"><font size="10"/></textElement>
+            <text><![CDATA["Generowano: " + $P{generatedDate}]]></text>
+        </staticText>
     </title>
 
     <!-- Page footer with page number -->

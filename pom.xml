@@ -25,6 +25,7 @@
         <docker-java.version>3.5.3</docker-java.version>
         <springdoc.version>2.6.0</springdoc.version>
         <jasperreports.version>7.0.5</jasperreports.version>
+        <net.sf.jasperreports.jackson.xml.enabled>false</net.sf.jasperreports.jackson.xml.enabled>
     </properties>
 
     <dependencies>

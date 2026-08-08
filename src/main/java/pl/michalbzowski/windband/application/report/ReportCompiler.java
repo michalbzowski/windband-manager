@@ -2,8 +2,8 @@ package pl.michalbzowski.windband.application.report;
 
 import jakarta.annotation.PostConstruct;
 import net.sf.jasperreports.engine.JRException;
-import net.sf.jasperreports.engine.JasperCompileManager;
 import net.sf.jasperreports.engine.JasperReport;
+import net.sf.jasperreports.engine.util.JRLoader;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.core.io.Resource;
@@ -27,8 +27,10 @@ import org.w3c.dom.NamedNodeMap;
 import org.w3c.dom.Node;
 
 /**
- * Kompiluje raporty Jasper z .jrxml do .jasper przy starcie aplikacji.
- * Dodatkowo parsuje metadane (nazwa, opis, parametry) i udostępnia je via getReportMetadata().
+ * Ładuje pre-kompilowane raporty Jasper (.jasper) z classpath.
+ * Pre-kompilacja .jrxml -> .jasper odbywa się w fazie 'compile' przez jasperreports-maven-plugin.
+ * To eliminuje konieczność javac w runtime (ważne na Railway/JRE).
+ * Dodatkowo parsuje metadane (nazwa, opis, parametry) z .jrxml i udostępnia je via getReportMetadata().
  */
 @Component
 public class ReportCompiler {
@@ -72,7 +74,7 @@ public class ReportCompiler {
 
                 // Then compile to an in-memory JasperReport (fat-JAR safe)
                 try {
-                    JasperReport compiled = compileReport(reportName);
+                    JasperReport compiled = loadCompiledReport(reportName);
                     if (compiled != null) {
                         this.compiledCache.put(key, compiled);
                     }
@@ -230,20 +232,22 @@ public class ReportCompiler {
     }
 
     /**
-     * Kompiluje .jrxml do obiektu {@link JasperReport} w pamięci.
-     * NIE zapisuje pliku .jasper na dysk — kompilacja trzymana jest w cache,
-     * co jest bezpieczne dla spakowanego fat-JAR (Railway).
+     * Ładuje pre-kompilowany raport .jasper z classpath.
+     * Pre-kompilacja odbywa się w fazie 'compile' przez jasperreports-maven-plugin.
+     * To eliminuje konieczność javac w runtime (ważne na Railway/JRE).
      */
-    private JasperReport compileReport(String reportName) throws JRException, IOException {
-        Resource source = resourceLoader.getResource("classpath:reports/" + reportName);
-        if (!source.exists()) {
-            log.warn("Report source not found: classpath:reports/{}", reportName);
+    private JasperReport loadCompiledReport(String reportName) throws JRException, IOException {
+        // Zamień .jrxml na .jasper
+        String jasperName = reportName.replace(".jrxml", ".jasper");
+        Resource resource = resourceLoader.getResource("classpath:reports/" + jasperName);
+        if (!resource.exists()) {
+            log.warn("Pre-compiled report not found: classpath:reports/{}. Omitting.", jasperName);
             return null;
         }
 
-        try (InputStream inputStream = source.getInputStream()) {
-            JasperReport compiled = JasperCompileManager.compileReport(inputStream);
-            log.info("Compiled report in-memory: {}", reportName);
+        try (InputStream inputStream = resource.getInputStream()) {
+            JasperReport compiled = (JasperReport) JRLoader.loadObject(inputStream);
+            log.info("Loaded pre-compiled report: {}", jasperName);
             return compiled;
         }
     }

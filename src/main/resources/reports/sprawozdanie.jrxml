@@ -14,20 +14,19 @@
   <!-- Fields for concert list -->
   <field name="concerts" class="java.util.List"/>
 
-  <!-- Title Band -->
+  <!-- Title Band - using legacy structure without nested band element -->
   <title>
-    <band height="120">
-      <staticText>
-        <reportElement x="5" y="10" width="340" height="40"/>
-        <textElement textColor="#FFFFFF" verticalAlignment="Middle"><font size="28" isBold="true"/></textElement>
-        <textExpression><![CDATA["SPRAWOZDANIE ZESPO\u0141U"]]></textExpression>
-      </staticText>
+    <reportElement x="0" y="0" width="555" height="120"/>
+    <staticText>
+      <reportElement x="5" y="10" width="340" height="40"/>
+      <textElement textColor="#FFFFFF" verticalAlignment="Middle"><font size="28" isBold="true"/></textElement>
+      <textExpression><![CDATA["SPRAWOZDANIE ZESPO\u0141U"]]></textExpression>
+    </staticText>
 
-      <!-- Background rectangle -->
-      <rectangle>
-        <reportElement x="5" y="5" width="350" height="50"/>
-      </rectangle>
-    </band>
+    <!-- Background rectangle -->
+    <rectangle>
+      <reportElement x="5" y="5" width="350" height="50"/>
+    </rectangle>
   </title>
 
   <!-- Page Header with info -->
@@ -51,7 +50,7 @@
       <staticText>
         <reportElement x="5" y="23" width="120" height="17"/>
         <textElement verticalAlignment="Middle"><font size="9"/></textElement>
-        <textExpression><![CDATA["Zesp&oacute;ł"]]></textExpression>
+        <textExpression><![CDATA["Zesp\u00f3\u0142"]]></textExpression>
       </staticText>
 
       <textField>
@@ -79,7 +78,7 @@
   <!-- Summary section (Members stats) -->
   <detail>
     <band height="80">
-      
+    
       <!-- Section title: Podsumowanie liczebności -->
       <staticText>
         <reportElement x="5" y="3" width="650" height="17"/>
@@ -87,7 +86,7 @@
           <padding rightPadding="2"/>
         </paragraph>
         <textElement verticalAlignment="Middle"><font size="11" isBold="true"/></textElement>
-        <textExpression><![CDATA["Podsumowanie liczebności"]]></textExpression>
+        <textExpression><![CDATA["Podsumowanie liczebno\u015bci"]]></textExpression>
       </staticText>
 
       <!-- Stats table -->
@@ -98,7 +97,7 @@
         <staticText>
           <reportElement x="5" y="3" width="70" height="12"/>
           <textElement verticalAlignment="Middle"><font size="9"/></textElement>
-          <textExpression><![CDATA["Aktywni członkowie"]]></textExpression>
+          <textExpression><![CDATA["Aktywni cz\u0142onkowie"]]></textExpression>
         </staticText>
         
         <textField>
@@ -111,7 +110,7 @@
         <staticText>
           <reportElement x="5" y="17" width="70" height="12"/>
           <textElement verticalAlignment="Middle"><font size="9"/></textElement>
-          <textExpression><![CDATA["Dzieci i młodzież< 18"]]></textExpression>
+          <textExpression><![CDATA["Dzieci i m\u0142odzie\u017c< 18"]]></textExpression>
         </staticText>
 
         <textField>
@@ -125,7 +124,6 @@
           <reportElement x="5" y="31" width="70" height="12"/>
           <textElement verticalAlignment="Middle"><font size="9"/></textElement>
           <textExpression><![CDATA["Osoby 60+"]]></textExpression>
-
         </staticText>
 
         <textField>
