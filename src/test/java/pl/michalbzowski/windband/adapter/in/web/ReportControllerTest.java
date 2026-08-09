@@ -17,7 +17,7 @@ class ReportControllerTest {
     @DisplayName("should generate PDF using local Jasper service")
     void generateReport_shouldReturnPdfResponse() {
         ReportGeneratorService service = mock(ReportGeneratorService.class);
-        when(service.generatePdf(org.mockito.ArgumentMatchers.eq("sprawozdanie"), org.mockito.ArgumentMatchers.anyMap()))
+        when(service.generatePdf(org.mockito.ArgumentMatchers.eq("sprawozdanie-miesieczne"), org.mockito.ArgumentMatchers.anyMap()))
                 .thenReturn("%PDF-1.4 fake content".getBytes());
         ReportController controller = new ReportController(service);
 
@@ -52,7 +52,7 @@ class ReportControllerTest {
         ResponseEntity<byte[]> result = controller.generateReport(new ReportController.ReportGenerationRequest());
 
         assertThat(result.getStatusCode().is2xxSuccessful()).isTrue();
-        assertThat(capturedKey[0]).isEqualTo("sprawozdanie");
+        assertThat(capturedKey[0]).isEqualTo("sprawozdanie-miesieczne");
         assertThat(capturedParams[0]).containsKeys("paramFrom", "paramTo", "bandName", "instructorName");
         LocalDate expectedFrom = LocalDate.now().minusMonths(1).withDayOfMonth(1);
         assertThat(capturedParams[0].get("paramFrom")).isEqualTo(expectedFrom.toString());
