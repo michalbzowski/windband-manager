@@ -1,5 +1,15 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<jasperReport name="SprawozdanieZespolu" pageWidth="595" columnWidth="555" pageHeight="842" leftMargin="20" rightMargin="20" topMargin="20" bottomMargin="20">
+<!-- JasperReports 7.x compatible -->
+<jasperReport name="SprawozdanieZespolu"
+    language="java"
+    pageWidth="595" columnWidth="555" pageHeight="842"
+    leftMargin="20" rightMargin="20" topMargin="70" bottomMargin="20">
+
+  <property name="com.jaspersoft.studio.data.defaultdataadapter" value="band-manager-prod"/>
+  <property name="com.jaspersoft.studio.report.description" value="Band report for city council"/>
+  
+  <!-- Required property for JRS element format -->
+  <property name="net.sf.jasperreports.exporter.html.removeEmptySpaceAfterTextElementBetweenStaticTextAndImage" value="true"/>
 
   <!-- Parameters -->
   <parameter name="paramFrom" class="java.time.LocalDate"/>
@@ -9,144 +19,5 @@
   <parameter name="activeMembersCount" class="java.lang.Long"/>
   <parameter name="minorCount" class="java.lang.Long"/>
   <parameter name="senior60PlusCount" class="java.lang.Long"/>
-  <parameter name="rehearsalsCount" class="java.lang.Integer"/>
-
-  <!-- Fields for concert list -->
-  <field name="concerts" class="java.util.List"/>
-
-  <!-- Title Band - using legacy structure without nested band element -->
-  <title>
-    <reportElement x="0" y="0" width="555" height="120"/>
-    <staticText>
-      <reportElement x="5" y="10" width="340" height="40"/>
-      <textElement textColor="#FFFFFF" verticalAlignment="Middle"><font size="28" isBold="true"/></textElement>
-      <textExpression><![CDATA["SPRAWOZDANIE ZESPO\u0141U"]]></textExpression>
-    </staticText>
-
-    <!-- Background rectangle -->
-    <rectangle>
-      <reportElement x="5" y="5" width="350" height="50"/>
-    </rectangle>
-  </title>
-
-  <!-- Page Header with info -->
-  <columnHeader>
-    <band height="80">
-    
-      <!-- Zakres sprawozdawczy -->
-      <staticText>
-        <reportElement x="5" y="3" width="120" height="17"/>
-        <textElement verticalAlignment="Middle"><font size="9"/></textElement>
-        <textExpression><![CDATA["Zakres sprawozdawczy"]]></textExpression>
-      </staticText>
-
-      <textField>
-        <reportElement x="125" y="3" width="340" height="17"/>
-        <textElement verticalAlignment="Middle"><font size="9"/></textElement>
-        <textFieldExpression><![CDATA[$P{paramFrom} + " do " + $P{paramTo}]]></textFieldExpression>
-      </textField>
-
-      <!-- Band -->
-      <staticText>
-        <reportElement x="5" y="23" width="120" height="17"/>
-        <textElement verticalAlignment="Middle"><font size="9"/></textElement>
-        <textExpression><![CDATA["Zesp\u00f3\u0142"]]></textExpression>
-      </staticText>
-
-      <textField>
-        <reportElement x="125" y="23" width="470" height="17"/>
-        <textElement verticalAlignment="Middle"><font size="9"/></textElement>
-        <textFieldExpression><![CDATA[$P{bandName}]]></textFieldExpression>
-      </textField>
-
-      <!-- Instruktor -->
-      <staticText>
-        <reportElement x="5" y="43" width="120" height="17"/>
-        <textElement verticalAlignment="Middle"><font size="9"/></textElement>
-        <textExpression><![CDATA["Instruktor"]]></textExpression>
-      </staticText>
-
-      <textField>
-        <reportElement x="125" y="43" width="470" height="17"/>
-        <textElement verticalAlignment="Middle"><font size="9"/></textElement>
-        <textFieldExpression><![CDATA[$P{instructorName}]]></textFieldExpression>
-      </textField>
-
-    </band>
-  </columnHeader>
-
-  <!-- Summary section (Members stats) -->
-  <detail>
-    <band height="80">
-    
-      <!-- Section title: Podsumowanie liczebności -->
-      <staticText>
-        <reportElement x="5" y="3" width="650" height="17"/>
-        <paragraph>
-          <padding rightPadding="2"/>
-        </paragraph>
-        <textElement verticalAlignment="Middle"><font size="11" isBold="true"/></textElement>
-        <textExpression><![CDATA["Podsumowanie liczebno\u015bci"]]></textExpression>
-      </staticText>
-
-      <!-- Stats table -->
-      <box>
-        <reportElement x="5" y="23" width="640" height="47"/>
-        
-        <!-- Row 1: Active members -->
-        <staticText>
-          <reportElement x="5" y="3" width="70" height="12"/>
-          <textElement verticalAlignment="Middle"><font size="9"/></textElement>
-          <textExpression><![CDATA["Aktywni cz\u0142onkowie"]]></textExpression>
-        </staticText>
-        
-        <textField>
-          <reportElement x="75" y="3" width="60" height="12"/>
-          <textElement verticalAlignment="Middle"><font size="9"/></textElement>
-          <textFieldExpression><![CDATA[$P{activeMembersCount}]]></textFieldExpression>
-        </textField>
-
-        <!-- Row 2: Minors -->
-        <staticText>
-          <reportElement x="5" y="17" width="70" height="12"/>
-          <textElement verticalAlignment="Middle"><font size="9"/></textElement>
-          <textExpression><![CDATA["Dzieci i m\u0142odzie\u017c< 18"]]></textExpression>
-        </staticText>
-
-        <textField>
-          <reportElement x="75" y="17" width="60" height="12"/>
-          <textElement verticalAlignment="Middle"><font size="9"/></textElement>
-          <textFieldExpression><![CDATA[$P{minorCount}]]></textFieldExpression>
-        </textField>
-
-        <!-- Row 3: Seniors -->
-        <staticText>
-          <reportElement x="5" y="31" width="70" height="12"/>
-          <textElement verticalAlignment="Middle"><font size="9"/></textElement>
-          <textExpression><![CDATA["Osoby 60+"]]></textExpression>
-        </staticText>
-
-        <textField>
-          <reportElement x="75" y="31" width="60" height="12"/>
-          <textElement verticalAlignment="Middle"><font size="9"/></textElement>
-          <textFieldExpression><![CDATA[$P{senior60PlusCount}]]></textFieldExpression>
-
-        </textField>
-
-      </box>
-
-    </band>
-  </detail>
-
-  <!-- Concerts section -->
-  <pageFooter>
-    <band height="25">
-      <textField>
-        <reportElement x="498" y="10" width="100" height="13"/>
-        <textElement textAlignment="Right" verticalAlignment="Middle"><font size="8"/></textElement>
-        <textFieldExpression><![CDATA["Strona " + $V{PAGE_NUMBER}]]></textFieldExpression>
-      </textField>
-    </band>
-  </pageFooter>
 
 </jasperReport>

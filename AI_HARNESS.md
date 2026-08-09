@@ -61,26 +61,65 @@ Zapewnić, że AI-asystent (lub programista) generuje kod zgodny z architekturą
 - **Thymeleaf `th:attr` gotcha**: when multiple `th:attr` attributes appear on the same element, **only the LAST one is honored** — earlier ones are silently dropped. Always merge into a single comma-separated form: `th:attr="data-a=${val1},data-b=${val2}"`. Symptom: HTMX/SPA behavior breaks with no Thymeleaf error, only Selenium timeout on missing element.
 - **Renaming a dynamic group's name via raw SQL or direct `Group.setName()` is a footgun**: the next `ensureDynamicGroupExists` won't re-sync the name from the source attribute. Always rename through `MemberAttributeCommandService.updateAttributeDef` (which calls `GroupCommandService.renameDynamicGroup`). ArchUnit should enforce this — see `ArchitectureTest.java`.
 
-### 1.7 Transaction Propagation — The Backfill Footgun (2026-07-04 incident)
+### 1.9 Report Generation (JasperReports 7.x) — MANDATORY JRS Element Format
 
-**The bug**: `DynamicGroupBackfillRunner.run()` was annotated `@Transactional` and wrapped the entire loop in a single transaction. When a BOOLEAN attribute with name "Gość" tried to create a dynamic group and a manual group with the same name already existed, the INSERT raised `DataIntegrityViolationException` on the UNIQUE constraint (`band_id`, `name`). In PostgreSQL this marks the whole transaction as "aborted" — every subsequent SQL statement (including the next attribute's INSERT) fails with "current transaction is aborted, commands ignored until end of transaction block", then Hibernate throws `AssertionFailure: null id in Group entry (don't flush the Session after an exception occurs)`, then Spring throws `UnexpectedRollbackException` on commit. The application context never starts.
+**CRITICAL UPDATE (2026-08-08):** JasperReports 7.0+ uses Jackson XML parser which **FAILS on legacy JRXML format**. All `.jrxml` report files MUST use the **JasperSoft Studio (JRS) element format**:
 
-**The fix has two parts**:
+1. **Root `<jasperReport>`** must have attribute `language="java"` + JRS properties like `"com.jaspersoft.studio.*"`.
+2. **Every section (`<title>`, `<pageHeader>`, `<detail>`, etc.) MUST wrap content in a nested `<band height="...">` element.** Direct XML tags inside sections FAIL (e.g., no plain `<staticText>` at section level).
+3. **Elements use `<element kind="...">`** with attributes (`uuid`, `x`, `y`, `width`, `height`) not standard JRXML nesting. Text/expression content uses CDATA: `<![CDATA[...]]>`.
 
-1. **No outer `@Transactional` on the runner loop.** Each `ensureDynamicGroupExists(def)` call runs in its own transaction (via the class-level `@Transactional` on `MemberAttributeCommandService`); the runner's `try/catch` contains any failure to that single attribute's transaction. The next attribute gets a brand-new transaction.
+**Example (WORKING in JasperReports 7.x):**
+```xml
+<jasperReport name="Report" language="java">
+  <property name="com.jaspersoft.studio.data.defaultdataadapter" value="band-manager-prod"/>  
+  <parameter name="paramName" class="java.lang.String"/>
 
-2. **Name-collision resolution in `createDynamicGroupForAttribute`.** Detect the collision BEFORE attempting the INSERT (via `existsByNameAndBandId`) and append a numeric suffix: "Gość" → "Gość (2)" → "Gość (3)". This keeps the manual group and the dynamic group both alive.
+  <!-- Sections have nested band wrapper (mandatory): -->
+  <title>
+    <band height="120">
+      <element kind="staticText" uuid="abc-..." x="5" y="10">
+        <text><![CDATA[Report Title]]></text>
+        <style fontSize="28"/> 
+      </element>
+    </band>  
+  </title>
 
-**Do NOT use `REQUIRES_NEW` for "per-iteration isolation"**. We tried this and it backfired in two ways:
-- The new transaction's session cannot see entities that are flushed-but-not-committed in the caller's session. Inserting a child row with FK to a parent row that lives in the caller's session → foreign-key violation.
-- Tests that wrap the call in `@Transactional` then deadlocked when Hibernate tried to attach a detached entity from the outer session to the inner session.
+  <!-- Expressions use CDATA: -->
+  <pageFooter>
+    <band height="25">
+      <element kind="textField" x="498" y="10" width="100" height="13">
+        <expression><![CDATA["Strona " + $V{PAGE_NUMBER}]]></expression>
+        <textAlignment>Right</textAlignment>
+      </element>  
+    </band>
+  </pageFooter> 
+</jasperReport>
+```
 
-The correct semantic is **default `REQUIRED` propagation**: the dynamic-group insert joins the caller's transaction so the parent def and the child group are atomic (commit together or rollback together). For the backfill runner, "the caller's transaction" is the per-attribute transaction started by `MemberAttributeCommandService.ensureDynamicGroupExists`, which gives us per-attribute isolation without any explicit `REQUIRES_NEW`.
+**Example (BROKEN in JasperReports 7.x - DO NOT USE):**
+```xml  
+<jasperReport name="OldFormat" pageWidth="595"> <!-- missing language attr -->
+  <title>
+    <reportElement x="0"/>  <!-- reportElement at section level = FAILS -->
+    <staticText>...</staticText>  <!-- direct XML inside section = FAILS -->
+</jasperReport>
+```
 
-**Diagnostic checklist when the app fails to start with a `JpaSystemException` or `UnexpectedRollbackException` on the first DB write after startup**:
-1. Read the FIRST exception in the chain — usually a `DataIntegrityViolationException` or a UNIQUE/FK violation.
-2. Trace back to the `@Transactional` method that wrapped it.
-3. Ask: "Is this method called in a loop? If so, the loop body and the loop's try/catch are likely both inside a single transaction. The fix is to remove the outer `@Transactional` and rely on per-call class-level `@Transactional` for isolation."
+**Error symptoms:** `JacksonRuntimeException: Unrecognized field "reportElement" (class JRDesignBand)`, or `"band"` property not recognized in JRXSectionWrapper.
+
+**Fix workflow for existing legacy reports**:
+1. Add `language="java"` to `<jasperReport>` root  
+2. Wrap each section content (`<title>`, `<detail>`) with a single nested `<band height="...">` tag as first child
+3. Convert all elements inside band to JRS format: replace `<staticText>...</staticText>` → `\<element kind="staticText"><text/></element>`  
+4. Use CDATA for expressions: `<![CDATA[$P{param} + " text"]]>`.  
+5. Run validation test: `./mvnw test -Dtest=ReportCompilationTest`
+
+**Validation:** The project includes `src/test/.../application/report/ReportCompilationTest.java` which compiles all `.jrxml` files in `src/main/resources/reports/` at build time using JasperReports 7.0.5. **All tests must pass — no exceptions about "Unrecognized field" allowed.**
+
+**Skill:** Load `skill_view(name='windband-manager-reporting')` for detailed migration examples and JRS element format templates. The skill contains proven working .jrxml snippets that compile successfully on JasperReports 7.x (validated August 2026).
+
+### 1.8 Transaction Propagation — The Backfill Footgun (2026-07-04 incident)
 
 ---
 

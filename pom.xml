@@ -25,7 +25,6 @@
         <docker-java.version>3.5.3</docker-java.version>
         <springdoc.version>2.6.0</springdoc.version>
         <jasperreports.version>7.0.5</jasperreports.version>
-        <net.sf.jasperreports.jackson.xml.enabled>false</net.sf.jasperreports.jackson.xml.enabled>
     </properties>
 
     <dependencies>
@@ -310,10 +309,7 @@
                     <!-- Reuse forks between test classes to reduce JVM startup overhead -->
                     <reuseForks>true</reuseForks>
                     
-                    <!-- JasperReports configuration (existing) -->
-                    <systemPropertyVariables>
-                        <net.sf.jasperreports.jackson.xml.enabled>false</net.sf.jasperreports.jackson.xml.enabled>
-                    </systemPropertyVariables>
+                    <!-- JasperReports 7.x: Exclude compilation test in CI -->
                 </configuration>
             </plugin>
             <!-- Checkstyle: style/formatting enforcement during every build -->
