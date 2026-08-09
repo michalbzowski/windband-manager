@@ -312,6 +312,7 @@
                     <!-- JasperReports 7.x: Exclude compilation test in CI -->
                 </configuration>
             </plugin>
+
             <!-- Checkstyle: style/formatting enforcement during every build -->
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
@@ -370,6 +371,43 @@
                 </executions>
             </plugin>
 
-            </plugins>
+            <!-- JasperReports: pre-compile .jrxml -> .jasper during compile phase -->
+            <plugin>
+                <groupId>com.pro-crafting.tools</groupId>
+                <artifactId>jasperreports-maven-plugin</artifactId>
+                <version>4.0.1</version>
+                <executions>
+                    <execution>
+                        <id>compile-reports</id>
+                        <phase>compile</phase>
+                        <goals>
+                            <goal>jasper</goal>
+                        </goals>
+                    </execution>
+                </executions>
+                <configuration>
+                    <sourceDirectory>${project.basedir}/src/main/resources/reports</sourceDirectory>
+                    <outputDirectory>${project.build.outputDirectory}/reports</outputDirectory>
+                </configuration>
+                <dependencies>
+                    <dependency>
+                        <groupId>net.sf.jasperreports</groupId>
+                        <artifactId>jasperreports</artifactId>
+                        <version>${jasperreports.version}</version>
+                    </dependency>
+                    <dependency>
+                        <groupId>net.sf.jasperreports</groupId>
+                        <artifactId>jasperreports-fonts</artifactId>
+                        <version>${jasperreports.version}</version>
+                    </dependency>
+                    <dependency>
+                        <groupId>org.codehaus.janino</groupId>
+                        <artifactId>janino</artifactId>
+                        <version>3.1.9</version>
+                    </dependency>
+                </dependencies>
+            </plugin>
+
+        </plugins>
     </build>
 </project>
