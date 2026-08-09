@@ -11,7 +11,7 @@
 	<property name="com.jaspersoft.studio.unit.rightMargin" value="cm"/>
 	<property name="com.jaspersoft.studio.unit.columnWidth" value="cm"/>
 	<property name="com.jaspersoft.studio.unit.columnSpacing" value="cm"/>
-	<property name="com.jaspersoft.studio.report.description" value="Raport składany co miesiąc na potrzeby rady miasta"/>
+	<property name="com.jaspersoft.studio.report.description" value="Raport składany co mieisiąc na potrzeby rady miasta"/>
 	<style name="Table_TH" mode="Opaque" backcolor="#F0F8FF">
 		<box>
 			<pen lineWidth="0.5" lineColor="#000000"/>
