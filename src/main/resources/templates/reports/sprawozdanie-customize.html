@@ -108,7 +108,7 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
 
-    // Handle form submission via fetch POST to /api/reports/pdf
+    // Handle form submission via fetch POST to /api/reports/sprawozdanie/generate
     const form = document.getElementById('sprawozdanie-form');
     
     form.addEventListener('submit', async function(e) {
@@ -133,7 +133,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 format: 'PDF'
             };
             
-            const response = await fetch('/api/reports/pdf', {
+            const response = await fetch('/api/reports/sprawozdanie/generate', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json'
