@@ -266,7 +266,9 @@ public abstract class UiTestBase {
         wait.until(ExpectedConditions.not(ExpectedConditions.urlContains("/login")));
 
         driver.get(baseUrl() + path);
-        wait.until(ExpectedConditions.presenceOfElementLocated(By.id("content")));
+        // Increased timeout for pages that may load dynamic content
+        wait.withTimeout(Duration.ofSeconds(30))
+            .until(ExpectedConditions.presenceOfElementLocated(By.id("content")));
     }
 
     /**
