@@ -52,14 +52,14 @@ class ReportController {
         params.put("rehearsalsCount", request.getRehearsalsCount() != null ? request.getRehearsalsCount() : 0);
 
         try {
-            byte[] bytes = reportGeneratorService.generatePdf("sprawozdanie", params);
+            byte[] bytes = reportGeneratorService.generatePdf("sprawozdanie-miesieczne", params);
             if (bytes == null || bytes.length == 0) {
                 return ResponseEntity.status(500).build();
             }
             HttpHeaders headers = new HttpHeaders();
             headers.setContentType(MediaType.APPLICATION_PDF);
             headers.setContentDisposition(ContentDisposition.builder("attachment")
-                    .filename("sprawozdanie.pdf")
+                    .filename("sprawozdanie-miesieczne.pdf")
                     .build());
             return ResponseEntity.ok().headers(headers).body(bytes);
         } catch (Exception e) {

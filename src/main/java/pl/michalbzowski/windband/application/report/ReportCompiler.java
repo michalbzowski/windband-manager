@@ -94,7 +94,6 @@ public class ReportCompiler {
         // Znane raporty na classpath:reports/
         String[] knownReports = {
             "sprawozdanie-miesieczne.jrxml",
-            "sprawozdanie.jrxml",
             "members.jrxml",
             "hello.jrxml"
         };
