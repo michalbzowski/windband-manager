@@ -26,13 +26,19 @@ public class ReportParameter {
     @Builder.Default
     private boolean forPrompting = true;
 
-    /** Typ wyświetlany w UI (np. "date", "text", "number") */
+    /** Typ wyświetlany w UI (np. "date", "text", "number", "boolean", "datetime-local") */
     public String getInputType() {
         if ("java.util.Date".equals(className) || "java.sql.Date".equals(className)) {
             return "date";
+        } else if ("java.sql.Timestamp".equals(className)) {
+            return "datetime-local";
         } else if ("java.lang.Integer".equals(className)
-                || "java.lang.Long".equals(className)) {
+                || "java.lang.Long".equals(className)
+                || "java.lang.Double".equals(className)
+                || "java.math.BigDecimal".equals(className)) {
             return "number";
+        } else if ("java.lang.Boolean".equals(className)) {
+            return "checkbox";
         } else {
             return "text";
         }

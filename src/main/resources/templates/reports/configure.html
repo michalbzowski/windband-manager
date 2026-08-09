@@ -55,10 +55,22 @@
                                th:id="'param-' + ${rp.name}"
                                th:name="${rp.name}"/>
 
-                        <input th:if="${'number'.equals(rp.inputType)}"
-                               type="number"
+                        <input th:if="${'datetime-local'.equals(rp.inputType)}"
+                               type="datetime-local"
                                th:id="'param-' + ${rp.name}"
                                th:name="${rp.name}"/>
+
+                        <input th:if="${'number'.equals(rp.inputType)}"
+                               type="number"
+                               step="any"
+                               th:id="'param-' + ${rp.name}"
+                               th:name="${rp.name}"/>
+
+                        <input th:if="${'checkbox'.equals(rp.inputType)}"
+                               type="checkbox"
+                               th:id="'param-' + ${rp.name}"
+                               th:name="${rp.name}"
+                               th:value="true"/>
 
                         <input th:if="${'text'.equals(rp.inputType)}"
                                type="text"

@@ -43,7 +43,13 @@ public class ReportPageController {
 
     @GetMapping
     public String reportsPage(Model model) {
+        // Pobierz raporty Jasper (tylko publiczne - nie "members" wewn.)
+        var reports = reportCompiler.getMetadataCache().values().stream()
+            .filter(m -> !m.getKey().equals("members"))
+            .toList();
+
         model.addAttribute("currentMonth", YearMonth.now());
+        model.addAttribute("reports", reports);
         return "reports/list";
     }
 
@@ -109,14 +115,20 @@ public class ReportPageController {
             return ResponseEntity.notFound().build();
         }
 
+        // Sprawdź czy użytkownik ma aktywny zespół
+        Long activeBandId = oidcUser != null ? oidcUser.getActiveTeamId() : null;
+        if (activeBandId == null) {
+            return ResponseEntity.status(org.springframework.http.HttpStatus.FORBIDDEN).build();
+        }
+
+        String activeBandName = teamQueryService.getBandName(activeBandId).orElse("");
+
         Map<String, Object> parameters = new HashMap<>(formParams);
         parameters.remove("format");
         parameters.remove("reportKey");
 
         // Wymuś kontekst zespołu po stronie serwera (bezpieczeństwo wielotenantowe)
-        Long activeBandId = oidcUser.getActiveTeamId();
-        String activeBandName = teamQueryService.getBandName(activeBandId).orElse("");
-        parameters.put("band_id", activeBandId != null ? String.valueOf(activeBandId) : null);
+        parameters.put("band_id", String.valueOf(activeBandId));
         parameters.put("band_name", activeBandName);
 
         try {

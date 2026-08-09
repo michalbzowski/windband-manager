@@ -106,6 +106,9 @@ public class ReportGeneratorService {
             return switch (type) {
                 case "java.lang.Integer" -> Integer.valueOf(str);
                 case "java.lang.Long" -> Long.valueOf(str);
+                case "java.lang.Double" -> Double.valueOf(str);
+                case "java.math.BigDecimal" -> new java.math.BigDecimal(str);
+                case "java.lang.Boolean" -> Boolean.valueOf(str);
                 case "java.util.Date", "java.sql.Date", "java.sql.Timestamp" ->
                         new SimpleDateFormat(DATE_PATTERN).parse(str);
                 default -> str;

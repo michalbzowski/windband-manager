@@ -7,7 +7,7 @@ import net.sf.jasperreports.engine.util.JRLoader;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.core.io.Resource;
-import org.springframework.core.io.ResourceLoader;
+import org.springframework.core.io.support.ResourcePatternResolver;
 import org.springframework.stereotype.Component;
 import org.xml.sax.SAXException;
 
@@ -37,7 +37,7 @@ public class ReportCompiler {
 
     private static final Logger log = LoggerFactory.getLogger(ReportCompiler.class);
 
-    private final ResourceLoader resourceLoader;
+    private final ResourcePatternResolver resourcePatternResolver;
 
     /** Cache: reportKey -> metadata */
     private final Map<String, ReportMetadata> metadataCache = new ConcurrentHashMap<>();
@@ -50,8 +50,8 @@ public class ReportCompiler {
      */
     private final Map<String, JasperReport> compiledCache = new ConcurrentHashMap<>();
 
-    public ReportCompiler(ResourceLoader resourceLoader) {
-        this.resourceLoader = resourceLoader;
+    public ReportCompiler(ResourcePatternResolver resourcePatternResolver) {
+        this.resourcePatternResolver = resourcePatternResolver;
     }
 
     @PostConstruct
@@ -91,18 +91,14 @@ public class ReportCompiler {
     private List<String> scanJrxmlFiles() throws IOException {
         List<String> reports = new ArrayList<>();
 
-        // Znane raporty na classpath:reports/
-        String[] knownReports = {
-            "sprawozdanie-miesieczne.jrxml",
-            "members.jrxml",
-            "hello.jrxml"
-        };
+        // Skanuj classpath:reports/ w poszukiwaniu wszystkich plików .jrxml
+        Resource[] resources = resourcePatternResolver.getResources("classpath:reports/*.jrxml");
 
-        for (String reportName : knownReports) {
-            Resource resource = resourceLoader.getResource("classpath:reports/" + reportName);
-            if (resource.exists()) {
-                reports.add(reportName);
-                log.debug("Found report on classpath: {}", reportName);
+        for (Resource resource : resources) {
+            String fileName = resource.getFilename();
+            if (fileName != null && fileName.endsWith(".jrxml")) {
+                reports.add(fileName);
+                log.debug("Found report on classpath: {}", fileName);
             }
         }
 
@@ -111,7 +107,7 @@ public class ReportCompiler {
 
     /** Parsuje plik .jrxml i extrahuje metadane oraz parametry */
     private ReportMetadata extractMetadataFromJrxml(String key) throws IOException, SAXException {
-        Resource resource = resourceLoader.getResource("classpath:reports/" + key + ".jrxml");
+        Resource resource = resourcePatternResolver.getResource("classpath:reports/" + key + ".jrxml");
         if (!resource.exists()) {
             log.warn("Report not found: classpath:reports/{}.jrxml", key);
             return null;
@@ -238,7 +234,7 @@ public class ReportCompiler {
     private JasperReport loadCompiledReport(String reportName) throws JRException, IOException {
         // Zamień .jrxml na .jasper
         String jasperName = reportName.replace(".jrxml", ".jasper");
-        Resource resource = resourceLoader.getResource("classpath:reports/" + jasperName);
+        Resource resource = resourcePatternResolver.getResource("classpath:reports/" + jasperName);
         if (!resource.exists()) {
             log.warn("Pre-compiled report not found: classpath:reports/{}. Omitting.", jasperName);
             return null;

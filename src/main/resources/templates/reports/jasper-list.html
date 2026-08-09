@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8"/>
     <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-    <title>Raporty - JasperReports</title>  
+    <title>Raporty - JasperReports</title> 
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/picocss@2/css/pico.min.css"/>
     <style>
         .report-section {
@@ -12,9 +12,14 @@
             padding: 2rem;
         }
         
+        .report-description {
+            line-height: 1.6;
+            color: #6b7280;
+        }
+        
         .jasper-report-btn {
             background-color: #4f46e5;
-            color: white;  
+            color: white; 
             border: none;
             padding: 1rem 2rem;
             font-size: 1.1rem;
@@ -26,17 +31,135 @@
         }
 
         .jasper-report-btn:hover {
-            background-color: #4338ca;  
+            background-color: #4338ca; 
         }
-
+        
+        .report-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+            gap: 1.5rem;
+            margin: 2rem 0;
+        }
+        
+        .report-card {
+            background: var(--pico-card-background-color, var(--pico-background-color));
+            border: 1px solid var(--pico-card-border-color, var(--pico-muted-border-color));
+            border-radius: 16px;
+            padding: 1.5rem;
+            transition: transform 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease;
+        }
+        
+        .report-card:hover {
+            transform: translateY(-2px);
+            border-color: var(--pico-primary);
+            box-shadow: 0 8px 24px color-mix(in srgb, var(--pico-primary) 15%, transparent);
+        }
+        
+        .report-card-header {
+            display: flex;
+            align-items: flex-start;
+            gap: 1rem;
+            margin-bottom: 1rem;
+        }
+        
+        .report-icon {
+            font-size: 2.5rem;
+            line-height: 1;
+            flex-shrink: 0;
+        }
+        
+        .report-title-group {
+            flex: 1;
+            min-width: 0;
+        }
+        
+        .report-title-group h3 {
+            margin: 0 0 0.35rem;
+            font-size: 1.15rem;
+            font-weight: 650;
+        }
+        
+        .report-badge {
+            display: inline-block;
+            font-size: 0.65rem;
+            font-weight: 700;
+            padding: 0.15rem 0.5rem;
+            border-radius: 999px;
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
+        }
+        
+        .jasper-badge {
+            background: color-mix(in srgb, #e91e63 15%, transparent);
+            color: #e91e63;
+        }
+        
         .report-description {
-            line-height: 1.6;
-            color: #6b7280;
+            color: var(--pico-muted-color);
+            font-size: 0.9rem;
+            line-height: 1.5;
+            margin: 0 0 1rem;
+        }
+        
+        .report-meta {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.75rem;
+            margin-bottom: 1rem;
+            font-size: 0.8rem;
+            color: var(--pico-muted-color);
+        }
+        
+        .meta-item {
+            background: var(--pico-card-sectioning-background-color, var(--pico-muted-background-color));
+            padding: 0.25rem 0.6rem;
+            border-radius: 999px;
+        }
+        
+        .report-actions {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.75rem;
+            align-items: center;
+        }
+        
+        .btn-primary {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.4rem;
+            padding: 0.6rem 1.1rem;
+            border-radius: var(--pico-border-radius);
+            font-weight: 600;
+            font-size: 0.9rem;
+            text-decoration: none;
+            transition: all 0.15s ease;
+            border: none;
+            cursor: pointer;
+            white-space: nowrap;
+            background: var(--pico-primary);
+            color: var(--pico-primary-inverse);
+        }
+        
+        .btn-primary:hover {
+            filter: brightness(1.1);
+            transform: translateY(-1px);
+        }
+        
+        .no-reports {
+            text-align: center;
+            padding: 3rem;
+            background: var(--pico-card-background-color, var(--pico-background-color));
+            border: 1px solid var(--pico-card-border-color, var(--pico-muted-border-color));
+            border-radius: 16px;
+        }
+        
+        .no-reports h3 {
+            margin: 1rem 0;
         }
     </style>
 </head> 
 <body class="container">
-    
+   
     <div th:fragment="header" style="display:flex; justify-content:center;">
         <hgroup align="center">
             <a th:href="@{/}"><button>Zadom</button></a><br/>
@@ -48,35 +171,52 @@
     <section class="report-section">
         <article>
             <header>
-                <time datetime="2026-07-30" pubdate>Zastosowanie</time><br/>
                 <h1>Raporty JasperReports 7.x</h1> 
             </header>
 
             <p class="report-description">
-                Generuj raport PDF dla członków zespołu korzystając z JasperReports. Raport zawiera:<br/>  
-                - Listę wszystkich członków<br/>
-                - Dane kontaktowe<br/>
-                - Przydzielone instrumenty<br/>  
-                - Status aktywności
+                Dostępne raporty PDF generowane przez JasperReports. Każdy raport posiada dynamicznie generowany formularz parametrów.
             </p>
 
-            <div style="margin: 2rem 0; padding: 1.5rem; background-color: #f3f4f6; border-radius: 0.5rem;">
-<h3>Jako użytkownik</h3>  
-                <ul>
-                    <li>Kliknij przycisk poniżej aby pobrać raport PDF</li>  
-                    <li>Raport zostanie pobrany bezpośrednio do Twojego przeglądarki</li>
-                    <li>Powinno być dostępne dla zalogowanego użytkownika</li>
-                </ul>
+            <div class="report-grid" th:if="${jsonReports != null and not #lists.isEmpty(jsonReports)}">
+                <div th:each="report : ${jsonReports}" class="report-card">
+                    <div class="report-card-header">
+                        <span class="report-icon">📋</span>
+                        <div class="report-title-group">
+                            <h3 th:text="${report.displayName}">Nazwa raportu</h3>
+                            <span class="report-badge jasper-badge">JasperReports</span>
+                        </div>
+                    </div>
+                    <p class="report-description" th:text="${report.description != null and not report.description.isEmpty() ? report.description : 'Brak opisu raportu'}">
+                        Opis raportu
+                    </p>
+                    <div class="report-meta">
+                        <span class="meta-item">📄 Format: PDF</span>
+                        <span class="meta-item" th:text="'⚙️ Parametry: ' + ${#lists.size(report.parameters)}">
+                            Parametry
+                        </span>
+                    </div>
+                    <div class="report-actions">
+                        <a th:href="@{'/reports/configure/' + ${report.key}}" class="btn-primary">
+                            ⚙️ Skonfiguruj i pobierz
+                        </a>
+                    </div>
+                </div>
             </div>
-
-            <!-- Main Generate Button --> 
-<a th:href="@{/reports/jasper/members-pdf}" class="jasper-report-btn">📄 Generuj PDF raport członków</a>
+            
+            <div class="no-reports" th:if="${jsonReports == null or #lists.isEmpty(jsonReports)}">
+                <span style="font-size: 3rem;">📋</span>
+                <h3>Brak dostępnych raportów</h3>
+                <p style="color: var(--pico-muted-color);">
+                    Nie znaleziono plików .jrxml w katalogu <code>src/main/resources/reports/</code>.
+                </p>
+            </div>
 
         <hr style="margin: 2rem 0;"/>  
 
-<p><small>Note: Ten raport używa JasperReports version 7.0.5 dla generowania dokumentów w formacie PDF.</small></p>  
-    </article>
+<p><small>Note: Ten raport używa JasperReports version 7.0.5 dla generowania dokumentów w formacie PDF.</small></p> 
+        </article>
     </section>
 
 </body>
-</html> 
+</html>

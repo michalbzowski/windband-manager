@@ -1,12 +1,13 @@
 package pl.michalbzowski.windband.adapter.in.web;
 
-import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -14,9 +15,11 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
-import java.io.IOException;
+import java.util.HashMap;
 import java.util.Map;
 
+import pl.michalbzowski.windband.adapter.in.security.WindbandOidcUser;
+import pl.michalbzowski.windband.application.query.team.TeamQueryService;
 import pl.michalbzowski.windband.application.report.ReportCompiler;
 import pl.michalbzowski.windband.application.report.ReportGeneratorService;
 import pl.michalbzowski.windband.application.report.ReportMetadata;
@@ -33,6 +36,7 @@ public class ReportRestController {
     private static final Logger log = LoggerFactory.getLogger(ReportRestController.class);
     private final ReportCompiler reportCompiler;
     private final ReportGeneratorService reportGeneratorService;
+    private final TeamQueryService teamQueryService;
 
     /** GET /api/reports - zwraca listę wszystkich dostępnych raportów z ich metadanymi */
     @GetMapping
@@ -53,48 +57,54 @@ public class ReportRestController {
 
     /** POST /api/reports/{key}/generate - generuje raport i zwraca jako binary stream */
     @PostMapping("/{key}/generate")
-    public void generateReport(
+    public ResponseEntity<byte[]> generateReport(
             @PathVariable String key,
             @RequestBody Map<String, Object> requestBody,
-            HttpServletResponse response) throws IOException {
+            @AuthenticationPrincipal WindbandOidcUser oidcUser) {
 
         ReportMetadata metadata = reportCompiler.getReportMetadata(key);
         if (metadata == null) {
-            response.sendError(HttpStatus.NOT_FOUND.value(), "Raport nie znaleziony: " + key);
-            return;
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
+        }
+
+        // Sprawdź czy użytkownik ma aktywny zespół
+        if (oidcUser == null || oidcUser.getActiveTeamId() == null) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
         }
 
         // Pobierz format z requestBody (default PDF)
-        String format = (String) requestBody.remove("format");
+        Map<String, Object> parameters = new HashMap<>(requestBody);
+        String format = (String) parameters.remove("format");
         if (format == null) {
             format = "PDF";
         }
         // Usuń pola techniczne formularza, które nie są parametrami raportu
-        requestBody.remove("reportKey");
+        parameters.remove("reportKey");
 
         if (!"PDF".equalsIgnoreCase(format)) {
             log.info("Requested unsupported format {} for report {}", format, key);
-            response.sendError(HttpStatus.BAD_REQUEST.value(),
-                    "Nieobsługiwany format: " + format + " (dostępny: PDF)");
-            return;
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).build();
         }
+
+        // Wymuś kontekst zespołu po stronie serwera (bezpieczeństwo wielotenantowe)
+        Long activeBandId = oidcUser.getActiveTeamId();
+        String activeBandName = teamQueryService.getBandName(activeBandId).orElse("");
+        parameters.put("band_id", activeBandId);
+        parameters.put("band_name", activeBandName);
 
         try {
             log.info("Generating PDF for report: {}", key);
-            byte[] reportBytes = reportGeneratorService.generatePdf(key, requestBody);
+            byte[] reportBytes = reportGeneratorService.generatePdf(key, parameters);
 
-            response.setContentType(MediaType.APPLICATION_PDF_VALUE);
+            HttpHeaders headers = new HttpHeaders();
+            headers.setContentType(MediaType.APPLICATION_PDF);
             String filename = key + ".pdf";
-            response.setHeader(HttpHeaders.CONTENT_DISPOSITION,
-                    "attachment; filename=\"" + filename + "\"");
-            response.setStatus(HttpStatus.OK.value());
-            response.getOutputStream().write(reportBytes);
-            response.getOutputStream().flush();
+            headers.setContentDispositionFormData("attachment", filename);
+            return ResponseEntity.ok().headers(headers).body(reportBytes);
 
         } catch (ReportGenerationException e) {
             log.error("Error generating report: {} format {}", key, format, e);
-            response.sendError(HttpStatus.INTERNAL_SERVER_ERROR.value(),
-                    "Błąd generowania raportu: " + e.getMessage());
+            return ResponseEntity.internalServerError().build();
         }
     }
 }

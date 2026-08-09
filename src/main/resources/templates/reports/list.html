@@ -2,7 +2,7 @@
 <html lang="pl" xmlns:th="http://www.thymeleaf.org" xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
 <head th:replace="~{fragments/layout :: head('Raporty')}"></head>
 <body class="dashboard-page">
-<div th:replace="~{fragments/layout :: dialogs}"></div>
+<div th:replace="~{fragments/layout :: dialogs"></div>
 
 <main class="container" id="content">
     <section class="dashboard-upcoming">
@@ -11,37 +11,44 @@
     <div id="reports-content">
 
         <section class="reports-grid">
-            <!-- Raport Sprawozdanie Zespołu (JasperReports) -->
-            <article class="report-card" sec:authorize="hasAnyRole('ADMIN', 'SYSTEM_ADMIN')">
-                <header class="report-card-header">
-                    <span class="report-icon">📋</span>
-                    <div class="report-title-group">
-                        <h3>Sprawozdanie zespołu</h3>
-                        <span class="report-badge jasper-badge">JasperReports</span>
+            <!-- Dynamic Jasper Reports -->
+            <div th:if="${reports != null and !reports.isEmpty()}">
+                <article class="report-card" th:each="report : ${reports}">
+                    <header class="report-card-header">
+                        <span class="report-icon">📋</span>
+                        <div class="report-title-group">
+                            <h3 th:text="${report.displayName}">Nazwa raportu</h3>
+                            <span class="report-badge jasper-badge">JasperReports</span>
+                        </div>
+                    </header>
+                    <p class="report-description" th:text="${report.description != null ? report.description : 'Brak opisu raportu'}">
+                        Opis raportu
+                    </p>
+                    <div class="report-meta">
+                        <span class="meta-item">📄 Format: PDF</span>
+                        <span class="meta-item" th:text="'⚙️ Parametry: ' + ${#lists.size(report.parameters)}">
+                            Parametry
+                        </span>
                     </div>
-                </header>
-                <p class="report-description">
-                    Pełne sprawozdanie działalności zespołu: lista koncertów, statystyki członków 
-                    (aktywni, niepełnoletni, seniorzy), dane instruktora. Generowany jako profesjonalny PDF.
+                    <div class="report-actions">
+                        <a th:href="@{'/reports/configure/' + ${report.key}}"
+                           class="btn-primary"
+                           hx-target="#content"
+                           hx-swap="innerHTML transition:true">
+                            ⚙️ Skonfiguruj i pobierz
+                        </a>
+                    </div>
+                </article>
+            </div>
+            
+            <!-- No reports message -->
+            <div th:if="${reports == null or reports.isEmpty()}" class="report-card" style="text-align: center; padding: 3rem;">
+                <span style="font-size: 3rem;">📋</span>
+                <h3 style="margin: 1rem 0;">Brak dostępnych raportów</h3>
+                <p style="color: var(--pico-muted-color);">
+                    Nie znaleziono plików .jrxml w katalogu <code>src/main/resources/reports/</code>.
                 </p>
-                <div class="report-meta">
-                    <span class="meta-item">📄 Format: PDF</span>
-                    <span class="meta-item">⚙️ Parametry: zakres dat, nazwa zespołu, instruktor</span>
-                </div>
-                <div class="report-actions">
-                    <a th:href="@{/reports/sprawozdanie/customize}" 
-                       class="btn-primary" 
-                       hx-target="#content" 
-                       hx-swap="innerHTML transition:true">
-                        ⚙️ Skonfiguruj i pobierz
-                    </a>
-                    <a th:href="@{/jasper-report/sprawozdanie(bandName='Zespół Dęty Górnik',from='2025-01-01',to='2025-12-31')}" 
-                       class="btn-secondary" 
-                       target="_blank">
-                        ⬇️ Pobierz przykład (2025)
-                    </a>
-                </div>
-            </article>
+            </div>
 
             <!-- Raport Miesięczny (MonthlyReport - Thymeleaf) -->
             <article class="report-card">
@@ -80,50 +87,6 @@
                         <button type="submit" class="btn-primary">📊 Generuj</button>
                     </form>
                 </div>
-            </article>
-
-            <!-- Hello World Test (JasperReports) -->
-            <article class="report-card" sec:authorize="hasAnyRole('ADMIN', 'SYSTEM_ADMIN')">
-                <header class="report-card-header">
-                    <span class="report-icon">🧪</span>
-                    <div class="report-title-group">
-                        <h3>Test Hello World (PDF)</h3>
-                        <span class="report-badge jasper-badge">JasperReports</span>
-                    </div>
-                </header>
-                <p class="report-description">
-                    Prosty raport testowy do weryfikacji działania silnika JasperReports. 
-                    Generuje podstawowy PDF z parametrami.
-                </p>
-                <div class="report-meta">
-                    <span class="meta-item">📄 Format: PDF</span>
-                    <span class="meta-item">⚙️ Parametry: nazwa użytkownika</span>
-                </div>
-                <div class="report-actions">
-                    <a th:href="@{/jasper-report/hello(name='Michał')}" 
-                       class="btn-secondary" 
-                       target="_blank">
-                        ⬇️ Pobierz testowy PDF
-                    </a>
-                </div>
-            </article>
-        </section>
-
-        <!-- Sekcja z opcjami generowania raportów --> 
-        <section class="reports-list-section">
-            <article class="report-card" sec:authorize="hasAnyRole('ADMIN', 'SYSTEM_ADMIN')">
-                <div style="display:flex; gap:1rem; align-items:center;">
-                    <span style="font-size:2.5rem;" aria-hidden>📊</span> 
-                    <div>
-                        <h3 style="margin:0">Raporty JasperReports 7.x</h3> 
-                        <p style="color:#6b7280; margin:0;">Generuj raport członków zespołu jako PDF. Zostań przekierowany do dedykowanej strony z opcją generowania.</p>
-                    </div> 
-                </div> 
-
-                <div class="report-actions" style="margin-top:1rem;"> 
-<a th:href="@{/reports/jasper}" class="btn-primary">📄 Przejdz do listy raportów JasperReports</a> 
-                </div>
-
             </article>
         </section>
     </div>
