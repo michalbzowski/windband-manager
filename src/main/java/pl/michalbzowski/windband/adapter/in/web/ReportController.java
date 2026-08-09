@@ -1,7 +1,6 @@
 package pl.michalbzowski.windband.adapter.in.web;
 
 import java.time.LocalDate;
-import java.time.format.DateTimeFormatter;
 import java.util.HashMap;
 import java.util.Map;
 import lombok.Data;
@@ -41,15 +40,20 @@ class ReportController {
                 ? LocalDate.of(request.getPeriodYear(), request.getPeriodMonth(), 28)
                 : now.minusMonths(1).withDayOfMonth(now.minusMonths(1).lengthOfMonth());
 
+        // Konwertuj na java.util.Date (wymagane przez JasperReports dla parametru klasy java.util.Date)
+        java.util.Date fromDate = java.sql.Date.valueOf(from);
+        java.util.Date toDate = java.sql.Date.valueOf(to);
+
         Map<String, Object> params = new HashMap<>();
-        params.put("bandName", request.getBandName() != null ? request.getBandName() : "");
-        params.put("instructorName", request.getInstructorName() != null ? request.getInstructorName() : "");
-        params.put("paramFrom", from.format(DateTimeFormatter.ISO_DATE));
-        params.put("paramTo", to.format(DateTimeFormatter.ISO_DATE));
-        params.put("activeMembersCount", request.getActiveMembersCount() != null ? request.getActiveMembersCount().longValue() : 0L);
-        params.put("minorCount", request.getMinorCount() != null ? request.getMinorCount().longValue() : 0L);
-        params.put("senior60PlusCount", request.getSenior60PlusCount() != null ? request.getSenior60PlusCount().longValue() : 0L);
-        params.put("rehearsalsCount", request.getRehearsalsCount() != null ? request.getRehearsalsCount() : 0);
+
+        // Parametr band_id jest wymagany do filtrowania danych w zapytaniu SQL
+        Long bandId = 1L; // TODO: pobrać z kontekstu sesji/autentyzacji dla multi-tenant
+
+        params.put("band_id", bandId);
+        params.put("date_from", fromDate);
+        params.put("date_to", toDate);
+        params.put("band_name", request.getBandName() != null ? request.getBandName() : "");
+        params.put("instructor_name", request.getInstructorName() != null ? request.getInstructorName() : "");
 
         try {
             byte[] bytes = reportGeneratorService.generatePdf("sprawozdanie-miesieczne", params);

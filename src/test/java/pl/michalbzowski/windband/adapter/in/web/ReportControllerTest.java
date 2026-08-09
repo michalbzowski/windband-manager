@@ -5,6 +5,7 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
 import java.time.LocalDate;
+import java.time.ZoneId;
 import java.util.Map;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -53,8 +54,9 @@ class ReportControllerTest {
 
         assertThat(result.getStatusCode().is2xxSuccessful()).isTrue();
         assertThat(capturedKey[0]).isEqualTo("sprawozdanie-miesieczne");
-        assertThat(capturedParams[0]).containsKeys("paramFrom", "paramTo", "bandName", "instructorName");
+        assertThat(capturedParams[0]).containsKeys("date_from", "date_to", "band_name", "instructor_name", "band_id");
         LocalDate expectedFrom = LocalDate.now().minusMonths(1).withDayOfMonth(1);
-        assertThat(capturedParams[0].get("paramFrom")).isEqualTo(expectedFrom.toString());
+        java.util.Date fromDateExpected = new java.sql.Date(expectedFrom.atStartOfDay().atZone(ZoneId.systemDefault()).toInstant().toEpochMilli());
+        assertThat(capturedParams[0].get("date_from")).isEqualTo(fromDateExpected);
     }
 }
