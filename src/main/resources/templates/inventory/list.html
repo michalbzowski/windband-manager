@@ -1,13 +1,6 @@
-<!DOCTYPE html>
-<html lang="pl" xmlns:th="http://www.thymeleaf.org" xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
-<head th:replace="~{fragments/layout :: head('Zasoby')}"></head>
-<body class="dashboard-page">
-<div th:replace="~{fragments/layout :: dialogs}"></div>
-
-    <main class="container" id="content">
-        <section class="dashboard-upcoming">
-            <header th:replace="~{fragments/layout :: dashboard-header}"></header>
-
+<!-- Inventory list content fragment - goes inside #content container -->
+<main class="container" id="content">
+    <section class="dashboard-upcoming">
         <div id="debug-info" style="display:none;" th:text="${debugInfo}"></div>
         <div id="inventory-content">
             <h2>📦 Zasoby</h2>
@@ -100,27 +93,27 @@
                                     </td>
                                     <td data-label="Nr zamówienia" th:text="${o.orderNumber != null ? o.orderNumber : '-'}">ORD-1-20250101</td>
                                     <!-- Dynamic attribute cells - show uniform attrs for UNIFORM orders, instrument attrs for INSTRUMENT orders -->
-                                    <td th:each="attr : ${uniformAttributeDefs}" th:if="${attr.displayInList}" 
+                                    <td th:each="attr : ${uniformAttributeDefs}" th:if="${attr.displayInList}"
                                         th:text="${orderAttributeValues?.get(o.id)?.get(attr.id)}">-</td>
-                                    <td th:each="attr : ${instrumentAttributeDefs}" th:if="${attr.displayInList}" 
+                                    <td th:each="attr : ${instrumentAttributeDefs}" th:if="${attr.displayInList}"
                                         th:text="${orderAttributeValues?.get(o.id)?.get(attr.id)}">-</td>
                                     <td data-label="Akcje">
                                         <div style="display:flex; gap:0.25rem; flex-wrap:wrap;">
                                             <button th:if="${o.status == 'SUBMITTED'}"
                                                     class="outline small"
-                                                    th:onclick="'advanceOrder(' + ${o.id} + ', \'approve\')'">✓ Akceptuj</button>
+                                                    th:onclick="'advanceOrder(' + ${o.id} + ', \\'approve\\')'">✓ Akceptuj</button>
                                             <button th:if="${o.status == 'PENDING_APPROVAL'}"
                                                     class="outline small"
-                                                    th:onclick="'advanceOrder(' + ${o.id} + ', \'produce\')'">⚙ Realizuj</button>
+                                                    th:onclick="'advanceOrder(' + ${o.id} + ', \\'produce\\')'">⚙ Realizuj</button>
                                             <button th:if="${o.status == 'IN_PRODUCTION'}"
                                                     class="outline small"
-                                                    th:onclick="'advanceOrder(' + ${o.id} + ', \'ship\')'">📦 Wyślij</button>
+                                                    th:onclick="'advanceOrder(' + ${o.id} + ', \\'ship\\')'">📦 Wyślij</button>
                                             <button th:if="${o.status == 'SHIPPED'}"
                                                     class="outline small"
-                                                    th:onclick="'advanceOrder(' + ${o.id} + ', \'deliver\')'">✅ Odebrano</button>
+                                                    th:onclick="'advanceOrder(' + ${o.id} + ', \\'deliver\\')'">✅ Odebrano</button>
                                             <button th:if="${o.status != 'DELIVERED' and o.status != 'CANCELLED'}"
                                                     class="outline small secondary"
-                                                    th:onclick="'advanceOrder(' + ${o.id} + ', \'cancel\')'">✕ Anuluj</button>
+                                                    th:onclick="'advanceOrder(' + ${o.id} + ', \\'cancel\\')'">✕ Anuluj</button>
                                         </div>
                                     </td>
                                 </tr>
@@ -502,8 +495,15 @@
                                         <button th:if="${a.assignedMemberName != null}"
                                                 class="outline small"
                                                 th:onclick="'returnAward(' + ${a.id} + ')'">↩ Zwróć</button>
-                                        <button class="outline small secondary"
+                                        <button th:if="${a.lifecycleStatus == 'AVAILABLE'}"
+                                                class="outline small secondary"
+                                                th:onclick="'retireAward(' + ${a.id} + ')'">📦 Likwiduj ze stanu</button>
+                                        <button th:if="${a.lifecycleStatus != 'DISPOSED' && a.assignedMemberName == null}"
+                                                class="outline small secondary"
                                                 th:onclick="'disposeAward(' + ${a.id} + ')'">🗑 Zlikwiduj</button>
+                                        <button th:if="${a.lifecycleStatus != 'DISPOSED'}"
+                                                class="outline small"
+                                                th:onclick="'showAwardHistory(' + ${a.id} + ')'">📜 Historia</button>
                                     </div>
                                 </td>
                             </tr>
@@ -515,7 +515,7 @@
                         <article>
                             <h4>Przydziel odznaczenie</h4>
                             <input type="hidden" id="award-assign-item-id">
-                            <div style="display:flex; gap:0.5rem; align-items:flex-end;">
+                            <div style="display:flex; gap:0.5rem; align-items:flex-end; flex-wrap:wrap;">
                                 <div>
                                     <label for="award-assign-member">Członek</label>
                                     <select id="award-assign-member">
@@ -524,6 +524,10 @@
                                                 th:text="${m.firstName} + ' ' + ${m.lastName}">Jan</option>
                                     </select>
                                 </div>
+                                <div>
+                                    <label for="award-assign-condition">Stan przy przydzieleniu</label>
+                                    <input type="text" id="award-assign-condition" placeholder="Np. nowy, dobry, używany">
+                                </div>
                                 <button class="primary small" onclick="confirmAssignAward()">OK</button>
                                 <button class="secondary small" onclick="closeAwardAssignModal()">Anuluj</button>
                             </div>
@@ -531,503 +535,6 @@
                     </div>
                 </div>
             </div>
-
         </div>
-    </main>
-
-       <footer th:replace="~{fragments/layout :: footer}"></footer>
-    <div th:insert="~{fragments/layout :: toast-container}"></div>
-<div th:insert="~{fragments/layout :: footer-scripts}"></div>
-
-    <style>
-        .badge { padding:0.15rem 0.5rem; border-radius:0.25rem; font-size:0.75rem; font-weight:600; }
-        .badge.info { background:#e3f2fd; color:#1565c0; }
-        .badge.warning { background:#fff3e0; color:#e65100; }
-        .badge.success { background:#e8f5e9; color:#2e7d32; }
-        .badge.error { background:#ffebee; color:#c62828; }
-        .tab-btn { padding:0.5rem 1rem; border:none; cursor:pointer; border-radius:0.25rem 0.25rem 0 0; }
-        /* Conditional attributes - hidden by default */
-        .attr-field.conditional { display: none; }
-    </style>
-
-    <script th:inline="javascript">
-        // === Tab switching ===
-        function switchTab(tab) {
-            document.querySelectorAll('[id^="tab-"]').forEach(function(el) { el.style.display = 'none'; });
-            document.getElementById('tab-' + tab).style.display = 'block';
-            document.querySelectorAll('.tab-btn').forEach(function(btn) {
-                btn.classList.remove('primary'); btn.classList.add('secondary');
-            });
-            document.querySelector('[data-tab="' + tab + '"]').classList.add('primary');
-            document.querySelector('[data-tab="' + tab + '"]').classList.remove('secondary');
-        }
-
-        // Expose attribute defs to global scope for order form
-        // Debug: log what Thymeleaf outputs
-        var uniformRaw = /*[[${uniformAttributeDefsJson}]]*/ "[]";
-        var instrumentRaw = /*[[${instrumentAttributeDefsJson}]]*/ "[]";
-        console.log("uniformRaw:", uniformRaw);
-        console.log("instrumentRaw:", instrumentRaw);
-        
-        try {
-            window.uniformOrderAttributeDefs = JSON.parse(uniformRaw);
-            window.instrumentOrderAttributeDefs = JSON.parse(instrumentRaw);
-        } catch(e) {
-            console.error("Failed to parse attribute JSON:", e);
-            window.uniformOrderAttributeDefs = [];
-            window.instrumentOrderAttributeDefs = [];
-        }
-        console.log("Parsed uniforms:", window.uniformOrderAttributeDefs);
-        
-        // Listen for order type changes to update attributes
-        document.addEventListener('DOMContentLoaded', function() {
-            var orderTypeSelect = document.getElementById('order-type');
-            if (orderTypeSelect) {
-                orderTypeSelect.addEventListener('change', updateOrderAttributes);
-            }
-            
-            // Initialize conditional attribute visibility
-            initConditionalAttributes();
-        });
-
-        // === Conditional attributes logic ===
-        function initConditionalAttributes() {
-            // Find all parent attribute selects and add listeners
-            document.querySelectorAll('.parent-attr-select').forEach(function(select) {
-                select.addEventListener('change', function() {
-                    updateAllConditionalFields(this.closest('#uniform-attributes, #instrument-attributes, #order-attributes'));
-                });
-                // Initial check - run after DOM is fully loaded
-                setTimeout(function() {
-                    updateAllConditionalFields(select.closest('#uniform-attributes, #instrument-attributes, #order-attributes'));
-                }, 100);
-            });
-        }
-        
-        function updateOrderConditionalFields() {
-            var container = document.getElementById('order-attributes');
-            if (!container) return;
-            
-            // Add listeners to parent selects
-            container.querySelectorAll('.parent-attr-select').forEach(function(select) {
-                select.addEventListener('change', function() {
-                    updateOrderConditionalFields();
-                });
-            });
-            
-            var parentSelects = container.querySelectorAll('.parent-attr-select');
-            var parentValues = {};
-            parentSelects.forEach(function(select) {
-                parentValues[select.id] = select.value ? select.value.toLowerCase().trim() : '';
-            });
-            
-            var conditionalFields = container.querySelectorAll('.conditional');
-            conditionalFields.forEach(function(field) {
-                var dependsOnAttrId = field.getAttribute('data-depends-on');
-                var dependsOnValue = field.getAttribute('data-depends-value');
-                
-                if (!dependsOnAttrId) {
-                    field.style.display = '';
-                    return;
-                }
-                
-                var parentInputId = 'order-attr-' + dependsOnAttrId;
-                var parentValue = parentValues[parentInputId] || '';
-                
-                var allowedValues = dependsOnValue ? dependsOnValue.toLowerCase().split(',').map(function(v) { return v.trim(); }) : [];
-                
-                var shouldShow = allowedValues.length === 0 || allowedValues.some(function(allowed) {
-                    return parentValue === allowed;
-                });
-                
-                if (!shouldShow) {
-                    field.style.display = 'none';
-                } else {
-                    field.style.display = 'flex';
-                }
-            });
-        }
-        
-        function updateAllConditionalFields(container) {
-            if (!container) return;
-            var containerId = container.id;
-            var prefix = containerId === 'uniform-attributes' ? 'uni-attr-' : 'inst-attr-';
-            
-            // Get current values of all parent selects
-            var parentSelects = container.querySelectorAll('.parent-attr-select');
-            var parentValues = {};
-            parentSelects.forEach(function(select) {
-                parentValues[select.id] = select.value ? select.value.toLowerCase().trim() : '';
-            });
-            
-            // Update all conditional fields
-            var conditionalFields = container.querySelectorAll('.conditional');
-            conditionalFields.forEach(function(field) {
-                var dependsOnAttrId = field.getAttribute('data-depends-on');
-                var dependsOnValue = field.getAttribute('data-depends-value');
-                
-                if (!dependsOnAttrId) {
-                    // No dependency - always show
-                    field.style.display = '';
-                    return;
-                }
-                
-                // Build parent input ID
-                var parentInputId = prefix + dependsOnAttrId;
-                
-                // Get parent value
-                var parentValue = parentValues[parentInputId] || '';
-                
-                // Parse allowed values (comma-separated)
-                var allowedValues = dependsOnValue ? dependsOnValue.toLowerCase().split(',').map(function(v) { return v.trim(); }) : [];
-                
-                // Check if current parent value matches any allowed value
-                var shouldShow = allowedValues.length === 0 || allowedValues.some(function(allowed) {
-                    return parentValue === allowed;
-                });
-                
-                // Show/hide field
-                if (!shouldShow) {
-                    field.style.display = 'none';
-                } else {
-                    // Determine proper display type
-                    var checkboxLabel = field.querySelector('.checkbox-label');
-                    if (checkboxLabel) {
-                        field.style.display = 'flex';
-                    } else {
-                        field.style.display = 'flex';
-                    }
-                }
-            });
-        }
-
-        // === Order form ===
-        function showOrderForm() { 
-            document.getElementById('order-form').style.display = 'block'; 
-            updateOrderAttributes();
-        }
-        function hideOrderForm() { document.getElementById('order-form').style.display = 'none'; }
-        function updateOrderAttributes() {
-            var type = document.getElementById('order-type').value;
-            var container = document.getElementById('order-attributes');
-            var attrDefs = type === 'UNIFORM' ? window.uniformOrderAttributeDefs : window.instrumentOrderAttributeDefs;
-            
-            console.log('Order type:', type, 'attrDefs:', attrDefs);
-            
-            if (!attrDefs || attrDefs.length === 0) {
-                container.innerHTML = '<span style="color:var(--pico-muted-color); font-size:0.8rem;">Brak atrybutów dla tego typu</span>';
-                return;
-            }
-            var html = '';
-            attrDefs.forEach(function(attrDef) {
-                var fieldId = 'order-attr-' + attrDef.id;
-                var isParent = attrDef.type === 'SELECT';
-                var wrapperClass = attrDef.dependsOnAttributeId ? 'conditional' : '';
-                var dependsOnAttr = attrDef.dependsOnAttributeId ? 'data-depends-on="' + attrDef.dependsOnAttributeId + '"' : '';
-                var dependsOnValue = attrDef.dependsOnValue ? 'data-depends-value="' + attrDef.dependsOnValue + '"' : '';
-                
-                if (attrDef.type === 'BOOLEAN') {
-                    html += '<div class="' + wrapperClass + '" ' + dependsOnAttr + ' ' + dependsOnValue + ' style="display:flex; flex-direction:column; gap:0.25rem;">';
-                    html += '<label class="checkbox-label" style="display:flex; align-items:center; gap:0.25rem;">';
-                    html += '<input type="checkbox" id="' + fieldId + '" name="attr_' + attrDef.id + '">';
-                    html += '<span>' + attrDef.name + '</span></label></div>';
-                } else if (attrDef.type === 'SELECT') {
-                    html += '<div class="' + wrapperClass + '" ' + dependsOnAttr + ' ' + dependsOnValue + ' style="display:flex; flex-direction:column; gap:0.25rem;">';
-                    html += '<label>' + attrDef.name + '</label>';
-                    var selectClass = isParent ? 'class="parent-attr-select"' : '';
-                    html += '<select id="' + fieldId + '" name="attr_' + attrDef.id + '" ' + selectClass + '>';
-                    html += '<option value="">Wybierz...</option>';
-                    var opts = attrDef.options ? attrDef.options.replace('[','').replace(']','').split(',') : [];
-                    opts.forEach(function(opt) { html += '<option value="' + opt.trim() + '">' + opt.trim() + '</option>'; });
-                    html += '</select></div>';
-                } else if (attrDef.type === 'DATE') {
-                    html += '<div class="' + wrapperClass + '" ' + dependsOnAttr + ' ' + dependsOnValue + ' style="display:flex; flex-direction:column; gap:0.25rem;">';
-                    html += '<label>' + attrDef.name + '</label>';
-                    html += '<input type="date" id="' + fieldId + '" name="attr_' + attrDef.id + '"></div>';
-                } else if (attrDef.type === 'NUMBER') {
-                    html += '<div class="' + wrapperClass + '" ' + dependsOnAttr + ' ' + dependsOnValue + ' style="display:flex; flex-direction:column; gap:0.25rem;">';
-                    html += '<label>' + attrDef.name + '</label>';
-                    html += '<input type="number" id="' + fieldId + '" name="attr_' + attrDef.id + '" step="any"></div>';
-                } else {
-                    html += '<div class="' + wrapperClass + '" ' + dependsOnAttr + ' ' + dependsOnValue + ' style="display:flex; flex-direction:column; gap:0.25rem;">';
-                    html += '<label>' + attrDef.name + '</label>';
-                    html += '<input type="text" id="' + fieldId + '" name="attr_' + attrDef.id + '"></div>';
-                }
-            });
-            container.innerHTML = html;
-            
-            // Initialize conditional attributes for order form
-            setTimeout(function() {
-                updateOrderConditionalFields();
-            }, 100);
-        }
-        function submitOrder() {
-            var memberId = document.getElementById('order-member').value;
-            var type = document.getElementById('order-type').value;
-            if (!memberId) { alert('Wybierz członka'); return; }
-            
-            // Collect attribute values
-            var attributes = {};
-            var attrInputs = document.querySelectorAll('#order-attributes input[id^="order-attr-"], #order-attributes select[id^="order-attr-"]');
-            attrInputs.forEach(function(input) {
-                var attrId = input.id.replace('order-attr-', '');
-                if (input.type === 'checkbox') {
-                    attributes[attrId] = input.checked ? 'true' : 'false';
-                } else if (input.value) {
-                    attributes[attrId] = input.value;
-                }
-            });
-            
-            var url = type === 'UNIFORM' ? '/api/inventory/orders/uniform' : '/api/inventory/orders/instrument';
-            fetchWithToast(url, { toastMessage: 'Zamówienie zostało złożone', method:'POST', headers:{'Content-Type':'application/json'},
-                body: JSON.stringify({memberId: parseInt(memberId), attributes: attributes})
-            }).then(function(r) { if(r.ok) { hideOrderForm(); refreshTab('orders'); } });
-        }
-        function advanceOrder(id, action) {
-            fetchWithToast('/api/inventory/orders/' + id + '/' + action, {method:'POST', toastMessage: 'Zamówienie zaktualizowane'})
-            .then(function(r) { if(r.ok) refreshTab('orders'); });
-        }
-
-        // === Uniform form ===
-        function showUniformForm() { document.getElementById('uniform-form').style.display = 'block'; }
-        function hideUniformForm() { document.getElementById('uniform-form').style.display = 'none'; }
-        function submitUniform() {
-            var memberId = document.getElementById('uni-member').value;
-
-            // Collect attribute values
-            var attributes = {};
-            var attrInputs = document.querySelectorAll('#uniform-attributes input[id^="uni-attr-"], #uniform-attributes select[id^="uni-attr-"]');
-            attrInputs.forEach(function(input) {
-                var attrId = input.id.replace('uni-attr-', '');
-                if (input.type === 'checkbox') {
-                    attributes[attrId] = input.checked ? 'true' : 'false';
-                } else if (input.value) {
-                    attributes[attrId] = input.value;
-                }
-            });
-
-            var payload = {memberId:memberId?parseInt(memberId):null, attributes:attributes};
-            console.log('[DEBUG submitUniform] payload:', JSON.stringify(payload));
-
-            fetchWithToast('/api/inventory/uniforms', { toastMessage: 'Dodano uniform', method:'POST', headers:{'Content-Type':'application/json'},
-                body: JSON.stringify(payload)
-            }).then(function(r) {
-                console.log('[DEBUG submitUniform] response status:', r.status);
-                if(r.ok) { hideUniformForm(); refreshTab('uniforms'); }
-            }).catch(function(err) { console.error('[DEBUG submitUniform] error:', err); });
-        }
-
-        // === Instrument form ===
-        function showInstrumentForm() { document.getElementById('instrument-form').style.display = 'block'; }
-        function hideInstrumentForm() { document.getElementById('instrument-form').style.display = 'none'; }
-        function submitInstrument() {
-            var memberId = document.getElementById('inst-member').value;
-            
-            // Collect attribute values
-            var attributes = {};
-            var attrInputs = document.querySelectorAll('#instrument-attributes input[id^="inst-attr-"], #instrument-attributes select[id^="inst-attr-"]');
-            attrInputs.forEach(function(input) {
-                var attrId = input.id.replace('inst-attr-', '');
-                if (input.type === 'checkbox') {
-                    attributes[attrId] = input.checked ? 'true' : 'false';
-                } else if (input.value) {
-                    attributes[attrId] = input.value;
-                }
-            });
-            
-            fetchWithToast('/api/inventory/instruments', { toastMessage: 'Dodano instrument', method:'POST', headers:{'Content-Type':'application/json'},
-                body: JSON.stringify({memberId:memberId?parseInt(memberId):null, attributes:attributes})
-            }).then(function(r) { if(r.ok) { hideInstrumentForm(); refreshTab('instruments'); } });
-        }
-
-        // === Assign / Return / Retire / Dispose ===
-        function assignUniform(id) {
-            document.getElementById('uni-assign-item-id').value = id;
-            document.getElementById('uni-assign-modal').style.display = 'block';
-        }
-        function confirmAssignUniform() {
-            var itemId = document.getElementById('uni-assign-item-id').value;
-            var memberId = document.getElementById('uni-assign-member').value;
-            var condition = document.getElementById('uni-assign-condition').value;
-            if (!memberId) { alert('Wybierz członka'); return; }
-            fetchWithToast('/api/inventory/uniforms/' + itemId + '/assign', { toastMessage: 'Uniform przydzielony', method:'POST', headers:{'Content-Type':'application/json'},
-                body: JSON.stringify({memberId: parseInt(memberId), conditionAtAssign: condition})
-            }).then(function(r) { if(r.ok) { closeUniAssignModal(); refreshTab('uniforms'); } });
-        }
-        function closeUniAssignModal() { document.getElementById('uni-assign-modal').style.display = 'none'; }
-        function returnUniform(id) {
-            if (!confirm('Zwróć ekwipunek do magazynu?')) return;
-            var condition = prompt('Stan przy zwrocie (opcjonalnie):', '');
-            fetchWithToast('/api/inventory/uniforms/' + id + '/return', { toastMessage: 'Uniform zwrócony', method:'POST', headers:{'Content-Type':'application/json'},
-                body: JSON.stringify({conditionAtReturn: condition})})
-            .then(function(r) { if(r.ok) refreshTab('uniforms'); });
-        }
-        function retireUniform(id) {
-            if (!confirm('Zlikwidować ze stanu?')) return;
-            fetchWithToast('/api/inventory/uniforms/' + id + '/retire', { toastMessage: 'Uniform zlikwidowany ze stanu', method:'POST' })
-            .then(function(r) { if(r.ok) refreshTab('uniforms'); });
-        }
-        function disposeUniform(id) {
-            if (!confirm('Zlikwidować fizycznie?')) return;
-            fetchWithToast('/api/inventory/uniforms/' + id + '/dispose', { toastMessage: 'Uniform fizycznie zlikwidowany', method:'POST' })
-            .then(function(r) { if(r.ok) refreshTab('uniforms'); });
-        }
-
-        function assignInstrument(id) {
-            document.getElementById('inst-assign-item-id').value = id;
-            document.getElementById('inst-assign-modal').style.display = 'block';
-        }
-        function confirmAssignInstrument() {
-            var itemId = document.getElementById('inst-assign-item-id').value;
-            var memberId = document.getElementById('inst-assign-member').value;
-            var condition = document.getElementById('inst-assign-condition').value;
-            if (!memberId) { alert('Wybierz członka'); return; }
-            fetchWithToast('/api/inventory/instruments/' + itemId + '/assign', { toastMessage: 'Instrument przydzielony', method:'POST', headers:{'Content-Type':'application/json'},
-                body: JSON.stringify({memberId: parseInt(memberId), conditionAtAssign: condition})
-            }).then(function(r) { if(r.ok) { closeInstAssignModal(); refreshTab('instruments'); } });
-        }
-        function closeInstAssignModal() { document.getElementById('inst-assign-modal').style.display = 'none'; }
-        function returnInstrument(id) {
-            if (!confirm('Zwróć instrument do magazynu?')) return;
-            var condition = prompt('Stan przy zwrocie (opcjonalnie):', '');
-            fetchWithToast('/api/inventory/instruments/' + id + '/return', { toastMessage: 'Instrument zwrócony', method:'POST', headers:{'Content-Type':'application/json'},
-                body: JSON.stringify({conditionAtReturn: condition})})
-            .then(function(r) { if(r.ok) refreshTab('instruments'); });
-        }
-        function retireInstrument(id) {
-            if (!confirm('Zlikwidować ze stanu?')) return;
-            fetchWithToast('/api/inventory/instruments/' + id + '/retire', { toastMessage: 'Instrument zlikwidowany ze stanu', method:'POST' })
-            .then(function(r) { if(r.ok) refreshTab('instruments'); });
-        }
-        function disposeInstrument(id) {
-            if (!confirm('Zlikwidować fizycznie?')) return;
-            fetchWithToast('/api/inventory/instruments/' + id + '/dispose', { toastMessage: 'Instrument fizycznie zlikwidowany', method:'POST' })
-            .then(function(r) { if(r.ok) refreshTab('instruments'); });
-        }
-
-        // === History ===
-        function showUniformHistory(id) {
-            fetchWithToast('/api/inventory/uniforms/' + id + '/history')
-            .then(function(r) { return r.json(); })
-            .then(function(data) { showHistoryModal('uniform', data); });
-        }
-        function showInstrumentHistory(id) {
-            fetchWithToast('/api/inventory/instruments/' + id + '/history')
-            .then(function(r) { return r.json(); })
-            .then(function(data) { showHistoryModal('instrument', data); });
-        }
-        function showHistoryModal(type, data) {
-            var html = '<article><h4>📜 Historia przypisań</h4>';
-            if (!data || data.length === 0) { html += '<p>Brak historii.</p>'; }
-            else {
-                html += '<table role="grid"><thead><tr><th>Członek</th><th>Przydzielił</th><th>Od</th><th>Do</th><th>Stan przy przydz.</th><th>Stan przy zwrot.</th><th>Status</th></tr></thead><tbody>';
-                data.forEach(function(h) {
-                    html += '<tr><td>' + h.memberName + '</td><td>' +
-                        (h.assignedByName || '—') + '</td><td>' + h.assignedAt + '</td><td>' +
-                        (h.returnedAt || '<em>aktywne</em>') + '</td><td>' +
-                        (h.conditionAtAssign || '—') + '</td><td>' +
-                        (h.conditionAtReturn || '—') + '</td><td>' +
-                        (h.active ? '<span class="badge success">Aktywne</span>' : '<span class="badge">Zwrócone</span>') +
-                        '</td></tr>';
-                });
-                html += '</tbody></table>';
-            }
-            html += '<button class="secondary small" onclick="closeHistoryModal()">Zamknij</button></article>';
-            var modal = document.createElement('div');
-            modal.id = 'history-modal';
-            modal.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:1000;';
-            modal.innerHTML = '<div style="background:white;padding:1rem;border-radius:0.5rem;max-width:800px;width:90%;max-height:80vh;overflow:auto;">' + html + '</div>';
-            document.body.appendChild(modal);
-        }
-        function closeHistoryModal() {
-            var modal = document.getElementById('history-modal');
-            if (modal) modal.remove();
-        }
-
-        // === Refresh ===
-        function refreshTab(tab) {
-            var urls = {
-                orders: '/inventory/orders',
-                uniforms: '/inventory/uniforms/fragment',
-                instruments: '/inventory/instruments/fragment',
-                awards: '/inventory/awards/fragment'
-            };
-            console.log('[DEBUG refreshTab] fetching:', urls[tab]);
-            fetchWithToast(urls[tab])
-            .then(function(r) { return r.text(); })
-            .then(function(html) {
-                console.log('[DEBUG refreshTab] response length:', html.length, 'preview:', html.substring(0, 200));
-                var targetId = tab === 'orders' ? 'orders-content' : (tab === 'uniforms' ? 'uniforms-content' : (tab === 'awards' ? 'awards-content' : 'instruments-content'));
-                var target = document.getElementById(targetId);
-                if (!target) {
-                    console.error('[DEBUG refreshTab] target not found:', targetId);
-                    return;
-                }
-                var wrapper = document.createElement('div');
-                wrapper.innerHTML = html;
-                var newContent = wrapper.firstElementChild;
-                target.replaceWith(newContent);
-                console.log('[DEBUG refreshTab] replaced:', targetId);
-            })
-            .catch(function(err) { console.error('Refresh error:', err); });
-        }
-
-        // === Award form ===
-        function showAwardForm() { document.getElementById('award-form').style.display = 'block'; }
-        function hideAwardForm() { document.getElementById('award-form').style.display = 'none'; }
-        function submitAward() {
-            var memberId = document.getElementById('award-member').value;
-            // No name validation needed - everything is attribute-based now
-
-            var attributes = {};
-            var attrInputs = document.querySelectorAll('#award-attributes input[id^="award-attr-"], #award-attributes select[id^="award-attr-"]');
-            attrInputs.forEach(function(input) {
-                var attrId = input.id.replace('award-attr-', '');
-                if (input.type === 'checkbox') {
-                    attributes[attrId] = input.checked ? 'true' : 'false';
-                } else if (input.value) {
-                    attributes[attrId] = input.value;
-                }
-            });
-
-            fetchWithToast('/api/inventory/awards', { toastMessage: 'Dodano odznaczenie', method: 'POST',
-                headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({teamId: /*[[${activeTeamId}]]*/ null, description: '', memberId: memberId ? parseInt(memberId) : null, attributes: attributes})
-            }).then(function(r) { if(r.ok) { hideAwardForm(); refreshTab('awards'); } });
-        }
-        function assignAward(awardId) {
-            document.getElementById('award-assign-item-id').value = awardId;
-            document.getElementById('award-assign-modal').style.display = 'block';
-        }
-        function confirmAssignAward() {
-            var awardId = document.getElementById('award-assign-item-id').value;
-            var memberId = document.getElementById('award-assign-member').value;
-            if (!memberId) { alert('Wybierz członka'); return; }
-            fetchWithToast('/api/inventory/awards/' + awardId + '/assign', { toastMessage: 'Odznaczenie przydzielone',
-                method: 'POST',
-                headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({memberId: parseInt(memberId)})
-            }).then(function(r) { if(r.ok) { closeAwardAssignModal(); refreshTab('awards'); } });
-        }
-        function closeAwardAssignModal() { document.getElementById('award-assign-modal').style.display = 'none'; }
-        function returnAward(awardId) {
-            fetchWithToast('/api/inventory/awards/' + awardId + '/return', {method: 'POST', toastMessage: 'Odznaczenie zwrócone'})
-            .then(function(r) { if(r.ok) refreshTab('awards'); });
-        }
-        function disposeAward(awardId) {
-            if (!confirm('Czy na pewno chcesz zlikwidować to odznaczenie?')) return;
-            fetchWithToast('/api/inventory/awards/' + awardId + '/dispose', {method: 'POST', toastMessage: 'Odznaczenie zlikwidowane'})
-            .then(function(r) { if(r.ok) refreshTab('awards'); });
-        }
-    </script>
-
     </section>
 </main>
-
-<footer th:replace="~{fragments/layout :: footer}"></footer>
-<div th:insert="~{fragments/layout :: toast-container}"></div>
-<div th:insert="~{fragments/layout :: footer-scripts}"></div>
-
-<script th:replace="~{fragments/layout :: dashboard-header-morph}"></script>
-</body>
-</html>

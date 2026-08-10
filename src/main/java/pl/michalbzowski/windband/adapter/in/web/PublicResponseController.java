@@ -13,6 +13,7 @@ import java.nio.charset.StandardCharsets;
 
 @Controller
 @RequestMapping("/public/events")
+@Deprecated(since = "1.0", forRemoval = false)
 @RequiredArgsConstructor
 public class PublicResponseController {
 

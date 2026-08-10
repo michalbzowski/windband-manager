@@ -67,20 +67,7 @@
     </script>
 </head>
 <body>
-<!-- ============================================================
-     NAVIGATION — sticky 2-row layout
-     Row 1: [team chip] [primary icons] ........ [hamburger]
-     Row 2: team-name label (subtle, floating)
-     Both rows stay visible during scroll.
-     Works at all breakpoints (mobile portrait, mobile landscape,
-     tablet, desktop) — icon labels are progressively added back in
-     from tablet portrait up.
-     ============================================================ -->
-<!-- ============================================================
-     DASHBOARD HEADER — unified header for all pages
-     Includes: menu button, avatar, band name, date, actions bar
-     Replaces the old 2-row top-nav
-     ============================================================ -->
+<!-- Dashboard header - persistent, NOT inside #content so HTMX swaps don't replace it -->
 <header class="dashboard-header" id="dashboardHeader" th:fragment="dashboard-header" sec:authorize="isAuthenticated()">
     <div class="dashboard-header-top">
         <button type="button" class="menu-btn" aria-label="Menu" onclick="openAppModal('menu-modal')">☰</button>
@@ -109,221 +96,7 @@
     </div>
 </header>
 
-<!-- Dashboard header scroll morph behavior - detail pages use custom double-push-off logic -->
-<script th:fragment="dashboard-header-morph">(function() {
-    const header = document.getElementById('dashboardHeader');
-    if (!header) return;
-
-    // Detect page type based on presence of uber-filter-container (detail pages with filters)
-    const uberFilterContainer = document.getElementById('uber-filter-container');
-    const isDetailPage = !!uberFilterContainer;  // Events/Rehearsals have uber-filter-container
-
-    // Detail pages (events/rehearsals) use the double-push-off logic below
-    // Dashboard and other pages without uber-filter-container use custom logic below
-
-    // Use uberFilterContainer as the reference element for collision detection
-    const filterContainer = uberFilterContainer;
-    const hasFilters = !!filterContainer;
-
-    let lastScrollY = 0;
-    let ticking = false;
-    let isScrolled = false;     // Header morphed to compact "scrolled" state (small bar)
-    let isReleased = false;      // Header released from sticky, leaving viewport normally
-
-    function updateStickyFilterOffset() {
-        if (!hasFilters || !filterContainer) return;
-
-        const headerRect = header.getBoundingClientRect();
-        const filterRect = filterContainer.getBoundingClientRect();
-        let offset;
-
-        // Filter positioning logic based on header state:
-        // - Released state: filters at top of viewport (0px) 
-        // - Not released & header still visible: filters stick below header bottom
-        if (header.classList.contains('released')) {
-            offset = 0;
-        } else if (headerRect.bottom <= 0) {
-            offset = 0; 
-        } else {
-            offset = headerRect.bottom;
-        }
-
-        document.documentElement.style.setProperty('--sticky-filter-top', offset + 'px');
-
-        // Also push header up when filter touches it (so filter can eventually reach viewport top)
-        // This allows the "released" state to trigger
-        if (!header.classList.contains('released') && filterRect.top <= headerRect.bottom && filterRect.top > 0) {
-            const overlapAmount = headerRect.bottom - filterRect.top;
-            const headerHeight = headerRect.height;
-            const headerTopValue = Math.max(-headerHeight, -overlapAmount);
-            document.documentElement.style.setProperty('--header-top', headerTopValue + 'px');
-        } else if (!header.classList.contains('released')) {
-            // Reset header top when filter is not touching
-            document.documentElement.style.setProperty('--header-top', '0px');
-        }
-
-        // Response filter sticks below text filter
-        const responseFilterOffset = offset + filterRect.height;
-        document.documentElement.style.setProperty('--sticky-response-filter-top', responseFilterOffset + 'px');
-    }
-
-    function updateDetailPageState() {
-        if (!hasFilters || !filterContainer) return;
-
-        const scrollY = window.scrollY;
-        const headerRect = header.getBoundingClientRect();
-        const filterRect = filterContainer.getBoundingClientRect();
-
-        // PHASE 1: COLLAPSE - filters touch/overlap header bottom during initial scroll down
-        if (!isScrolled && !isReleased && filterRect.top <= headerRect.bottom) {
-            isScrolled = true;          // Morph to small sticky bar
-        } 
-
-        // PHASE 2: RELEASE TRIGGER - filters reach top of viewport, header stops being sticky
-        if (isScrolled && !isReleased && filterRect.top <= 5 && scrollY > lastScrollY) {
-            isReleased = true;          // Stop being sticky, let header exit naturally
-            header.classList.add('released');
-            return;
-        }
-
-        // SCROLL BACK HANDLING: restore previous states
-
-        if (isReleased && filterRect.top > 100) {
-            isReleased = false;
-            header.classList.remove('released');
-        }
-
-        if (isScrolled && !isReleased && filterRect.top > headerRect.bottom + 20) {
-            isScrolled = false;
-            header.classList.remove('scrolled');
-        }
-    }
-
-    function updateDashboardState() {
-        const scrollY = window.scrollY;
-        const headerRect = header.getBoundingClientRect();
-
-        // Find push-off trigger element (first content section after WYDARZENIA/SPOTKANIA)
-        const pushOffTrigger = document.querySelector('.dashboard-attention');
-
-        if (!pushOffTrigger) {
-            // Fallback: just use scroll position threshold
-            if (scrollY > 100 && !isScrolled) isScrolled = true;
-            else if (scrollY <= 30 && isScrolled) isScrolled = false;
-        } else {
-            const triggerRect = pushOffTrigger.getBoundingClientRect();
-
-            // COLLAPSE - content touches header during scroll -> collapse to small bar
-            if (!isScrolled && triggerRect.top <= headerRect.bottom + 50) {
-                isScrolled = true;
-            }
-
-            // RESTORE during scroll back
-            if (isScrolled && triggerRect.top > 150) {
-                isScrolled = false;
-            }
-        }
-    }
-
-    function updateHeaderClasses() {
-        if (hasFilters) {
-            if (isScrolled && !header.classList.contains('scrolled')) header.classList.add('scrolled');
-            else if (!isScrolled && header.classList.contains('scrolled') && !isReleased) header.classList.remove('scrolled');
-        } else {
-            // Dashboard mode 
-            if (isScrolled && !header.classList.contains('scrolled')) header.classList.add('scrolled');
-            else if (!isScrolled && header.classList.contains('scrolled')) header.classList.remove('scrolled');
-        }
-    }
-
-    function updateHeaderState() {
-        const scrollY = window.scrollY;
-
-        // Update appropriate mode based on page type
-        if (hasFilters) updateDetailPageState();
-        else updateDashboardState();
-
-        updateHeaderClasses();
-        updateStickyFilterOffset();
-    }
-
-    function onScroll() {
-        lastScrollY = window.scrollY;
-        if (!ticking) {
-            window.requestAnimationFrame(function() {
-                updateHeaderState();
-                ticking = false;
-            });
-            ticking = true;
-        }
-    }
-
-    // Initial check in case page loads scrolled
-    onScroll();
-
-    // Set initial sticky filter offset (detail pages only)
-    updateStickyFilterOffset();
-
-    window.addEventListener('scroll', onScroll, { passive: true });
-});</script>
-
-<!-- ============================================================
-     LEGACY TOP-NAV — kept for backward compatibility during transition
-     Will be removed once all pages migrate to dashboard-header
-     ============================================================ -->
-<nav class="top-nav" th:fragment="nav" sec:authorize="isAuthenticated()">
-    <div class="nav-row nav-row-primary">
-        <ul class="nav-primary">
-            <li>
-                <a th:href="@{/}" hx-target="#content" hx-swap="innerHTML transition:true" aria-label="Podsumowanie">
-                    <span class="nav-icon" aria-hidden="true">🏠</span>
-                    <span class="nav-label">Podsumowanie</span>
-                </a>
-            </li>
-            <li>
-                <a th:href="@{/meetings}" hx-target="#content" hx-swap="innerHTML transition:true" aria-label="Spotkania">
-                    <span class="nav-icon" aria-hidden="true">🎵</span>
-                    <span class="nav-label">Spotkania</span>
-                </a>
-            </li>
-            <li>
-                <a th:href="@{/events}" hx-target="#content" hx-swap="innerHTML transition:true" aria-label="Wydarzenia">
-                    <span class="nav-icon" aria-hidden="true">🎪</span>
-                    <span class="nav-label">Wydarzenia</span>
-                </a>
-            </li>
-        </ul>
-
-        <button type="button"
-                class="hamburger-btn"
-                aria-label="Otwórz menu"
-                onclick="openAppModal('menu-modal')"></button>
-    </div>
-
-    <div class="nav-row nav-row-label" th:if="${activeTeamName}">
-        <!-- v7: team chip temporarily hidden per user request — testing
-             layout without the circular avatar in row 2. The label
-             button below still opens the team switcher modal. -->
-        <!--
-        <button type="button"
-                class="team-chip team-chip-sm"
-                th:style="${activeTeamColor != null ? 'background-color:' + activeTeamColor : ''}"
-                th:attr="aria-label=|Przełącz zespół: ${activeTeamName ?: 'brak'}|\"
-                onclick="openAppModal('team-modal')">
-            <span class="team-chip-letter"
-                  th:text="${activeTeamName != null ? #strings.toUpperCase(#strings.substring(activeTeamName, 0, 1)) : '?' }">O</span>
-        </button>
-        -->
-        <button type="button"
-                class="nav-team-label"
-                th:text="${activeTeamName}"
-                th:attr="aria-label='Przełącz zespół: ' + ${activeTeamName ?: 'brak'}"
-                onclick="openAppModal('team-modal')">Orkiestra Dęta</button>
-        <span class="nav-team-role" th:if="${currentUserName}" th:text="${currentUserName}">user</span>
-    </div>
-</nav>
-
-<!-- Dialogs fragment - included on every page so hamburger/team modals work even when top-nav is hidden -->
+<!-- Dialogs fragment - included on every page so hamburger/team modals work -->
 <div th:fragment="dialogs">
     <dialog id="menu-modal" class="app-modal">
         <div class="app-modal-content">
@@ -338,8 +111,7 @@
                 <p class="app-modal-section">Najczęściej używane</p>
                 <ul>
                     <li><a th:href="@{/}" hx-target="#content" hx-swap="innerHTML transition:true" data-close>🏠 Podsumowanie</a></li>
-                    <li><a th:href="@{/meetings}" hx-target="#content" hx-swap="innerHTML transition:true" data-close>🎵 Spotkania</a></li>
-                    <li><a th:href="@{/events}" hx-target="#content" hx-swap="innerHTML transition:true" data-close>🎭 Wydarzenia</a></li>
+                    <li><a th:href="@{/meetings}" hx-target="#content" hx-swap="innerHTML transition:true" data-close>🎵 Spotkania i wydarzenia</a></li>
                 </ul>
 
                 <p class="app-modal-section">Zarządzanie zespołem</p>
@@ -409,17 +181,18 @@
     </dialog>
 </div>
 
+<!-- Main content container - this is what HTMX swaps -->
 <main class="container" id="content">
-        <!-- treść ładowana przez HTMX -->
-    </main>
+    <!-- treść ładowana przez HTMX -->
+</main>
 
-    <!-- Toast container — must be included by every page that uses the layout -->
-    <div th:fragment="toast-container" id="toast-container"></div>
+<!-- Toast container — must be included by every page that uses the layout -->
+<div th:fragment="toast-container" id="toast-container"></div>
 
-    <footer th:fragment="footer" class="container">
-        <hr>
-        <small>Team Manager &copy; 2025 Michał Bzowski | <span id="build-version">...</span></small>
-    </footer>
+<footer th:fragment="footer" class="container">
+    <hr>
+    <small>Team Manager &copy; 2025 Michał Bzowski | <span id="build-version">...</span></small>
+</footer>
 
 <script th:fragment="footer-scripts">
     document.addEventListener('htmx:afterSwap', function(evt) {
@@ -579,6 +352,29 @@
                 console.error('Logout error:', error);
                 window.location.href = '/login';
             });
+    }
+
+    // Tab switching for inventory page
+    function switchTab(tabName) {
+        // Hide all tab contents
+        document.querySelectorAll('[id^="tab-"]').forEach(function(tab) {
+            tab.style.display = 'none';
+        });
+        // Show selected tab
+        var selectedTab = document.getElementById('tab-' + tabName);
+        if (selectedTab) {
+            selectedTab.style.display = 'block';
+        }
+        // Update button states
+        document.querySelectorAll('.tab-btn').forEach(function(btn) {
+            if (btn.getAttribute('data-tab') === tabName) {
+                btn.classList.add('primary');
+                btn.classList.remove('secondary');
+            } else {
+                btn.classList.remove('primary');
+                btn.classList.add('secondary');
+            }
+        });
     }
 </script>
 </body>

@@ -1,130 +1,115 @@
-<!DOCTYPE html>
-<html lang="pl" xmlns:th="http://www.thymeleaf.org" xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
-<head th:replace="~{fragments/layout :: head('Nowe spotkanie')}"></head>
-<body class="dashboard-page">
-<div th:replace="~{fragments/layout :: dialogs}"></div>
-
+<!-- Meetings new content fragment - goes inside #content container -->
 <main class="container" id="content">
     <section class="dashboard-upcoming">
-        <header th:replace="~{fragments/layout :: dashboard-header}"></header>
+        <div id="meetings-content" th:fragment="meetings-content">
+            <h2>➕ Nowe spotkanie</h2>
 
-    <div id="meetings-content" th:fragment="meetings-content">
-        <h2>➕ Nowe spotkanie</h2>
+            <p style="margin-bottom: 1.5rem; color: var(--pico-muted-color);">
+                Wybierz typ spotkania, które chcesz zaplanować:
+            </p>
 
-        <p style="margin-bottom: 1.5rem; color: var(--pico-muted-color);">
-            Wybierz typ spotkania, które chcesz zaplanować:
-        </p>
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 1rem; margin-bottom: 2rem;">
 
-        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 1rem; margin-bottom: 2rem;">
+                <!-- Rehearsal regular -->
+                <article style="border: 1px solid var(--pico-muted-border-color); border-radius: 8px; padding: 1.5rem; background: var(--pico-background-color);">
+                    <header style="display:flex; align-items:center; gap:0.75rem; margin-bottom:1rem;">
+                        <span style="font-size:2rem;">🎵</span>
+                        <div>
+                            <h3 style="margin:0;">Próba regularna</h3>
+                            <small style="color:var(--pico-muted-color);">Planowana na przyszłość</small>
+                        </div>
+                    </header>
+                    <p style="margin:0 0 1rem; color:var(--pico-muted-color);">
+                        Zwykła próba zespołu. Ustawiasz datę, godzinę i miejsce. Potem zapraszasz członków i odznaczasz obecność.
+                    </p>
+                    <button type="button" class="primary" style="width:100%;"
+                            hx-get="/rehearsals/new" hx-target="#content" hx-swap="innerHTML transition:true">
+                        Utwórz próbę
+                    </button>
+                </article>
 
-            <!-- Rehearsal regular -->
-            <article style="border: 1px solid var(--pico-muted-border-color); border-radius: 8px; padding: 1.5rem; background: var(--pico-background-color);">
-                <header style="display:flex; align-items:center; gap:0.75rem; margin-bottom:1rem;">
-                    <span style="font-size:2rem;">🎵</span>
-                    <div>
-                        <h3 style="margin:0;">Próba regularna</h3>
-                        <small style="color:var(--pico-muted-color);">Planowana na przyszłość</small>
-                    </div>
-                </header>
-                <p style="margin:0 0 1rem; color:var(--pico-muted-color);">
-                    Zwykła próba zespołu. Ustawiasz datę, godzinę i miejsce. Potem zapraszasz członków i odznaczasz obecność.
-                </p>
-                <button type="button" class="primary" style="width:100%;"
-                        hx-get="/rehearsals/new" hx-target="#content" hx-swap="innerHTML transition:true">
-                    Utwórz próbę
+                <!-- Ad-hoc rehearsal NOW -->
+                <article style="border: 1px solid var(--pico-primary); border-radius: 8px; padding: 1.5rem; background: var(--pico-primary-background); position: relative;">
+                    <header style="display:flex; align-items:center; gap:0.75rem; margin-bottom:1rem;">
+                        <span style="font-size:2rem;">⚡</span>
+                        <div>
+                            <h3 style="margin:0;">Próba ad-hoc — TERAZ</h3>
+                            <small style="color:var(--pico-primary);">Od razu do odznaczania obecności</small>
+                        </div>
+                    </header>
+                    <p style="margin:0 0 1rem; color:var(--pico-muted-color);">
+                        Tworzy próbę na dzisiaj z aktualną godziną. Przenosi Cię od razu do widoku obecności, gdzie od razu możesz zaprosić grupę i odznaczać kto przyszedł.
+                    </p>
+                    <button type="button" class="primary" style="width:100%;"
+                            hx-post="/api/rehearsals/adhoc" hx-target="#content" hx-swap="innerHTML transition:true"
+                            hx-headers='{"Content-Type": "application/json"}'
+                            hx-on::after-request="if(event.detail.xhr.status===201) window.location.href=event.detail.xhr.getResponseHeader('Location')">
+                        ⚡ Utwórz próbę TERAZ i idź do obecności
+                    </button>
+                </article>
+
+                <!-- Event FREE -->
+                <article style="border: 1px solid var(--pico-muted-border-color); border-radius: 8px; padding: 1.5rem; background: var(--pico-background-color);">
+                    <header style="display:flex; align-items:center; gap:0.75rem; margin-bottom:1rem;">
+                        <span style="font-size:2rem;">🎪</span>
+                        <div>
+                            <h3 style="margin:0;">Koncert bezpłatny</h3>
+                            <small style="color:var(--pico-muted-color);">Występ bez opłaty</small>
+                        </div>
+                    </header>
+                    <p style="margin:0 0 1rem; color:var(--pico-muted-color);">
+                        Wydarzenie z nazwą, typem (koncert, ceremonie, paradę...), miejscem i datą. System powiadomień email, potwierdzanie udziału, wybór instrumentów.
+                    </p>
+                    <button type="button" class="outline" style="width:100%;"
+                            hx-get="/events/new?paymentType=FREE" hx-target="#content" hx-swap="innerHTML transition:true">
+                        Utwórz koncert bezpłatny
+                    </button>
+                </article>
+
+                <!-- Event PAID_SPLIT -->
+                <article style="border: 1px solid var(--pico-muted-border-color); border-radius: 8px; padding: 1.5rem; background: var(--pico-background-color);">
+                    <header style="display:flex; align-items:center; gap:0.75rem; margin-bottom:1rem;">
+                        <span style="font-size:2rem;">💰</span>
+                        <div>
+                            <h3 style="margin:0;">Koncert płatny — podział</h3>
+                            <small style="color:var(--pico-muted-color);">Kwota do podziału między grających</small>
+                        </div>
+                    </header>
+                    <p style="margin:0 0 1rem; color:var(--pico-muted-color);">
+                        Podajesz kwotę całościową, system policzy wypłatę na osobę po potwierdzeniu udziału. Pełne powiadomienia, płatności, RODO.
+                    </p>
+                    <button type="button" class="outline" style="width:100%;"
+                            hx-get="/events/new?paymentType=PAID_SPLIT" hx-target="#content" hx-swap="innerHTML transition:true">
+                        Utwórz koncert płatny (podział)
+                    </button>
+                </article>
+
+                <!-- Event PAID_TO_TEAM -->
+                <article style="border: 1px solid var(--pico-muted-border-color); border-radius: 8px; padding: 1.5rem; background: var(--pico-background-color);">
+                    <header style="display:flex; align-items:center; gap:0.75rem; margin-bottom:1rem;">
+                        <span style="font-size:2rem;">💰</span>
+                        <div>
+                            <h3 style="margin:0;">Koncert płatny — kasa zespołu</h3>
+                            <small style="color:var(--pico-muted-color);">Kwota na konto zespołu</small>
+                        </div>
+                    </header>
+                    <p style="margin:0 0 1rem; color:var(--pico-muted-color);">
+                        Kwota trafia do budżetu orkiestry. Potwierdzenia, emaile, statusy płatności — bez podziału na osoby.
+                    </p>
+                    <button type="button" class="outline" style="width:100%;"
+                            hx-get="/events/new?paymentType=PAID_TO_TEAM" hx-target="#content" hx-swap="innerHTML transition:true">
+                        Utwórz koncert płatny (kasa zespołu)
+                    </button>
+                </article>
+
+            </div>
+
+            <div style="margin-top: 1.5rem;">
+                <button type="button" class="secondary"
+                        hx-get="/meetings/list" hx-target="#meetings-content" hx-swap="innerHTML transition:true">
+                    ← Anuluj, wróć do listy
                 </button>
-            </article>
-
-            <!-- Ad-hoc rehearsal NOW -->
-            <article style="border: 1px solid var(--pico-primary); border-radius: 8px; padding: 1.5rem; background: var(--pico-primary-background); position: relative;">
-                <header style="display:flex; align-items:center; gap:0.75rem; margin-bottom:1rem;">
-                    <span style="font-size:2rem;">⚡</span>
-                    <div>
-                        <h3 style="margin:0;">Próba ad-hoc — TERAZ</h3>
-                        <small style="color:var(--pico-primary);">Od razu do odznaczania obecności</small>
-                    </div>
-                </header>
-                <p style="margin:0 0 1rem; color:var(--pico-muted-color);">
-                    Tworzy próbę na dzisiaj z aktualną godziną. Przenosi Cię od razu do widoku obecności, gdzie od razu możesz zaprosić grupę i odznaczać kto przyszedł.
-                </p>
-                <button type="button" class="primary" style="width:100%;"
-                        hx-post="/api/rehearsals/adhoc" hx-target="#content" hx-swap="innerHTML transition:true"
-                        hx-headers='{"Content-Type": "application/json"}'
-                        hx-on::after-request="if(event.detail.xhr.status===201) window.location.href=event.detail.xhr.getResponseHeader('Location')">
-                    ⚡ Utwórz próbę TERAZ i idź do obecności
-                </button>
-            </article>
-
-            <!-- Event FREE -->
-            <article style="border: 1px solid var(--pico-muted-border-color); border-radius: 8px; padding: 1.5rem; background: var(--pico-background-color);">
-                <header style="display:flex; align-items:center; gap:0.75rem; margin-bottom:1rem;">
-                    <span style="font-size:2rem;">🎪</span>
-                    <div>
-                        <h3 style="margin:0;">Koncert bezpłatny</h3>
-                        <small style="color:var(--pico-muted-color);">Występ bez opłaty</small>
-                    </div>
-                </header>
-                <p style="margin:0 0 1rem; color:var(--pico-muted-color);">
-                    Wydarzenie z nazwą, typem (koncert, ceremonie, paradę...), miejscem i datą. System powiadomień email, potwierdzanie udziału, wybór instrumentów.
-                </p>
-                <button type="button" class="outline" style="width:100%;"
-                        hx-get="/events/new?paymentType=FREE" hx-target="#content" hx-swap="innerHTML transition:true">
-                    Utwórz koncert bezpłatny
-                </button>
-            </article>
-
-            <!-- Event PAID_SPLIT -->
-            <article style="border: 1px solid var(--pico-muted-border-color); border-radius: 8px; padding: 1.5rem; background: var(--pico-background-color);">
-                <header style="display:flex; align-items:center; gap:0.75rem; margin-bottom:1rem;">
-                    <span style="font-size:2rem;">💰</span>
-                    <div>
-                        <h3 style="margin:0;">Koncert płatny — podział</h3>
-                        <small style="color:var(--pico-muted-color);">Kwota do podziału między grających</small>
-                    </div>
-                </header>
-                <p style="margin:0 0 1rem; color:var(--pico-muted-color);">
-                    Podajesz kwotę całościową, system policzy wypłatę na osobę po potwierdzeniu udziału. Pełne powiadomienia, płatności, RODO.
-                </p>
-                <button type="button" class="outline" style="width:100%;"
-                        hx-get="/events/new?paymentType=PAID_SPLIT" hx-target="#content" hx-swap="innerHTML transition:true">
-                    Utwórz koncert płatny (podział)
-                </button>
-            </article>
-
-            <!-- Event PAID_TO_TEAM -->
-            <article style="border: 1px solid var(--pico-muted-border-color); border-radius: 8px; padding: 1.5rem; background: var(--pico-background-color);">
-                <header style="display:flex; align-items:center; gap:0.75rem; margin-bottom:1rem;">
-                    <span style="font-size:2rem;">💰</span>
-                    <div>
-                        <h3 style="margin:0;">Koncert płatny — kasa zespołu</h3>
-                        <small style="color:var(--pico-muted-color);">Kwota na konto zespołu</small>
-                    </div>
-                </header>
-                <p style="margin:0 0 1rem; color:var(--pico-muted-color);">
-                    Kwota trafia do budżetu orkiestry. Potwierdzenia, emaile, statusy płatności — bez podziału na osoby.
-                </p>
-                <button type="button" class="outline" style="width:100%;"
-                        hx-get="/events/new?paymentType=PAID_TO_TEAM" hx-target="#content" hx-swap="innerHTML transition:true">
-                    Utwórz koncert płatny (kasa zespołu)
-                </button>
-            </article>
-
+            </div>
         </div>
-
-        <div style="margin-top: 1.5rem;">
-            <button type="button" class="secondary"
-                    hx-get="/meetings/list" hx-target="#meetings-content" hx-swap="innerHTML transition:true">
-                ← Anuluj, wróć do listy
-            </button>
-        </div>
-    </div>
     </section>
 </main>
-
-<footer th:replace="~{fragments/layout :: footer}"></footer>
-<div th:insert="~{fragments/layout :: toast-container}"></div>
-<div th:insert="~{fragments/layout :: footer-scripts}"></div>
-
-<script th:replace="~{fragments/layout :: dashboard-header-morph}"></script>
-</body>
-</html>

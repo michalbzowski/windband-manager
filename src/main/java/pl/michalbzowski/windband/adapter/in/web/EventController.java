@@ -19,6 +19,7 @@ import java.util.Map;
 
 @RestController
 @RequestMapping("/api/events")
+@Deprecated(since = "1.0", forRemoval = false)
 @RequiredArgsConstructor
 public class EventController {
 

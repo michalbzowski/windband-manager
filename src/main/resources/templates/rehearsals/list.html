@@ -1,19 +1,12 @@
-<!DOCTYPE html>
-<html lang="pl" xmlns:th="http://www.thymeleaf.org" xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
-<head th:replace="~{fragments/layout :: head('Spotkania')}"></head>
-<body class="dashboard-page">
-<div th:replace="~{fragments/layout :: dialogs}"></div>
-
+<!-- Rehearsals list content fragment - goes inside #content container -->
 <main class="container" id="content">
     <section class="dashboard-upcoming">
-        <header th:replace="~{fragments/layout :: dashboard-header}"></header>
-
-    <div id="rehearsals-content" th:attr="data-focus-id=${focusRehearsalId},data-focus-prefix='rehearsal'">
-        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem;">
-            <h2>🎵 Spotkania</h2>
-            <button hx-get="/rehearsals/new" hx-target="#rehearsals-content"
-                    hx-swap="innerHTML transition:true" class="primary">+ Zaplanuj spotkanie</button>
-        </div>
+        <div id="rehearsals-content" th:attr="data-focus-id=${focusRehearsalId},data-focus-prefix='rehearsal'">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem;">
+                <h2>🎵 Spotkania</h2>
+                <button hx-get="/rehearsals/new" hx-target="#rehearsals-content"
+                        hx-swap="innerHTML transition:true" class="primary">+ Zaplanuj spotkanie</button>
+            </div>
 
             <div th:if="${#lists.isEmpty(upcomingRehearsals) and #lists.isEmpty(pastRehearsals)}">
                 <article>
@@ -99,12 +92,6 @@
     </section>
 </main>
 
-<footer th:replace="~{fragments/layout :: footer}"></footer>
-<div th:insert="~{fragments/layout :: toast-container}"></div>
-<div th:insert="~{fragments/layout :: footer-scripts}"></div>
-
-<script th:replace="~{fragments/layout :: dashboard-header-morph}"></script>
-
 <script>
     function deleteRehearsal(id) {
         fetchWithToast('/api/rehearsals/' + id, { method: 'DELETE', toastMessage: 'Spotkanie zostało usunięte' })
@@ -115,5 +102,3 @@
             });
     }
 </script>
-</body>
-</html>

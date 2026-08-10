@@ -1,23 +1,16 @@
-<!DOCTYPE html>
-<html lang="pl" xmlns:th="http://www.thymeleaf.org" xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
-<head th:replace="~{fragments/layout :: head('Członkowie')}"></head>
-<body class="dashboard-page">
-<div th:replace="~{fragments/layout :: dialogs}"></div>
-
+<!-- Members list content fragment - goes inside #content container -->
 <main class="container" id="content">
     <section class="dashboard-upcoming">
-        <header th:replace="~{fragments/layout :: dashboard-header}"></header>
-
-    <div id="members-content" th:attr="data-focus-id=${focusMemberId},data-focus-prefix='member'">
-        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem;">
-            <h2>👥 Członkowie</h2>
-            <button hx-get="/members/new" hx-target="#members-content" hx-swap="innerHTML transition:true"
-                    class="primary">+ Dodaj członka</button>
-        </div>
+        <div id="members-content" th:attr="data-focus-id=${focusMemberId},data-focus-prefix='member'">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem;">
+                <h2>👥 Członkowie</h2>
+                <button hx-get="/members/new" hx-target="#members-content" hx-swap="innerHTML transition:true"
+                        class="primary">+ Dodaj członka</button>
+            </div>
 
             <div th:if="${#lists.isEmpty(members)}">
                 <article>
-                    <p>Brak członeków w systemie. Dodaj pierwszego!</p>
+                    <p>Brak członków w systemie. Dodaj pierwszego!</p>
                 </article>
             </div>
 
@@ -46,7 +39,7 @@
                             <td data-label="Instrument">
                                 <span th:if="${m.primaryInstrument}" th:text="${m.primaryInstrument}" class="instrument-badge">Trąbka</span>
                                 <span th:if="${m.allInstruments != null && m.allInstruments.size() > 1}">
-                                    <small th:text="' +' + ${m.allInstruments.size() - 1}">+2</small>
+                                    <small th:text="'+' + ${m.allInstruments.size() - 1}">+2</small>
                                 </span>
                             </td>
                             <td data-label="Kontakt">
@@ -75,11 +68,3 @@
         </div>
     </section>
 </main>
-
-<footer th:replace="~{fragments/layout :: footer}"></footer>
-<div th:insert="~{fragments/layout :: toast-container}"></div>
-<div th:insert="~{fragments/layout :: footer-scripts}"></div>
-
-<script th:replace="~{fragments/layout :: dashboard-header-morph}"></script>
-</body>
-</html>

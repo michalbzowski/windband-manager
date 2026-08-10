@@ -1,24 +1,17 @@
-<!DOCTYPE html>
-<html lang="pl" xmlns:th="http://www.thymeleaf.org" xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
-<head th:replace="~{fragments/layout :: head('Grupy')}"></head>
-<body class="dashboard-page">
-<div th:replace="~{fragments/layout :: dialogs}"></div>
-
+<!-- Groups list content fragment - goes inside #content container -->
 <main class="container" id="content">
     <section class="dashboard-upcoming">
-        <header th:replace="~{fragments/layout :: dashboard-header}"></header>
-
-    <div id="groups-content">
-        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem;">
-            <h2>🎼 Grupy</h2>
-            <div style="display:flex; gap:0.5rem; align-items:center;">
-                <form th:action="@{/admin/groups/backfill}" method="post" style="margin:0;">
-                    <button type="submit" class="outline" title="Utwórz/zsynchronizuj grupy dynamiczne (np. Aktywni) dla wszystkich zespołów">🔄 Aktualizuj grupy dynamiczne</button>
-                </form>
-                <button hx-get="/groups/new" hx-target="#groups-content"
-                        hx-swap="innerHTML transition:true" class="primary">+ Dodaj grupę</button>
+        <div id="groups-content">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem;">
+                <h2>🎼 Grupy</h2>
+                <div style="display:flex; gap:0.5rem; align-items:center;">
+                    <form th:action="@{/admin/groups/backfill}" method="post" style="margin:0;">
+                        <button type="submit" class="outline" title="Utwórz/zsynchronizuj grupy dynamiczne (np. Aktywni) dla wszystkich zespołów">🔄 Aktualizuj grupy dynamiczne</button>
+                    </form>
+                    <button hx-get="/groups/new" hx-target="#groups-content"
+                            hx-swap="innerHTML transition:true" class="primary">+ Dodaj grupę</button>
+                </div>
             </div>
-        </div>
 
             <div th:if="${#lists.isEmpty(groups)}">
                 <article>
@@ -32,7 +25,7 @@
                         <tr>
                             <th>Nazwa</th>
                             <th>Opis</th>
-                            <th>Liczba członeków</th>
+                            <th>Liczba członków</th>
                             <th>Akcje</th>
                         </tr>
                     </thead>
@@ -57,11 +50,3 @@
         </div>
     </section>
 </main>
-
-<footer th:replace="~{fragments/layout :: footer}"></footer>
-<div th:insert="~{fragments/layout :: toast-container}"></div>
-<div th:insert="~{fragments/layout :: footer-scripts}"></div>
-
-<script th:replace="~{fragments/layout :: dashboard-header-morph}"></script>
-</body>
-</html>

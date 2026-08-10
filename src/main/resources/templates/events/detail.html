@@ -1,275 +1,258 @@
-<!DOCTYPE html>
-<html lang="pl" xmlns:th="http://www.thymeleaf.org" xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
-<head th:replace="~{fragments/layout :: head(${event.name})}"></head>
-<body class="dashboard-page">
-<div th:replace="~{fragments/layout :: dialogs}"></div>
-
+<!-- Events detail content fragment - goes inside #content container -->
 <main class="container" id="content">
     <section class="dashboard-upcoming">
-        <header th:replace="~{fragments/layout :: dashboard-header}"></header>
+        <div id="event-detail-wrapper">
+            <div id="events-content"
+                 th:data-event-id="${event.id}"
+                 th:data-payment-type="${event.paymentType}"
+                 th:data-payment-amount="${event.paymentAmount}"
+                 th:data-confirmed-count="${event.confirmedCount}"
+                 th:fragment="event-detail-content">
 
-    <div id="event-detail-wrapper">
-<div id="events-content"
-     th:data-event-id="${event.id}"
-     th:data-payment-type="${event.paymentType}"
-     th:data-payment-amount="${event.paymentAmount}"
-     th:data-confirmed-count="${event.confirmedCount}"
-     th:fragment="event-detail-content">
+                <h2>🎪 Szczegóły wydarzenia</h2>
 
-    <h2>🎪 Szczegóły wydarzenia</h2>
+                <article>
+                    <header>
+                        <strong th:text="${event.name}">Koncert</strong>
+                        <span th:text="${event.date}">01.01.2025</span>
+                    </header>
+                    <p th:if="${event.location}" th:text="'Miejsce: ' + ${event.location}">Miejsce: Rynek</p>
+                    <p th:if="${event.startTime}" th:text="'Godzina: ' + ${event.startTime}">Godzina: 18:00</p>
+                    <p th:text="'Typ: ' + ${event.eventType}">Typ: CONCERT</p>
+                    <p th:text="${paymentTypeDisplay}">
+                        💰 Granie bezpłatne
+                    </p>
+                    <p th:if="${event.paymentAmount != null and event.paymentType != 'FREE'}"
+                       th:text="'Kwota: ' + ${#numbers.formatDecimal(event.paymentAmount, 1, 2)} + ' PLN'">
+                        Kwota: 500.00 PLN
+                    </p>
+                    <p th:if="${event.payoutPerMember != null and event.paymentType == 'PAID_SPLIT'}"
+                       th:text="'Wypłata/osoba: ' + ${payoutPerMemberFormatted} + ' PLN'">
+                        Wypłata/osoba: 100.00 PLN
+                    </p>
+                    <p th:if="${event.notes}" th:text="${event.notes}">Notatki</p>
+                </article>
 
-    <article>
-        <header>
-            <strong th:text="${event.name}">Koncert</strong>
-            <span th:text="${event.date}">01.01.2025</span>
-        </header>
-        <p th:if="${event.location}" th:text="'Miejsce: ' + ${event.location}">Miejsce: Rynek</p>
-        <p th:if="${event.startTime}" th:text="'Godzina: ' + ${event.startTime}">Godzina: 18:00</p>
-        <p th:text="'Typ: ' + ${event.eventType}">Typ: CONCERT</p>
-        <p th:text="${paymentTypeDisplay}">
-            💰 Granie bezpłatne
-        </p>
-        <p th:if="${event.paymentAmount != null and event.paymentType != 'FREE'}"
-           th:text="'Kwota: ' + ${#numbers.formatDecimal(event.paymentAmount, 1, 2)} + ' PLN'">
-            Kwota: 500.00 PLN
-        </p>
-        <p th:if="${event.payoutPerMember != null and event.paymentType == 'PAID_SPLIT'}"
-           th:text="'Wypłata/osoba: ' + ${payoutPerMemberFormatted} + ' PLN'">
-            Wypłata/osoba: 100.00 PLN
-        </p>
-        <p th:if="${event.notes}" th:text="${event.notes}">Notatki</p>
-    </article>
+                <h3>Zaproś na wydarzenie</h3>
 
-    <h3>Zaproś na wydarzenie</h3>
+                <div style="display:flex; gap:0.5rem; margin-bottom:1rem;">
+                    <button type="button" class="outline" id="open-invite-modal-btn">➕ Zaproś uczestników</button>
+                    <button type="button" class="outline" id="open-invite-group-modal-btn">👥 Zaproś grupę</button>
+                </div>
 
-    <div style="display:flex; gap:0.5rem; margin-bottom:1rem;">
-        <button type="button" class="outline" id="open-invite-modal-btn">➕ Zaproś uczestników</button>
-        <button type="button" class="outline" id="open-invite-group-modal-btn">👥 Zaproś grupę</button>
-    </div>
+                <h3>📧 Wyślij zaproszenia</h3>
+                <div style="display:flex; gap:0.5rem; margin-bottom:1rem; align-items:center;">
+                    <button class="primary" id="send-all-btn">📧 Wyślij do wszystkich</button>
+                    <span id="send-all-result" style="font-size:0.9rem;"></span>
+                </div>
 
-    <h3>📧 Wyślij zaproszenia</h3>
-    <div style="display:flex; gap:0.5rem; margin-bottom:1rem; align-items:center;">
-        <button class="primary" id="send-all-btn">📧 Wyślij do wszystkich</button>
-        <span id="send-all-result" style="font-size:0.9rem;"></span>
-    </div>
-
-    <h3>Podsumowanie - ile osób gra na każdym instrumencie</h3>
-<div style="display: flex; flex-wrap: wrap; gap: 1rem; margin-bottom: 1rem;">
-    <div th:each="inst : ${event.instrumentSummary}" 
-         style="background: var(--pico-background-color); border: 1px solid var(--pico-muted-border-color); padding: 0.5rem 1rem; border-radius: 4px;">
-        <strong th:text="${inst.instrumentName}">Flet</strong>: 
-        <span th:text="${inst.count}">3</span> osób
-    </div>
-    <div th:if="${#lists.isEmpty(event.instrumentSummary)}" style="color: var(--pico-muted-color);">
-        Brak potwierdzonych uczestników
-    </div>
-</div>
-
-<h3>Uczestnicy</h3>
-
-    <!-- Combined filter container for StickyManager -->
-    <div id="uber-filter-container">
-        <!-- Filter input - sticky on scroll -->
-        <div id="participant-filter-container">
-            <label for="participant-filter" class="text-muted" style="font-size:0.85rem; margin-bottom:0.25rem; display:block;">Filtruj uczestników (imię, nazwisko, tagi)</label>
-            <input type="text" id="participant-filter" placeholder="Wpisz imię, nazwisko lub tag..." 
-                   style="width:100%; max-width:400px; padding:0.5rem; border:1px solid var(--pico-muted-border-color); border-radius:4px;">
-        </div>
-
-        <!-- Response status filter - sticky on scroll, below text filter -->
-        <div id="response-filter-container" role="group" aria-label="Filtruj według statusu odpowiedzi">
-            <span class="response-filter-label text-muted" style="font-size:0.75rem; margin-right:0.5rem;">Status:</span>
-            <span class="stat confirmed response-filter-btn" title="Potwierdzeni (Będę)" data-response-filter="CONFIRMED">✅ <span th:text="${event.confirmedCount}">0</span></span>
-            <span class="stat declined response-filter-btn" title="Nie biorą udziału (Nie będę)" data-response-filter="DECLINED">❌ <span th:text="${event.declinedCount}">0</span></span>
-            <span class="stat later response-filter-btn" title="Dam znać później" data-response-filter="LATER" th:if="${#lists.size(event.participations.?[response == 'LATER']) > 0}">⏳ <span th:text="${#lists.size(event.participations.?[response == 'LATER'])}">0</span></span>
-            <span class="stat no-response response-filter-btn" title="Brak odpowiedzi" data-response-filter="NO_RESPONSE">❓ <span th:text="${event.noResponseCount}">0</span></span>
-        </div>
-    </div>
-
-    <!-- Hidden input to track selected response filters -->
-    <input type="hidden" id="active-response-filters" value="">
-
-    <table role="grid" id="participants-table">
-        <thead>
-            <tr>
-                <th>Członek</th>
-                <th>Instrument</th>
-                <th>Odpowiedź</th>
-                <th>Status wysyłki</th>
-                <th>Zgoda na informacje</th>
-                <th>Akcja</th>
-                <th th:if="${event.paymentType == 'PAID_SPLIT'}">Wypłata</th>
-                <th th:if="${event.paymentType == 'PAID_SPLIT'}">Status wypłaty</th>
-            </tr>
-        </thead>
-        <tbody>
-            <tr th:each="p : ${event.participations}" th:data-member-id="${p.memberId}" th:data-response="${p.response}">
-                <td th:text="${p.memberName}" data-label="Członek">Jan Kowalski</td>
-                <td data-label="Instrument">
-                    <div class="instrument-display" th:data-member-id="${p.memberId}" th:data-event-id="${event.id}">
-                        <span class="instrument-name" th:text="${p.instrumentName ?: '—'}">—</span>
-                        <button type="button" class="instrument-edit-btn" title="Zmień instrument" aria-label="Zmień instrument">✏️</button>
-                        <select class="instrument-select"
-                                th:data-event-id="${event.id}"
-                                th:data-member-id="${p.memberId}"
-                                th:data-current-instrument="${p.instrumentName}"
-                                aria-label="Wybierz instrument">
-                            <option value="">—</option>
-                            <option th:each="inst : ${instruments}" th:value="${inst.id}"
-                                    th:data-name="${inst.name}"
-                                    th:text="${inst.name}">Trąbka</option>
-                        </select>
+                <h3>Podsumowanie - ile osób gra na każdym instrumencie</h3>
+                <div style="display: flex; flex-wrap: wrap; gap: 1rem; margin-bottom: 1rem;">
+                    <div th:each="inst : ${event.instrumentSummary}"
+                         style="background: var(--pico-background-color); border: 1px solid var(--pico-muted-border-color); padding: 0.5rem 1rem; border-radius: 4px;">
+                        <strong th:text="${inst.instrumentName}">Flet</strong>:
+                        <span th:text="${inst.count}">3</span> osób
                     </div>
-                </td>
-                <td data-label="Odpowiedź">
-                    <select class="response-select"
-                            th:data-event-id="${event.id}"
-                            th:data-member-id="${p.memberId}"
-                            th:data-response="${p.response}">
-                        <option value="CONFIRMED" th:selected="${p.response == 'CONFIRMED'}">✅ Będę</option>
-                        <option value="DECLINED" th:selected="${p.response == 'DECLINED'}">❌ Nie będę</option>
-                        <option value="LATER" th:selected="${p.response == 'LATER'}">⏳ Dam znać później</option>
-                        <option value="NO_RESPONSE" th:selected="${p.response == null or p.response == 'NO_RESPONSE'}">❓ Brak odpowiedzi</option>
-                    </select>
-                </td>
-                <td data-label="Status wysyłki">
-                    <span class="invitation-status" th:data-member-id="${p.memberId}" th:data-status="${p.invitationStatus}">
-                        <span th:if="${p.invitationStatus == 'NOT_SENT'}" style="color:var(--pico-muted-color);">📭 Nie wysłano</span>
-                        <span th:if="${p.invitationStatus == 'QUEUED'}" style="color:var(--pico-primary);">⏳ W kolejce</span>
-                        <span th:if="${p.invitationStatus == 'SENT'}" style="color:#2fb344;">✅ Wysłano</span>
-                        <span th:if="${p.invitationStatus == 'FAILED'}" style="color:#dc3545;">❌ Błąd wysyłki</span>
-                    </span>
-                </td>
-                <td data-label="Zgoda na informacje" class="consent-cell"
-                    th:data-member-id="${p.memberId}"
-                    th:data-consent-given="${p.emailConsentGiven}">
-                    <span th:if="${p.emailConsentGiven}" style="color:#2fb344;">✅ Wyraził zgodę</span>
-                    <span th:unless="${p.emailConsentGiven}" style="color:#dc3545;">❌ Brak zgody</span>
-                </td>
-                <td data-label="Akcja">
-                    <button class="outline send-btn"
-                            th:data-member-id="${p.memberId}"
-                            th:data-event-id="${event.id}"
-                            th:data-status="${p.invitationStatus}"
-                            th:data-has-email="${p.memberEmail != null and !p.memberEmail.isEmpty()}"
-                            th:title="${p.memberEmail != null and !p.memberEmail.isEmpty()} ? 'Wyślij zaproszenie na ' + ${p.memberEmail} : 'Brak adresu email'"
-                            th:disabled="${p.invitationStatus == 'SENT' or p.memberEmail == null or p.memberEmail.isEmpty()}">
-                        📧 Wyślij
-                    </button>
-                </td>
-                <td th:if="${event.paymentType == 'PAID_SPLIT'}"
-                    class="payout-amount"
-                    th:text="${event.payoutPerMember != null ? #numbers.formatDecimal(event.payoutPerMember, 1, 2) : '-'}"
-                    data-label="Wypłata">100.00</td>
-                <td th:if="${event.paymentType == 'PAID_SPLIT'}" data-label="Status wypłaty">
-                    <select class="payment-status-select"
-                            th:if="${p.response == 'CONFIRMED'}"
-                            th:data-event-id="${event.id}"
-                            th:data-member-id="${p.memberId}"
-                            th:data-status="${p.paymentStatus}">
-                        <option value="PENDING" th:data-status="${p.paymentStatus}">⏳ Nie zapłacono</option>
-                        <option value="PAID" th:data-status="${p.paymentStatus}">✅ Zapłaceno</option>
-                    </select>
-                    <span th:if="${p.response != 'CONFIRMED'}" class="text-muted">nie dotyczy</span>
-                </td>
-            </tr>
-        </tbody>
-    </table>
+                    <div th:if="${#lists.isEmpty(event.instrumentSummary)}" style="color: var(--pico-muted-color);">
+                        Brak potwierdzonych uczestników
+                    </div>
+                </div>
 
-    <div style="margin-top:1rem; display:flex; gap:0.5rem;">
-        <button type="button" class="secondary"
-                hx-get="/events/list" hx-target="#content"
-                hx-swap="outerHTML transition:true">Powrót</button>
-        <button type="button" class="outline"
-                th:hx-get="@{/events/{id}/edit(id=${event.id})}"
-                hx-target="#content"
-                hx-swap="outerHTML transition:true">✏️ Edytuj</button>
-        <button type="button" class="outline danger" id="delete-event-btn">🗑️ Usuń wydarzenie</button>
-    </div>
+                <h3>Uczestnicy</h3>
 
-<dialog id="invite-members-modal" class="app-modal">
-    <div class="app-modal-content">
-        <header class="app-modal-header">
-            <div class="app-modal-header-text">
-                <h3>Zaproś uczestników</h3>
+                <!-- Combined filter container for StickyManager -->
+                <div id="uber-filter-container">
+                    <!-- Filter input - sticky on scroll -->
+                    <div id="participant-filter-container">
+                        <label for="participant-filter" class="text-muted" style="font-size:0.85rem; margin-bottom:0.25rem; display:block;">Filtruj uczestników (imię, nazwisko, tagi)</label>
+                        <input type="text" id="participant-filter" placeholder="Wpisz imię, nazwisko lub tag..."
+                               style="width:100%; max-width:400px; padding:0.5rem; border:1px solid var(--pico-muted-border-color); border-radius:4px;">
+                    </div>
+
+                    <!-- Response status filter - sticky on scroll, below text filter -->
+                    <div id="response-filter-container" role="group" aria-label="Filtruj według statusu odpowiedzi">
+                        <span class="response-filter-label text-muted" style="font-size:0.75rem; margin-right:0.5rem;">Status:</span>
+                        <span class="stat confirmed response-filter-btn" title="Potwierdzeni (Będę)" data-response-filter="CONFIRMED">✅ <span th:text="${event.confirmedCount}">0</span></span>
+                        <span class="stat declined response-filter-btn" title="Nie biorą udziału (Nie będę)" data-response-filter="DECLINED">❌ <span th:text="${event.declinedCount}">0</span></span>
+                        <span class="stat later response-filter-btn" title="Dam znać później" data-response-filter="LATER" th:if="${#lists.size(event.participations.?[response == 'LATER']) > 0}">⏳ <span th:text="${#lists.size(event.participations.?[response == 'LATER'])}">0</span></span>
+                        <span class="stat no-response response-filter-btn" title="Brak odpowiedzi" data-response-filter="NO_RESPONSE">❓ <span th:text="${event.noResponseCount}">0</span></span>
+                    </div>
+                </div>
+
+                <!-- Hidden input to track selected response filters -->
+                <input type="hidden" id="active-response-filters" value="">
+
+                <table role="grid" id="participants-table">
+                    <thead>
+                        <tr>
+                            <th>Członek</th>
+                            <th>Instrument</th>
+                            <th>Odpowiedź</th>
+                            <th>Status wysyłki</th>
+                            <th>Zgoda na informacje</th>
+                            <th>Akcja</th>
+                            <th th:if="${event.paymentType == 'PAID_SPLIT'}">Wypłata</th>
+                            <th th:if="${event.paymentType == 'PAID_SPLIT'}">Status wypłaty</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr th:each="p : ${event.participations}" th:data-member-id="${p.memberId}" th:data-response="${p.response}">
+                            <td th:text="${p.memberName}" data-label="Członek">Jan Kowalski</td>
+                            <td data-label="Instrument">
+                                <div class="instrument-display" th:data-member-id="${p.memberId}" th:data-event-id="${event.id}">
+                                    <span class="instrument-name" th:text="${p.instrumentName ?: '—'}">—</span>
+                                    <button type="button" class="instrument-edit-btn" title="Zmień instrument" aria-label="Zmień instrument">✏️</button>
+                                    <select class="instrument-select"
+                                            th:data-event-id="${event.id}"
+                                            th:data-member-id="${p.memberId}"
+                                            th:data-current-instrument="${p.instrumentName}"
+                                            aria-label="Wybierz instrument">
+                                        <option value="">—</option>
+                                        <option th:each="inst : ${instruments}" th:value="${inst.id}"
+                                                th:data-name="${inst.name}"
+                                                th:text="${inst.name}">Trąbka</option>
+                                    </select>
+                                </div>
+                            </td>
+                            <td data-label="Odpowiedź">
+                                <select class="response-select"
+                                        th:data-event-id="${event.id}"
+                                        th:data-member-id="${p.memberId}"
+                                        th:data-response="${p.response}">
+                                    <option value="CONFIRMED" th:selected="${p.response == 'CONFIRMED'}">✅ Będę</option>
+                                    <option value="DECLINED" th:selected="${p.response == 'DECLINED'}">❌ Nie będę</option>
+                                    <option value="LATER" th:selected="${p.response == 'LATER'}">⏳ Dam znać później</option>
+                                    <option value="NO_RESPONSE" th:selected="${p.response == null or p.response == 'NO_RESPONSE'}">❓ Brak odpowiedzi</option>
+                                </select>
+                            </td>
+                            <td data-label="Status wysyłki">
+                                <span class="invitation-status" th:data-member-id="${p.memberId}" th:data-status="${p.invitationStatus}">
+                                    <span th:if="${p.invitationStatus == 'NOT_SENT'}" style="color:var(--pico-muted-color);">📭 Nie wysłano</span>
+                                    <span th:if="${p.invitationStatus == 'QUEUED'}" style="color:var(--pico-primary);">⏳ W kolejce</span>
+                                    <span th:if="${p.invitationStatus == 'SENT'}" style="color:#2fb344;">✅ Wysłano</span>
+                                    <span th:if="${p.invitationStatus == 'FAILED'}" style="color:#dc3545;">❌ Błąd wysyłki</span>
+                                </span>
+                            </td>
+                            <td data-label="Zgoda na informacje" class="consent-cell"
+                                th:data-member-id="${p.memberId}"
+                                th:data-consent-given="${p.emailConsentGiven}">
+                                <span th:if="${p.emailConsentGiven}" style="color:#2fb344;">✅ Wyraził zgodę</span>
+                                <span th:unless="${p.emailConsentGiven}" style="color:#dc3545;">❌ Brak zgody</span>
+                            </td>
+                            <td data-label="Akcja">
+                                <button class="outline send-btn"
+                                        th:data-member-id="${p.memberId}"
+                                        th:data-event-id="${event.id}"
+                                        th:data-status="${p.invitationStatus}"
+                                        th:data-has-email="${p.memberEmail != null and !p.memberEmail.isEmpty()}"
+                                        th:title="${p.memberEmail != null and !p.memberEmail.isEmpty()} ? 'Wyślij zaproszenie na ' + ${p.memberEmail} : 'Brak adresu email'"
+                                        th:disabled="${p.invitationStatus == 'SENT' or p.memberEmail == null or p.memberEmail.isEmpty()}">
+                                    📧 Wyślij
+                                </button>
+                            </td>
+                            <td th:if="${event.paymentType == 'PAID_SPLIT'}"
+                                class="payout-amount"
+                                th:text="${event.payoutPerMember != null ? #numbers.formatDecimal(event.payoutPerMember, 1, 2) : '-'}"
+                                data-label="Wypłata">100.00</td>
+                            <td th:if="${event.paymentType == 'PAID_SPLIT'}" data-label="Status wypłaty">
+                                <select class="payment-status-select"
+                                        th:if="${p.response == 'CONFIRMED'}"
+                                        th:data-event-id="${event.id}"
+                                        th:data-member-id="${p.memberId}"
+                                        th:data-status="${p.paymentStatus}">
+                                    <option value="PENDING" th:data-status="${p.paymentStatus}">⏳ Nie zapłacono</option>
+                                    <option value="PAID" th:data-status="${p.paymentStatus}">✅ Zapłaceno</option>
+                                </select>
+                                <span th:if="${p.response != 'CONFIRMED'}" class="text-muted">nie dotyczy</span>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+
+                <div style="margin-top:1rem; display:flex; gap:0.5rem;">
+                    <button type="button" class="secondary"
+                            hx-get="/events/list" hx-target="#content"
+                            hx-swap="outerHTML transition:true">Powrót</button>
+                    <button type="button" class="outline"
+                            th:hx-get="@{/events/{id}/edit(id=${event.id})}"
+                            hx-target="#content"
+                            hx-swap="outerHTML transition:true">✏️ Edytuj</button>
+                    <button type="button" class="outline danger" id="delete-event-btn">🗑️ Usuń wydarzenie</button>
+                </div>
+
+                <dialog id="invite-members-modal" class="app-modal">
+                    <div class="app-modal-content">
+                        <header class="app-modal-header">
+                            <div class="app-modal-header-text">
+                                <h3>Zaproś uczestników</h3>
+                            </div>
+                            <button type="button" class="app-modal-close" aria-label="Zamknij" data-close>×</button>
+                        </header>
+                        <div class="app-modal-body">
+                            <p th:if="${#lists.isEmpty(members)}" class="text-muted" style="margin:0 0 0.5rem;">Wszyscy członkowie zostali już zaproszeni.</p>
+                            <ul style="list-style:none; padding:0; margin:0; max-height:50vh; overflow-y:auto;">
+                                <li th:each="m : ${members}" style="display:flex; align-items:center; gap:0.6rem; padding:0.5rem 0; border-bottom:1px solid var(--pico-muted-border-color);">
+                                    <input type="checkbox" class="invite-checkbox" th:value="${m.id}" th:id="'invite-cb-' + ${m.id}">
+                                    <label th:for="'invite-cb-' + ${m.id}" th:text="${m.firstName} + ' ' + ${m.lastName}" style="margin:0; flex:1; cursor:pointer;">Jan Kowalski</label>
+                                </li>
+                            </ul>
+                        </div>
+                        <footer class="app-modal-footer">
+                            <button type="button" class="outline" data-close>Anuluj</button>
+                            <button type="button" class="primary" id="invite-selected-btn">Zaproś zaznaczone osoby</button>
+                        </footer>
+                    </div>
+                </dialog>
+
+                <dialog id="invite-group-modal" class="app-modal">
+                    <div class="app-modal-content">
+                        <header class="app-modal-header">
+                            <div class="app-modal-header-text">
+                                <h3>Zaproś grupę</h3>
+                            </div>
+                            <button type="button" class="app-modal-close" aria-label="Zamknij" data-close>×</button>
+                        </header>
+                        <div class="app-modal-body">
+                            <p th:if="${#lists.isEmpty(event.allGroups)}" class="text-muted" style="margin:0 0 0.5rem;">Brak dostępnych grup.</p>
+                            <ul style="list-style:none; padding:0; margin:0; max-height:50vh; overflow-y:auto;">
+                                <li th:each="g : ${event.allGroups}" style="display:flex; align-items:center; gap:0.6rem; padding:0.5rem 0; border-bottom:1px solid var(--pico-muted-border-color);">
+                                    <input type="checkbox" class="invite-group-checkbox" th:value="${g.id}" th:id="'invite-group-cb-' + ${g.id}">
+                                    <label th:for="'invite-group-cb-' + ${g.id}" th:text="${g.name} + ' (' + ${g.memberCount} + ' członeków)'" style="margin:0; flex:1; cursor:pointer;">Sekcja dęta (5 członków)</label>
+                                </li>
+                            </ul>
+                        </div>
+                        <footer class="app-modal-footer">
+                            <button type="button" class="outline" data-close>Anuluj</button>
+                            <button type="button" class="primary" id="invite-group-selected-btn">Zaproś zaznaczone grupy</button>
+                        </footer>
+                    </div>
+                </dialog>
+
             </div>
-            <button type="button" class="app-modal-close" aria-label="Zamknij" data-close>×</button>
-        </header>
-        <div class="app-modal-body">
-            <p th:if="${#lists.isEmpty(members)}" class="text-muted" style="margin:0 0 0.5rem;">Wszyscy członkowie zostali już zaproszeni.</p>
-            <ul style="list-style:none; padding:0; margin:0; max-height:50vh; overflow-y:auto;">
-                <li th:each="m : ${members}" style="display:flex; align-items:center; gap:0.6rem; padding:0.5rem 0; border-bottom:1px solid var(--pico-muted-border-color);">
-                    <input type="checkbox" class="invite-checkbox" th:value="${m.id}" th:id="'invite-cb-' + ${m.id}">
-                    <label th:for="'invite-cb-' + ${m.id}" th:text="${m.firstName} + ' ' + ${m.lastName}" style="margin:0; flex:1; cursor:pointer;">Jan Kowalski</label>
-                </li>
-            </ul>
+
+            <dialog id="delete-event-modal" class="app-modal">
+                <div class="app-modal-content">
+                    <header class="app-modal-header">
+                        <div class="app-modal-header-text">
+                            <h3>Usuń wydarzenie</h3>
+                        </div>
+                        <button type="button" class="app-modal-close" aria-label="Zamknij" data-close>×</button>
+                    </header>
+                    <div class="app-modal-body">
+                        <p>Czy na pewno chcesz usunąć to wydarzenie? Tej operacji nie można cofnąć.</p>
+                    </div>
+                    <footer class="app-modal-footer">
+                        <button type="button" class="outline" id="delete-event-cancel-btn">Anuluj</button>
+                        <button type="button" class="primary" id="delete-event-confirm-btn">Tak, usuń</button>
+                    </footer>
+                </div>
+            </dialog>
         </div>
-        <footer class="app-modal-footer">
-            <button type="button" class="outline" data-close>Anuluj</button>
-            <button type="button" class="primary" id="invite-selected-btn">Zaproś zaznaczone osoby</button>
-        </footer>
-    </div>
-</dialog>
-
-<dialog id="invite-group-modal" class="app-modal">
-    <div class="app-modal-content">
-        <header class="app-modal-header">
-            <div class="app-modal-header-text">
-                <h3>Zaproś grupę</h3>
-            </div>
-            <button type="button" class="app-modal-close" aria-label="Zamknij" data-close>×</button>
-        </header>
-        <div class="app-modal-body">
-            <p th:if="${#lists.isEmpty(event.allGroups)}" class="text-muted" style="margin:0 0 0.5rem;">Brak dostępnych grup.</p>
-            <ul style="list-style:none; padding:0; margin:0; max-height:50vh; overflow-y:auto;">
-                <li th:each="g : ${event.allGroups}" style="display:flex; align-items:center; gap:0.6rem; padding:0.5rem 0; border-bottom:1px solid var(--pico-muted-border-color);">
-                    <input type="checkbox" class="invite-group-checkbox" th:value="${g.id}" th:id="'invite-group-cb-' + ${g.id}">
-                    <label th:for="'invite-group-cb-' + ${g.id}" th:text="${g.name} + ' (' + ${g.memberCount} + ' członeków)'" style="margin:0; flex:1; cursor:pointer;">Sekcja dęta (5 członeków)</label>
-                </li>
-            </ul>
-        </div>
-        <footer class="app-modal-footer">
-            <button type="button" class="outline" data-close>Anuluj</button>
-            <button type="button" class="primary" id="invite-group-selected-btn">Zaproś zaznaczone grupy</button>
-        </footer>
-    </div>
-</dialog>
-
-</div>
-
-<dialog id="delete-event-modal" class="app-modal">
-    <div class="app-modal-content">
-        <header class="app-modal-header">
-            <div class="app-modal-header-text">
-                <h3>Usuń wydarzenie</h3>
-            </div>
-            <button type="button" class="app-modal-close" aria-label="Zamknij" data-close>×</button>
-        </header>
-        <div class="app-modal-body">
-            <p>Czy na pewno chcesz usunąć to wydarzenie? Tej operacji nie można cofnąć.</p>
-        </div>
-        <footer class="app-modal-footer">
-            <button type="button" class="outline" id="delete-event-cancel-btn">Anuluj</button>
-            <button type="button" class="primary" id="delete-event-confirm-btn">Tak, usuń</button>
-        </footer>
-    </div>
-</dialog>
-
-</div>
     </section>
 </main>
 
-<footer th:replace="~{fragments/layout :: footer}"></footer>
-<div th:insert="~{fragments/layout :: toast-container}"></div>
-<div th:insert="~{fragments/layout :: footer-scripts}"></div>
-
-<script th:replace="~{fragments/layout :: dashboard-header-morph}"></script>
-
 <script>
-    // Event detail page uses the dashboard-header-morph script from layout.html
-    // which handles the double-push-off behavior (collapse -> release -> filter takeover)
-    // No StickyManager initialization needed here.
-
+    // Event detail page handlers
     document.addEventListener('DOMContentLoaded', function() {
         // Participant filter for events detail
         var filterInput = document.getElementById('participant-filter');
@@ -288,8 +271,8 @@
                         var memberName = memberNameCell ? memberNameCell.textContent.toLowerCase() : '';
                         var tags = tagsCell ? tagsCell.textContent.toLowerCase() : '';
 
-                        var matches = !searchTerm || 
-                            memberName.includes(searchTerm) || 
+                        var matches = !searchTerm ||
+                            memberName.includes(searchTerm) ||
                             tags.includes(searchTerm);
 
                         row.style.display = matches ? '' : 'none';
@@ -322,8 +305,8 @@
                 }
 
                 function applyFilters() {
-                    var searchTerm = document.getElementById('participant-filter') 
-                        ? document.getElementById('participant-filter').value.toLowerCase().trim() 
+                    var searchTerm = document.getElementById('participant-filter')
+                        ? document.getElementById('participant-filter').value.toLowerCase().trim()
                         : '';
 
                     rows.forEach(function(row) {
@@ -335,12 +318,12 @@
                         var tags = tagsCell ? tagsCell.textContent.toLowerCase() : '';
                         var response = responseCell ? responseCell.value : '';
 
-                        var textMatches = !searchTerm || 
-                            memberName.includes(searchTerm) || 
+                        var textMatches = !searchTerm ||
+                            memberName.includes(searchTerm) ||
                             tags.includes(searchTerm);
 
-                        var responseMatches = activeFilters.length === 0 || 
-                            activeFilters.length === filterBtns.length || 
+                        var responseMatches = activeFilters.length === 0 ||
+                            activeFilters.length === filterBtns.length ||
                             activeFilters.includes(response);
 
                         row.style.display = (textMatches && responseMatches) ? '' : 'none';
@@ -378,5 +361,3 @@
         }
     });
 </script>
-</body>
-</html>

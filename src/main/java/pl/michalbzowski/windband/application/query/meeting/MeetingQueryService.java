@@ -81,7 +81,6 @@ public class MeetingQueryService {
     }
 
     public List<UpcomingItemDto> getPastMeetings(Long teamId) {
-        LocalDate today = LocalDate.now();
         List<UpcomingItemDto> items = new ArrayList<>();
 
         // Rehearsals
@@ -96,7 +95,7 @@ public class MeetingQueryService {
                     "Obecność " + present + "/" + total,
                     r.getDate(),
                     r.getStartTime(),
-                    formatRelativeLabel(r.getDate(), today),
+                    "Odbyło się",
                     "/rehearsals/" + r.getId(),
                     "🎵",
                     attendancePercentage
@@ -114,7 +113,7 @@ public class MeetingQueryService {
                     subtitle,
                     e.getDate(),
                     e.getStartTime(),
-                    formatRelativeLabel(e.getDate(), today),
+                    "Odbyło się",
                     "/events/" + e.getId(),
                     "🎪",
                     null

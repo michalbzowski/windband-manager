@@ -1,189 +1,176 @@
-<!DOCTYPE html>
-<html lang="pl" xmlns:th="http://www.thymeleaf.org" xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
-<head th:replace="~{fragments/layout :: head('Szczegóły spotkania')}"></head>
-<body class="dashboard-page">
-<div th:replace="~{fragments/layout :: dialogs}"></div>
-
+<!-- Rehearsals detail content fragment - goes inside #content container -->
 <main class="container" id="content">
     <section class="dashboard-upcoming">
-        <header th:replace="~{fragments/layout :: dashboard-header}"></header>
+        <div id="rehearsals-content" th:fragment="rehearsals-content"
+             th:attr="data-rehearsal-id=${rehearsal.id}">
+            <h2>🎵 Szczegóły spotkania</h2>
 
-    <div id="rehearsals-content" th:fragment="rehearsals-content"
-         th:attr="data-rehearsal-id=${rehearsal.id}">
-        <h2>🎵 Szczegóły spotkania</h2>
+            <article>
+                <header>
+                    <strong th:text="${rehearsal.date}">01.01.2025</strong>
+                    <span th:text="${rehearsal.startTime} + ' - ' + ${rehearsal.endTime}">18:00 - 20:00</span>
+                </header>
+                <p th:if="${rehearsal.location}" th:text="'Miejsce: ' + ${rehearsal.location}">Miejsce: Miejsce spotkania</p>
+                <p th:if="${rehearsal.notes}" th:text="${rehearsal.notes}">Notatki</p>
+            </article>
 
-        <article>
-            <header>
-                <strong th:text="${rehearsal.date}">01.01.2025</strong>
-                <span th:text="${rehearsal.startTime} + ' - ' + ${rehearsal.endTime}">18:00 - 20:00</span>
-            </header>
-            <p th:if="${rehearsal.location}" th:text="'Miejsce: ' + ${rehearsal.location}">Miejsce: Miejsce spotkania</p>
-            <p th:if="${rehearsal.notes}" th:text="${rehearsal.notes}">Notatki</p>
-        </article>
+            <h3>Zaproś na spotkanie</h3>
 
-        <h3>Zaproś na spotkanie</h3>
+            <div class="rehearsal-invite-actions">
+                <button type="button" class="outline" id="open-invite-modal-btn">➕ Zaproś uczestników</button>
+                <button type="button" class="outline" id="open-invite-group-modal-btn">👥 Zaproś grupę</button>
+            </div>
 
-        <div class="rehearsal-invite-actions">
-            <button type="button" class="outline" id="open-invite-modal-btn">➕ Zaproś uczestników</button>
-            <button type="button" class="outline" id="open-invite-group-modal-btn">👥 Zaproś grupę</button>
-        </div>
+            <h3>Lista obecności</h3>
 
-        <h3>Lista obecności</h3>
+            <!-- Combined filter container for StickyManager -->
+            <div id="uber-filter-container">
+                <!-- Filter input - sticky on scroll -->
+                <div id="attendance-filter-container">
+                    <label for="attendance-filter" class="text-muted" style="font-size:0.85rem; margin-bottom:0.25rem; display:block;">Filtruj uczestników (imię, nazwisko, tagi)</label>
+                    <input type="text" id="attendance-filter" placeholder="Wpisz imię, nazwisko lub tag..."
+                           style="width:100%; max-width:400px; padding:0.5rem; border:1px solid var(--pico-muted-border-color); border-radius:4px;">
+                </div>
 
-    <!-- Combined filter container for StickyManager -->
-    <div id="uber-filter-container">
-        <!-- Filter input - sticky on scroll -->
-        <div id="attendance-filter-container">
-            <label for="attendance-filter" class="text-muted" style="font-size:0.85rem; margin-bottom:0.25rem; display:block;">Filtruj uczestników (imię, nazwisko, tagi)</label>
-            <input type="text" id="attendance-filter" placeholder="Wpisz imię, nazwisko lub tag..." 
-                   style="width:100%; max-width:400px; padding:0.5rem; border:1px solid var(--pico-muted-border-color); border-radius:4px;">
-        </div>
+                <!-- Response status filter - sticky on scroll, below text filter -->
+                <div th:if="${not #lists.isEmpty(invitedMembers)}" id="attendance-response-filter-container" role="group" aria-label="Filtruj według statusu obecności">
+                    <span class="response-filter-label text-muted" style="font-size:0.75rem; margin-right:0.5rem;">Status:</span>
+                    <span class="stat confirmed response-filter-btn" title="Obecny" data-response-filter="PRESENT">✅ <span class="filter-count-present" th:text="${presentCount}">0</span></span>
+                    <span class="stat declined response-filter-btn" title="Usprawiedliwiony" data-response-filter="EXCUSED">🕓 <span class="filter-count-excused" th:text="${excusedCount}">0</span></span>
+                    <span class="stat declined response-filter-btn" title="Nieobecny" data-response-filter="UNEXCUSED">✕ <span class="filter-count-unexcused" th:text="${unexcusedCount}">0</span></span>
+                    <span class="stat no-response response-filter-btn" title="Brak odpowiedzi" data-response-filter="NO_RESPONSE">? <span class="filter-count-no-response" th:text="${noResponseCount}">0</span></span>
+                </div>
+            </div>
 
-        <!-- Response status filter - sticky on scroll, below text filter -->
-        <div th:if="${not #lists.isEmpty(invitedMembers)}" id="attendance-response-filter-container" role="group" aria-label="Filtruj według statusu obecności">
-            <span class="response-filter-label text-muted" style="font-size:0.75rem; margin-right:0.5rem;">Status:</span>
-            <span class="stat confirmed response-filter-btn" title="Obecny" data-response-filter="PRESENT">✅ <span class="filter-count-present" th:text="${presentCount}">0</span></span>
-            <span class="stat declined response-filter-btn" title="Usprawiedliwiony" data-response-filter="EXCUSED">🕓 <span class="filter-count-excused" th:text="${excusedCount}">0</span></span>
-            <span class="stat declined response-filter-btn" title="Nieobecny" data-response-filter="UNEXCUSED">✕ <span class="filter-count-unexcused" th:text="${unexcusedCount}">0</span></span>
-            <span class="stat no-response response-filter-btn" title="Brak odpowiedzi" data-response-filter="NO_RESPONSE">? <span class="filter-count-no-response" th:text="${noResponseCount}">0</span></span>
-        </div>
-    </div>
-
-    <!-- Hidden input to track selected response filters -->
-    <input th:if="${not #lists.isEmpty(invitedMembers)}" type="hidden" id="active-attendance-response-filters" value="">
+            <!-- Hidden input to track selected response filters -->
+            <input th:if="${not #lists.isEmpty(invitedMembers)}" type="hidden" id="active-attendance-response-filters" value="">
 
             <p th:if="${#lists.isEmpty(invitedMembers)}" class="text-muted">
-            Brak zaproszonych uczestników. Użyj przycisków powyżej, aby zaprosić osoby lub grupy.
-        </p>
+                Brak zaproszonych uczestników. Użyj przycisków powyżej, aby zaprosić osoby lub grupy.
+            </p>
 
-        <table role="grid" th:if="${not #lists.isEmpty(invitedMembers)}">
-            <thead>
-                <tr>
-                    <th>Członek</th>
-                    <th>Instrument</th>
-                    <th>Status</th>
-                </tr>
-            </thead>
-            <tbody>
-                <tr th:each="m : ${invitedMembers}" th:data-member-id="${m.id}">
-                    <td th:text="${m.firstName + ' ' + m.lastName}">Jan Kowalski</td>
-                    <td th:text="${m.primaryInstrument}">Trąbka</td>
-                    <td>
-                        <select class="status-select" th:attr="data-member-id=${m.id}" th:name="'status_' + ${m.id}" th:id="'status_' + ${m.id}">
-                            <option value="NO_RESPONSE" th:selected="${attendanceMap[m.id] == null or attendanceMap[m.id]?.name() == 'NO_RESPONSE'}">No response</option>
-                            <option value="PRESENT" th:selected="${attendanceMap[m.id]?.name() == 'PRESENT'}">Present</option>
-                            <option value="EXCUSED" th:selected="${attendanceMap[m.id]?.name() == 'EXCUSED'}">Excused</option>
-                            <option value="UNEXCUSED" th:selected="${attendanceMap[m.id]?.name() == 'UNEXCUSED'}">Unexcused</option>
-                        </select>
-                    </td>
-                </tr>
-            </tbody>
-        </table>
+            <table role="grid" th:if="${not #lists.isEmpty(invitedMembers)}">
+                <thead>
+                    <tr>
+                        <th>Członek</th>
+                        <th>Instrument</th>
+                        <th>Status</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr th:each="m : ${invitedMembers}" th:data-member-id="${m.id}">
+                        <td th:text="${m.firstName + ' ' + m.lastName}">Jan Kowalski</td>
+                        <td th:text="${m.primaryInstrument}">Trąbka</td>
+                        <td>
+                            <select class="status-select" th:attr="data-member-id=${m.id}" th:name="'status_' + ${m.id}" th:id="'status_' + ${m.id}">
+                                <option value="NO_RESPONSE" th:selected="${attendanceMap[m.id] == null or attendanceMap[m.id]?.name() == 'NO_RESPONSE'}">No response</option>
+                                <option value="PRESENT" th:selected="${attendanceMap[m.id]?.name() == 'PRESENT'}">Present</option>
+                                <option value="EXCUSED" th:selected="${attendanceMap[m.id]?.name() == 'EXCUSED'}">Excused</option>
+                                <option value="UNEXCUSED" th:selected="${attendanceMap[m.id]?.name() == 'UNEXCUSED'}">Unexcused</option>
+                            </select>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
 
-        <div style="display:flex; gap:0.5rem; margin-top:1rem; flex-wrap:wrap;">
-            <button type="button" class="primary" id="quick-attendance-btn"
-                    onclick="window.openQuickAttendance()">⚡ Szybka obecność</button>
-            <button type="button" class="secondary"
-                    th:hx-get="@{/rehearsals/{id}/edit(id=${rehearsal.id})}"
-                    hx-target="#rehearsals-content"
-                    hx-swap="innerHTML transition:true">Edytuj</button>
-            <button type="button" class="secondary"
-                    hx-get="/rehearsals/list" hx-target="#rehearsals-content"
-                    hx-swap="innerHTML transition:true">Powrót</button>
+            <div style="display:flex; gap:0.5rem; margin-top:1rem; flex-wrap:wrap;">
+                <button type="button" class="primary" id="quick-attendance-btn"
+                        onclick="window.openQuickAttendance()">⚡ Szybka obecność</button>
+                <button type="button" class="secondary"
+                        th:hx-get="@{/rehearsals/{id}/edit(id=${rehearsal.id})}"
+                        hx-target="#rehearsals-content"
+                        hx-swap="innerHTML transition:true">Edytuj</button>
+                <button type="button" class="secondary"
+                        hx-get="/rehearsals/list" hx-target="#rehearsals-content"
+                        hx-swap="innerHTML transition:true">Powrót</button>
+            </div>
+
+            <!-- Multi-member invite modal: only members NOT yet invited are shown -->
+            <dialog id="invite-members-modal" class="app-modal">
+                <div class="app-modal-content">
+                    <header class="app-modal-header">
+                        <div class="app-modal-header-text">
+                            <h3>Zaproś uczestników</h3>
+                        </div>
+                        <button type="button" class="app-modal-close" aria-label="Zamknij" data-close>×</button>
+                    </header>
+                    <div class="app-modal-body">
+                        <p th:if="${#lists.isEmpty(inviteMembers)}" class="text-muted" style="margin:0 0 0.5rem;">Wszyscy członkowie zostali już zaproszeni.</p>
+                        <ul style="list-style:none; padding:0; margin:0; max-height:50vh; overflow-y:auto;">
+                            <li th:each="m : ${inviteMembers}" style="display:flex; align-items:center; gap:0.6rem; padding:0.5rem 0; border-bottom:1px solid var(--pico-muted-border-color);">
+                                <input type="checkbox" class="invite-checkbox" th:value="${m.id}" th:id="'invite-cb-' + ${m.id}">
+                                <label th:for="'invite-cb-' + ${m.id}" th:text="${m.firstName} + ' ' + ${m.lastName}" style="margin:0; flex:1; cursor:pointer;">Jan Kowalski</label>
+                            </li>
+                        </ul>
+                    </div>
+                    <footer class="app-modal-footer">
+                        <button type="button" class="outline" data-close>Anuluj</button>
+                        <button type="button" class="primary" id="invite-selected-btn">Zaproś zaznaczone osoby</button>
+                    </footer>
+                </div>
+            </dialog>
+
+            <!-- Group invite modal: every group of the current band, dynamic groups marked -->
+            <dialog id="invite-group-modal" class="app-modal">
+                <div class="app-modal-content">
+                    <header class="app-modal-header">
+                        <div class="app-modal-header-text">
+                            <h3>Zaproś grupę</h3>
+                        </div>
+                        <button type="button" class="app-modal-close" aria-label="Zamknij" data-close>×</button>
+                    </header>
+                    <div class="app-modal-body">
+                        <p th:if="${#lists.isEmpty(groups)}" class="text-muted" style="margin:0 0 0.5rem;">Brak dostępnych grup.</p>
+                        <ul style="list-style:none; padding:0; margin:0; max-height:50vh; overflow-y:auto;">
+                            <li th:each="g : ${groups}" style="display:flex; align-items:center; gap:0.6rem; padding:0.5rem 0; border-bottom:1px solid var(--pico-muted-border-color);">
+                                <input type="checkbox" class="invite-group-checkbox" th:value="${g.id}" th:id="'invite-group-cb-' + ${g.id}">
+                                <label th:for="'invite-group-cb-' + ${g.id}" style="margin:0; flex:1; cursor:pointer;">
+                                    <span th:text="${g.name} + ' (' + ${g.memberCount} + ' członków)'">Sekcja dęta (5 członków)</span>
+                                    <small th:if="${g.dynamic}" style="margin-left:0.4rem; color:var(--pico-muted-color);">(dynamiczna)</small>
+                                </label>
+                            </li>
+                        </ul>
+                    </div>
+                    <footer class="app-modal-footer">
+                        <button type="button" class="outline" data-close>Anuluj</button>
+                        <button type="button" class="primary" id="invite-group-selected-btn">Zaproś zaznaczone grupy</button>
+                    </footer>
+                </div>
+            </dialog>
+
+            <!-- Quick attendance modal: one member at a time, status as buttons, save-then-advance -->
+            <dialog id="quick-attendance-modal" class="app-modal">
+                <div class="app-modal-content">
+                    <header class="app-modal-header">
+                        <div class="app-modal-header-text">
+                            <h3 style="margin:0;">Szybka obecność</h3>
+                            <small id="qa-progress">1 / 1</small>
+                        </div>
+                        <button type="button" class="app-modal-close" aria-label="Zamknij" data-close>×</button>
+                    </header>
+                    <div class="app-modal-body">
+                        <p id="qa-member-name" style="font-size:1.25rem; font-weight:bold; margin:0.5rem 0;">—</p>
+                        <div style="display:grid; grid-template-columns:1fr 1fr; gap:0.5rem; margin-top:1rem;">
+                            <button type="button" class="qa-status primary" data-status="PRESENT"
+                                    onclick="window.quickAttendanceSelect('PRESENT')">✓ Obecny</button>
+                            <button type="button" class="qa-status" data-status="EXCUSED"
+                                    onclick="window.quickAttendanceSelect('EXCUSED')">🕓 Usprawiedliwiony</button>
+                            <button type="button" class="qa-status" data-status="UNEXCUSED"
+                                    onclick="window.quickAttendanceSelect('UNEXCUSED')">✕ Nieobecny</button>
+                            <button type="button" class="qa-status secondary" data-status="NO_RESPONSE"
+                                    onclick="window.quickAttendanceSelect('NO_RESPONSE')">? Brak odp.</button>
+                        </div>
+                        <div style="display:flex; gap:0.5rem; margin-top:1rem; justify-content:space-between;">
+                            <button type="button" class="secondary" id="qa-back"
+                                    onclick="window.quickAttendanceBack()">← Wstecz</button>
+                            <button type="button" class="secondary" data-close>Anuluj</button>
+                        </div>
+                    </div>
+                </div>
+            </dialog>
         </div>
-
-        <!-- Multi-member invite modal: only members NOT yet invited are shown -->
-        <dialog id="invite-members-modal" class="app-modal">
-            <div class="app-modal-content">
-                <header class="app-modal-header">
-                    <div class="app-modal-header-text">
-                        <h3>Zaproś uczestników</h3>
-                    </div>
-                    <button type="button" class="app-modal-close" aria-label="Zamknij" data-close>×</button>
-                </header>
-                <div class="app-modal-body">
-                    <p th:if="${#lists.isEmpty(inviteMembers)}" class="text-muted" style="margin:0 0 0.5rem;">Wszyscy członkowie zostali już zaproszeni.</p>
-                    <ul style="list-style:none; padding:0; margin:0; max-height:50vh; overflow-y:auto;">
-                        <li th:each="m : ${inviteMembers}" style="display:flex; align-items:center; gap:0.6rem; padding:0.5rem 0; border-bottom:1px solid var(--pico-muted-border-color);">
-                            <input type="checkbox" class="invite-checkbox" th:value="${m.id}" th:id="'invite-cb-' + ${m.id}">
-                            <label th:for="'invite-cb-' + ${m.id}" th:text="${m.firstName} + ' ' + ${m.lastName}" style="margin:0; flex:1; cursor:pointer;">Jan Kowalski</label>
-                        </li>
-                    </ul>
-                </div>
-                <footer class="app-modal-footer">
-                    <button type="button" class="outline" data-close>Anuluj</button>
-                    <button type="button" class="primary" id="invite-selected-btn">Zaproś zaznaczone osoby</button>
-                </footer>
-            </div>
-        </dialog>
-
-        <!-- Group invite modal: every group of the current band, dynamic groups marked -->
-        <dialog id="invite-group-modal" class="app-modal">
-            <div class="app-modal-content">
-                <header class="app-modal-header">
-                    <div class="app-modal-header-text">
-                        <h3>Zaproś grupę</h3>
-                    </div>
-                    <button type="button" class="app-modal-close" aria-label="Zamknij" data-close>×</button>
-                </header>
-                <div class="app-modal-body">
-                    <p th:if="${#lists.isEmpty(groups)}" class="text-muted" style="margin:0 0 0.5rem;">Brak dostępnych grup.</p>
-                    <ul style="list-style:none; padding:0; margin:0; max-height:50vh; overflow-y:auto;">
-                        <li th:each="g : ${groups}" style="display:flex; align-items:center; gap:0.6rem; padding:0.5rem 0; border-bottom:1px solid var(--pico-muted-border-color);">
-                            <input type="checkbox" class="invite-group-checkbox" th:value="${g.id}" th:id="'invite-group-cb-' + ${g.id}">
-                            <label th:for="'invite-group-cb-' + ${g.id}" style="margin:0; flex:1; cursor:pointer;">
-                                <span th:text="${g.name} + ' (' + ${g.memberCount} + ' członków)'">Sekcja dęta (5 członków)</span>
-                                <small th:if="${g.dynamic}" style="margin-left:0.4rem; color:var(--pico-muted-color);">(dynamiczna)</small>
-                            </label>
-                        </li>
-                    </ul>
-                </div>
-                <footer class="app-modal-footer">
-                    <button type="button" class="outline" data-close>Anuluj</button>
-                    <button type="button" class="primary" id="invite-group-selected-btn">Zaproś zaznaczone grupy</button>
-                </footer>
-            </div>
-        </dialog>
-
-        <!-- Quick attendance modal: one member at a time, status as buttons, save-then-advance -->
-        <dialog id="quick-attendance-modal" class="app-modal">
-            <div class="app-modal-content">
-                <header class="app-modal-header">
-                    <div class="app-modal-header-text">
-                        <h3 style="margin:0;">Szybka obecność</h3>
-                        <small id="qa-progress">1 / 1</small>
-                    </div>
-                    <button type="button" class="app-modal-close" aria-label="Zamknij" data-close>×</button>
-                </header>
-                <div class="app-modal-body">
-                    <p id="qa-member-name" style="font-size:1.25rem; font-weight:bold; margin:0.5rem 0;">—</p>
-                    <div style="display:grid; grid-template-columns:1fr 1fr; gap:0.5rem; margin-top:1rem;">
-                        <button type="button" class="qa-status primary" data-status="PRESENT"
-                                onclick="window.quickAttendanceSelect('PRESENT')">✓ Obecny</button>
-                        <button type="button" class="qa-status" data-status="EXCUSED"
-                                onclick="window.quickAttendanceSelect('EXCUSED')">🕓 Usprawiedliwiony</button>
-                        <button type="button" class="qa-status" data-status="UNEXCUSED"
-                                onclick="window.quickAttendanceSelect('UNEXCUSED')">✕ Nieobecny</button>
-                        <button type="button" class="qa-status secondary" data-status="NO_RESPONSE"
-                                onclick="window.quickAttendanceSelect('NO_RESPONSE')">? Brak odp.</button>
-                    </div>
-                    <div style="display:flex; gap:0.5rem; margin-top:1rem; justify-content:space-between;">
-                        <button type="button" class="secondary" id="qa-back"
-                                onclick="window.quickAttendanceBack()">← Wstecz</button>
-                        <button type="button" class="secondary" data-close>Anuluj</button>
-                    </div>
-                </div>
-            </div>
-        </dialog>
-    </div>
     </section>
 </main>
-
-<footer th:replace="~{fragments/layout :: footer}"></footer>
-<div th:insert="~{fragments/layout :: toast-container}"></div>
-<div th:insert="~{fragments/layout :: footer-scripts}"></div>
-
-<script th:replace="~{fragments/layout :: dashboard-header-morph}"></script>
 
 <script>
     // Rehearsal detail page uses the dashboard-header-morph script from layout.html
@@ -237,8 +224,8 @@
                 }
 
                 function applyFilters() {
-                    var searchTerm = document.getElementById('attendance-filter') 
-                        ? document.getElementById('attendance-filter').value.toLowerCase().trim() 
+                    var searchTerm = document.getElementById('attendance-filter')
+                        ? document.getElementById('attendance-filter').value.toLowerCase().trim()
                         : '';
 
                     rows.forEach(function(row) {
@@ -250,8 +237,8 @@
 
                         var textMatches = !searchTerm || memberName.includes(searchTerm);
 
-                        var responseMatches = activeFilters.length === 0 || 
-                            activeFilters.length === filterBtns.length || 
+                        var responseMatches = activeFilters.length === 0 ||
+                            activeFilters.length === filterBtns.length ||
                             activeFilters.includes(status);
 
                         row.style.display = (textMatches && responseMatches) ? '' : 'none';
@@ -380,5 +367,3 @@
         window.quickAttendanceRender();
     };
 </script>
-</body>
-</html>
