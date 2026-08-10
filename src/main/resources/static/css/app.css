@@ -1590,40 +1590,6 @@ body.dashboard-page main.container {
     padding-top: 1rem;
 }
 
-/* Mini stats bar - shows key metrics at a glance */
-.mini-stats-bar {
-    display: grid;
-    grid-template-columns: repeat(3, 1fr);
-    gap: 0.75rem;
-    padding: 1rem;
-    background: var(--pico-card-background-color);
-    border: 1px solid var(--pico-card-border-color);
-    border-radius: 12px;
-    margin-bottom: 1rem;
-}
-
-.mini-stat {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    text-align: center;
-    gap: 0.25rem;
-}
-
-.mini-stat-value {
-    font-size: clamp(1.5rem, 4vw, 2.2rem);
-    font-weight: 700;
-    color: var(--pico-primary);
-    line-height: 1;
-}
-
-.mini-stat-label {
-    font-size: 0.75rem;
-    color: var(--pico-muted-color);
-    text-transform: uppercase;
-    letter-spacing: 0.05em;
-}
-
 /* Floating Action Button */
 .fab {
     position: fixed;
@@ -1721,13 +1687,6 @@ body.dashboard-page main.container {
 
 /* Tablet portrait (~768px) and up */
 @media (min-width: 768px) {
-    .mini-stats-bar {
-        grid-template-columns: repeat(3, 1fr);
-        padding: 1.25rem;
-        max-width: 600px;
-        margin-left: 0;
-    }
-    
     .fab {
         bottom: 2rem;
         right: 2rem;
@@ -1739,21 +1698,16 @@ body.dashboard-page main.container {
 
 /* Desktop (~1024px) and up */
 @media (min-width: 1024px) {
-    .mini-stats-bar {
-        grid-template-columns: repeat(3, 1fr);
-        max-width: 400px;
-        margin-left: 0;
-    }
-    
+
     /* Show table view on desktop, hide cards */
     .upcoming-list {
         display: none;
     }
-    
+
     .upcoming-table {
         display: block;
     }
-    
+
     .fab {
         bottom: 2.5rem;
         right: 2.5rem;
@@ -1762,9 +1716,7 @@ body.dashboard-page main.container {
 
 /* Large desktop (~1400px) and up */
 @media (min-width: 1400px) {
-    .mini-stats-bar {
-        max-width: 500px;
-    }
+
 }
 
 /* Mobile landscape and small tablet adjustments */
@@ -1772,12 +1724,12 @@ body.dashboard-page main.container {
     .upcoming-table {
         display: none;
     }
-    
+
     .upcoming-list {
         display: grid;
         gap: 0.75rem;
     }
-    
+
     .fab {
         bottom: 1rem;
         right: 1rem;

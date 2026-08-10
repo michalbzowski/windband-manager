@@ -128,8 +128,12 @@ class DashboardResponsiveUiTest extends UiTestBase {
             assertThat(card.isDisplayed()).as("Cards should be hidden on large desktop").isFalse();
         }
 
-        // Mini stats bar should have proper max-width on large desktop
-        var miniStats = driver.findElement(By.cssSelector(".mini-stats-bar"));
-        assertThat(miniStats.isDisplayed()).isTrue();
+        // Progress bars should exist in table rows
+        var progressBars = driver.findElements(By.cssSelector("section.dashboard-upcoming .upcoming-table .progress-fill"));
+        assertThat(progressBars).as("Progress bars should exist in table on large desktop").isNotEmpty();
+
+        // Table should have rows with data
+        var tableRows = driver.findElements(By.cssSelector("section.dashboard-upcoming .upcoming-table tbody tr"));
+        assertThat(tableRows).as("Table should have data rows on large desktop").isNotEmpty();
     }
 }

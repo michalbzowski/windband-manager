@@ -30,9 +30,6 @@ class DashboardHomeUiTest extends UiTestBase {
                 ExpectedConditions.presenceOfElementLocated(By.cssSelector("section.dashboard-upcoming .upcoming-table"))
         ));
 
-        // Mini stats bar present
-        assertThat(driver.findElements(By.cssSelector(".mini-stats-bar"))).isNotEmpty();
-
         // Progress bars in cards/table for rehearsals
         var progressBars = driver.findElements(By.cssSelector("section.dashboard-upcoming .progress-fill"));
         assertThat(progressBars).isNotEmpty();

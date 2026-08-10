@@ -8,21 +8,6 @@
     <section class="dashboard-upcoming">
         <header th:replace="~{fragments/layout :: dashboard-header}"></header>
 
-        <!-- Mini stats bar - responsive -->
-        <div class="mini-stats-bar" th:unless="${#lists.isEmpty(upcoming)}">
-            <div class="mini-stat">
-                <span class="mini-stat-value" th:text="${upcomingStats.attendancePercent} ?: 0 + '%'">0%</span>
-                <span class="mini-stat-label">Średnia obecność</span>
-            </div>
-            <div class="mini-stat">
-                <span class="mini-stat-value" th:text="${upcomingStats.totalCount} ?: 0">0</span>
-                <span class="mini-stat-label">Zdarzeń</span>
-            </div>
-            <div class="mini-stat">
-                <span class="mini-stat-value" th:text="${upcomingStats.activeMembers} ?: 0">0</span>
-                <span class="mini-stat-label">Aktywnych</span>
-            </div>
-        </div>
         <!-- Attention list -->
         <div th:unless="${#lists.isEmpty(attentionItems)}" class="attention-section">
             <header class="section-head attention-head">
