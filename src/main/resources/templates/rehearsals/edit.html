@@ -1,93 +1,108 @@
-<!-- Rehearsals edit content fragment - goes inside #content container -->
+<!DOCTYPE html>
+<html lang="pl" xmlns:th="http://www.thymeleaf.org" xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
+<head th:replace="~{fragments/layout :: head('Edytuj spotkanie')}"></head>
+<body class="dashboard-page">
+<div th:replace="~{fragments/layout :: dialogs}"></div>
+
 <main class="container" id="content">
     <section class="dashboard-upcoming">
-        <div id="rehearsals-content">
-            <h2>✏️ Edytuj spotkanie</h2>
+        <header th:replace="~{fragments/layout :: dashboard-header}"></header>
 
-            <form id="rehearsal-edit-form"
-                  hx-put="/api/rehearsals/[[${rehearsal.id}]]"
-                  hx-target="#rehearsals-content"
-                  hx-swap="innerHTML transition:true">
+    <div id="rehearsals-content">
+        <h2>✏️ Edytuj spotkanie</h2>
 
-                <div class="grid">
-                    <label>
-                        Data *
-                        <input type="date" name="date" th:value="${rehearsal.date}" required>
-                    </label>
-                    <label>
-                        Godzina rozpoczęcia *
-                        <input type="time" name="startTime" th:value="${rehearsal.startTime}" required>
-                    </label>
-                </div>
+        <form id="rehearsal-edit-form"
+              hx-put="/api/rehearsals/[[${rehearsal.id}]]"
+              hx-target="#rehearsals-content"
+              hx-swap="innerHTML transition:true">
 
-                <div class="grid">
-                    <label>
-                        Godzina zakończenia
-                        <input type="time" name="endTime" th:value="${rehearsal.endTime}">
-                    </label>
-                    <label>
-                        Miejsce
-                        <input type="text" name="location" placeholder="Miejsce spotkania, DK Psary..." th:value="${rehearsal.location}">
-                    </label>
-                </div>
-
+            <div class="grid">
                 <label>
-                    Notatki
-                    <textarea name="notes" rows="2" placeholder="Dodatkowe informacje..." th:text="${rehearsal.notes}"></textarea>
+                    Data *
+                    <input type="date" name="date" th:value="${rehearsal.date}" required>
                 </label>
+                <label>
+                    Godzina rozpoczęcia *
+                    <input type="time" name="startTime" th:value="${rehearsal.startTime}" required>
+                </label>
+            </div>
 
-                <div style="display:flex; gap:0.5rem; margin-top:1rem;">
-                    <button type="submit" class="primary">Zapisz zmiany</button>
-                    <button type="button" class="secondary"
-                            th:hx-get="@{/rehearsals/{id}(id=${rehearsal.id})}"
-                            hx-target="#rehearsals-content"
-                            hx-swap="innerHTML transition:true">Anuluj</button>
-                </div>
-            </form>
+            <div class="grid">
+                <label>
+                    Godzina zakończenia
+                    <input type="time" name="endTime" th:value="${rehearsal.endTime}">
+                </label>
+                <label>
+                    Miejsce
+                    <input type="text" name="location" placeholder="Miejsce spotkania, DK Psary..." th:value="${rehearsal.location}">
+                </label>
+            </div>
 
-            <!-- Inline script must live INSIDE the #rehearsals-content fragment.
-                 When the user navigates via HTMX (detail page -> "Edytuj" button),
-                 the controller returns `rehearsals/edit :: #rehearsals-content` and
-                 HTMX swaps only the fragment content. Any <script> tag placed
-                 OUTSIDE this div is stripped from the swapped result, so the
-                 submit handler is never registered and the form falls back to a
-                 native HTML GET submit (which posts the form fields into the
-                 current URL's query string and silently drops the data — exactly
-                 the bug Owner reported: "Klikam zapisz zmiany. Nic się nie
-                 zapisało a zostałem przeniesiony na listę spotkań."). Keeping
-                 the script inside the fragment ensures it is re-executed every
-                 time the edit form is rendered, regardless of how it got there. -->
-            <script th:inline="javascript">
-                if (!window._rehearsalEditHtmxBound) {
-                    window._rehearsalEditHtmxBound = true;
-                    document.addEventListener('submit', function(event) {
-                        const form = event.target;
-                        if (!(form instanceof HTMLFormElement)) return;
-                        if (form.id !== 'rehearsal-edit-form') return;
-                        event.preventDefault();
-                        const rehearsalId = /*[[${rehearsal.id}]]*/ 0;
-                        const payload = {
-                            date: form.date.value,
-                            startTime: form.startTime.value,
-                            endTime: form.endTime.value || null,
-                            location: form.location.value || null,
-                            notes: form.notes.value || null
-                        };
-                        fetch('/api/rehearsals/' + rehearsalId, {
-                            method: 'PUT',
-                            headers: {'Content-Type': 'application/json'},
-                            body: JSON.stringify(payload)
-                        }).then(function(response) {
-                            if (!response.ok) {
-                                throw new Error('HTTP ' + response.status);
-                            }
-                            window.location.href = '/rehearsals/' + rehearsalId;
-                        }).catch(function(error) {
-                            console.error('Failed to update rehearsal:', error);
-                        });
+            <label>
+                Notatki
+                <textarea name="notes" rows="2" placeholder="Dodatkowe informacje..." th:text="${rehearsal.notes}"></textarea>
+            </label>
+
+            <div style="display:flex; gap:0.5rem; margin-top:1rem;">
+                <button type="submit" class="primary">Zapisz zmiany</button>
+                <button type="button" class="secondary"
+                        th:hx-get="@{/rehearsals/{id}(id=${rehearsal.id})}"
+                        hx-target="#rehearsals-content"
+                        hx-swap="innerHTML transition:true">Anuluj</button>
+            </div>
+        </form>
+
+        <!-- Inline script must live INSIDE the #rehearsals-content fragment.
+             When the user navigates via HTMX (detail page -> "Edytuj" button),
+             the controller returns `rehearsals/edit :: #rehearsals-content` and
+             HTMX swaps only the fragment content. Any <script> tag placed
+             OUTSIDE this div is stripped from the swapped result, so the
+             submit handler is never registered and the form falls back to a
+             native HTML GET submit (which posts the form fields into the
+             current URL's query string and silently drops the data — exactly
+             the bug Owner reported: "Klikam zapisz zmiany. Nic się nie
+             zapisało a zostałem przeniesiony na listę spotkań."). Keeping
+             the script inside the fragment ensures it is re-executed every
+             time the edit form is rendered, regardless of how it got there. -->
+        <script th:inline="javascript">
+            if (!window._rehearsalEditHtmxBound) {
+                window._rehearsalEditHtmxBound = true;
+                document.addEventListener('submit', function(event) {
+                    const form = event.target;
+                    if (!(form instanceof HTMLFormElement)) return;
+                    if (form.id !== 'rehearsal-edit-form') return;
+                    event.preventDefault();
+                    const rehearsalId = /*[[${rehearsal.id}]]*/ 0;
+                    const payload = {
+                        date: form.date.value,
+                        startTime: form.startTime.value,
+                        endTime: form.endTime.value || null,
+                        location: form.location.value || null,
+                        notes: form.notes.value || null
+                    };
+                    fetch('/api/rehearsals/' + rehearsalId, {
+                        method: 'PUT',
+                        headers: {'Content-Type': 'application/json'},
+                        body: JSON.stringify(payload)
+                    }).then(function(response) {
+                        if (!response.ok) {
+                            throw new Error('HTTP ' + response.status);
+                        }
+                        window.location.href = '/rehearsals/' + rehearsalId;
+                    }).catch(function(error) {
+                        console.error('Failed to update rehearsal:', error);
                     });
-                }
-            </script>
-        </div>
+                });
+            }
+        </script>
+    </div>
     </section>
 </main>
+
+<footer th:replace="~{fragments/layout :: footer}"></footer>
+<div th:insert="~{fragments/layout :: toast-container}"></div>
+<div th:insert="~{fragments/layout :: footer-scripts}"></div>
+
+<script th:replace="~{fragments/layout :: dashboard-header-morph}"></script>
+</body>
+</html>

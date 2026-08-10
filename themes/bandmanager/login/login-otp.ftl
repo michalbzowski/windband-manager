@@ -30,7 +30,7 @@
 
     <#if message?has_content && message.type == 'error'>
         <div class="alert-error" role="alert">
-            <p>${msg(message.summary)!message.summary}</p>
+            <p>${msg(message.summary)}</p>
         </div>
     </#if>
 

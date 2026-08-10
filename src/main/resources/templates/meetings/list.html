@@ -1,95 +1,142 @@
-<!-- Meetings list content fragment - goes inside #content container -->
+<!DOCTYPE html>
+<html lang="pl" xmlns:th="http://www.thymeleaf.org" xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
+<head th:replace="~{fragments/layout :: head('Spotkania')}"></head>
+<body class="dashboard-page">
+<div th:replace="~{fragments/layout :: dialogs}"></div>
+
 <main class="container" id="content">
     <section class="dashboard-upcoming">
-        <div id="meetings-content" th:attr="data-focus-id=${focusMeetingId},data-focus-prefix='meeting'">
-            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem;">
-                <h2>🎵 Spotkania i wydarzenia</h2>
-                <button hx-get="/meetings/new" hx-target="#meetings-content"
-                        hx-swap="innerHTML transition:true" class="primary">+ Dodaj spotkanie</button>
-            </div>
+        <header th:replace="~{fragments/layout :: dashboard-header}"></header>
 
-            <div th:if="${#lists.isEmpty(upcomingMeetings) and #lists.isEmpty(pastMeetings)}">
-                <article>
-                    <p>Brak zaplanowanych spotkań.</p>
-                </article>
-            </div>
-
-            <!-- ===================== UPCOMING ===================== -->
-            <div th:if="${not #lists.isEmpty(upcomingMeetings)}">
-                <h3 class="section-heading" th:unless="${#lists.isEmpty(pastMeetings)}">Nadchodzące</h3>
-                <table role="grid">
-                    <thead>
-                        <tr>
-                            <th>Typ</th>
-                            <th>Data</th>
-                            <th>Godzina</th>
-                            <th>Miejsce</th>
-                            <th>Status</th>
-                            <th>Obecność</th>
-                            <th>Akcje</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <tr th:each="m : ${upcomingMeetings}" th:id="'meeting-' + ${m.id}">
-                            <td data-label="Typ" th:text="${m.type}">REHEARSAL</td>
-                            <td data-label="Data" th:text="${m.date}">01.01.2025</td>
-                            <td data-label="Godzina" th:text="${m.startTime}">18:00</td>
-                            <td data-label="Miejsce" th:text="${m.location}">Sala prób</td>
-                            <td data-label="Status">
-                                <span th:if="${m.badge}" th:text="${m.badge}">Nadchodzące</span>
-                                <span th:unless="${m.badge}">Nadchodzące</span>
-                            </td>
-                            <td data-label="Obecność">
-                                <span th:text="${m.presentCount} + '/' + ${m.totalCount}">0/0</span>
-                            </td>
-                            <td data-label="Akcje">
-                                <button class="outline small"
-                                        th:hx-get="@{/meetings/{id}(id=${m.id})}"
-                                        hx-target="#meetings-content"
-                                        hx-swap="innerHTML transition:true">Szczegóły</button>
-                            </td>
-                        </tr>
-                    </tbody>
-                </table>
-            </div>
-
-            <!-- ===================== PAST ===================== -->
-            <div th:if="${not #lists.isEmpty(pastMeetings)}">
-                <h3 class="section-heading">📅 Przeszłe spotkania</h3>
-                <table role="grid">
-                    <thead>
-                        <tr>
-                            <th>Typ</th>
-                            <th>Data</th>
-                            <th>Godzina</th>
-                            <th>Miejsce</th>
-                            <th>Status</th>
-                            <th>Obecność</th>
-                            <th>Akcje</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <tr th:each="m : ${pastMeetings}" class="past-item" th:id="'meeting-' + ${m.id}">
-                            <td data-label="Typ" th:text="${m.type}">REHEARSAL</td>
-                            <td data-label="Data" th:text="${m.date}">01.01.2025</td>
-                            <td data-label="Godzina" th:text="${m.startTime}">18:00</td>
-                            <td data-label="Miejsce" th:text="${m.location}">Sala prób</td>
-                            <td data-label="Status">
-                                <span class="past-badge" th:text="${m.badge}">Odbyło się</span>
-                            </td>
-                            <td data-label="Obecność">
-                                <span th:text="${m.presentCount} + '/' + ${m.totalCount}">0/0</span>
-                            </td>
-                            <td data-label="Akcje">
-                                <button class="outline small"
-                                        th:hx-get="@{/meetings/{id}(id=${m.id})}"
-                                        hx-target="#meetings-content"
-                                        hx-swap="innerHTML transition:true">Szczegóły</button>
-                            </td>
-                        </tr>
-                    </tbody>
-                </table>
-            </div>
+    <div id="meetings-content" th:attr="data-focus-id=${focusMeetingId},data-focus-prefix='meeting'">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem;">
+            <h2>🎵 Spotkania</h2>
+            <button hx-get="/meetings/new" hx-target="#meetings-content"
+                    hx-swap="innerHTML transition:true" class="primary">+ Dodaj spotkanie</button>
         </div>
+
+        <div th:if="${#lists.isEmpty(upcomingMeetings) and #lists.isEmpty(pastMeetings)}">
+            <article>
+                <p>Brak zaplanowanych spotkań.</p>
+            </article>
+        </div>
+
+        <!-- ===================== UPCOMING ===================== -->
+        <div th:if="${not #lists.isEmpty(upcomingMeetings)}">
+            <h3 class="section-heading" th:unless="${#lists.isEmpty(pastMeetings)}">Nadchodzące</h3>
+            <table role="grid">
+                <thead>
+                    <tr>
+                        <th>Typ</th>
+                        <th>Nazwa</th>
+                        <th>Data</th>
+                        <th>Godzina</th>
+                        <th>Miejsce / Szczegóły</th>
+                        <th>Status</th>
+                        <th>Akcje</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr th:each="m : ${upcomingMeetings}" th:id="'meeting-' + ${m.id}" th:class="${m.kind == 'REHEARSAL'} ? 'meeting-rehearsal' : 'meeting-event'">
+                        <td data-label="Typ" th:text="${m.icon}">🎵</td>
+                        <td data-label="Nazwa" th:text="${m.title}">Próba</td>
+                        <td data-label="Data" th:text="${m.date}">01.01.2025</td>
+                        <td data-label="Godzina" th:text="${m.startTime}">18:00</td>
+                        <td data-label="Miejsce" th:text="${m.subtitle}">Miejsce spotkania</td>
+                        <td data-label="Status">
+                            <span th:text="${m.badge}" class="badge">🎵 Próba</span>
+                        </td>
+                        <td data-label="Akcje">
+                            <button class="outline small"
+                                    th:hx-get="@{/rehearsals/{id}(id=${m.id})}"
+                                    th:if="${m.kind == 'REHEARSAL'}"
+                                    hx-target="#content"
+                                    hx-swap="innerHTML transition:true">Szczegóły</button>
+                            <button class="outline small"
+                                    th:hx-get="@{/events/{id}(id=${m.id})}"
+                                    th:if="${m.kind == 'EVENT'}"
+                                    hx-target="#events-list-container"
+                                    hx-swap="innerHTML transition:true">Szczegóły</button>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <!-- ===================== PAST ===================== -->
+        <div th:if="${not #lists.isEmpty(pastMeetings)}">
+            <h3 class="section-heading">📅 Przeszłe spotkania</h3>
+            <table role="grid">
+                <thead>
+                    <tr>
+                        <th>Typ</th>
+                        <th>Nazwa</th>
+                        <th>Data</th>
+                        <th>Godzina</th>
+                        <th>Miejsce / Szczegóły</th>
+                        <th>Status</th>
+                        <th>Akcje</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr th:each="m : ${pastMeetings}" class="past-item" th:id="'meeting-' + ${m.id}">
+                        <td data-label="Typ" th:text="${m.icon}">🎵</td>
+                        <td data-label="Nazwa" th:text="${m.title}">Próba</td>
+                        <td data-label="Data">
+                            <span th:text="${m.date}">01.01.2025</span>
+                            <span class="past-badge">Odbyło się</span>
+                        </td>
+                        <td data-label="Godzina" th:text="${m.startTime}">18:00</td>
+                        <td data-label="Miejsce" th:text="${m.subtitle}">Miejsce spotkania</td>
+                        <td data-label="Status">
+                            <span th:text="${m.badge}" class="badge">🎵 Próba</span>
+                        </td>
+                        <td data-label="Akcje">
+                            <button class="outline small"
+                                    th:hx-get="@{/rehearsals/{id}(id=${m.id})}"
+                                    th:if="${m.kind == 'REHEARSAL'}"
+                                    hx-target="#content"
+                                    hx-swap="innerHTML transition:true">Szczegóły</button>
+                            <button class="outline small"
+                                    th:hx-get="@{/events/{id}(id=${m.id})}"
+                                    th:if="${m.kind == 'EVENT'}"
+                                    hx-target="#events-list-container"
+                                    hx-swap="innerHTML transition:true">Szczegóły</button>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
     </section>
 </main>
+
+<footer th:replace="~{fragments/layout :: footer}"></footer>
+<div th:insert="~{fragments/layout :: toast-container}"></div>
+<div th:insert="~{fragments/layout :: footer-scripts}"></div>
+
+<style>
+    .badge {
+        display: inline-block;
+        padding: 0.2rem 0.5rem;
+        border-radius: 4px;
+        font-size: 0.75rem;
+        font-weight: 600;
+        white-space: nowrap;
+    }
+    .meeting-rehearsal td:first-child { color: #1e88e5; }
+    .meeting-event td:first-child { color: #e53935; }
+    .past-badge {
+        display: inline-block;
+        margin-left: 0.5rem;
+        padding: 0.1rem 0.4rem;
+        background: var(--pico-muted-border-color);
+        border-radius: 4px;
+        font-size: 0.7rem;
+        color: var(--pico-muted-color);
+    }
+</style>
+
+<script th:replace="~{fragments/layout :: dashboard-header-morph}"></script>
+</body>
+</html>

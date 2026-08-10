@@ -1,120 +1,151 @@
-<!-- Events form content fragment - goes inside #content container -->
+<!DOCTYPE html>
+<html lang="pl" xmlns:th="http://www.thymeleaf.org" xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
+<head th:replace="~{fragments/layout :: head('Dodaj wydarzenie')}"></head>
+<body class="dashboard-page">
+<div th:replace="~{fragments/layout :: dialogs}"></div>
+
 <main class="container" id="content">
     <section class="dashboard-upcoming">
-        <div id="events-list-container">
-            <h2>🎪 Dodaj wydarzenie</h2>
+        <header th:replace="~{fragments/layout :: dashboard-header}"></header>
 
-            <form id="event-form" onsubmit="return handleCreateFormSubmit(event)">
+    <div id="events-list-container">
+        <h2>🎪 Dodaj wydarzenie</h2>
 
-                <label>
-                    Nazwa wydarzenia *
-                    <input type="text" name="name" required placeholder="Koncert Noworoczny">
-                </label>
+    <form id="event-form" onsubmit="return handleCreateFormSubmit(event)">
 
-                <div class="grid">
-                    <label>
-                        Data *
-                        <input type="date" name="date" required th:value="${today}">
-                    </label>
-                    <label>
-                        Godzina rozpoczęcia
-                        <input type="time" name="startTime">
-                    </label>
-                </div>
+        <label>
+            Nazwa wydarzenia *
+            <input type="text" name="name" required placeholder="Koncert Noworoczny">
+        </label>
 
-                <label>
-                    Miejsce
-                    <input type="text" name="location" placeholder="Sala koncertowa, Rynek, Kościół...">
-                </label>
-
-                <label>
-                    Typ wydarzenia *
-                    <select name="eventType" required>
-                        <option value="CONCERT">Koncert</option>
-                        <option value="REHEARSAL">Próba ogólna</option>
-                        <option value="MEETING">Spotkanie organizacyjne</option>
-                        <option value="OTHER">Inne</option>
-                    </select>
-                </label>
-
-                <label>
-                    Typ płatności *
-                    <select name="paymentType" required id="payment-type-select">
-                        <option value="FREE">Bezpłatne</option>
-                        <option value="PAID_SPLIT">Płatne — podział między grających</option>
-                        <option value="PAID_TO_TEAM">Płatne — na konto zespołu</option>
-                    </select>
-                </label>
-
-                <div id="payment-amount-wrapper" style="display:none;">
-                    <label>
-                        Kwota (PLN) *
-                        <input type="number" name="paymentAmount" step="0.01" min="0" placeholder="500.00">
-                    </label>
-                </div>
-
-                <label>
-                    Notatki
-                    <textarea name="notes" rows="3" placeholder="Dodatkowe informacje..."></textarea>
-                </label>
-
-                <div style="display:flex; gap:0.5rem; margin-top:1rem;">
-                    <button type="submit" class="primary">Utwórz wydarzenie</button>
-                    <button type="button" class="secondary"
-                            hx-get="/events/list" hx-target="#content"
-                            hx-swap="outerHTML transition:true">Anuluj</button>
-                </div>
-            </form>
+        <div class="grid">
+            <label>
+                Data *
+                <input type="date" name="date" th:value="${today}" required>
+            </label>
+            <label>
+                Godzina
+                <input type="time" name="startTime" value="18:00">
+            </label>
         </div>
-    </section>
-</main>
 
-<script>
-    // Handle payment type changes
-    document.addEventListener('DOMContentLoaded', function() {
-        var paymentTypeSelect = document.getElementById('payment-type-select');
-        var paymentAmountWrapper = document.getElementById('payment-amount-wrapper');
+        <div class="grid">
+            <label>
+                Miejsce
+                <input type="text" name="location" placeholder="Rynek, DK Psary...">
+            </label>
+            <label>
+                Typ wydarzenia
+                <select name="eventType" required>
+                    <option value="CONCERT">Koncert</option>
+                    <option value="CEREMONY">Uroczystość</option>
+                    <option value="PARADE">Parada</option>
+                    <option value="COMPETITION">Konkurs</option>
+                    <option value="FESTIVAL">Festiwal</option>
+                    <option value="OTHER">Inne</option>
+                </select>
+            </label>
+        </div>
 
-        if (paymentTypeSelect && paymentAmountWrapper) {
-            paymentTypeSelect.addEventListener('change', function() {
-                paymentAmountWrapper.style.display = this.value === 'FREE' ? 'none' : 'block';
-            });
+        <label>
+            Typ płatności
+            <select name="paymentType" id="payment-type-select" onchange="togglePaymentAmount()">
+                <option value="FREE">Granie bezpłatne</option>
+                <option value="PAID_SPLIT">Płatne — podział między grających</option>
+                <option value="PAID_TO_TEAM">Płatne — na konto zespołu</option>
+            </select>
+        </label>
 
-            // Initial state
-            paymentAmountWrapper.style.display = paymentTypeSelect.value === 'FREE' ? 'none' : 'block';
+        <label id="payment-amount-label" style="display:none;">
+            Kwota (PLN)
+            <input type="number" name="paymentAmount" id="payment-amount-input" step="0.01" min="0" placeholder="0.00">
+        </label>
+
+        <script th:inline="javascript">
+        function togglePaymentAmount() {
+            var select = document.getElementById('payment-type-select');
+            var label = document.getElementById('payment-amount-label');
+            var input = document.getElementById('payment-amount-input');
+            if (select.value === 'PAID_SPLIT' || select.value === 'PAID_TO_TEAM') {
+                label.style.display = '';
+                input.required = true;
+            } else {
+                label.style.display = 'none';
+                input.required = false;
+                input.value = '';
+            }
         }
-    });
+        </script>
 
-    // Form submit handler
+        <label>
+            Notatki
+            <textarea name="notes" rows="2" placeholder="Dodatkowe informacje..."></textarea>
+        </label>
+
+        <div style="display:flex; gap:0.5rem; margin-top:1rem;">
+            <button type="submit" class="primary">Dodaj wydarzenie</button>
+            <button type="submit" class="secondary" name="saveAndAddAnother" value="true">Zapisz i dodaj kolejny</button>
+            <button type="button" class="secondary"
+                    hx-get="/events/list" hx-target="#events-list-container"
+                    hx-swap="innerHTML transition:true">Anuluj</button>
+        </div>
+    </form>
+    <script th:inline="javascript">
+        // Show/hide payment amount field based on payment type
+        (function() {
+        var paymentSelect = document.getElementById('payment-type-select');
+        var amountLabel = document.getElementById('payment-amount-label');
+        function toggleAmount() {
+            var isPaid = paymentSelect.value === 'PAID_SPLIT' || paymentSelect.value === 'PAID_TEAM_ACCOUNT';
+            amountLabel.style.display = isPaid ? '' : 'none';
+            if (!isPaid) {
+                document.getElementById('payment-amount-input').value = '';
+            }
+        }
+        paymentSelect.addEventListener('change', toggleAmount);
+        toggleAmount();
+    })();
+
+    // Guard: prevent duplicate event listeners when form is reloaded via htmx
     function handleCreateFormSubmit(event) {
         event.preventDefault();
-        var form = event.target;
+        var form = document.getElementById('event-form');
         var formData = new FormData(form);
         var data = {};
-        formData.forEach(function(value, key) {
-            data[key] = value;
-        });
+        formData.forEach(function(value, key) { data[key] = value; });
+        var saveAndAddAnother = form.querySelector('button[name="saveAndAddAnother"]') &&
+                                form.querySelector('button[name="saveAndAddAnother"]') === document.activeElement;
 
-        // Convert paymentAmount to number if present
-        if (data.paymentAmount !== '') {
-            data.paymentAmount = parseFloat(data.paymentAmount);
-        } else {
-            delete data.paymentAmount;
-        }
-
-        fetchWithToast('/api/events', {
+        fetch('/api/events', {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(data),
-            toastMessage: 'Wydarzenie utworzone'
-        }).then(function(resp) {
-            if (resp.ok) {
-                resp.json().then(function(event) {
-                    // Navigate to event detail
-                    window.location.href = '/events/' + event.id;
-                });
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify(data)
+        }).then(function(response) {
+            return response.json();
+        }).then(function(created) {
+            var newEventId = created && created.id ? created.id : null;
+            if (saveAndAddAnother) {
+                htmx.ajax('GET', '/events/new', {target: '#events-list-container', swap: 'innerHTML transition:true'});
+            } else {
+                // Full navigation to the list with ?focus= so the shared
+                // initFocusHighlight scrolls to and highlights the new row.
+                window.location.href = '/events' + (newEventId ? '?focus=' + newEventId : '');
             }
+        }).catch(function(err) {
+            console.error('Create event error:', err);
+            Toast.error('Nie udało się utworzyć wydarzenia');
         });
         return false;
     }
 </script>
+    </div>
+    </section>
+</main>
+
+<footer th:replace="~{fragments/layout :: footer}"></footer>
+<div th:insert="~{fragments/layout :: toast-container}"></div>
+<div th:insert="~{fragments/layout :: footer-scripts}"></div>
+
+<script th:replace="~{fragments/layout :: dashboard-header-morph}"></script>
+</body>
+</html>

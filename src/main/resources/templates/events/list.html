@@ -1,12 +1,19 @@
-<!-- Events list content fragment - goes inside #content container -->
+<!DOCTYPE html>
+<html lang="pl" xmlns:th="http://www.thymeleaf.org" xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
+<head th:replace="~{fragments/layout :: head('Wydarzenia')}"></head>
+<body class="dashboard-page">
+<div th:replace="~{fragments/layout :: dialogs}"></div>
+
 <main class="container" id="content">
     <section class="dashboard-upcoming">
-        <div id="events-list-container" th:attr="data-focus-id=${focusEventId},data-focus-prefix='event'">
-            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem;">
-                <h2>🎪 Wydarzenia</h2>
-                <button hx-get="/events/new" hx-target="#events-list-container"
-                        hx-swap="innerHTML transition:true" class="primary">+ Dodaj wydarzenie</button>
-            </div>
+        <header th:replace="~{fragments/layout :: dashboard-header}"></header>
+
+    <div id="events-list-container" th:attr="data-focus-id=${focusEventId},data-focus-prefix='event'">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem;">
+            <h2>🎪 Wydarzenia</h2>
+            <button hx-get="/events/new" hx-target="#events-list-container"
+                    hx-swap="innerHTML transition:true" class="primary">+ Dodaj wydarzenie</button>
+        </div>
 
             <div th:if="${#lists.isEmpty(upcomingEvents) and #lists.isEmpty(pastEvents)}">
                 <article>
@@ -87,3 +94,11 @@
         </div>
     </section>
 </main>
+
+<footer th:replace="~{fragments/layout :: footer}"></footer>
+<div th:insert="~{fragments/layout :: toast-container}"></div>
+<div th:insert="~{fragments/layout :: footer-scripts}"></div>
+
+<script th:replace="~{fragments/layout :: dashboard-header-morph}"></script>
+</body>
+</html>

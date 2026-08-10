@@ -1,6 +1,13 @@
-<!-- System admins content fragment - goes inside #content container -->
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
+<head th:replace="~{fragments/layout :: head('Administratorzy systemu')}"></head>
+<body class="dashboard-page">
+    <div th:replace="~{fragments/layout :: dialogs}"></div>
+
 <main class="container" id="content">
     <section class="dashboard-upcoming">
+        <header th:replace="~{fragments/layout :: dashboard-header}"></header>
+
         <h2>👑 System Administratorzy</h2>
         <p class="text-muted">Zarządzaj rolami SYSTEM_ADMIN. Tylko administratorzy systemu mają dostęp do tej strony.</p>
 
@@ -38,3 +45,11 @@
         </table>
     </section>
 </main>
+
+<footer th:replace="~{fragments/layout :: footer}"></footer>
+<div th:insert="~{fragments/layout :: toast-container}"></div>
+<div th:insert="~{fragments/layout :: footer-scripts}"></div>
+
+<script th:replace="~{fragments/layout :: dashboard-header-morph}"></script>
+</body>
+</html>

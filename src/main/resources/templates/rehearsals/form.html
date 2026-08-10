@@ -1,46 +1,61 @@
-<!-- Rehearsals form content fragment - goes inside #content container -->
+<!DOCTYPE html>
+<html lang="pl" xmlns:th="http://www.thymeleaf.org" xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
+<head th:replace="~{fragments/layout :: head('Zaplanuj spotkanie')}"></head>
+<body class="dashboard-page">
+<div th:replace="~{fragments/layout :: dialogs}"></div>
+
 <main class="container" id="content">
     <section class="dashboard-upcoming">
-        <div id="rehearsals-content">
-            <h2>📅 Zaplanuj spotkanie</h2>
+        <header th:replace="~{fragments/layout :: dashboard-header}"></header>
 
-            <form id="rehearsal-form">
+    <div id="rehearsals-content">
+        <h2>📅 Zaplanuj spotkanie</h2>
 
-                <div class="grid">
-                    <label>
-                        Data *
-                        <input type="date" name="date" th:value="${today}" required>
-                    </label>
-                    <label>
-                        Godzina rozpoczęcia *
-                        <input type="time" name="startTime" value="18:00" required>
-                    </label>
-                </div>
+    <form id="rehearsal-form">
 
-                <div class="grid">
-                    <label>
-                        Godzina zakończenia
-                        <input type="time" name="endTime" value="20:00">
-                    </label>
-                    <label>
-                        Miejsce
-                        <input type="text" name="location" placeholder="Miejsce spotkania, DK Psary...">
-                    </label>
-                </div>
-
-                <label>
-                    Notatki
-                    <textarea name="notes" rows="2" placeholder="Dodatkowe informacje..."></textarea>
-                </label>
-
-                <div style="display:flex; gap:0.5rem; margin-top:1rem;">
-                    <button type="submit" class="primary">Zaplanuj</button>
-                    <button type="submit" class="secondary" name="saveAndAddAnother" value="true">Zapisz i dodaj kolejny</button>
-                    <button type="button" class="secondary"
-                            hx-get="/rehearsals/list" hx-target="#rehearsals-content"
-                            hx-swap="innerHTML transition:true">Anuluj</button>
-                </div>
-            </form>
+        <div class="grid">
+            <label>
+                Data *
+                <input type="date" name="date" th:value="${today}" required>
+            </label>
+            <label>
+                Godzina rozpoczęcia *
+                <input type="time" name="startTime" value="18:00" required>
+            </label>
         </div>
+
+        <div class="grid">
+            <label>
+                Godzina zakończenia
+                <input type="time" name="endTime" value="20:00">
+            </label>
+            <label>
+                Miejsce
+                <input type="text" name="location" placeholder="Miejsce spotkania, DK Psary...">
+            </label>
+        </div>
+
+        <label>
+            Notatki
+            <textarea name="notes" rows="2" placeholder="Dodatkowe informacje..."></textarea>
+        </label>
+
+        <div style="display:flex; gap:0.5rem; margin-top:1rem;">
+            <button type="submit" class="primary">Zaplanuj</button>
+            <button type="submit" class="secondary" name="saveAndAddAnother" value="true">Zapisz i dodaj kolejny</button>
+            <button type="button" class="secondary"
+                    hx-get="/rehearsals/list" hx-target="#rehearsals-content"
+                    hx-swap="innerHTML transition:true">Anuluj</button>
+        </div>
+    </form>
+    </div>
     </section>
 </main>
+
+<footer th:replace="~{fragments/layout :: footer}"></footer>
+<div th:insert="~{fragments/layout :: toast-container}"></div>
+<div th:insert="~{fragments/layout :: footer-scripts}"></div>
+
+<script th:replace="~{fragments/layout :: dashboard-header-morph}"></script>
+</body>
+</html>

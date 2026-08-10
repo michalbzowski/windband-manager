@@ -18,9 +18,9 @@
     <div class="login-card" style="margin-top:3rem;">
         <div class="alert-error" role="alert">
             <h3>Błąd logowania</h3>
-            <p>${msg(message.summary)!message.summary}</p>
+            <p>${msg(message.summary)}</p>
             <#if message.detail?has_content>
-                <p style="margin-top:0.5rem; font-size:0.8rem; opacity:0.8;">${msg(message.detail)!message.detail}</p>
+                <p style="margin-top:0.5rem; font-size:0.8rem; opacity:0.8;">${msg(message.detail)}</p>
             </#if>
         </div>
     </div>
@@ -29,7 +29,7 @@
 <#if message?has_content && message.type == 'warning'>
     <div class="login-card" style="margin-top:3rem;">
         <div class="alert-warning" role="alert">
-            <p>${msg(message.summary)!message.summary}</p>
+            <p>${msg(message.summary)}</p>
         </div>
     </div>
 </#if>
@@ -37,7 +37,7 @@
 <#if message?has_content && message.type == 'success'>
     <div class="login-card" style="margin-top:3rem;">
         <div class="alert-success" role="alert">
-            <p>${msg(message.summary)!message.summary}</p>
+            <p>${msg(message.summary)}</p>
         </div>
     </div>
 </#if>
