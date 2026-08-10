@@ -9,6 +9,7 @@ import org.springframework.web.bind.annotation.ModelAttribute;
 import pl.michalbzowski.windband.adapter.in.security.WindbandOidcUser;
 import pl.michalbzowski.windband.application.query.team.TeamQueryService;
 
+import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
@@ -147,6 +148,11 @@ public class TeamModelAdvice {
             }
         }
         return null;
+    }
+
+    @ModelAttribute("today")
+    public LocalDate today() {
+        return LocalDate.now();
     }
 
     /**
