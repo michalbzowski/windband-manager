@@ -179,7 +179,7 @@ WHERE date >= CAST($P{date_from} AS DATE)::TIMESTAMP
 	</field>
 	<detail>
 		<band height="470" splitType="Stretch">
-			<element kind="textField" uuid="79e70b75-b670-4364-908b-396decb476e9" x="0" y="0" width="555" height="150" fontName="Times New Roman" fontSize="12.0">
+			<element kind="textField" uuid="79e70b75-b670-4364-908b-396decb476e9" x="0" y="0" width="555" height="150" fontName="DejaVu Sans" fontSize="12.0">
 				<paragraph lineSpacing="1_1_2"/>
 				<expression><![CDATA["Zakres sprawozdawczy: od  " + new SimpleDateFormat("yyyy-MM-dd").format($P{date_from}) + " do " +  new SimpleDateFormat("yyyy-MM-dd").format($P{date_to}) 
 + "\n\n\nNazwa zespołu " + $P{band_name}
