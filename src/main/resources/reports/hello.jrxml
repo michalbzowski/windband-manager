@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- JasperReports 7.x compatible - minimal report with JRS format -->
+<jasperReport name="HelloWorld" 
+    language="java"
+    pageWidth="595" columnWidth="555" pageHeight="842" 
+    leftMargin="20" rightMargin="20" topMargin="20" bottomMargin="20">
+
+  <!-- Properties for JRS format -->
+  <property name="com.jaspersoft.studio.data.defaultdataadapter" value="band-manager-prod"/>
+  
+    <!-- Parameters -->
+    <parameter name="message" class="java.lang.String"/>
+    <parameter name="user" class="java.lang.String"/>
+    <parameter name="generatedDate" class="java.time.LocalDate"/>
+
+</jasperReport>
