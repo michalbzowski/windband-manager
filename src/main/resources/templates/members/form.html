@@ -212,7 +212,10 @@
                             }));
                         });
                         var reload = function() {
-                            htmx.ajax('GET', '/members/list?focus=' + memberId, {target: '#members-content', swap: 'innerHTML transition:true'});
+                            // Issue #95 fix: Use htmx.ajax instead of history.back() to always return to members list
+                            // with focus on the current member
+                            var url = '/members/list?focus=' + memberId;
+                            htmx.ajax('GET', url, {target: '#members-content', swap: 'innerHTML transition:true'});
                         };
                         if (attrPromises.length) {
                             Promise.all(attrPromises).then(reload);
@@ -225,12 +228,13 @@
                             var newId = body && body.id ? body.id : null;
                             if (saveAndAddAnother) {
                                 htmx.ajax('GET', '/members/new', {target: '#members-content', swap: 'innerHTML transition:true'});
-                            } else if (newId) {
-                                htmx.ajax('GET', '/members/list?focus=' + newId, {target: '#members-content', swap: 'innerHTML transition:true'});
                             } else {
-                                htmx.ajax('GET', '/members/list', {target: '#members-content', swap: 'innerHTML transition:true'});
+                                // Issue #95 fix: Use htmx.ajax instead of history.back() to return to members list
+                                var url = newId ? '/members/list?focus=' + newId : '/members/list';
+                                htmx.ajax('GET', url, {target: '#members-content', swap: 'innerHTML transition:true'});
                             }
                         }).catch(function() {
+                            // Issue #95 fix: fallback to members list instead of history.back()
                             htmx.ajax('GET', '/members/list', {target: '#members-content', swap: 'innerHTML transition:true'});
                         });
                     }

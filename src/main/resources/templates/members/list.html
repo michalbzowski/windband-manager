@@ -11,7 +11,9 @@
     <div id="members-content" th:attr="data-focus-id=${focusMemberId},data-focus-prefix='member'">
         <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem;">
             <h2>👥 Członkowie</h2>
-            <button hx-get="/members/new" hx-target="#members-content" hx-swap="innerHTML transition:true"
+            <button hx-get="/members/new" 
+                    th:hx-push-uri="@{/members/new}" 
+                    hx-target="#members-content" 
                     class="primary">+ Dodaj członka</button>
         </div>
 
@@ -66,7 +68,8 @@
                                         hx-target="#content" hx-swap="innerHTML transition:true">Szczegóły</button>
                                 <button class="outline small"
                                         th:hx-get="@{/members/{id}/edit(id=${m.id})}"
-                                        hx-target="#members-content" hx-swap="innerHTML transition:true">Edytuj</button>
+                                        hx-target="#members-content" 
+                                        th:hx-push-uri="@{/members/{id}/edit(id=${m.id})}">Edytuj</button>
                             </td>
                         </tr>
                     </tbody>
