@@ -143,6 +143,9 @@
     </form>
 
 <script th:inline="javascript">
+    // Scroll to top when this form is loaded (fixes issue #97)
+    window.scrollTo({ left: 0, top: 0, behavior: 'auto' });
+
     // Guard: prevent duplicate event listeners when form is reloaded via htmx
     if (!window._memberFormHandlerAttached) {
         window._memberFormHandlerAttached = true;
