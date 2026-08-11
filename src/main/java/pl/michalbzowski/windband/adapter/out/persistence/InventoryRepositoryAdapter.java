@@ -136,4 +136,5 @@ public class InventoryRepositoryAdapter implements InventoryRepository {
     public List<AssetAssignmentHistory> findActiveAssignments() {
         return historyRepo.findByActiveTrue();
     }
+
 }

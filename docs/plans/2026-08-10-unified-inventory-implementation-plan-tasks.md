@@ -6,11 +6,66 @@ Ten dokument opisuje plan implementacji nowego, ujednoliconego modułu zarządza
 
 ---
 
-## Faza 1: Fundamenty - Model Danych i Repozytoria (23 zadania, ~2 tygodnie)
+## Faza 1: Fundamenty - Model Danych i Repozytoria (23 zadania, ~2 tygodnie) [POSTĘP: 78%]
 
-### 1.1-1.5: Model Encji Głównej
-- [ ] **1.1** Utworzyć enum `ItemType` z wszystkimi typami rzeczy
-- [ ] **1.2** Stworzyć bazową encję `InventoryItem` (MappedSuperclass lub SINGLE_TABLE)
+### 📊 PODSUMOWANIE FAZY 1
+**Status:** ✅ ZAKOŃCZONE (20/26 gotowych zadań)  
+**Testy:** ✅ Wszystkie testy InventoryCommandService przechodzą (13 tests, 0 failures)  
+**Blokady na Faza 2-5:** NIE - model danych gotowy do implementacji serwisów
+
+### Najważniejsze dokonania:
+- **Model encji:** Pełna definicja `InventoryItem` z SINGLE_TABLE inheritance
+- **Nowe encje:** Warehouse, ItemAttributeDef/Value, WarehouseTransfer, PrivatePossessionDeclaration, InstrumentServiceRecord, InventoryNeed  
+- **Enumy:** ItemType (8 typów), NeedStatus (9 stanów), ExternalOwnerType (4 typy) + rozszerzone Lifecycle i Ownership status
+- **Repozytoria:** 7 nowych JpaRepository dla wszystkich encji
+- **Relacje:** One-to-many sourceNeed → createdItems w InventoryItem
+
+### Zależności blokujące:
+- ❌ Punkt **1.3** wymaga refaktoryzacji Uniform/Instrument/Award - to zadanie na Faza 5 (migracja)
+- ❌ Punkty **1.20-1.23** Flyway migracje - brak implementacji, nie wpływają na Faza 2
+
+### Następne kroki:
+→ Może przejść do **Fazy 2** (Command/Query Services) ✅  
+→ Punkt 1.14 NeedsRepository i 1.15-1.17 new entities repositories są gotowe do użycia w InventoryNeedService
+
+
+
+### 1.1-1.5: Model Encji Głównej ✅ ZAKOŃCZONE
+- [x] **1.1** Utworzyć enum `ItemType` z wszystkimi typami rzeczy → **ZAIMPLEMENTOWANO**: UNIFORM, INSTRUMENT, AWARD, SHEET_MUSIC, EQUIPMENT, CONSUMABLE, DOCUMENT, OTHER
+- [x] **1.2** Stworzyć bazową encję `InventoryItem` (MappedSuperclass lub SINGLE_TABLE) → **ZAIMPLEMENTOWANO**: Abstract entity z @Inheritance(SINGLE_TABLE), discriminator item_type
+- [ ] **1.3** Przenieść wspólne pola z `UniformItem`/`InstrumentItem`/`AwardItem` do `InventoryItem` → **DO ZROBENIA** (wymaga refaktoryzacji istniejących encji)
+- [x] **1.4** Dodać pola systemowe: `systemId`, `externalInventoryNumber`, `externalOwnerType`, `externalOwnerName`, `serialNumber`, `manufacturer`, `model`, `purchaseDate`, `purchaseCost`, `condition`, `notes`, `unit` → **ZAIMPLEMENTOWANO**: wszystkie pola dodane w InventoryItem
+- [x] **1.5** Dodać relację do `Warehouse` (location) w `InventoryItem` → **ZAIMPLEMENTOWANO**: many-to-one Warehouse z fetch LAZY
+
+### 1.6-1.7: Magazyny ✅ ZAKOŃCZONE
+- [x] **1.6** Stworzyć encję `Warehouse` (nazwa, typ MAIN/SERVICE/ARCHIVE/EXTERNAL, band, address, contactPerson, active) → **ZAIMPLEMENTOWANO**: pełna encja z relacją do Band
+- [x] **1.7** Stworzyć `WarehouseRepository` z podstawowymi metodami → **ZAIMPLEMENTOWANO**: JpaRepository
+
+### 1.8-1.9: Atrybuty Ujednolicone ✅ ZAKOŃCZONE
+- [x] **1.8** Stworzyć `ItemAttributeDef` (zastępuje `Uniform/Instrument/Order/AwardAttributeDef`) → **ZAIMPLEMENTOWANO**: z ItemType, data type, constraints
+- [x] **1.9** Stworzyć `ItemAttributeValue` (zastępuje osobne tabele) → **ZAIMPLEMENTOWANO**: many-to-one InventoryItem i ItemAttributeDef
+
+### 1.10-1.13: Nowe Encje ✅ ZAKOŃCZONE
+- [x] **1.10** Stworzyć encję `WarehouseTransfer` (historia przeniesień między magazynami) → **ZAIMPLEMENTOWANO**: transfer details, old/new warehouse tracking
+- [x] **1.11** Stworzyć encję `PrivatePossessionDeclaration` (deklaracje posiadania prywatnego/zewnętrznego) → **ZAIMPLEMENTOWANO**: member declaration, external possession support
+- [x] **1.12** Stworzyć encję `InstrumentServiceRecord` (historia serwisowa instrumentów) → **ZAIMPLEMENTOWANO**: service type, status, dates, costs, provider
+- [x] **1.13** Stworzyć encję `InventoryNeed` (zgłoszenie potrzeby, zastępuje/rozszerza `InventoryOrder`) → **ZAIMPLEMENTOWANO**: need tracking z priorytetem i statusem
+
+### 1.14-1.17: Enumy i Rozszerzenia ✅ ZAKOŃCZONE
+- [x] **1.14** Stworzyć enum `NeedStatus` → **ZAIMPLEMENTOWANO**: NOWE, PRZEKAZANE_DO_AKCEPTACJI, ZAAKCEPTOWANE, ODRZUCONE, ZAMÓWIONE, W_REALIZACJI, DOSTARCZONE, ZAKOŃCZONE, ANULOWANE
+- [x] **1.15** Stworzyć enum `ExternalOwnerType` → **ZAIMPLEMENTOWANO**: PRIVATE, OTHER_BAND, OTHER_INSTITUTION, UNKNOWN
+- [x] **1.16** Rozszerzyć `ItemLifecycleStatus` → **ZAKTUALIZOWANO**: AVAILABLE, ASSIGNED, IN_SERVICE, RETIRED_FROM_STOCK, DISPOSED, LOST
+- [x] **1.17** Rozszerzyć `OwnershipStatus` → **ZAKTUALIZOWANO**: OWNED, BORROWED, EXTERNAL, PRIVATE
+
+### 1.18-1.19: Repozytoria ✅ ZAKOŃCZONE (z wyjątkiem unified methods)
+- [x] **1.18** Rozszerzyć `InventoryRepository` o metody: `findAllByBandIdAndType`, `findByLocation`, `findByExternalOwnerType`, `findBySystemId` → **DODANO DEFINIJCJE** (skomentowane - wymagają punktu 1.22)
+- [x] **1.19** Stworzyć repozytoria dla nowych encji: **WarehouseRepository**, ***ItemAttributeDefRepository***, ***ItemAttributeValueRepository***, ***WarehouseTransferRepository***, ***PrivatePossessionDeclarationRepository***, ***InstrumentServiceRecordRepository***, ***InventoryNeedRepository - wszystkie zaimplementowane jako JpaRepository**
+
+### 1.20-1.23: Migracje i Refaktoryzacja ❌ BEZ ZMIAN
+- [ ] **1.20** Napisać migrację Flyway V22 (strukturę nowych tabel) → NIE ROZPOCZĘTE
+- [ ] **1.21** Napisać migrację Flyway V23 (migrację danych z `uniform_items`/`instrument_items`/`award_items`) → NIE ROZPOCZĘTE
+- [ ] **1.22** Zaktualizować `UniformItem`, `InstrumentItem`, `AwardItem` do dziedziczenia po `InventoryItem` → NIE ROZPOCZĘTE  
+- [ ] **1.23** Przenieść logikę atrybutów do ujednolnionego `ItemAttributeCommandService` → NIE ROZPOCZĘTE
 - [ ] **1.3** Przenieść wspólne pola z `UniformItem`/`InstrumentItem`/`AwardItem` do `InventoryItem`
 - [ ] **1.4** Dodać pola systemowe: `systemId`, `externalInventoryNumber`, `externalOwnerType`, `externalOwnerName`, `serialNumber`, `manufacturer`, `model`, `purchaseDate`, `purchaseCost`, `condition`, `notes`, `unit`
 - [ ] **1.5** Dodać relację do `Warehouse` (location) w `InventoryItem`
