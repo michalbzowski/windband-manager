@@ -89,7 +89,8 @@
             <form th:if="${attributeDefId != null}"
                   th:hx-put="@{/band/inventory-attributes/{id}(id=${attributeDefId})}"
                   hx-target="body"
-                  hx-swap="none">
+                  hx-swap="none"
+                  hx-trigger="submit">
                 <input type="hidden" name="inventoryType" th:value="${type}">
                 <div class="grid">
                     <label>
