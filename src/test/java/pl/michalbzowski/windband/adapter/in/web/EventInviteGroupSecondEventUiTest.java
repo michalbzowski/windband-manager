@@ -123,7 +123,8 @@ class EventInviteGroupSecondEventUiTest extends UiTestBase {
     }
 
     private void clickPowrot(WebDriverWait wait) {
-        WebElement back = driver.findElement(By.xpath("//button[contains(text(),'Powrót')]"));
+        // Powrót is now an <a> link, not a button — see fix/issue-105-past-events-navigation
+        WebElement back = driver.findElement(By.xpath("//a[contains(text(),'Powrót')]"));
         jsClick(back);
     }
 
