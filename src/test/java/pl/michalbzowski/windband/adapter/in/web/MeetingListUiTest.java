@@ -158,7 +158,7 @@ public class MeetingListUiTest extends UiTestBase {
 
         // Verify detail page loads with proper content
         WebElement title = wait.until(presenceOfElementLocated(
-                By.xpath("//h2[contains(@class, 'app-modal-header-text')] or contains(text(), 'Szczegóły')")));
+                By.xpath("//h2[contains(@class, 'app-modal-header-text') or contains(text(), 'Szczegóły')]")));
         assertThat(title.isDisplayed()).isTrue();
     }
 }
