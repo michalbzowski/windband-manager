@@ -10,25 +10,46 @@
 
         <div id="members-content" 
              th:data-show-resigned="${showingResignedMembers}"
-             data-active-count="<span th:text='${active != null ? #lists.size(active) : members != null ? #lists.size(members) : 0}'/>">
-            
+             th:append="' data-focus-id='+${focusMemberId}+\" data-focus-prefix='member'\" if ${focusMemberId != null}">
             <!-- Inline CSS styles -->
             <style>
                 .resigned-badge { background-color: #fee2e2; color: #b91c1c; padding: 0.25rem 0.75rem; border-radius: 4px; font-size: 0.875rem; }
+                
+                /* Mobile-friendly header with toggle button always visible */
+                .members-header-actions {
+                    display: flex;
+                    gap: 0.5rem;
+                    align-items: center;
+                    margin-bottom: 1rem;
+                    flex-wrap: wrap;
+                }
+                
+                @media (max-width: 768px) {
+                    .members-header-actions {
+                        flex-direction: column;
+                        align-items: stretch;
+                    }
+                    
+                    #toggleMembersBtn {
+                        order: -1; /* Show toggle first on mobile */
+                        white-space: nowrap;
+                    }
+                }
             </style>
 
-            <!-- Header with toggle button -->
-            <div style="max-width: 100%; display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
-                <h2 style="margin: 0;">👥 Członkowie</h2>
-                
-                <!-- Toggle button for Active/Resigned -->
+            <!-- Header with page title -->
+            <h2 style="margin: 0 0 0.5rem 0;">👥 Członkowie</h2>
+            
+            <!-- Action buttons row - toggle button always visible, especially on mobile -->
+            <div class="members-header-actions">
+                <!-- Toggle button for Active/Resigned - elevated priority on mobile with order: -1 -->
                 <button type="button" 
                         id="toggleMembersBtn"
                         th:classappend="${showingResignedMembers} ? 'outline' : 'primary'"
                         onclick="toggleMemberView()">
                     <span>
-                        <th:block th:if="${!showingResignedMembers}">Pokaż rezygnujących (<span th:text="${resignedCount}"/>)</th:block>
-                        <th:block th:if="${showingResignedMembers}">Aktywni członkowie</th:block>
+                        <th:block th:if="${!showingResignedMembers}">👁 Pokaż rezygnujących (<span th:text="${resignedCount}"/>)</th:block>
+                        <th:block th:if="${showingResignedMembers}">✓ Aktywni członkowie</th:block>
                     </span>
                 </button>
 

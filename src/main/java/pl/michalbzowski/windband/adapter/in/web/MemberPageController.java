@@ -34,7 +34,8 @@ public class MemberPageController {
 
     @GetMapping
     public String listPage(@ModelAttribute("activeTeamId") Long activeTeamId, Model model,
-                           @RequestParam(required = false) Boolean showResigned) {
+                           @RequestParam(required = false) Boolean showResigned,
+                           @RequestParam(required = false) Long focus) {
         boolean showingResignedMembers = Boolean.TRUE.equals(showResigned);
 
         List<MemberDto> members;
@@ -51,13 +52,15 @@ public class MemberPageController {
         model.addAttribute("showingResignedMembers", showingResignedMembers);
         model.addAttribute("resignedCount", resignedCount);
         model.addAttribute("activeTeamId", activeTeamId);
+        model.addAttribute("focusMemberId", focus);
         model.addAttribute("today", LocalDate.now());
         return "members/list";
     }
 
     @GetMapping("/list")
     public String listFragment(@ModelAttribute("activeTeamId") Long activeTeamId,
-                               @RequestParam(required = false) Boolean showResigned, Model model) {
+                               @RequestParam(required = false) Boolean showResigned,
+                               @RequestParam(required = false) Long focus, Model model) {
         boolean showingResignedMembers = Boolean.TRUE.equals(showResigned);
 
         List<MemberDto> members;
@@ -73,6 +76,7 @@ public class MemberPageController {
         model.addAttribute("showingResignedMembers", showingResignedMembers);
         model.addAttribute("resignedCount", resignedCount);
         model.addAttribute("activeTeamId", activeTeamId);
+        model.addAttribute("focusMemberId", focus);
         model.addAttribute("today", LocalDate.now());
         return "members/list :: #members-content";
     }
