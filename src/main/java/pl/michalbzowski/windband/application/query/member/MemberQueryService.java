@@ -56,6 +56,52 @@ public class MemberQueryService {
                 .toList();
     }
 
+    // New methods for inactive members (Issue #96)
+    public List<MemberDto> getAllInactiveMembers() {
+        return getAllInactiveMembers(null);
+    }
+
+    public List<MemberDto> getAllInactiveMembers(Long teamId) {
+        // Build instrument priority map (lower number = higher priority)
+        var instrumentPriorities = (teamId != null
+                ? instrumentRepository.findAllOrderBySortPriorityByBandId(teamId)
+                : instrumentRepository.findAllOrderBySortPriority()).stream()
+                .collect(Collectors.toMap(
+                        Instrument::getName,
+                        Instrument::getSortPriority,
+                        (existing, replacement) -> existing,
+                        java.util.LinkedHashMap::new
+                ));
+
+        List<Member> members = (teamId != null)
+                ? memberRepository.findAllInactiveByBandId(teamId)
+                : memberRepository.findAllInactive();
+
+        return members.stream()
+                .sorted(Comparator
+                        .<Member>comparingInt(m -> {
+                            Integer priority = m.getPrimaryInstrument()
+                                    .map(i -> instrumentPriorities.get(i.getName()))
+                                    .orElse(Integer.MAX_VALUE);
+                            return priority != null ? priority : Integer.MAX_VALUE;
+                        })
+                        .thenComparing(Member::getLastName)
+                        .thenComparing(Member::getFirstName))
+                .map(this::toDto)
+                .toList();
+    }
+
+    public long getInactiveMemberCount() {
+        return getInactiveMemberCount(null);
+    }
+
+    public long getInactiveMemberCount(Long teamId) {
+        if (teamId != null) {
+            return memberRepository.countAllInactiveByBandId(teamId);
+        }
+        return memberRepository.countAllInactive();
+    }
+
     public MemberDto getMemberById(Long id) {
         return memberRepository.findById(id)
                 .map(this::toDto)
