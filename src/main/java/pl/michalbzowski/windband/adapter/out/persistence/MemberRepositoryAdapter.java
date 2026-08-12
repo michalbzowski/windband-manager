@@ -42,6 +42,16 @@ public class MemberRepositoryAdapter implements MemberRepository {
     }
 
     @Override
+    public List<Member> findAllResigned() {
+        return springDataRepo.findByActiveFalse();
+    }
+
+    @Override
+    public List<Member> findAllResignedByBandId(Long bandId) {
+        return springDataRepo.findByActiveFalseAndBandId(bandId);
+    }
+
+    @Override
     public List<Member> findAllByBandOrderByLastNameAscFirstNameAsc(Band band) {
         return springDataRepo.findAllByBandOrderByLastNameAscFirstNameAsc(band);
     }

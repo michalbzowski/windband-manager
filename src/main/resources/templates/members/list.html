@@ -8,22 +8,50 @@
     <section class="dashboard-upcoming">
         <header th:replace="~{fragments/layout :: dashboard-header}"></header>
 
-    <div id="members-content" th:attr="data-focus-id=${focusMemberId},data-focus-prefix='member'">
-        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem;">
-            <h2>👥 Członkowie</h2>
-            <button hx-get="/members/new" 
-                    th:hx-push-uri="@{/members/new}" 
-                    hx-target="#members-content" 
-                    class="primary">+ Dodaj członka</button>
-        </div>
+        <div id="members-content" 
+             th:data-show-resigned="${showingResignedMembers}"
+             data-active-count="<span th:text='${active != null ? #lists.size(active) : members != null ? #lists.size(members) : 0}'/>">
+            
+            <!-- Inline CSS styles -->
+            <style>
+                .resigned-badge { background-color: #fee2e2; color: #b91c1c; padding: 0.25rem 0.75rem; border-radius: 4px; font-size: 0.875rem; }
+            </style>
 
-            <div th:if="${#lists.isEmpty(members)}">
+            <!-- Header with toggle button -->
+            <div style="max-width: 100%; display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+                <h2 style="margin: 0;">👥 Członkowie</h2>
+                
+                <!-- Toggle button for Active/Resigned -->
+                <button type="button" 
+                        id="toggleMembersBtn"
+                        th:classappend="${showingResignedMembers} ? 'outline' : 'primary'"
+                        onclick="toggleMemberView()">
+                    <span>
+                        <th:block th:if="${!showingResignedMembers}">Pokaż rezygnujących (<span th:text="${resignedCount}"/>)</th:block>
+                        <th:block th:if="${showingResignedMembers}">Aktywni członkowie</th:block>
+                    </span>
+                </button>
+
+                <!-- Add member button (only showing when active members are visible) -->
+                <button hx-get="/members/new" 
+                        hx-target="#content"
+                        class="primary" th:if="${!showingResignedMembers}">+ Dodaj członka</button>
+            </div>
+
+        <!-- Show resigned members list only if showingResignedMembers is true -->
+        <th:block th:if="${showingResignedMembers}">
+            <h3 style="color:#66708b; margin-bottom: 0.5rem;">
+                <span class="resigned-badge">Nieaktywni</span> członkowie (<span th:text="${#lists.size(members)}" />)
+            </h3>
+
+            <div th:if="${#lists.isEmpty(members)}" style="margin-top: 1.5rem;">
                 <article>
-                    <p>Brak członeków w systemie. Dodaj pierwszego!</p>
+                    <p style="color:#8b949e;">Brak nieaktywnych członków.</p>
                 </article>
             </div>
 
-            <div th:unless="${#lists.isEmpty(members)}">
+            <!-- Resigned members table -->
+            <th:block th:unless="${#lists.isEmpty(members)}">
                 <table role="grid" id="members-table">
                     <thead>
                         <tr>
@@ -37,14 +65,15 @@
                         </tr>
                     </thead>
                     <tbody>
-                        <tr th:each="m : ${members}" th:attr="data-member-id=${m.id},id=${'member-' + m.id}">
+                        <tr th:each="m : ${members}" th:data-member-id="${m.id}" th:id="'member-' + m.id">
                             <td data-label="Imię i nazwisko">
                                 <a th:href="@{/members/{id}/detail(id=${m.id})}"
-                                   hx-target="#content" hx-swap="innerHTML transition:true"
-                                   style="text-decoration:none; color:inherit; font-weight:600;"
+                                   style="text-decoration: none; color: inherit; font-weight: 600;"
+                                   hx-target="#content" 
+                                   hx-swap="innerHTML transition:true"
                                    th:text="${m.firstName} + ' ' + ${m.lastName}">Jan Kowalski</a>
                             </td>
-                            <td data-label="Wiek" th:text="${m.age}">35</td>
+                            <td data-label="Wiek"><span th:text="${m.age}">35</span></td>
                             <td data-label="Instrument">
                                 <span th:if="${m.primaryInstrument}" th:text="${m.primaryInstrument}" class="instrument-badge">Trąbka</span>
                                 <span th:if="${m.allInstruments != null && m.allInstruments.size() > 1}">
@@ -52,36 +81,137 @@
                                 </span>
                             </td>
                             <td data-label="Kontakt">
-                                <small th:if="${m.email}" th:text="${m.email}">jan@email.pl</small>
-                                <br th:if="${m.email != null && m.phone != null}">
-                                <small th:if="${m.phone}" th:text="${m.phone}">123456789</small>
+                                <span th:if="${m.email}" th:text="${m.email}" style="display:block;">jan@email.pl</span>
+                                <br th:if="${m.email != null && m.phone != null}"><!-- -->
+                                <span th:if="${m.phone}" th:text="${m.phone}" style="display:block; color:#5c6f82;">123456789</span>
                             </td>
                             <td data-label="Dołączył">
                                 <small th:if="${m.joinedDate}" th:text="${#temporals.format(m.joinedDate, 'dd-MM-yyyy')}">01-01-2024</small>
                             </td>
                             <td data-label="Rezygnacja">
-                                <small th:if="${m.resignedDate}" th:text="${#temporals.format(m.resignedDate, 'dd-MM-yyyy')}">01-01-2025</small>
+                                <span class="resigned-badge"><th:block th:if="${m.resignedDate}" th:text="${#temporals.format(m.resignedDate, 'dd-MM-yyyy')}"/><th:block th:unless="${m.resignedDate}">Bez daty</th:block></span>
                             </td>
-                            <td data-label="Akcje">
-                                <button class="outline small"
-                                        th:hx-get="@{/members/{id}/detail(id=${m.id})}"
-                                        hx-target="#content" hx-swap="innerHTML transition:true">Szczegóły</button>
-                                <button class="outline small"
-                                        th:hx-get="@{/members/{id}/edit(id=${m.id})}"
-                                        hx-target="#members-content" 
-                                        th:hx-push-uri="@{/members/{id}/edit(id=${m.id})}">Edytuj</button>
+                            <td data-label="Akcje" style="min-width: 7rem;">
+                                <button class="outline small" 
+                                        hx-target="#content" 
+                                        hx-swap="innerHTML transition:true"
+                                        th:hx-get="@{/members/{id}/detail(id=${m.id})}">Szczegóły</button>
+                                <!-- No Edit button for resigned members, only view -->
                             </td>
                         </tr>
                     </tbody>
                 </table>
+            </th:block>
+        </th:block>
+
+        <!-- Show active members list by default (when showingResignedMembers is false/null) -->
+        <th:block th:unless="${showingResignedMembers}">
+            
+            <div th:if="${#lists.isEmpty(members)}">
+                <article style="margin-top: 1.5rem;">
+                    <p style="color:#8b949e;">Brak aktywnych członków. Dodaj pierwszego!</p>
+                </article>
             </div>
-        </div>
+
+            <!-- Active members table -->
+            <th:block th:unless="${#lists.isEmpty(members)}">
+                <h3 style="color:#66708b; margin-bottom: 0.5rem;">
+                    Aktywni członkowie (<span th:text="${#lists.size(members)}" />)
+                </h3>
+
+                <table role="grid" id="members-table">
+                    <thead>
+                        <tr>
+                            <th>Imię i nazwisko</th>
+                            <th>Wiek</th>
+                            <th>Instrument</th>
+                            <th>Kontakt</th>
+                            <th>Dołączył</th>
+                            <th>Akcje</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr th:each="m : ${members}" th:data-member-id="${m.id}" th:id="'member-' + m.id">
+                            <td data-label="Imię i nazwisko">
+                                <a th:href="@{/members/{id}/detail(id=${m.id})}"
+                                   style="text-decoration: none; color: inherit; font-weight: 600;"
+                                   hx-target="#content" 
+                                   hx-swap="innerHTML transition:true"
+                                   th:text="${m.firstName} + ' ' + ${m.lastName}">Jan Kowalski</a>
+                            </td>
+                            <td data-label="Wiek"><span th:text="${m.age}">35</span></td>
+                            <td data-label="Instrument">
+                                <span th:if="${m.primaryInstrument}" th:text="${m.primaryInstrument}" class="instrument-badge">Trąbka</span>
+                                <span th:if="${m.allInstruments != null && m.allInstruments.size() > 1}">
+                                    <small th:text="' +' + ${m.allInstruments.size() - 1}">+2</small>
+                                </span>
+                            </td>
+                            <td data-label="Kontakt">
+                                <span th:if="${m.email}" th:text="${m.email}" style="display:block;">jan@email.pl</span>
+                                <br th:if="${m.email != null && m.phone != null}"><!-- -->
+                                <span th:if="${m.phone}" th:text="${m.phone}" style="display:block; color:#5c6f82;">123456789</span>
+                            </td>
+                            <td data-label="Dołączył" style="min-width: 8rem;">
+                                <small th:if="${m.joinedDate}" th:text="${#temporals.format(m.joinedDate, 'dd-MM-yyyy')}">01-01-2024</small>
+                            </td>
+                            <td data-label="Akcje" style="min-width: 7rem;">
+                                <button class="outline small" 
+                                        hx-target="#content" 
+                                        hx-swap="innerHTML transition:true"
+                                        th:hx-get="@{/members/{id}/detail(id=${m.id})}">Szczegóły</button>
+                                <button class="outline small" 
+                                        hx-target="#active-memberstable-content" 
+                                        th:hx-push-uri="@{/members/{id}/edit(id=${m.id})}"
+                                        th:hx-get="@{/members/{id}/edit(id=${m.id})}">Edytuj</button>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </th:block>
+        </th:block>
+
     </section>
 </main>
 
 <footer th:replace="~{fragments/layout :: footer}"></footer>
 <div th:insert="~{fragments/layout :: toast-container}"></div>
 <div th:insert="~{fragments/layout :: footer-scripts}"></div>
+
+<!-- Toggle functionality for member view -->
+<script type="text/javascript">
+(function() {
+    'use strict';
+    
+    // Initialize showingResignedMembers state from server
+    var isShowingResigned = <th:block th:text="${showingResignedMembers ? 'true' : 'false'}"/>;
+
+    function toggleMemberView() {
+        event.preventDefault();
+        
+        var newShowState = !isShowingResigned;
+        isShowingResigned = newShowState;
+        
+        // Use HTMX to fetch new view without full page reload
+        htmx.ajax('GET', '/members/list?showResigned=' + newShowState, {
+            target: '#members-content', 
+            swap: 'innerHTML transition:true'
+        });
+    }
+
+    document.getElementById('toggleMembersBtn').addEventListener('click', toggleMemberView);
+    
+})();
+</script>
+
+<!-- Add keyboard shortcut for toggling -->
+<script type="text/javascript">
+document.addEventListener('keydown', function(e) {
+    if ((e.ctrlKey || e.metaKey) && e.key === 't') {
+        // Ctrl+T or Cmd+T to toggle active/resigned members
+        document.getElementById('toggleMembersBtn').click();
+    }
+});
+</script>
 
 <script th:replace="~{fragments/layout :: dashboard-header-morph}"></script>
 </body>

@@ -34,24 +34,48 @@ public class MemberPageController {
 
     @GetMapping
     public String listPage(@ModelAttribute("activeTeamId") Long activeTeamId, Model model,
-                           @RequestParam(required = false) Long focus) {
-        model.addAttribute("members", memberQueryService.getAllActiveMembers(activeTeamId));
+                           @RequestParam(required = false) Boolean showResigned) {
+        boolean showingResignedMembers = Boolean.TRUE.equals(showResigned);
+
+        List<MemberDto> members;
+        long resignedCount = memberQueryService.getAllResignedMembers(activeTeamId).size();
+
+        if (showingResignedMembers) {
+            model.addAttribute("active", memberQueryService.getAllActiveMembers(activeTeamId));
+            members = memberQueryService.getAllResignedMembers(activeTeamId);
+        } else {
+            members = memberQueryService.getAllActiveMembers(activeTeamId);
+        }
+
+        model.addAttribute("members", members);
+        model.addAttribute("showingResignedMembers", showingResignedMembers);
+        model.addAttribute("resignedCount", resignedCount);
         model.addAttribute("activeTeamId", activeTeamId);
-        model.addAttribute("focusMemberId", focus);
         model.addAttribute("today", LocalDate.now());
         return "members/list";
     }
 
     @GetMapping("/list")
     public String listFragment(@ModelAttribute("activeTeamId") Long activeTeamId,
-                               @RequestParam(required = false) Long focus, Model model) {
-        model.addAttribute("members", memberQueryService.getAllActiveMembers(activeTeamId));
+                               @RequestParam(required = false) Boolean showResigned, Model model) {
+        boolean showingResignedMembers = Boolean.TRUE.equals(showResigned);
+
+        List<MemberDto> members;
+        long resignedCount = memberQueryService.getAllResignedMembers(activeTeamId).size();
+
+        if (showingResignedMembers) {
+            members = memberQueryService.getAllResignedMembers(activeTeamId);
+        } else {
+            members = memberQueryService.getAllActiveMembers(activeTeamId);
+        }
+
+        model.addAttribute("members", members);
+        model.addAttribute("showingResignedMembers", showingResignedMembers);
+        model.addAttribute("resignedCount", resignedCount);
         model.addAttribute("activeTeamId", activeTeamId);
-        model.addAttribute("focusMemberId", focus);
         model.addAttribute("today", LocalDate.now());
         return "members/list :: #members-content";
     }
-
     @GetMapping("/new")
     public String newMemberForm(@ModelAttribute("activeTeamId") Long activeTeamId, Model model,
                                 jakarta.servlet.http.HttpServletRequest request) {

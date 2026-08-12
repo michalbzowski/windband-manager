@@ -15,6 +15,10 @@ public interface MemberRepository {
 
     List<Member> findAllActive();
 
+    List<Member> findAllResigned();
+
+    List<Member> findAllResignedByBandId(Long bandId);
+
     List<Member> findAllActiveByBandId(Long bandId);
 
     // FIXED: Use proper method name with Band object parameter

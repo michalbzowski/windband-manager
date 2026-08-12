@@ -27,10 +27,20 @@ public class MemberQueryService {
     }
 
     public List<MemberDto> getAllActiveMembers(Long teamId) {
+        return getMembersById(teamId, true);
+    }
+
+    public List<MemberDto> getAllResignedMembers(Long teamId) {
+        return getMembersById(teamId, false);
+    }
+
+    private List<MemberDto> getMembersById(Long teamId, boolean active) {
         // Build instrument priority map (lower number = higher priority)
-        var instrumentPriorities = (teamId != null
+        var instruments = (teamId != null
                 ? instrumentRepository.findAllOrderBySortPriorityByBandId(teamId)
-                : instrumentRepository.findAllOrderBySortPriority()).stream()
+                : instrumentRepository.findAllOrderBySortPriority());
+
+        var instrumentPriorities = instruments.stream()
                 .collect(Collectors.toMap(
                         Instrument::getName,
                         Instrument::getSortPriority,
@@ -38,9 +48,14 @@ public class MemberQueryService {
                         java.util.LinkedHashMap::new
                 ));
 
-        List<Member> members = (teamId != null)
-                ? memberRepository.findAllActiveByBandId(teamId)
-                : memberRepository.findAllActive();
+        List<Member> members;
+        if (teamId != null) {
+            members = active ? memberRepository.findAllActiveByBandId(teamId)
+                             : memberRepository.findAllResignedByBandId(teamId);
+        } else {
+            members = active ? memberRepository.findAllActive()
+                             : memberRepository.findAllResigned();
+        }
 
         return members.stream()
                 .sorted(Comparator
