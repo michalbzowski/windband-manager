@@ -377,6 +377,48 @@
             }
         }
     });
+
+        // === DELETE EVENT MODAL HANDLERS ===
+        var deleteBtn = document.getElementById('delete-event-btn');
+        if (deleteBtn) {
+            deleteBtn.addEventListener('click', function() {
+                openAppModal('delete-event-modal');
+            });
+        }
+
+        var confirmDeleteBtn = document.getElementById('delete-event-confirm-btn');
+        if (confirmDeleteBtn) {
+            confirmDeleteBtn.addEventListener('click', async function() {
+                try {
+                    var modal = document.getElementById('delete-event-modal');
+                    closeAppModal(modal);
+
+                    const eventId = document.querySelector('#events-content').getAttribute('data-event-id');
+                    
+                    const response = await fetch(`/api/events/${eventId}`, {
+                        method: 'DELETE',
+                        headers: {'Content-Type': 'application/json'}
+                    });
+
+                    if (response.ok) {
+                        window.location.href = '/events';
+                    } else {
+                        showToast('Błąd podczas usuwania wydarzenia', 'error');
+                    }
+                } catch (error) {
+                    console.error('Error deleting event:', error);
+                    showToast('Wystąpił błąd podczas usuwania', 'error');
+                }
+            });
+        }
+
+        var cancelDeleteBtn = document.getElementById('delete-event-cancel-btn');
+        if (cancelDeleteBtn) {
+            cancelDeleteBtn.addEventListener('click', function() {
+                var modal = document.getElementById('delete-event-modal');
+                closeAppModal(modal);
+            });
+        }
 </script>
 </body>
 </html>
