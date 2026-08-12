@@ -118,7 +118,7 @@ class EventInviteGroupSecondEventUiTest extends UiTestBase {
 
     private void clickSzczegoly(WebDriverWait wait, Long eventId) {
         WebElement row = driver.findElement(By.id("event-" + eventId));
-        WebElement btn = row.findElement(By.xpath(".//button[contains(text(),'Szczegóły')]"));
+        WebElement btn = row.findElement(By.xpath(".//a[contains(text(),'Szczegóły')]"));
         jsClick(btn);
     }
 

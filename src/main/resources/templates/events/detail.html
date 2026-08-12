@@ -177,15 +177,12 @@
     </table>
 
     <div style="margin-top:1rem; display:flex; gap:0.5rem;">
-        <button type="button" class="secondary"
-                hx-get="/events/list" hx-target="#content"
-                hx-swap="outerHTML transition:true">Powrót</button>
-        <button type="button" class="outline"
-                th:hx-get="@{/events/{id}/edit(id=${event.id})}"
-                hx-target="#content"
-                hx-swap="outerHTML transition:true">✏️ Edytuj</button>
+        <a href="/events/list" class="secondary" style="text-decoration:none; cursor:pointer;">← Powrót</a>
+        <button type="button" class="outline" id="edit-event-btn" title="Edytuj wydarzenie">✏️ Edytuj</button>
         <button type="button" class="outline danger" id="delete-event-btn">🗑️ Usuń wydarzenie</button>
     </div>
+    
+    <input type="hidden" id="event-edit-url" th:value="@{/events/{id}/edit(id=${event.id})}">
 
 <dialog id="invite-members-modal" class="app-modal">
     <div class="app-modal-content">
@@ -417,6 +414,15 @@
             cancelDeleteBtn.addEventListener('click', function() {
                 var modal = document.getElementById('delete-event-modal');
                 closeAppModal(modal);
+            });
+        }
+
+        // Edit button handler
+        var editBtn = document.getElementById('edit-event-btn');
+        if (editBtn) {
+            editBtn.addEventListener('click', function() {
+                var editUrl = document.getElementById('event-edit-url').value;
+                window.location.href = editUrl;
             });
         }
 </script>

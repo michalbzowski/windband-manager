@@ -54,7 +54,7 @@ class EventParticipationInstrumentUiTest extends UiTestBase {
         wait.until(ExpectedConditions.presenceOfElementLocated(By.id("events-list-container")));
 
         // 2. Click first "Szczegóły" button to open event detail
-        var detailBtns = driver.findElements(By.xpath("//button[contains(text(), 'Szczegóły')]"));
+        var detailBtns = driver.findElements(By.xpath("//a[contains(text(), 'Szczegóły')]"));
         assertThat(detailBtns).isNotEmpty();
         var firstDetailBtn = detailBtns.get(0);
         ((org.openqa.selenium.JavascriptExecutor) driver).executeScript("arguments[0].scrollIntoView({block: 'center'});", firstDetailBtn);
