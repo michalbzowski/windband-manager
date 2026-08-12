@@ -45,10 +45,7 @@
                                 <span th:text="${e.confirmedCount} + ' ✅ / ' + ${e.declinedCount} + ' ❌ / ' + ${e.noResponseCount} + ' ?'">5 ✅ / 2 ❌ / 8 ?</span>
                             </td>
                             <td data-label="Akcje">
-                                <button class="outline small"
-                                        th:hx-get="@{/events/{id}(id=${e.id})}"
-                                        hx-target="#events-list-container"
-                                        hx-swap="innerHTML transition:true">Szczegóły</button>
+                                <a th:href="@{/events/{id}(id=${e.id})}" class="outline small" style="text-decoration:none; display:inline-block;">📋 Szczegóły</a>
                             </td>
                         </tr>
                     </tbody>
@@ -82,10 +79,7 @@
                                 <span th:text="${e.confirmedCount} + ' ✅ / ' + ${e.declinedCount} + ' ❌ / ' + ${e.noResponseCount} + ' ?'">5 ✅ / 2 ❌ / 8 ?</span>
                             </td>
                             <td data-label="Akcje">
-                                <button class="outline small"
-                                        th:hx-get="@{/events/{id}(id=${e.id})}"
-                                        hx-target="#events-list-container"
-                                        hx-swap="innerHTML transition:true">Szczegóły</button>
+                                <a th:href="@{/events/{id}(id=${e.id})}" class="outline small" style="text-decoration:none; display:inline-block;">📋 Szczegóły</a>
                             </td>
                         </tr>
                     </tbody>

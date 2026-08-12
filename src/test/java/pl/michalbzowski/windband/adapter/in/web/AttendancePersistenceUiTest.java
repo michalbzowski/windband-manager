@@ -201,7 +201,7 @@ class AttendancePersistenceUiTest extends UiTestBase {
         // Open event detail via list (HTMX fragment)
         driver.get(baseUrl() + "/events");
         wait.until(ExpectedConditions.presenceOfElementLocated(By.id("events-list-container")));
-        var detailBtns = driver.findElements(By.xpath("//button[contains(text(), 'Szczegóły')]"));
+        var detailBtns = driver.findElements(By.xpath("//a[contains(text(), 'Szczegóły')]"));
         System.out.println("[TEST] eventResponse: URL=" + driver.getCurrentUrl()
                 + " detailBtns=" + detailBtns.size()
                 + " containerChildren=" + driver.findElements(By.cssSelector("#events-list-container *")).size()
@@ -254,7 +254,7 @@ class AttendancePersistenceUiTest extends UiTestBase {
         // --- Reload event detail (via list, HTMX swap) and ASSERT 2: persisted as CONFIRMED ---
         driver.get(baseUrl() + "/events");
         wait.until(ExpectedConditions.presenceOfElementLocated(By.id("events-list-container")));
-        var reloadBtns = driver.findElements(By.xpath("//button[contains(text(), 'Szczegóły')]"));
+        var reloadBtns = driver.findElements(By.xpath("//a[contains(text(), 'Szczegóły')]"));
         assertThat(reloadBtns).isNotEmpty();
         reloadBtns.get(0).click();
         wait.until(ExpectedConditions.presenceOfElementLocated(

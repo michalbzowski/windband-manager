@@ -50,10 +50,10 @@ class EventInviteModalUiTest extends UiTestBase {
         // The form does a full navigation to /events?focus=<id>; wait for the list to
         // reload with the new event (the Szczegóły button only exists on the list view).
         wait.until(ExpectedConditions.presenceOfElementLocated(
-                By.xpath("//button[contains(text(), 'Szczegóły')]")));
+                By.xpath("//a[contains(text(), 'Szczegóły')]")));
 
         // --- Open event detail (JS click: avoid overlay/scroll interception in full suite) ---
-        jsClick(driver.findElement(By.xpath("//button[contains(text(), 'Szczegóły')]")));
+        jsClick(driver.findElement(By.xpath("//a[contains(text(), 'Szczegóły')]")));
         wait.until(ExpectedConditions.presenceOfElementLocated(By.id("open-invite-modal-btn")));
 
         // --- Open the invite modal (JS click: the button sits under the sticky top nav) ---
