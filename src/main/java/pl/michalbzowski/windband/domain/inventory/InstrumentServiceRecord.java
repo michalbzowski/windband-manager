@@ -102,20 +102,60 @@ public class InstrumentServiceRecord {
     @JoinColumn(name = "band_id", nullable = false)
     private Band band;
 
-    public InstrumentServiceRecord(InventoryItem instrument, ServiceType serviceType,
+    /**
+     * Factory method to create a new InstrumentServiceRecord with validation.
+     *
+     * @param instrument the inventory item (must be type INSTRUMENT)
+     * @param serviceType the type of service/maintenance
+     * @param serviceDate when the service is scheduled
+     * @param serviceProvider shop/technician name
+     * @param description what will be done
+     * @param requestedBy who requested this service
+     * @param band the band owning this instrument
+     * @return new InstrumentServiceRecord instance
+     * @throws IllegalArgumentException if instrument is null or not type INSTRUMENT, or required params are missing
+     */
+    public static InstrumentServiceRecord create(InventoryItem instrument, ServiceType serviceType,
                                     LocalDate serviceDate, String serviceProvider,
                                     String description, AppUser requestedBy, Band band) {
-        this.instrument = Objects.requireNonNull(instrument, "instrument required");
-        if (instrument.getType() != ItemType.INSTRUMENT) {
-            throw new IllegalArgumentException("InstrumentServiceRecord only for INSTRUMENT type items");
+        // Validate all inputs first (before object construction)
+        if (instrument == null) {
+            throw new IllegalArgumentException("instrument required");
         }
-        this.serviceType = Objects.requireNonNull(serviceType, "serviceType required");
-        this.serviceDate = Objects.requireNonNull(serviceDate, "serviceDate required");
-        this.serviceProvider = Objects.requireNonNull(serviceProvider, "serviceProvider required");
-        this.description = Objects.requireNonNull(description, "description required");
-        this.requestedBy = Objects.requireNonNull(requestedBy, "requestedBy required");
-        this.band = Objects.requireNonNull(band, "band required");
-        this.status = ServiceStatus.SCHEDULED;
+        if (instrument.getType() != ItemType.INSTRUMENT) {
+            throw new IllegalArgumentException(
+                "InstrumentServiceRecord only for INSTRUMENT type items, got: " + instrument.getType());
+        }
+        if (serviceType == null) {
+            throw new IllegalArgumentException("serviceType required");
+        }
+        if (serviceDate == null) {
+            throw new IllegalArgumentException("serviceDate required");
+        }
+        if (serviceProvider == null || serviceProvider.isBlank()) {
+            throw new IllegalArgumentException("serviceProvider required");
+        }
+        if (description == null || description.isBlank()) {
+            throw new IllegalArgumentException("description required");
+        }
+        if (requestedBy == null) {
+            throw new IllegalArgumentException("requestedBy required");
+        }
+        if (band == null) {
+            throw new IllegalArgumentException("band required");
+        }
+
+        // All validation passed - safe to construct via protected no-args constructor from Lombok
+        InstrumentServiceRecord record = new InstrumentServiceRecord();
+        record.instrument = instrument;
+        record.serviceType = serviceType;
+        record.serviceDate = serviceDate;
+        record.serviceProvider = serviceProvider;
+        record.description = description;
+        record.requestedBy = requestedBy;
+        record.band = band;
+        record.status = ServiceStatus.SCHEDULED;
+        return record;
     }
 
     public void approve(AppUser approver) {
