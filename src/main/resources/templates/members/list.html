@@ -10,7 +10,7 @@
 
         <div id="members-content" 
              th:data-show-resigned="${showingResignedMembers}"
-             th:append="' data-focus-id='+${focusMemberId}+\" data-focus-prefix='member'\" if ${focusMemberId != null}">
+             th:data-focus-id="${focusMemberId}">
             <!-- Inline CSS styles -->
             <style>
                 .resigned-badge { background-color: #fee2e2; color: #b91c1c; padding: 0.25rem 0.75rem; border-radius: 4px; font-size: 0.875rem; }
@@ -86,7 +86,9 @@
                         </tr>
                     </thead>
                     <tbody>
-                        <tr th:each="m : ${members}" th:data-member-id="${m.id}" th:id="'member-' + m.id">
+                        <tr th:each="m : ${members}" 
+                            th:id="'member-' + m.id"
+                            th:data-member-id="${m.id}">
                             <td data-label="Imię i nazwisko">
                                 <a th:href="@{/members/{id}/detail(id=${m.id})}"
                                    style="text-decoration: none; color: inherit; font-weight: 600;"
@@ -116,7 +118,7 @@
                                 <button class="outline small" 
                                         hx-target="#content" 
                                         hx-swap="innerHTML transition:true"
-                                        th:hx-get="@{/members/{id}/detail(id=${m.id})}">Szczegóły</button>
+                                        th:href="@{/members/{id}/detail(id=${m.id})}">Szczegóły</button>
                                 <!-- No Edit button for resigned members, only view -->
                             </td>
                         </tr>
@@ -152,7 +154,9 @@
                         </tr>
                     </thead>
                     <tbody>
-                        <tr th:each="m : ${members}" th:data-member-id="${m.id}" th:id="'member-' + m.id">
+                        <tr th:each="m : ${members}" 
+                            th:id="'member-' + m.id"
+                            th:data-member-id="${m.id}">
                             <td data-label="Imię i nazwisko">
                                 <a th:href="@{/members/{id}/detail(id=${m.id})}"
                                    style="text-decoration: none; color: inherit; font-weight: 600;"
@@ -179,9 +183,9 @@
                                 <button class="outline small" 
                                         hx-target="#content" 
                                         hx-swap="innerHTML transition:true"
-                                        th:hx-get="@{/members/{id}/detail(id=${m.id})}">Szczegóły</button>
+                                        th:href="@{/members/{id}/detail(id=${m.id})}">Szczegóły</button>
                                 <button class="outline small" 
-                                        hx-target="#active-memberstable-content" 
+                                        hx-target="#members-content" 
                                         th:hx-push-uri="@{/members/{id}/edit(id=${m.id})}"
                                         th:hx-get="@{/members/{id}/edit(id=${m.id})}">Edytuj</button>
                             </td>
@@ -203,24 +207,19 @@
 (function() {
     'use strict';
     
-    // Initialize showingResignedMembers state from server
-    var isShowingResigned = <th:block th:text="${showingResignedMembers ? 'true' : 'false'}"/>;
-
     function toggleMemberView() {
         event.preventDefault();
         
-        var newShowState = !isShowingResigned;
-        isShowingResigned = newShowState;
+        var contentDiv = document.getElementById('members-content');
+        var isShowingResigned = contentDiv.getAttribute('data-show-resigned') === 'true';
         
-        // Use HTMX to fetch new view without full page reload
-        htmx.ajax('GET', '/members/list?showResigned=' + newShowState, {
+        htmx.ajax('GET', '/members/list?showInactive=' + (!isShowingResigned), {
             target: '#members-content', 
             swap: 'innerHTML transition:true'
         });
     }
-
-    document.getElementById('toggleMembersBtn').addEventListener('click', toggleMemberView);
     
+    document.getElementById('toggleMembersBtn').addEventListener('click', toggleMemberView);
 })();
 </script>
 

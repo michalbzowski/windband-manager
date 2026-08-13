@@ -15,9 +15,13 @@ public interface MemberRepository {
 
     List<Member> findAllActive();
 
-    List<Member> findAllResigned();
+    List<Member> findAllInactive();
 
-    List<Member> findAllResignedByBandId(Long bandId);
+    List<Member> findAllInactiveByBandId(Long bandId);
+
+    long countAllInactive();
+
+    long countAllInactiveByBandId(Long bandId);
 
     List<Member> findAllActiveByBandId(Long bandId);
 

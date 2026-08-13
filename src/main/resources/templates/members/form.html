@@ -136,9 +136,7 @@
             <button type="submit" class="primary" th:text="${member.id() != null ? 'Zapisz zmiany' : 'Dodaj członka'}">Dodaj</button>
             <button type="submit" class="secondary" name="saveAndAddAnother" value="true" th:if="${member.id() == null}"
                     th:text="'Zapisz i dodaj kolejny'">Zapisz i dodaj kolejny</button>
-            <button type="button" class="secondary"
-                    th:attr="hx-get=@{/members/list(focus=${member.id()})}" hx-target="#members-content"
-                    hx-swap="innerHTML transition:true">Anuluj</button>
+            <a href="/members/list" style="display:inline-block; padding:0.5rem 1rem; border-radius:var(--pico-border-radius); text-decoration:none; background:transparent; color:inherit; border:2px solid var(--pico-muted-border-color);" class="secondary">Anuluj</a>
         </div>
     </form>
 
@@ -212,8 +210,7 @@
                             }));
                         });
                         var reload = function() {
-                            // Issue #95 fix: Use htmx.ajax instead of history.back() to always return to members list
-                            // with focus on the current member
+                            // After saving edits: return to members list with focus on the current member
                             var url = '/members/list?focus=' + memberId;
                             htmx.ajax('GET', url, {target: '#members-content', swap: 'innerHTML transition:true'});
                         };
@@ -229,12 +226,12 @@
                             if (saveAndAddAnother) {
                                 htmx.ajax('GET', '/members/new', {target: '#members-content', swap: 'innerHTML transition:true'});
                             } else {
-                                // Issue #95 fix: Use htmx.ajax instead of history.back() to return to members list
+                                // After creating new member: return to members list with optional focus on the new member
                                 var url = newId ? '/members/list?focus=' + newId : '/members/list';
                                 htmx.ajax('GET', url, {target: '#members-content', swap: 'innerHTML transition:true'});
                             }
                         }).catch(function() {
-                            // Issue #95 fix: fallback to members list instead of history.back()
+                            // On error: fallback to members list
                             htmx.ajax('GET', '/members/list', {target: '#members-content', swap: 'innerHTML transition:true'});
                         });
                     }

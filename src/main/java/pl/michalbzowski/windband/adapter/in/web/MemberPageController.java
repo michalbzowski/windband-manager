@@ -34,23 +34,23 @@ public class MemberPageController {
 
     @GetMapping
     public String listPage(@ModelAttribute("activeTeamId") Long activeTeamId, Model model,
-                           @RequestParam(required = false) Boolean showResigned,
+                           @RequestParam(required = false) Boolean showInactive,
                            @RequestParam(required = false) Long focus) {
-        boolean showingResignedMembers = Boolean.TRUE.equals(showResigned);
+        boolean showingInactiveMembers = Boolean.TRUE.equals(showInactive);
 
         List<MemberDto> members;
-        long resignedCount = memberQueryService.getAllResignedMembers(activeTeamId).size();
+        long inactiveCount = memberQueryService.getAllInactiveMembers(activeTeamId).size();
 
-        if (showingResignedMembers) {
+        if (showingInactiveMembers) {
             model.addAttribute("active", memberQueryService.getAllActiveMembers(activeTeamId));
-            members = memberQueryService.getAllResignedMembers(activeTeamId);
+            members = memberQueryService.getAllInactiveMembers(activeTeamId);
         } else {
             members = memberQueryService.getAllActiveMembers(activeTeamId);
         }
 
         model.addAttribute("members", members);
-        model.addAttribute("showingResignedMembers", showingResignedMembers);
-        model.addAttribute("resignedCount", resignedCount);
+        model.addAttribute("showingResignedMembers", showingInactiveMembers); // Backend: inactive, UI display: resigned
+        model.addAttribute("resignedCount", inactiveCount);
         model.addAttribute("activeTeamId", activeTeamId);
         model.addAttribute("focusMemberId", focus);
         model.addAttribute("today", LocalDate.now());
@@ -59,22 +59,22 @@ public class MemberPageController {
 
     @GetMapping("/list")
     public String listFragment(@ModelAttribute("activeTeamId") Long activeTeamId,
-                               @RequestParam(required = false) Boolean showResigned,
+                               @RequestParam(required = false) Boolean showInactive,
                                @RequestParam(required = false) Long focus, Model model) {
-        boolean showingResignedMembers = Boolean.TRUE.equals(showResigned);
+        boolean showingInactiveMembers = Boolean.TRUE.equals(showInactive);
 
         List<MemberDto> members;
-        long resignedCount = memberQueryService.getAllResignedMembers(activeTeamId).size();
+        long inactiveCount = memberQueryService.getAllInactiveMembers(activeTeamId).size();
 
-        if (showingResignedMembers) {
-            members = memberQueryService.getAllResignedMembers(activeTeamId);
+        if (showingInactiveMembers) {
+            members = memberQueryService.getAllInactiveMembers(activeTeamId);
         } else {
             members = memberQueryService.getAllActiveMembers(activeTeamId);
         }
 
         model.addAttribute("members", members);
-        model.addAttribute("showingResignedMembers", showingResignedMembers);
-        model.addAttribute("resignedCount", resignedCount);
+        model.addAttribute("showingResignedMembers", showingInactiveMembers); // Backend: inactive, UI display: resigned
+        model.addAttribute("resignedCount", inactiveCount);
         model.addAttribute("activeTeamId", activeTeamId);
         model.addAttribute("focusMemberId", focus);
         model.addAttribute("today", LocalDate.now());
