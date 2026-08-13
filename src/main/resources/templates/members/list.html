@@ -10,7 +10,8 @@
 
         <div id="members-content" 
              th:data-show-resigned="${showingResignedMembers}"
-             th:data-focus-id="${focusMemberId}">
+             th:data-focus-id="${focusMemberId}"
+             data-focus-prefix="member">
             <!-- Inline CSS styles -->
             <style>
                 .resigned-badge { background-color: #fee2e2; color: #b91c1c; padding: 0.25rem 0.75rem; border-radius: 4px; font-size: 0.875rem; }
@@ -87,7 +88,7 @@
                     </thead>
                     <tbody>
                         <tr th:each="m : ${members}" 
-                            th:id="'member-' + m.id"
+                            th:id="'member-' + ${m.id}"
                             th:data-member-id="${m.id}">
                             <td data-label="Imię i nazwisko">
                                 <a th:href="@{/members/{id}/detail(id=${m.id})}"
@@ -155,7 +156,7 @@
                     </thead>
                     <tbody>
                         <tr th:each="m : ${members}" 
-                            th:id="'member-' + m.id"
+                            th:id="'member-' + ${m.id}"
                             th:data-member-id="${m.id}">
                             <td data-label="Imię i nazwisko">
                                 <a th:href="@{/members/{id}/detail(id=${m.id})}"
