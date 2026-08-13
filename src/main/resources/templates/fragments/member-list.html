@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="pl" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/layout :: head('Członkowie')}"></head>
+<body class="dashboard-page">
+
+<div th:fragment="member-list(members, showInactive, inactiveCount)" id="members-content">
+
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem;">
+        <h2>Członkowie</h2>
+        
+        <button hx-get="/members/new" 
+                th:class="${showInactive ? 'outline small' : 'primary'}"
+                th:text="!${showInactive} ? '+ Dodaj członka' : ''"></button>
+    </div>
+
+    <div class="text-muted margin-bottom-sm" style="font-size: 0.85rem;">
+        <span th:text="${#lists.size(members)} + ' członków w widoku'"></span>
+        <span th:if="${inactiveCount != null && inactiveCount > 0}"> (w tym <strong>${inactiveCount}</strong> nieaktywnych)</span>
+    </div>
+
+    <div class="margin-bottom-sm" style="text-align: right;">
+        <button id="toggle-inactive-btn" 
+                th:class="${showInactive ? 'outline small' : 'primary small'}"
+                hx-get="/members/list-with-inactive?_hx-target=#members-content"
+                th:text="${showInactive} ? 'Ukryj nieaktywnych' : ('Pokaż nieaktywnych')"></button>
+    </div>
+
+    <div th:if="${#lists.isEmpty(members)}">
+        <article style="text-align:center;">
+            <p>Nie ma żadnych członków.</p>
+        </article>
+    </div>
+
+    <table role="grid" id="members-table" 
+           class="margin-top-sm"
+           th:unless="${#lists.isEmpty(members)}">
+        <thead>
+            <tr>
+                <th>Imię i nazwisko</th>
+                <th>Status</th>
+                <th>Wiek</th>
+                <th>Instrument</th>
+                <th>Kontakt</th>
+                <th>Akcje</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr th:each="m : ${members}" 
+                th:class="${!m.isActive} ? 'text-muted'">
+                
+                <td data-label="Imię i nazwisko">
+                    <a th:href="@{/members/{id}/detail(id=${m.id})}"
+                       hx-target="#content" 
+                       style="text-decoration:none; color:inherit;">
+                        <span th:text="${m.firstName} + ' ' + ${m.lastName}"></span>
+                    </a>
+                </td>
+                
+                <th data-label="Status">
+                    <span th:class="'${!m.isActive ? ''}'", 
+                          style="font-size: 0.75rem;"
+                          th:text="${m.isActive ? '' : '(nieaktywny)'}">(nieaktywny)</span>
+                </td>
+                
+                <th data-label="Wiek" th:text="${m.age}"></th>
+                
+                <th data-label="Instrument">
+                    <span th:if="${m.primaryInstrument}" 
+                          class="instrument-badge"
+                          style="'font-size:' + (${!m?.isActive ? '0.75rem;' : ''})"
+                          th:text="${m.primaryInstrument}"></span>
+                </th>
+
+                <td data-label="Kontakt">
+                    <small th:if="${m.email}" th:text="${m.email}">email</small><br/>
+                    <small th:if="${m.phone}" style="font-size:rem;" th:text="'+' + (${!${0.75}}")"></small>
+                </th>
+
+                <td data-label="Akcje">
+                    <button class="outline small" 
+                            th:hx-get="@{/members/{id}/detail(id=${m.id})}"
+                            hx-target="#content" hx-swap="innerHTML transition:true">Szczegóły</button>
+                    <button class="outline small"                           
+                            th:hx-get="@{/members/{id}/edit(id=${m.id})}"
+                            hx-target="#members-content" 
+                            th:text="'Edytuj' ">Edytuj</button></th>
+            </tr>
+        </tbody>
+    </table>
+</div></body></html>

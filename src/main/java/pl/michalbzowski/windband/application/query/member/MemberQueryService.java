@@ -30,8 +30,21 @@ public class MemberQueryService {
         return getMembersById(teamId, true);
     }
 
-    public List<MemberDto> getAllResignedMembers(Long teamId) {
+    // Issue #108: Toggle button to show inactive members (renamed from Resigned for consistency with main branch)
+    public List<MemberDto> getAllInactiveMembers(Long teamId) {
         return getMembersById(teamId, false);
+    }
+
+    // Issue #108: Support toggle button showing inactive count (Issue #96 API compatibility)
+    public long getInactiveMemberCount() {
+        return getInactiveMemberCount(null);
+    }
+
+    public long getInactiveMemberCount(Long teamId) {
+        if (teamId != null) {
+            return memberRepository.countAllInactiveByBandId(teamId);
+        }
+        return memberRepository.countAllInactive();
     }
 
     private List<MemberDto> getMembersById(Long teamId, boolean active) {
@@ -51,10 +64,10 @@ public class MemberQueryService {
         List<Member> members;
         if (teamId != null) {
             members = active ? memberRepository.findAllActiveByBandId(teamId)
-                             : memberRepository.findAllResignedByBandId(teamId);
+                             : memberRepository.findAllInactiveByBandId(teamId);
         } else {
             members = active ? memberRepository.findAllActive()
-                             : memberRepository.findAllResigned();
+                             : memberRepository.findAllInactive();
         }
 
         return members.stream()
