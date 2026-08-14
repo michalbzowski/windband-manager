@@ -11,6 +11,7 @@ import java.util.Objects;
 @Entity
 @Table(name = "member_attribute_values",
         uniqueConstraints = @UniqueConstraint(columnNames = {"member_id", "attribute_def_id"}))
+@Access(AccessType.FIELD)
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class MemberAttributeValue {

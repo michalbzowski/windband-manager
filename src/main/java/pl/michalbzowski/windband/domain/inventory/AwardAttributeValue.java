@@ -10,6 +10,7 @@ import java.util.Objects;
 @Entity
 @Table(name = "award_attribute_values",
         uniqueConstraints = @UniqueConstraint(columnNames = {"award_item_id", "attribute_def_id"}))
+@Access(AccessType.FIELD)
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class AwardAttributeValue {

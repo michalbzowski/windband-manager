@@ -15,6 +15,7 @@ import java.util.Objects;
  */
 @Entity
 @Table(name = "item_attribute_values")
+@Access(AccessType.FIELD)
 @Getter
 @Setter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)

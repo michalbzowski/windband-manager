@@ -10,6 +10,7 @@ import java.util.Objects;
 @Entity
 @Table(name = "uniform_attribute_values",
         uniqueConstraints = @UniqueConstraint(columnNames = {"uniform_item_id", "attribute_def_id"}))
+@Access(AccessType.FIELD)
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class UniformAttributeValue {
