@@ -88,8 +88,7 @@
                     </thead>
                     <tbody>
                         <tr th:each="m : ${members}" 
-                            th:id="'member-' + ${m.id}"
-                            th:data-member-id="${m.id}">
+                            th:attr="data-member-id=${m.id},id=${'member-' + m.id}">
                             <td data-label="Imię i nazwisko">
                                 <a th:href="@{/members/{id}/detail(id=${m.id})}"
                                    style="text-decoration: none; color: inherit; font-weight: 600;"
@@ -156,8 +155,7 @@
                     </thead>
                     <tbody>
                         <tr th:each="m : ${members}" 
-                            th:id="'member-' + ${m.id}"
-                            th:data-member-id="${m.id}">
+                            th:attr="data-member-id=${m.id},id=${'member-' + m.id}">
                             <td data-label="Imię i nazwisko">
                                 <a th:href="@{/members/{id}/detail(id=${m.id})}"
                                    style="text-decoration: none; color: inherit; font-weight: 600;"
