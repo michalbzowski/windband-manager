@@ -27,7 +27,7 @@ public class MemberAttributeValue {
     @JoinColumn(name = "attribute_def_id", nullable = false)
     private MemberAttributeDef attributeDef;
 
-    @Column(name = "\"value\"")
+    @Column(name = "value_text")
     private String value;
 
     private MemberAttributeValue(Member member, MemberAttributeDef attributeDef, String value) {

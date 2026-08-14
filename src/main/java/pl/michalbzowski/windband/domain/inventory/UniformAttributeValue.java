@@ -26,7 +26,7 @@ public class UniformAttributeValue {
     @JoinColumn(name = "attribute_def_id", nullable = false)
     private UniformAttributeDef attributeDef;
 
-    @Column(name = "\"value\"")
+    @Column(name = "value_text")
     private String value;
 
     private UniformAttributeValue(UniformItem item, UniformAttributeDef def, String value) {

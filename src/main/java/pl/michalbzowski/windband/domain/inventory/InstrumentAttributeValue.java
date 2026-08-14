@@ -26,7 +26,7 @@ public class InstrumentAttributeValue {
     @JoinColumn(name = "attribute_def_id", nullable = false)
     private InstrumentAttributeDef attributeDef;
 
-    @Column(name = "\"value\"")
+    @Column(name = "value_text")
     private String value;
 
     private InstrumentAttributeValue(InstrumentItem item, InstrumentAttributeDef def, String value) {

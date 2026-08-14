@@ -26,7 +26,7 @@ public class AwardAttributeValue {
     @JoinColumn(name = "attribute_def_id", nullable = false)
     private AwardAttributeDef attributeDef;
 
-    @Column(name = "\"value\"")
+    @Column(name = "value_text")
     private String value;
 
     private AwardAttributeValue(AwardItem item, AwardAttributeDef def, String value) {
