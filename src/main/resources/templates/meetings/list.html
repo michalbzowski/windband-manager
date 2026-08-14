@@ -47,16 +47,7 @@
                             <span th:text="${m.badge}" class="badge">🎵 Próba</span>
                         </td>
                         <td data-label="Akcje">
-                            <button class="outline small"
-                                    th:hx-get="@{/rehearsals/{id}(id=${m.id})}"
-                                    th:if="${m.kind == 'REHEARSAL'}"
-                                    hx-target="#content"
-                                    hx-swap="innerHTML transition:true">Szczegóły</button>
-                            <button class="outline small"
-                                    th:hx-get="@{/events/{id}(id=${m.id})}"
-                                    th:if="${m.kind == 'EVENT'}"
-                                    hx-target="#events-list-container"
-                                    hx-swap="innerHTML transition:true">Szczegóły</button>
+                            <a th:href="${m.href}" class="outline small" style="text-decoration:none; display:inline-block;">📋 Szczegóły</a>
                         </td>
                     </tr>
                 </tbody>
@@ -92,16 +83,7 @@
                             <span th:text="${m.badge}" class="badge">🎵 Próba</span>
                         </td>
                         <td data-label="Akcje">
-                            <button class="outline small"
-                                    th:hx-get="@{/rehearsals/{id}(id=${m.id})}"
-                                    th:if="${m.kind == 'REHEARSAL'}"
-                                    hx-target="#content"
-                                    hx-swap="innerHTML transition:true">Szczegóły</button>
-                            <button class="outline small"
-                                    th:hx-get="@{/events/{id}(id=${m.id})}"
-                                    th:if="${m.kind == 'EVENT'}"
-                                    hx-target="#events-list-container"
-                                    hx-swap="innerHTML transition:true">Szczegóły</button>
+                            <a th:href="${m.href}" class="outline small" style="text-decoration:none; display:inline-block;">📋 Szczegóły</a>
                         </td>
                     </tr>
                 </tbody>
@@ -137,6 +119,6 @@
     }
 </style>
 
-<script th:replace="~{fragments/layout :: dashboard-header-morph}"></script>
+<div th:insert="~{fragments/layout :: dashboard-header-morph}"></div>
 </body>
 </html>

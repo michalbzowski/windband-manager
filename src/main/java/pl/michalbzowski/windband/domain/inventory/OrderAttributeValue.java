@@ -10,6 +10,7 @@ import java.util.Objects;
 @Entity
 @Table(name = "order_attribute_values",
         uniqueConstraints = @UniqueConstraint(columnNames = {"order_id", "attribute_def_id"}))
+@Access(AccessType.FIELD)
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class OrderAttributeValue {
@@ -26,7 +27,7 @@ public class OrderAttributeValue {
     @JoinColumn(name = "attribute_def_id", nullable = false)
     private OrderAttributeDef attributeDef;
 
-    @Column(name = "\"value\"")
+    @Column(name = "value_text")
     private String value;
 
     private OrderAttributeValue(InventoryOrder order, OrderAttributeDef def, String value) {

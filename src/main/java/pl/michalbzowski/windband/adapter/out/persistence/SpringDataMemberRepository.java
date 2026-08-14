@@ -10,12 +10,11 @@ public interface SpringDataMemberRepository extends JpaRepository<Member, Long> 
 
     List<Member> findByActiveTrue();
 
-    List<Member> findByActiveTrueAndBandId(Long bandId);
-
-    // New methods for inactive members (Issue #96)
     List<Member> findByActiveFalse();
 
     List<Member> findByActiveFalseAndBandId(Long bandId);
+
+    List<Member> findByActiveTrueAndBandId(Long bandId);
 
     long countByActiveFalse();
 

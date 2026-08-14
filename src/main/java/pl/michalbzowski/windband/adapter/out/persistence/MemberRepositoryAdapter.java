@@ -37,11 +37,6 @@ public class MemberRepositoryAdapter implements MemberRepository {
     }
 
     @Override
-    public List<Member> findAllActiveByBandId(Long bandId) {
-        return springDataRepo.findByActiveTrueAndBandId(bandId);
-    }
-
-    @Override
     public List<Member> findAllInactive() {
         return springDataRepo.findByActiveFalse();
     }
@@ -64,6 +59,11 @@ public class MemberRepositoryAdapter implements MemberRepository {
     @Override
     public List<Member> findAllByBandOrderByLastNameAscFirstNameAsc(Band band) {
         return springDataRepo.findAllByBandOrderByLastNameAscFirstNameAsc(band);
+    }
+
+    @Override
+    public List<Member> findAllActiveByBandId(Long bandId) {
+        return springDataRepo.findByActiveTrueAndBandId(bandId);
     }
 
     @Override
