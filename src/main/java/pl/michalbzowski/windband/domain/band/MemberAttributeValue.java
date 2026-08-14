@@ -11,6 +11,7 @@ import java.util.Objects;
 @Entity
 @Table(name = "member_attribute_values",
         uniqueConstraints = @UniqueConstraint(columnNames = {"member_id", "attribute_def_id"}))
+@Access(AccessType.FIELD)
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class MemberAttributeValue {
@@ -27,7 +28,7 @@ public class MemberAttributeValue {
     @JoinColumn(name = "attribute_def_id", nullable = false)
     private MemberAttributeDef attributeDef;
 
-    @Column(name = "\"value\"")
+    @Column(name = "value_text")
     private String value;
 
     private MemberAttributeValue(Member member, MemberAttributeDef attributeDef, String value) {

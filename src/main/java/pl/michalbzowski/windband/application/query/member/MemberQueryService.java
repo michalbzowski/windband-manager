@@ -49,11 +49,9 @@ public class MemberQueryService {
 
     private List<MemberDto> getMembersById(Long teamId, boolean active) {
         // Build instrument priority map (lower number = higher priority)
-        var instruments = (teamId != null
+        var instrumentPriorities = (teamId != null
                 ? instrumentRepository.findAllOrderBySortPriorityByBandId(teamId)
-                : instrumentRepository.findAllOrderBySortPriority());
-
-        var instrumentPriorities = instruments.stream()
+                : instrumentRepository.findAllOrderBySortPriority()).stream()
                 .collect(Collectors.toMap(
                         Instrument::getName,
                         Instrument::getSortPriority,

@@ -9,34 +9,64 @@
         <header th:replace="~{fragments/layout :: dashboard-header}"></header>
 
         <div id="members-content" 
-             th:data-show-inactive="${showingInactiveMembers}"
-             data-active-count="<span th:text='${active != null ? #lists.size(active) : members != null ? #lists.size(members) : 0}'/>">
+                     th:data-show-inactive="${showingInactiveMembers}"
+                     th:data-show-resigned="${showingInactiveMembers}" 
+                     th:data-focus-id="${focusMemberId}"
+                     data-active-count="<span th:text='${active != null ? #lists.size(active) : members != null ? #lists.size(members) : 0}'/>"
+                     data-focus-prefix="member">
             
-            <!-- Inline CSS styles -->
-            <style>
-                .inactive-badge { background-color: #fee2e2; color: #b91c1c; padding: 0.25rem 0.75rem; border-radius: 4px; font-size: 0.875rem; }
-            </style>
-
-            <!-- Header with toggle button -->
-            <div style="max-width: 100%; display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
-                <h2 style="margin: 0;">👥 Członkowie</h2>
+                    <!-- Inline CSS styles -->
+                    <style>
+                        .inactive-badge { background-color: #fee2e2; color: #b91c1c; padding: 0.25rem 0.75rem; border-radius: 4px; font-size: 0.875rem; }
+                        .resigned-badge { background-color: #fee2e2; color: #b91c1c; padding: 0.25rem 0.75rem; border-radius: 4px; font-size: 0.875rem; }
                 
-                <!-- Toggle button for Active/Inactive members (Issue #108) -->
-                <button type="button" 
-                        id="toggleMembersBtn"
-                        th:classappend="${showingInactiveMembers} ? 'outline' : 'primary'"
-                        onclick="toggleMemberView()">
-                    <span>
-                        <th:block th:if="${!showingInactiveMembers}">Pokaż nieaktywnych (<span th:text="${inactiveCount}" />)</th:block>
-                        <th:block th:if="${showingInactiveMembers}">Aktywni członkowie</th:block>
-                    </span>
-                </button>
-
-                <!-- Add member button (only showing when active members are visible) -->
-                <button hx-get="/members/new" 
-                        hx-target="#content"
-                        class="primary" th:if="${!showingInactiveMembers}">+ Dodaj członka</button>
-            </div>
+                        /* Mobile-friendly header with toggle button always visible */
+                        .members-header-actions {
+                            display: flex;
+                            gap: 0.5rem;
+                            align-items: center;
+                            margin-bottom: 1rem;
+                            flex-wrap: wrap;
+                        }
+                
+                        @media (max-width: 768px) {
+                            .members-header-actions {
+                                flex-direction: column;
+                                align-items: stretch;
+                            }
+                    
+                            #toggleMembersBtn {
+                                order: -1; /* Show toggle first on mobile */
+                                white-space: nowrap;
+                            }
+                        }
+                    </style>
+            
+                    <!-- Header with toggle button (Issue #108) -->
+                    <div style="max-width: 100%; display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+                        <h2 style="margin: 0;">👥 Członkowie</h2>
+                
+                        <!-- Toggle button for Active/Inactive members (Issue #108) -->
+                        <div class="members-header-actions">
+                            <!-- Toggle button for Active/Resigned - elevated priority on mobile with order: -1 -->
+                            <button type="button" 
+                                    id="toggleMembersBtn"
+                                    th:classappend="${showingInactiveMembers} ? 'outline' : 'primary'"
+                                    onclick="toggleMemberView()">
+                                <span>
+                                    <th:block th:if="${!showingInactiveMembers}">Pokaż nieaktywnych (<span th:text="${inactiveCount}" />)</th:block>
+                                    <th:block th:if="${showingInactiveMembers}">Aktywni członkowie</th:block>
+                                    <th:block th:if="${!showingResignedMembers}">👁 Pokaż rezygnujących (<span th:text="${resignedCount}"/>)</th:block>
+                                    <th:block th:if="${showingResignedMembers}">✓ Aktywni członkowie</th:block>
+                                </span>
+                            </button>
+                    
+                            <!-- Add member button (only showing when active members are visible) -->
+                            <button hx-get="/members/new" 
+                                    hx-target="#content"
+                                    class="primary" th:if="${!showingInactiveMembers}">+ Dodaj członka</button>
+                        </div>
+                    </div>
 
         <!-- Show inactive members list only if showingInactiveMembers is true -->
         <th:block th:if="${showingInactiveMembers}">
@@ -65,7 +95,8 @@
                         </tr>
                     </thead>
                     <tbody>
-                        <tr th:each="m : ${members}" th:data-member-id="${m.id}" th:id="'member-' + m.id">
+                        <tr th:each="m : ${members}" 
+                            th:attr="data-member-id=${m.id},id=${'member-' + m.id}">
                             <td data-label="Imię i nazwisko">
                                 <a th:href="@{/members/{id}/detail(id=${m.id})}"
                                    style="text-decoration: none; color: inherit; font-weight: 600;"
@@ -95,7 +126,7 @@
                                 <button class="outline small" 
                                         hx-target="#content" 
                                         hx-swap="innerHTML transition:true"
-                                        th:hx-get="@{/members/{id}/detail(id=${m.id})}">Szczegóły</button>
+                                        th:href="@{/members/{id}/detail(id=${m.id})}">Szczegóły</button>
                                 <!-- No Edit button for inactive members, only view -->
                             </td>
                         </tr>
@@ -131,7 +162,8 @@
                         </tr>
                     </thead>
                     <tbody>
-                        <tr th:each="m : ${members}" th:data-member-id="${m.id}" th:id="'member-' + m.id">
+                        <tr th:each="m : ${members}" 
+                            th:attr="data-member-id=${m.id},id=${'member-' + m.id}">
                             <td data-label="Imię i nazwisko">
                                 <a th:href="@{/members/{id}/detail(id=${m.id})}"
                                    style="text-decoration: none; color: inherit; font-weight: 600;"
@@ -158,9 +190,9 @@
                                 <button class="outline small" 
                                         hx-target="#content" 
                                         hx-swap="innerHTML transition:true"
-                                        th:hx-get="@{/members/{id}/detail(id=${m.id})}">Szczegóły</button>
+                                        th:href="@{/members/{id}/detail(id=${m.id})}">Szczegóły</button>
                                 <button class="outline small" 
-                                        hx-target="#active-memberstable-content" 
+                                        hx-target="#members-content" 
                                         th:hx-push-uri="@{/members/{id}/edit(id=${m.id})}"
                                         th:hx-get="@{/members/{id}/edit(id=${m.id})}">Edytuj</button>
                             </td>
@@ -183,23 +215,25 @@
     'use strict';
     
     // Initialize showingInactiveMembers state from server
-    var isShowingInactive = <th:block th:text="${showingInactiveMembers ? 'true' : 'false'}"/>;
+    var contentDiv = document.getElementById('members-content');
+    var isShowingInactive = contentDiv.getAttribute('data-show-inactive') === 'true';
 
     function toggleMemberView() {
         event.preventDefault();
         
         var newShowState = !isShowingInactive;
         isShowingInactive = newShowState;
+        contentDiv.setAttribute('data-show-inactive', newShowState);
+        contentDiv.setAttribute('data-show-resigned', newShowState);
         
         // Use HTMX to fetch new view without full page reload
-        htmx.ajax('GET', '/members/list?showInactive=' + newShowState, {
+        htmx.ajax('GET', '/members/list?showInactive=' + newShowState + '&focus=' + contentDiv.getAttribute('data-focus-id'), {
             target: '#members-content', 
             swap: 'innerHTML transition:true'
         });
     }
-
-    document.getElementById('toggleMembersBtn').addEventListener('click', toggleMemberView);
     
+    document.getElementById('toggleMembersBtn').addEventListener('click', toggleMemberView);
 })();
 </script>
 
@@ -213,6 +247,6 @@ document.addEventListener('keydown', function(e) {
 });
 </script>
 
-<script th:replace="~{fragments/layout :: dashboard-header-morph}"></script>
+<div th:insert="~{fragments/layout :: dashboard-header-morph}"></div>
 </body>
 </html>

@@ -10,6 +10,7 @@ import java.util.Objects;
 @Entity
 @Table(name = "award_attribute_values",
         uniqueConstraints = @UniqueConstraint(columnNames = {"award_item_id", "attribute_def_id"}))
+@Access(AccessType.FIELD)
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class AwardAttributeValue {
@@ -26,7 +27,7 @@ public class AwardAttributeValue {
     @JoinColumn(name = "attribute_def_id", nullable = false)
     private AwardAttributeDef attributeDef;
 
-    @Column(name = "\"value\"")
+    @Column(name = "value_text")
     private String value;
 
     private AwardAttributeValue(AwardItem item, AwardAttributeDef def, String value) {
