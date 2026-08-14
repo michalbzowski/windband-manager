@@ -110,162 +110,164 @@
 </header>
 
 <!-- Dashboard header scroll morph behavior - detail pages use custom double-push-off logic -->
-<script th:fragment="dashboard-header-morph">(function() {
-    const header = document.getElementById('dashboardHeader');
-    if (!header) return;
+<script th:fragment="dashboard-header-morph">
+    (function() {
+        const header = document.getElementById('dashboardHeader');
+        if (!header) return;
 
-    // Detect page type based on presence of uber-filter-container (detail pages with filters)
-    const uberFilterContainer = document.getElementById('uber-filter-container');
-    const isDetailPage = !!uberFilterContainer;  // Events/Rehearsals have uber-filter-container
+        // Detect page type based on presence of uber-filter-container (detail pages with filters)
+        const uberFilterContainer = document.getElementById('uber-filter-container');
+        const isDetailPage = !!uberFilterContainer;  // Events/Rehearsals have uber-filter-container
 
-    // Detail pages (events/rehearsals) use the double-push-off logic below
-    // Dashboard and other pages without uber-filter-container use custom logic below
+        // Detail pages (events/rehearsals) use the double-push-off logic below
+        // Dashboard and other pages without uber-filter-container use custom logic below
 
-    // Use uberFilterContainer as the reference element for collision detection
-    const filterContainer = uberFilterContainer;
-    const hasFilters = !!filterContainer;
+        // Use uberFilterContainer as the reference element for collision detection
+        const filterContainer = uberFilterContainer;
+        const hasFilters = !!filterContainer;
 
-    let lastScrollY = 0;
-    let ticking = false;
-    let isScrolled = false;     // Header morphed to compact "scrolled" state (small bar)
-    let isReleased = false;      // Header released from sticky, leaving viewport normally
+        let lastScrollY = 0;
+        let ticking = false;
+        let isScrolled = false;     // Header morphed to compact "scrolled" state (small bar)
+        let isReleased = false;      // Header released from sticky, leaving viewport normally
 
-    function updateStickyFilterOffset() {
-        if (!hasFilters || !filterContainer) return;
+        function updateStickyFilterOffset() {
+            if (!hasFilters || !filterContainer) return;
 
-        const headerRect = header.getBoundingClientRect();
-        const filterRect = filterContainer.getBoundingClientRect();
-        let offset;
+            const headerRect = header.getBoundingClientRect();
+            const filterRect = filterContainer.getBoundingClientRect();
+            let offset;
 
-        // Filter positioning logic based on header state:
-        // - Released state: filters at top of viewport (0px) 
-        // - Not released & header still visible: filters stick below header bottom
-        if (header.classList.contains('released')) {
-            offset = 0;
-        } else if (headerRect.bottom <= 0) {
-            offset = 0; 
-        } else {
-            offset = headerRect.bottom;
-        }
-
-        document.documentElement.style.setProperty('--sticky-filter-top', offset + 'px');
-
-        // Also push header up when filter touches it (so filter can eventually reach viewport top)
-        // This allows the "released" state to trigger
-        if (!header.classList.contains('released') && filterRect.top <= headerRect.bottom && filterRect.top > 0) {
-            const overlapAmount = headerRect.bottom - filterRect.top;
-            const headerHeight = headerRect.height;
-            const headerTopValue = Math.max(-headerHeight, -overlapAmount);
-            document.documentElement.style.setProperty('--header-top', headerTopValue + 'px');
-        } else if (!header.classList.contains('released')) {
-            // Reset header top when filter is not touching
-            document.documentElement.style.setProperty('--header-top', '0px');
-        }
-
-        // Response filter sticks below text filter
-        const responseFilterOffset = offset + filterRect.height;
-        document.documentElement.style.setProperty('--sticky-response-filter-top', responseFilterOffset + 'px');
-    }
-
-    function updateDetailPageState() {
-        if (!hasFilters || !filterContainer) return;
-
-        const scrollY = window.scrollY;
-        const headerRect = header.getBoundingClientRect();
-        const filterRect = filterContainer.getBoundingClientRect();
-
-        // PHASE 1: COLLAPSE - filters touch/overlap header bottom during initial scroll down
-        if (!isScrolled && !isReleased && filterRect.top <= headerRect.bottom) {
-            isScrolled = true;          // Morph to small sticky bar
-        } 
-
-        // PHASE 2: RELEASE TRIGGER - filters reach top of viewport, header stops being sticky
-        if (isScrolled && !isReleased && filterRect.top <= 5 && scrollY > lastScrollY) {
-            isReleased = true;          // Stop being sticky, let header exit naturally
-            header.classList.add('released');
-            return;
-        }
-
-        // SCROLL BACK HANDLING: restore previous states
-
-        if (isReleased && filterRect.top > 100) {
-            isReleased = false;
-            header.classList.remove('released');
-        }
-
-        if (isScrolled && !isReleased && filterRect.top > headerRect.bottom + 20) {
-            isScrolled = false;
-            header.classList.remove('scrolled');
-        }
-    }
-
-    function updateDashboardState() {
-        const scrollY = window.scrollY;
-        const headerRect = header.getBoundingClientRect();
-
-        // Find push-off trigger element (first content section after WYDARZENIA/SPOTKANIA)
-        const pushOffTrigger = document.querySelector('.dashboard-attention');
-
-        if (!pushOffTrigger) {
-            // Fallback: just use scroll position threshold
-            if (scrollY > 100 && !isScrolled) isScrolled = true;
-            else if (scrollY <= 30 && isScrolled) isScrolled = false;
-        } else {
-            const triggerRect = pushOffTrigger.getBoundingClientRect();
-
-            // COLLAPSE - content touches header during scroll -> collapse to small bar
-            if (!isScrolled && triggerRect.top <= headerRect.bottom + 50) {
-                isScrolled = true;
+            // Filter positioning logic based on header state:
+            // - Released state: filters at top of viewport (0px) 
+            // - Not released & header still visible: filters stick below header bottom
+            if (header.classList.contains('released')) {
+                offset = 0;
+            } else if (headerRect.bottom <= 0) {
+                offset = 0; 
+            } else {
+                offset = headerRect.bottom;
             }
 
-            // RESTORE during scroll back
-            if (isScrolled && triggerRect.top > 150) {
+            document.documentElement.style.setProperty('--sticky-filter-top', offset + 'px');
+
+            // Also push header up when filter touches it (so filter can eventually reach viewport top)
+            // This allows the "released" state to trigger
+            if (!header.classList.contains('released') && filterRect.top <= headerRect.bottom && filterRect.top > 0) {
+                const overlapAmount = headerRect.bottom - filterRect.top;
+                const headerHeight = headerRect.height;
+                const headerTopValue = Math.max(-headerHeight, -overlapAmount);
+                document.documentElement.style.setProperty('--header-top', headerTopValue + 'px');
+            } else if (!header.classList.contains('released')) {
+                // Reset header top when filter is not touching
+                document.documentElement.style.setProperty('--header-top', '0px');
+            }
+
+            // Response filter sticks below text filter
+            const responseFilterOffset = offset + filterRect.height;
+            document.documentElement.style.setProperty('--sticky-response-filter-top', responseFilterOffset + 'px');
+        }
+
+        function updateDetailPageState() {
+            if (!hasFilters || !filterContainer) return;
+
+            const scrollY = window.scrollY;
+            const headerRect = header.getBoundingClientRect();
+            const filterRect = filterContainer.getBoundingClientRect();
+
+            // PHASE 1: COLLAPSE - filters touch/overlap header bottom during initial scroll down
+            if (!isScrolled && !isReleased && filterRect.top <= headerRect.bottom) {
+                isScrolled = true;          // Morph to small sticky bar
+            } 
+
+            // PHASE 2: RELEASE TRIGGER - filters reach top of viewport, header stops being sticky
+            if (isScrolled && !isReleased && filterRect.top <= 5 && scrollY > lastScrollY) {
+                isReleased = true;          // Stop being sticky, let header exit naturally
+                header.classList.add('released');
+                return;
+            }
+
+            // SCROLL BACK HANDLING: restore previous states
+
+            if (isReleased && filterRect.top > 100) {
+                isReleased = false;
+                header.classList.remove('released');
+            }
+
+            if (isScrolled && !isReleased && filterRect.top > headerRect.bottom + 20) {
                 isScrolled = false;
+                header.classList.remove('scrolled');
             }
         }
-    }
 
-    function updateHeaderClasses() {
-        if (hasFilters) {
-            if (isScrolled && !header.classList.contains('scrolled')) header.classList.add('scrolled');
-            else if (!isScrolled && header.classList.contains('scrolled') && !isReleased) header.classList.remove('scrolled');
-        } else {
-            // Dashboard mode 
-            if (isScrolled && !header.classList.contains('scrolled')) header.classList.add('scrolled');
-            else if (!isScrolled && header.classList.contains('scrolled')) header.classList.remove('scrolled');
+        function updateDashboardState() {
+            const scrollY = window.scrollY;
+            const headerRect = header.getBoundingClientRect();
+
+            // Find push-off trigger element (first content section after WYDARZENIA/SPOTKANIA)
+            const pushOffTrigger = document.querySelector('.dashboard-attention');
+
+            if (!pushOffTrigger) {
+                // Fallback: just use scroll position threshold
+                if (scrollY > 100 && !isScrolled) isScrolled = true;
+                else if (scrollY <= 30 && isScrolled) isScrolled = false;
+            } else {
+                const triggerRect = pushOffTrigger.getBoundingClientRect();
+
+                // COLLAPSE - content touches header during scroll -> collapse to small bar
+                if (!isScrolled && triggerRect.top <= headerRect.bottom + 50) {
+                    isScrolled = true;
+                }
+
+                // RESTORE during scroll back
+                if (isScrolled && triggerRect.top > 150) {
+                    isScrolled = false;
+                }
+            }
         }
-    }
 
-    function updateHeaderState() {
-        const scrollY = window.scrollY;
+        function updateHeaderClasses() {
+            if (hasFilters) {
+                if (isScrolled && !header.classList.contains('scrolled')) header.classList.add('scrolled');
+                else if (!isScrolled && header.classList.contains('scrolled') && !isReleased) header.classList.remove('scrolled');
+            } else {
+                // Dashboard mode 
+                if (isScrolled && !header.classList.contains('scrolled')) header.classList.add('scrolled');
+                else if (!isScrolled && header.classList.contains('scrolled')) header.classList.remove('scrolled');
+            }
+        }
 
-        // Update appropriate mode based on page type
-        if (hasFilters) updateDetailPageState();
-        else updateDashboardState();
+        function updateHeaderState() {
+            const scrollY = window.scrollY;
 
-        updateHeaderClasses();
+            // Update appropriate mode based on page type
+            if (hasFilters) updateDetailPageState();
+            else updateDashboardState();
+
+            updateHeaderClasses();
+            updateStickyFilterOffset();
+        }
+
+        function onScroll() {
+            lastScrollY = window.scrollY;
+            if (!ticking) {
+                window.requestAnimationFrame(function() {
+                    updateHeaderState();
+                    ticking = false;
+                });
+                ticking = true;
+            }
+        }
+
+        // Initial check in case page loads scrolled
+        onScroll();
+
+        // Set initial sticky filter offset (detail pages only)
         updateStickyFilterOffset();
-    }
 
-    function onScroll() {
-        lastScrollY = window.scrollY;
-        if (!ticking) {
-            window.requestAnimationFrame(function() {
-                updateHeaderState();
-                ticking = false;
-            });
-            ticking = true;
-        }
-    }
-
-    // Initial check in case page loads scrolled
-    onScroll();
-
-    // Set initial sticky filter offset (detail pages only)
-    updateStickyFilterOffset();
-
-    window.addEventListener('scroll', onScroll, { passive: true });
-});</script>
+        window.addEventListener('scroll', onScroll, { passive: true });
+    })();
+</script>
 
 <!-- ============================================================
      LEGACY TOP-NAV — kept for backward compatibility during transition
