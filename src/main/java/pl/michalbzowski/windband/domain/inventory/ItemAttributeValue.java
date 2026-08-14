@@ -33,8 +33,9 @@ public class ItemAttributeValue {
     private ItemAttributeDef attributeDef;
 
     // Value stored as text - actual type determined by attributeDef.dataType
-    @Column(columnDefinition = "TEXT")
-    private String value;
+    // "value" is a reserved keyword in H2, so column is named value_text
+    @Column(name = "value_text", columnDefinition = "TEXT")
+    private String valueText;
 
     // For numeric values - denormalized for easier querying/sorting
     private Long valueInteger;
@@ -51,16 +52,16 @@ public class ItemAttributeValue {
     @Column(name = "value_file_path")
     private String valueFilePath;
 
-    public ItemAttributeValue(InventoryItem item, ItemAttributeDef attributeDef, String value) {
+    public ItemAttributeValue(InventoryItem item, ItemAttributeDef attributeDef, String valueText) {
         this.item = Objects.requireNonNull(item, "item required");
         this.attributeDef = Objects.requireNonNull(attributeDef, "attributeDef required");
-        this.value = value;
-        parseAndSetTypedValue(value, attributeDef.getDataType());
+        this.valueText = valueText;
+        parseAndSetTypedValue(valueText, attributeDef.getDataType());
     }
 
-    public void setValue(String value) {
-        this.value = value;
-        parseAndSetTypedValue(value, attributeDef != null ? attributeDef.getDataType() : null);
+    public void setValueText(String valueText) {
+        this.valueText = valueText;
+        parseAndSetTypedValue(valueText, attributeDef != null ? attributeDef.getDataType() : null);
     }
 
     private void parseAndSetTypedValue(String rawValue, AttributeDataType dataType) {
@@ -71,7 +72,10 @@ public class ItemAttributeValue {
         this.valueDate = null;
         this.valueFilePath = null;
 
-        if (rawValue == null || rawValue.isBlank()) return;
+        if (rawValue == null || rawValue.isBlank()) {
+            this.valueText = rawValue;
+            return;
+        }
 
         try {
             switch (dataType) {
@@ -88,18 +92,18 @@ public class ItemAttributeValue {
     }
 
     public Object getTypedValue() {
-        if (attributeDef == null) return value;
+        if (attributeDef == null) return valueText;
         return switch (attributeDef.getDataType()) {
             case INTEGER -> valueInteger;
             case DECIMAL -> valueDecimal;
             case BOOLEAN -> valueBoolean;
             case DATE -> valueDate;
             case FILE -> valueFilePath;
-            default -> value;
+            default -> valueText;
         };
     }
 
     public boolean hasValue() {
-        return value != null && !value.isBlank();
+        return valueText != null && !valueText.isBlank();
     }
 }
