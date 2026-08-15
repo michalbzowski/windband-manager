@@ -56,7 +56,7 @@
             Brak zaproszonych uczestników. Użyj przycisków powyżej, aby zaprosić osoby lub grupy.
         </p>
 
-        <table role="grid" th:if="${not #lists.isEmpty(invitedMembers)}">
+        <table role="grid" id="attendance-table" th:if="${not #lists.isEmpty(invitedMembers)}">
             <thead>
                 <tr>
                     <th>Członek</th>
@@ -203,13 +203,17 @@
 
                     rows.forEach(function(row) {
                         var memberNameCell = row.querySelector('td:first-child');
-                        var memberName = memberNameCell ? memberNameCell.textContent.toLowerCase() : '';
+                        var instrumentCell = row.querySelector('td:nth-child(2)');
 
-                        var matches = !searchTerm || memberName.includes(searchTerm);
+                        var memberName = memberNameCell ? memberNameCell.textContent.toLowerCase() : '';
+                        var instrument = instrumentCell ? instrumentCell.textContent.toLowerCase() : '';
+
+                        var matches = !searchTerm || 
+                            memberName.includes(searchTerm) || 
+                            instrument.includes(searchTerm);
 
                         row.style.display = matches ? '' : 'none';
                     });
-                });
             }
         }
 
@@ -243,12 +247,16 @@
 
                     rows.forEach(function(row) {
                         var memberNameCell = row.querySelector('td:first-child');
+                        var instrumentCell = row.querySelector('td:nth-child(2)');
                         var statusSelect = row.querySelector('select.status-select');
 
                         var memberName = memberNameCell ? memberNameCell.textContent.toLowerCase() : '';
+                        var instrument = instrumentCell ? instrumentCell.textContent.toLowerCase() : '';
                         var status = statusSelect ? statusSelect.value : '';
 
-                        var textMatches = !searchTerm || memberName.includes(searchTerm);
+                        var textMatches = !searchTerm || 
+                            memberName.includes(searchTerm) || 
+                            instrument.includes(searchTerm);
 
                         var responseMatches = activeFilters.length === 0 || 
                             activeFilters.length === filterBtns.length || 
