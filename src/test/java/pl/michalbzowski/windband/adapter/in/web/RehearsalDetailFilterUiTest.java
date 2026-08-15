@@ -90,7 +90,7 @@ class RehearsalDetailFilterUiTest extends UiTestBase {
         filterInput.sendKeys(firstName);
 
         // Wait for filter to apply
-        Awaitility.await().atMost(Duration.ofSeconds(10)).until(() -> {
+        Awaitility.await().atMost(Duration.ofSeconds(3)).until(() -> {
             List<WebElement> visibleRows = driver.findElements(
                     By.cssSelector("table[role='grid'] tbody tr[style=''], table[role='grid'] tbody tr:not([style*='display: none'])"));
             return visibleRows.size() == 1;
@@ -165,7 +165,7 @@ class RehearsalDetailFilterUiTest extends UiTestBase {
         filterInput.sendKeys(lastName);
 
         // Wait for filter to apply
-        Awaitility.await().atMost(Duration.ofSeconds(10)).until(() -> {
+        Awaitility.await().atMost(Duration.ofSeconds(3)).until(() -> {
             List<WebElement> visibleRows = driver.findElements(
                     By.cssSelector("table[role='grid'] tbody tr[style=''], table[role='grid'] tbody tr:not([style*='display: none'])"));
             return visibleRows.size() == 1;
@@ -245,7 +245,7 @@ class RehearsalDetailFilterUiTest extends UiTestBase {
         ((JavascriptExecutor) driver).executeScript("arguments[0].click();", presentBtn);
 
         // Wait for filter to apply
-        Awaitility.await().atMost(Duration.ofSeconds(10)).until(() -> {
+        Awaitility.await().atMost(Duration.ofSeconds(3)).until(() -> {
             List<WebElement> visibleRows = driver.findElements(
                     By.cssSelector("table[role='grid'] tbody tr[style=''], table[role='grid'] tbody tr:not([style*='display: none'])"));
             return visibleRows.size() == 1;
@@ -346,7 +346,7 @@ class RehearsalDetailFilterUiTest extends UiTestBase {
         ((JavascriptExecutor) driver).executeScript("arguments[0].click();", excusedBtn);
 
         // Wait for filter to apply
-        Awaitility.await().atMost(Duration.ofSeconds(10)).until(() -> {
+        Awaitility.await().atMost(Duration.ofSeconds(3)).until(() -> {
             List<WebElement> visibleRows = driver.findElements(
                     By.cssSelector("table[role='grid'] tbody tr[style=''], table[role='grid'] tbody tr:not([style*='display: none'])"));
             return visibleRows.size() == 2;

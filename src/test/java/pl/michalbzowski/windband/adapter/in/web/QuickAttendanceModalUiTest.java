@@ -97,9 +97,13 @@ class QuickAttendanceModalUiTest extends UiTestBase {
         wait.until(ExpectedConditions.presenceOfElementLocated(By.id("quick-attendance-modal")));
         wait.until(d -> (Boolean) ((JavascriptExecutor) d).executeScript(
                 "return document.getElementById('quick-attendance-modal').open === true;"));
+        assertThat(isModalOpen()).isTrue();
 
-        // Wait for progress to show - increased timeout for slower CI environments
-        WebDriverWait progressWait = new WebDriverWait(driver, Duration.ofSeconds(15));
+        // progress shows 1 / N — wait for the JS handler to set it before reading.
+        // (quickAttendanceRender sets the textContent synchronously inside the
+        // openQuickAttendance click handler, but with 2 members the modal can
+        // sometimes be polled open before the textContent update lands.)
+        WebDriverWait progressWait = new WebDriverWait(driver, Duration.ofSeconds(5));
         progressWait.until(d -> {
             String text = d.findElement(By.id("qa-progress")).getText();
             return text != null && text.startsWith("1 /");

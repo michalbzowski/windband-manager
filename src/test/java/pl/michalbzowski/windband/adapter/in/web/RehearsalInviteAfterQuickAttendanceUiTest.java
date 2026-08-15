@@ -94,8 +94,8 @@ class RehearsalInviteAfterQuickAttendanceUiTest extends UiTestBase {
         wait.until(d -> (Boolean) ((JavascriptExecutor) d).executeScript(
                 "return document.getElementById('quick-attendance-modal').open === true;"));
 
-        // Wait for progress to show - increased timeout for slower CI environments
-        WebDriverWait progressWait = new WebDriverWait(driver, Duration.ofSeconds(15));
+        // Wait for progress to show
+        WebDriverWait progressWait = new WebDriverWait(driver, Duration.ofSeconds(5));
         progressWait.until(d -> {
             String text = d.findElement(By.id("qa-progress")).getText();
             return text != null && text.startsWith("1 /");
@@ -105,8 +105,8 @@ class RehearsalInviteAfterQuickAttendanceUiTest extends UiTestBase {
         String beforeClick = driver.findElement(By.id("qa-progress")).getText();
         driver.findElement(By.cssSelector(".qa-status[data-status='PRESENT']")).click();
 
-        // Wait for modal to close (which triggers the HTMX reload) - increased timeout
-        WebDriverWait saveWait = new WebDriverWait(driver, Duration.ofSeconds(30));
+        // Wait for modal to close (which triggers the HTMX reload)
+        WebDriverWait saveWait = new WebDriverWait(driver, Duration.ofSeconds(20));
         saveWait.until(d -> (Boolean) ((JavascriptExecutor) d).executeScript(
                 "return document.getElementById('quick-attendance-modal').open === false;"));
 
