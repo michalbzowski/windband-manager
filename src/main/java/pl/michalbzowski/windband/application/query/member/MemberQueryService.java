@@ -27,6 +27,27 @@ public class MemberQueryService {
     }
 
     public List<MemberDto> getAllActiveMembers(Long teamId) {
+        return getMembersById(teamId, true);
+    }
+
+    // Issue #108: Toggle button to show inactive members (renamed from Resigned for consistency with main branch)
+    public List<MemberDto> getAllInactiveMembers(Long teamId) {
+        return getMembersById(teamId, false);
+    }
+
+    // Issue #108: Support toggle button showing inactive count (Issue #96 API compatibility)
+    public long getInactiveMemberCount() {
+        return getInactiveMemberCount(null);
+    }
+
+    public long getInactiveMemberCount(Long teamId) {
+        if (teamId != null) {
+            return memberRepository.countAllInactiveByBandId(teamId);
+        }
+        return memberRepository.countAllInactive();
+    }
+
+    private List<MemberDto> getMembersById(Long teamId, boolean active) {
         // Build instrument priority map (lower number = higher priority)
         var instrumentPriorities = (teamId != null
                 ? instrumentRepository.findAllOrderBySortPriorityByBandId(teamId)
@@ -38,9 +59,14 @@ public class MemberQueryService {
                         java.util.LinkedHashMap::new
                 ));
 
-        List<Member> members = (teamId != null)
-                ? memberRepository.findAllActiveByBandId(teamId)
-                : memberRepository.findAllActive();
+        List<Member> members;
+        if (teamId != null) {
+            members = active ? memberRepository.findAllActiveByBandId(teamId)
+                             : memberRepository.findAllInactiveByBandId(teamId);
+        } else {
+            members = active ? memberRepository.findAllActive()
+                             : memberRepository.findAllInactive();
+        }
 
         return members.stream()
                 .sorted(Comparator

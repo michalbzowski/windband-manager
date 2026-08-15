@@ -17,6 +17,15 @@ public interface MemberRepository {
 
     List<Member> findAllActiveByBandId(Long bandId);
 
+    // New methods for inactive members (Issue #96) - renamed from "Resigned" for consistency with Issue #108 feature
+    List<Member> findAllInactive();
+
+    List<Member> findAllInactiveByBandId(Long bandId);
+
+    long countAllInactive();
+
+    long countAllInactiveByBandId(Long bandId);
+
     // FIXED: Use proper method name with Band object parameter
     List<Member> findAllByBandOrderByLastNameAscFirstNameAsc(Band band);
 
