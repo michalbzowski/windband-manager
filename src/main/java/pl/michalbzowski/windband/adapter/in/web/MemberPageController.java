@@ -39,7 +39,7 @@ public class MemberPageController {
         boolean showingInactiveMembers = Boolean.TRUE.equals(showInactive);
 
         List<MemberDto> members;
-        long inactiveCount = memberQueryService.getAllInactiveMembers(activeTeamId).size();
+        long inactiveCount = memberQueryService.getInactiveMemberCount(activeTeamId);
 
         if (showingInactiveMembers) {
             model.addAttribute("active", memberQueryService.getAllActiveMembers(activeTeamId));
@@ -49,7 +49,9 @@ public class MemberPageController {
         }
 
         model.addAttribute("members", members);
+        model.addAttribute("showingInactiveMembers", showingInactiveMembers);
         model.addAttribute("showingResignedMembers", showingInactiveMembers); // Backend: inactive, UI display: resigned
+        model.addAttribute("inactiveCount", inactiveCount);
         model.addAttribute("resignedCount", inactiveCount);
         model.addAttribute("activeTeamId", activeTeamId);
         model.addAttribute("focusMemberId", focus);
@@ -64,7 +66,7 @@ public class MemberPageController {
         boolean showingInactiveMembers = Boolean.TRUE.equals(showInactive);
 
         List<MemberDto> members;
-        long inactiveCount = memberQueryService.getAllInactiveMembers(activeTeamId).size();
+        long inactiveCount = memberQueryService.getInactiveMemberCount(activeTeamId);
 
         if (showingInactiveMembers) {
             members = memberQueryService.getAllInactiveMembers(activeTeamId);
@@ -73,13 +75,16 @@ public class MemberPageController {
         }
 
         model.addAttribute("members", members);
+        model.addAttribute("showingInactiveMembers", showingInactiveMembers);
         model.addAttribute("showingResignedMembers", showingInactiveMembers); // Backend: inactive, UI display: resigned
+        model.addAttribute("inactiveCount", inactiveCount);
         model.addAttribute("resignedCount", inactiveCount);
         model.addAttribute("activeTeamId", activeTeamId);
         model.addAttribute("focusMemberId", focus);
         model.addAttribute("today", LocalDate.now());
         return "members/list :: #members-content";
     }
+
     @GetMapping("/new")
     public String newMemberForm(@ModelAttribute("activeTeamId") Long activeTeamId, Model model,
                                 jakarta.servlet.http.HttpServletRequest request) {

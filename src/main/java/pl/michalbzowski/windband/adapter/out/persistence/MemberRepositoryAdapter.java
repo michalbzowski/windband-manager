@@ -37,6 +37,12 @@ public class MemberRepositoryAdapter implements MemberRepository {
     }
 
     @Override
+    public List<Member> findAllActiveByBandId(Long bandId) {
+        return springDataRepo.findByActiveTrueAndBandId(bandId);
+    }
+
+    // Issue #96 & #108 - Inactive members support (renamed from Resigned for consistency with main branch)
+    @Override
     public List<Member> findAllInactive() {
         return springDataRepo.findByActiveFalse();
     }
@@ -46,6 +52,7 @@ public class MemberRepositoryAdapter implements MemberRepository {
         return springDataRepo.findByActiveFalseAndBandId(bandId);
     }
 
+    // Issue #108: Support toggle button showing inactive count (Issue #96 API compatibility)
     @Override
     public long countAllInactive() {
         return springDataRepo.countByActiveFalse();
@@ -59,11 +66,6 @@ public class MemberRepositoryAdapter implements MemberRepository {
     @Override
     public List<Member> findAllByBandOrderByLastNameAscFirstNameAsc(Band band) {
         return springDataRepo.findAllByBandOrderByLastNameAscFirstNameAsc(band);
-    }
-
-    @Override
-    public List<Member> findAllActiveByBandId(Long bandId) {
-        return springDataRepo.findByActiveTrueAndBandId(bandId);
     }
 
     @Override

@@ -27,70 +27,15 @@ public class MemberQueryService {
     }
 
     public List<MemberDto> getAllActiveMembers(Long teamId) {
-        // Build instrument priority map (lower number = higher priority)
-        var instrumentPriorities = (teamId != null
-                ? instrumentRepository.findAllOrderBySortPriorityByBandId(teamId)
-                : instrumentRepository.findAllOrderBySortPriority()).stream()
-                .collect(Collectors.toMap(
-                        Instrument::getName,
-                        Instrument::getSortPriority,
-                        (existing, replacement) -> existing,
-                        java.util.LinkedHashMap::new
-                ));
-
-        List<Member> members = (teamId != null)
-                ? memberRepository.findAllActiveByBandId(teamId)
-                : memberRepository.findAllActive();
-
-        return members.stream()
-                .sorted(Comparator
-                        .<Member>comparingInt(m -> {
-                            Integer priority = m.getPrimaryInstrument()
-                                    .map(i -> instrumentPriorities.get(i.getName()))
-                                    .orElse(Integer.MAX_VALUE);
-                            return priority != null ? priority : Integer.MAX_VALUE;
-                        })
-                        .thenComparing(Member::getLastName)
-                        .thenComparing(Member::getFirstName))
-                .map(this::toDto)
-                .toList();
+        return getMembersById(teamId, true);
     }
 
-    // New methods for inactive members (Issue #96)
-    public List<MemberDto> getAllInactiveMembers() {
-        return getAllInactiveMembers(null);
-    }
-
+    // Issue #108: Toggle button to show inactive members (renamed from Resigned for consistency with main branch)
     public List<MemberDto> getAllInactiveMembers(Long teamId) {
-        // Build instrument priority map (lower number = higher priority)
-        var instrumentPriorities = (teamId != null
-                ? instrumentRepository.findAllOrderBySortPriorityByBandId(teamId)
-                : instrumentRepository.findAllOrderBySortPriority()).stream()
-                .collect(Collectors.toMap(
-                        Instrument::getName,
-                        Instrument::getSortPriority,
-                        (existing, replacement) -> existing,
-                        java.util.LinkedHashMap::new
-                ));
-
-        List<Member> members = (teamId != null)
-                ? memberRepository.findAllInactiveByBandId(teamId)
-                : memberRepository.findAllInactive();
-
-        return members.stream()
-                .sorted(Comparator
-                        .<Member>comparingInt(m -> {
-                            Integer priority = m.getPrimaryInstrument()
-                                    .map(i -> instrumentPriorities.get(i.getName()))
-                                    .orElse(Integer.MAX_VALUE);
-                            return priority != null ? priority : Integer.MAX_VALUE;
-                        })
-                        .thenComparing(Member::getLastName)
-                        .thenComparing(Member::getFirstName))
-                .map(this::toDto)
-                .toList();
+        return getMembersById(teamId, false);
     }
 
+    // Issue #108: Support toggle button showing inactive count (Issue #96 API compatibility)
     public long getInactiveMemberCount() {
         return getInactiveMemberCount(null);
     }
@@ -100,6 +45,41 @@ public class MemberQueryService {
             return memberRepository.countAllInactiveByBandId(teamId);
         }
         return memberRepository.countAllInactive();
+    }
+
+    private List<MemberDto> getMembersById(Long teamId, boolean active) {
+        // Build instrument priority map (lower number = higher priority)
+        var instrumentPriorities = (teamId != null
+                ? instrumentRepository.findAllOrderBySortPriorityByBandId(teamId)
+                : instrumentRepository.findAllOrderBySortPriority()).stream()
+                .collect(Collectors.toMap(
+                        Instrument::getName,
+                        Instrument::getSortPriority,
+                        (existing, replacement) -> existing,
+                        java.util.LinkedHashMap::new
+                ));
+
+        List<Member> members;
+        if (teamId != null) {
+            members = active ? memberRepository.findAllActiveByBandId(teamId)
+                             : memberRepository.findAllInactiveByBandId(teamId);
+        } else {
+            members = active ? memberRepository.findAllActive()
+                             : memberRepository.findAllInactive();
+        }
+
+        return members.stream()
+                .sorted(Comparator
+                        .<Member>comparingInt(m -> {
+                            Integer priority = m.getPrimaryInstrument()
+                                    .map(i -> instrumentPriorities.get(i.getName()))
+                                    .orElse(Integer.MAX_VALUE);
+                            return priority != null ? priority : Integer.MAX_VALUE;
+                        })
+                        .thenComparing(Member::getLastName)
+                        .thenComparing(Member::getFirstName))
+                .map(this::toDto)
+                .toList();
     }
 
     public MemberDto getMemberById(Long id) {
