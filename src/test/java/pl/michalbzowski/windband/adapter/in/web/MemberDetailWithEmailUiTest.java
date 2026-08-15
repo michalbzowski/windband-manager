@@ -10,8 +10,10 @@ import org.springframework.beans.factory.annotation.Autowired;
 import pl.michalbzowski.windband.UiTestBase;
 import pl.michalbzowski.windband.domain.band.Band;
 import pl.michalbzowski.windband.domain.band.BandRepository;
-import pl.michalbzowski.windband.domain.member.*;
-import pl.michalbzowski.windband.domain.inventory.*;
+import pl.michalbzowski.windband.domain.member.MemberRepository;
+import pl.michalbzowski.windband.domain.member.InstrumentRepository;
+import pl.michalbzowski.windband.domain.inventory.InventoryRepository;
+import pl.michalbzowski.windband.domain.inventory.AwardItemRepository;
 
 import java.time.Duration;
 import java.util.List;
