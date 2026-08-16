@@ -1,65 +1,58 @@
-# Analysis: Issue #114 - "Aktywni członkowie" Button Doesn't Work
+# Analysis for Issue #112: Team name not visible in header on light theme
+
+## Problem
+When using the light theme, the team name in the dashboard header is not visible. The font has the same color as in the dark theme (light color), making it invisible against the light background.
 
 ## Root Cause
+The `.team-name-display` CSS class (in `/src/main/resources/static/css/app.css`, lines 1542-1546) uses:
+```css
+.team-name-display {
+    color: var(--pico-color) !important;
+    -webkit-text-fill-color: var(--pico-color);
+    text-shadow: none;
+}
+```
 
-The JavaScript toggle functionality for switching between active and inactive/resigned members is defined **outside** the `#members-content` fragment that gets swapped via HTMX.
+The issue is with `-webkit-text-fill-color`. This WebKit-specific property overrides the standard `color` property. When CSS variables change via media queries (`@media (prefers-color-scheme: dark)`), the `-webkit-text-fill-color` value may not be re-evaluated properly in all browsers, causing it to retain the dark theme value (light color `#c2c7d0`) even in light theme.
 
-### Technical Details
+Additionally, `var(--pico-color)` resolves to:
+- Light theme: `#373c44` (dark)
+- Dark theme: `#c2c7d0` (light)
 
-1. **Template Structure** (`src/main/resources/templates/members/list.html`):
-   - The `#members-content` div (line 11) is the HTMX swap target
-   - The toggle button with `onclick="toggleMemberView()"` is **inside** `#members-content`
-   - The JavaScript IIFE defining `toggleMemberView()` and `isShowingInactive` state variable is at lines 213-248, **OUTSIDE** `#members-content`
+But `-webkit-text-fill-color` with a CSS variable doesn't reliably update when the media query changes.
 
-2. **Controller** (`MemberPageController.java`):
-   - `/members` endpoint returns full page `"members/list"`
-   - `/members/list` endpoint returns fragment `"members/list :: #members-content"`
+## Evidence
+The `.nav-team-label` class (same file, lines 392-438) correctly handles this by using **hardcoded explicit colors** with explicit dark/light overrides:
+```css
+.nav-team-label {
+    color: #1a1a1a;  /* explicit dark color for light theme */
+}
+[data-theme="dark"] .nav-team-label {
+    color: #e6e6e6;  /* explicit light color for dark theme */
+}
+@media (prefers-color-scheme: dark) {
+    .nav-team-label {
+        color: #e6e6e6;
+    }
+}
+```
 
-3. **HTMX Flow**:
-   - Initial page load: Full page renders, script executes, `isShowingInactive` initialized from `data-show-inactive` attribute
-   - User clicks "Pokaż nieaktywnych" → `toggleMemberView()` called → HTMX fetches `/members/list?showInactive=true`
-   - Server returns `#members-content` fragment with updated `data-show-inactive="true"`
-   - HTMX swaps `#members-content` innerHTML
-   - **PROBLEM**: The script at bottom of page does NOT re-execute (it's outside swap target)
-   - `isShowingInactive` closure variable retains old value (`false`)
-   - User clicks "Aktywni członkowie" → `toggleMemberView()` uses stale `isShowingInactive=false`
-   - Calculates `newShowState = !false = true` → fetches `/members/list?showInactive=true` again (wrong!)
-   - User sees no change (still showing inactive members)
+This pattern works reliably because the browser re-evaluates the color property when media queries match.
+
+## Solution
+Update `.team-name-display` to follow the same pattern as `.nav-team-label`:
+1. Remove `-webkit-text-fill-color` (it's not needed for this use case)
+2. Use explicit hardcoded colors for light theme
+3. Add `[data-theme="dark"]` and `@media (prefers-color-scheme: dark)` overrides with explicit light colors
 
 ## Implementation Plan
-
-### Fix: Move JavaScript Inside Fragment
-
-**File**: `src/main/resources/templates/members/list.html`
-
-**Steps**:
-1. Move the `<script>` block (lines 213-248) from after `</main>` (line 206) to **inside** the `#members-content` div, at the end (before line 205 `</div>`)
-2. This ensures the script re-executes on every HTMX fragment swap
-3. The IIFE will re-initialize `isShowingInactive` from the fresh `data-show-inactive` attribute
-
-### Verification Steps
-
-1. Start application
-2. Navigate to `/members`
-3. Click "Pokaż nieaktywnych" → Verify inactive members load
-4. Click "Aktywni członkowie" → Verify active members load (this was broken)
-5. Toggle back and forth multiple times → Verify consistent behavior
-6. Test keyboard shortcut (Ctrl+T) → Verify it works after swaps
-
-### Alternative Considered (Not Recommended)
-
-Using HTMX's `hx-on::after-swap` to re-initialize - more complex, less reliable than moving script inside fragment.
+1. Modify `/src/main/resources/static/css/app.css` - Update `.team-name-display` class (lines 1542-1546)
+2. Use color values consistent with PicoCSS:
+   - Light theme: `#1a1a1a` (same as `.nav-team-label`)
+   - Dark theme: `#e6e6e6` (same as `.nav-team-label`)
+3. Test both themes locally
+4. Run existing tests
+5. Commit and push
 
 ## Files to Modify
-
-1. `src/main/resources/templates/members/list.html` - Move script block inside `#members-content`
-
-## Testing Checklist
-
-- [ ] Active → Inactive toggle works
-- [ ] Inactive → Active toggle works (the bug)
-- [ ] Multiple consecutive toggles work
-- [ ] Keyboard shortcut (Ctrl+T) works after HTMX swaps
-- [ ] Button text updates correctly ("Pokaż nieaktywnych" / "Aktywni członkowie")
-- [ ] Inactive count badge updates correctly
-- [ ] Focus member ID preserved across toggles
+- `/home/mbzowski/windband-manager/src/main/resources/static/css/app.css` - Lines 1542-1546
