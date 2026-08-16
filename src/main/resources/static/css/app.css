@@ -1540,9 +1540,21 @@ li.past-item > * {
 }
 
 .team-name-display {
-    color: var(--pico-color) !important;
-    -webkit-text-fill-color: var(--pico-color);
+    /* Explicit colors (not var(--pico-color)) so team names stay
+       readable in both light and dark themes. The -webkit-text-fill-color
+       property caused issues with media query color switching. */
+    color: #1a1a1a;
     text-shadow: none;
+}
+
+[data-theme="dark"] .team-name-display {
+    color: #e6e6e6;
+}
+
+@media (prefers-color-scheme: dark) {
+    .team-name-display {
+        color: #e6e6e6;
+    }
 }
 
 .team-switcher:hover {
