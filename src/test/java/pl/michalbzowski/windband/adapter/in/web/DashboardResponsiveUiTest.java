@@ -43,7 +43,7 @@ class DashboardResponsiveUiTest extends UiTestBase {
 
         // Progress bars should exist in cards (if events have attendance data)
         var progressBars = driver.findElements(By.cssSelector("section.dashboard-upcoming .upcoming-list .progress-fill"));
-        // Progress bars are conditional on attendancePercentage - just verify cards exist
+        // Progress bars are conditional on attendancePercentage - just verify cards exist (they have attendance data in test setup)
         assertThat(cards).as("Cards should be visible on mobile").isNotEmpty();
     }
 
