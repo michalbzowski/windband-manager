@@ -8,6 +8,28 @@
     <section class="dashboard-upcoming">
         <header th:replace="~{fragments/layout :: dashboard-header}"></header>
 
+        <!-- Detail page actions bar with back navigation and action buttons -->
+        <nav class="detail-page-actions-bar" style="display:flex; align-items:center; gap:0.75rem; padding:1rem 0;">
+            <!-- Back button - dynamic based on referrer or default to events list -->
+            <a href="/events" class="detail-back-btn">← Powrót</a>
+
+            <!-- Page title with emoji -->
+            <h2 style="margin:0 0 auto 0; color:var(--pico-primary); flex-grow:1;">🎪 Szczegóły wydarzenia</h2>
+
+            <!-- Action buttons (right-aligned) -->
+            <div style="display:flex; gap:0.5rem;">
+                <button type="button" 
+                        class="outline" 
+                        id="edit-event-btn" 
+                        style="padding:0.5rem 1rem;" 
+                        title="Edytuj wydarzenie">✏️ Edytuj</button>
+                <button type="button" 
+                        class="outline danger" 
+                        id="delete-event-btn" 
+                        style="padding:0.5rem 1rem;">🗑️ Usuń wydarzenie</button>
+            </div>
+        </nav>
+
     <div id="event-detail-wrapper">
 <div id="events-content"
      th:data-event-id="${event.id}"
@@ -15,8 +37,6 @@
      th:data-payment-amount="${event.paymentAmount}"
      th:data-confirmed-count="${event.confirmedCount}"
      th:fragment="event-detail-content">
-
-    <h2>🎪 Szczegóły wydarzenia</h2>
 
     <article>
         <header>
@@ -99,7 +119,7 @@
                 <th>Zgoda na informacje</th>
                 <th>Akcja</th>
                 <th th:if="${event.paymentType == 'PAID_SPLIT'}">Wypłata</th>
-                <th th:if="${event.paymentType == 'PAID_SPLIT'}">Status wypłaty</th>
+                <th th:if="${event.paymentType == 'PAID_SPLIT'}">Status wpłaty</th>
             </tr>
         </thead>
         <tbody>
@@ -161,7 +181,7 @@
                     class="payout-amount"
                     th:text="${event.payoutPerMember != null ? #numbers.formatDecimal(event.payoutPerMember, 1, 2) : '-'}"
                     data-label="Wypłata">100.00</td>
-                <td th:if="${event.paymentType == 'PAID_SPLIT'}" data-label="Status wypłaty">
+                <td th:if="${event.paymentType == 'PAID_SPLIT'}" data-label="Status wpłaty">
                     <select class="payment-status-select"
                             th:if="${p.response == 'CONFIRMED'}"
                             th:data-event-id="${event.id}"
@@ -176,13 +196,8 @@
         </tbody>
     </table>
 
-    <div style="margin-top:1rem; display:flex; gap:0.5rem;">
-        <a href="/events/list" class="secondary" style="text-decoration:none; cursor:pointer;">← Powrót</a>
-        <button type="button" class="outline" id="edit-event-btn" title="Edytuj wydarzenie">✏️ Edytuj</button>
-        <button type="button" class="outline danger" id="delete-event-btn">🗑️ Usuń wydarzenie</button>
-    </div>
-    
-    <input type="hidden" id="event-edit-url" th:value="@{/events/{id}/edit(id=${event.id})}">
+<!-- Hidden input for edit URL -->
+<input type="hidden" id="event-edit-url" th:value="@{/events/{id}/edit(id=${event.id})}">
 
 <dialog id="invite-members-modal" class="app-modal">
     <div class="app-modal-content">
@@ -221,7 +236,7 @@
             <ul style="list-style:none; padding:0; margin:0; max-height:50vh; overflow-y:auto;">
                 <li th:each="g : ${event.allGroups}" style="display:flex; align-items:center; gap:0.6rem; padding:0.5rem 0; border-bottom:1px solid var(--pico-muted-border-color);">
                     <input type="checkbox" class="invite-group-checkbox" th:value="${g.id}" th:id="'invite-group-cb-' + ${g.id}">
-                    <label th:for="'invite-group-cb-' + ${g.id}" th:text="${g.name} + ' (' + ${g.memberCount} + ' członeków)'" style="margin:0; flex:1; cursor:pointer;">Sekcja dęta (5 członeków)</label>
+                    <label th:for="'invite-group-cb-' + ${g.id}" th:text="${g.name} + ' (' + ${g.memberCount} + ' członków)'" style="margin:0; flex:1; cursor:pointer;">Sekcja dęta (5 członków)</label>
                 </li>
             </ul>
         </div>
@@ -231,8 +246,6 @@
         </footer>
     </div>
 </dialog>
-
-</div>
 
 <dialog id="delete-event-modal" class="app-modal">
     <div class="app-modal-content">
@@ -247,13 +260,12 @@
         </div>
         <footer class="app-modal-footer">
             <button type="button" class="outline" id="delete-event-cancel-btn">Anuluj</button>
-            <button type="button" class="primary" id="delete-event-confirm-btn">Tak, usuń</button>
+            <button type="button" class="primary danger" id="delete-event-confirm-btn">Tak, usuń</button>
         </footer>
     </div>
 </dialog>
 
-</div>
-    </section>
+</div></section>
 </main>
 
 <footer th:replace="~{fragments/layout :: footer}"></footer>
@@ -426,5 +438,83 @@
             });
         }
 </script>
-</body>
+
+<dialog id="delete-rehearsal-modal" class="app-modal">
+    <div class="app-modal-content">
+        <header class="app-modal-header">
+            <div class="app-modal-header-text">
+                <h3>Usuń spotkanie</h3>
+            </div>
+            <button type="button" class="app-modal-close" aria-label="Zamknij" data-close>×</button>
+        </header>
+        <div class="app-modal-body">
+            <p>Czy na pewno chcesz usunąć to spotkanie? Tej operacji nie można cofnąć.</p>
+        </div>
+        <footer class="app-modal-footer">
+            <button type="button" class="outline" id="delete-rehearsal-cancel-btn">Anuluj</button>
+            <button type="button" class="primary danger" id="delete-rehearsal-confirm-btn">Tak, usuń</button>
+        </footer>
+    </div>
+
+<script>
+    // === DELETE REHEARSAL MODAL HANDLERS (shared between event and rehearsal detail pages) ===
+    var deleteRehearsalBtn = document.getElementById('delete-rehearsal-btn');
+    if (deleteRehearsalBtn) {
+        deleteRehearsalBtn.addEventListener('click', function() {
+            openAppModal('delete-rehearsal-modal');
+        });
+    }
+
+    var confirmDeleteRehearsalBtn = document.getElementById('delete-rehearsal-confirm-btn');
+    if (confirmDeleteRehearsalBtn) {
+        confirmDeleteRehearsalBtn.addEventListener('click', async function() {
+            try {
+                var modal = document.getElementById('delete-rehearsal-modal');
+                closeAppModal(modal);
+
+                const rehearsalId = document.querySelector('#rehearsals-content') 
+                    ? document.querySelector('#rehearsals-content').getAttribute('data-rehearsal-id') 
+                    : null;
+                
+                if (!rehearsalId) {
+                    showToast('Nie znaleziono ID spotkania', 'error');
+                    return;
+                }
+
+                const response = await fetch(`/api/rehearsals/${rehearsalId}`, {
+                    method: 'DELETE',
+                    headers: {'Content-Type': 'application/json'}
+                });
+
+                if (response.ok) {
+                    window.location.href = '/rehearsals';
+                } else {
+                    showToast('Błąd podczas usuwania spotkania', 'error');
+                }
+            } catch (error) {
+                console.error('Error deleting rehearsal:', error);
+                showToast('Wystąpił błąd podczas usuwania', 'error');
+            }
+        });
+    }
+
+    var cancelDeleteRehearsalBtn = document.getElementById('delete-rehearsal-cancel-btn');
+    if (cancelDeleteRehearsalBtn) {
+        cancelDeleteRehearsalBtn.addEventListener('click', function() {
+            var modal = document.getElementById('delete-rehearsal-modal');
+            closeAppModal(modal);
+        });
+    }
+</script>
+
+<!-- Quick attendance functionality for rehearsal detail page -->
+<script th:if="${false}">
+    // This is a placeholder script block - quick attendance JS will be in rehearsals/detail.html
+</script>
+
+<!-- Rehearsal invite modals and scripts (only used on rehearsal detail page) -->
+<div th:fragment="rehearsal-specific-scripts"></div>
+
+<!-- Additional shared functionality that can go here -->
+
 </html>
