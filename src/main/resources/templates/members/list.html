@@ -14,12 +14,12 @@
                      th:data-focus-id="${focusMemberId}"
                      data-active-count="<span th:text='${active != null ? #lists.size(active) : members != null ? #lists.size(members) : 0}'/>"
                      data-focus-prefix="member">
-            
+           
                     <!-- Inline CSS styles -->
                     <style>
                         .inactive-badge { background-color: #fee2e2; color: #b91c1c; padding: 0.25rem 0.75rem; border-radius: 4px; font-size: 0.875rem; }
                         .resigned-badge { background-color: #fee2e2; color: #b91c1c; padding: 0.25rem 0.75rem; border-radius: 4px; font-size: 0.875rem; }
-                
+               
                         /* Mobile-friendly header with toggle button always visible */
                         .members-header-actions {
                             display: flex;
@@ -28,24 +28,24 @@
                             margin-bottom: 1rem;
                             flex-wrap: wrap;
                         }
-                
+               
                         @media (max-width: 768px) {
                             .members-header-actions {
                                 flex-direction: column;
                                 align-items: stretch;
                             }
-                    
+                   
                             #toggleMembersBtn {
                                 order: -1; /* Show toggle first on mobile */
                                 white-space: nowrap;
                             }
                         }
                     </style>
-            
+           
                     <!-- Header with toggle button (Issue #108) -->
                     <div style="max-width: 100%; display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
                         <h2 style="margin: 0;">👥 Członkowie</h2>
-                
+               
                         <!-- Toggle button for Active/Inactive members (Issue #108) -->
                         <div class="members-header-actions">
                             <!-- Toggle button for Active/Resigned - elevated priority on mobile with order: -1 -->
@@ -60,7 +60,7 @@
                                     <th:block th:if="${showingResignedMembers}">✓ Aktywni członkowie</th:block>
                                 </span>
                             </button>
-                    
+                   
                             <!-- Add member button (only showing when active members are visible) -->
                             <button hx-get="/members/new" 
                                     hx-target="#content"
@@ -137,7 +137,7 @@
 
         <!-- Show active members list by default (when showingInactiveMembers is false/null) -->
         <th:block th:unless="${showingInactiveMembers}">
-            
+           
             <div th:if="${#lists.isEmpty(members)}">
                 <article style="margin-top: 1.5rem;">
                     <p style="color:#8b949e;">Brak aktywnych członków. Dodaj pierwszego!</p>
@@ -202,50 +202,51 @@
             </th:block>
         </th:block>
 
+        <!-- Toggle functionality for member view (Issue #108) -->
+        <!-- This script MUST be inside #members-content so it re-executes on HTMX swaps -->
+        <script type="text/javascript">
+        (function() {
+            'use strict';
+       
+            // Initialize showingInactiveMembers state from server
+            var contentDiv = document.getElementById('members-content');
+            var isShowingInactive = contentDiv.getAttribute('data-show-inactive') === 'true';
+
+            function toggleMemberView() {
+                event.preventDefault();
+       
+                var newShowState = !isShowingInactive;
+                isShowingInactive = newShowState;
+                contentDiv.setAttribute('data-show-inactive', newShowState);
+                contentDiv.setAttribute('data-show-resigned', newShowState);
+       
+                // Use HTMX to fetch new view without full page reload
+                htmx.ajax('GET', '/members/list?showInactive=' + newShowState + '&focus=' + contentDiv.getAttribute('data-focus-id'), {
+                    target: '#members-content', 
+                    swap: 'innerHTML transition:true'
+                });
+            }
+       
+            document.getElementById('toggleMembersBtn').addEventListener('click', toggleMemberView);
+        })();
+        </script>
+
+        <!-- Add keyboard shortcut for toggling -->
+        <script type="text/javascript">
+        document.addEventListener('keydown', function(e) {
+            if ((e.ctrlKey || e.metaKey) && e.key === 't') {
+                // Ctrl+T or Cmd+T to toggle active/inactive members
+                document.getElementById('toggleMembersBtn').click();
+            }
+        });
+        </script>
+    </div>
     </section>
 </main>
 
 <footer th:replace="~{fragments/layout :: footer}"></footer>
 <div th:insert="~{fragments/layout :: toast-container}"></div>
 <div th:insert="~{fragments/layout :: footer-scripts}"></div>
-
-<!-- Toggle functionality for member view (Issue #108) -->
-<script type="text/javascript">
-(function() {
-    'use strict';
-    
-    // Initialize showingInactiveMembers state from server
-    var contentDiv = document.getElementById('members-content');
-    var isShowingInactive = contentDiv.getAttribute('data-show-inactive') === 'true';
-
-    function toggleMemberView() {
-        event.preventDefault();
-        
-        var newShowState = !isShowingInactive;
-        isShowingInactive = newShowState;
-        contentDiv.setAttribute('data-show-inactive', newShowState);
-        contentDiv.setAttribute('data-show-resigned', newShowState);
-        
-        // Use HTMX to fetch new view without full page reload
-        htmx.ajax('GET', '/members/list?showInactive=' + newShowState + '&focus=' + contentDiv.getAttribute('data-focus-id'), {
-            target: '#members-content', 
-            swap: 'innerHTML transition:true'
-        });
-    }
-    
-    document.getElementById('toggleMembersBtn').addEventListener('click', toggleMemberView);
-})();
-</script>
-
-<!-- Add keyboard shortcut for toggling -->
-<script type="text/javascript">
-document.addEventListener('keydown', function(e) {
-    if ((e.ctrlKey || e.metaKey) && e.key === 't') {
-        // Ctrl+T or Cmd+T to toggle active/inactive members
-        document.getElementById('toggleMembersBtn').click();
-    }
-});
-</script>
 
 <div th:insert="~{fragments/layout :: dashboard-header-morph}"></div>
 </body>
