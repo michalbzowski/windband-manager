@@ -35,7 +35,7 @@ public class MemberPageController {
     @GetMapping
     public String listPage(@ModelAttribute("activeTeamId") Long activeTeamId, Model model,
                            @RequestParam(required = false) Boolean showInactive,
-                           @RequestParam(required = false) Long focus) {
+                           @RequestParam(required = false) String focus) {
         boolean showingInactiveMembers = Boolean.TRUE.equals(showInactive);
 
         List<MemberDto> members;
@@ -48,13 +48,14 @@ public class MemberPageController {
             members = memberQueryService.getAllActiveMembers(activeTeamId);
         }
 
+        Long focusMemberId = parseLongSafely(focus);
         model.addAttribute("members", members);
         model.addAttribute("showingInactiveMembers", showingInactiveMembers);
         model.addAttribute("showingResignedMembers", showingInactiveMembers); // Backend: inactive, UI display: resigned
         model.addAttribute("inactiveCount", inactiveCount);
         model.addAttribute("resignedCount", inactiveCount);
         model.addAttribute("activeTeamId", activeTeamId);
-        model.addAttribute("focusMemberId", focus);
+        model.addAttribute("focusMemberId", focusMemberId);
         model.addAttribute("today", LocalDate.now());
         return "members/list";
     }
@@ -62,7 +63,7 @@ public class MemberPageController {
     @GetMapping("/list")
     public String listFragment(@ModelAttribute("activeTeamId") Long activeTeamId,
                                @RequestParam(required = false) Boolean showInactive,
-                               @RequestParam(required = false) Long focus, Model model) {
+                               @RequestParam(required = false) String focus, Model model) {
         boolean showingInactiveMembers = Boolean.TRUE.equals(showInactive);
 
         List<MemberDto> members;
@@ -74,13 +75,14 @@ public class MemberPageController {
             members = memberQueryService.getAllActiveMembers(activeTeamId);
         }
 
+        Long focusMemberId = parseLongSafely(focus);
         model.addAttribute("members", members);
         model.addAttribute("showingInactiveMembers", showingInactiveMembers);
         model.addAttribute("showingResignedMembers", showingInactiveMembers); // Backend: inactive, UI display: resigned
         model.addAttribute("inactiveCount", inactiveCount);
         model.addAttribute("resignedCount", inactiveCount);
         model.addAttribute("activeTeamId", activeTeamId);
-        model.addAttribute("focusMemberId", focus);
+        model.addAttribute("focusMemberId", focusMemberId);
         model.addAttribute("today", LocalDate.now());
         return "members/list :: #members-content";
     }
@@ -152,5 +154,21 @@ public class MemberPageController {
     private MemberDto emptyMemberDto() {
         return new MemberDto(null, "", "", null, 0, false, false,
                 "", "", true, "", List.of(), null, null, null, null, false);
+    }
+
+    /**
+     * Safely parses a String to Long, handling "null" literal strings, empty values, and invalid numbers.
+     * Returns null for any non-parseable input instead of throwing an exception.
+     */
+    private Long parseLongSafely(String value) {
+        if (value == null || value.trim().isEmpty() || "null".equalsIgnoreCase(value)) {
+            return null;
+        }
+        try {
+            return Long.parseLong(value.trim());
+        } catch (NumberFormatException e) {
+            // Log silently and return null for invalid numbers
+            return null;
+        }
     }
 }
