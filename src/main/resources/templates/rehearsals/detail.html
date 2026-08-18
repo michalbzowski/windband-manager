@@ -390,7 +390,7 @@
                 qa.index++;
                 window.quickAttendanceRender();
             } else {
-                window.showToast('Zapisano obecność', 'success');
+                Toast.success('Zapisano obecność');
                 var dlg = document.getElementById('quick-attendance-modal');
                 if (typeof closeAppModal === 'function') {
                     closeAppModal(dlg);
@@ -465,14 +465,33 @@
 
 <script>
 // Invite member/group handlers (existing functionality preserved)   
-document.addEventListener('DOMContentLoaded', function() {
-     var inviteBtn = document.getElementById('open-invite-modal-btn');
-if(inviteBtn){inviteBtn.onclick=function(){openAppModal('invite-members-modal')}};var inviteGroupBtn= document.getElementById('open-
-
-invite-group-modal-btn');if(inviteGroupBtn){inviteGroupBtn.onclick=function(){openAppModal('invite-group-modal')}};document.getElementById('invite-selected-btn')?.addEventListener('click',function() { const selected = Array.from(document.querySelectorAll('.invite-checkbox:checked')).map(cb => parseInt(cb.value)); if (!selected.length) return window.showToast('Wybierz przynajmniej jedną osobę'); const rehearsalId = document.querySelector('#rehearsals-content').getAttribute('data-rehearsal-id'); const xhr=new XMLHttpRequest();xhr.open("POST","/api/rehearsals/"+rehearsalId+"/invite",true);xhr.setRequestHeader("Content-Type","application/json");xhr.send(JSON.stringify({"rehearsalId":parseInt(rehearsalId),"memberIds":selected}));});document.getElementById('invite-group-selected-btn')?.addEventListener('click', function() {const selected = Array.from(document.querySelectorAll('.invite-group-checkbox:checked')).map(cb => parseInt(cb.value)); if(!selected.length) return window.showToast('Wybierz przynajmniej jedną grupę');
-
- const rehearsalId = document.querySelector('#rehearsals-content').getAttribute('data-rehearsal-id'); const xhr=new XMLHttpRequest();xhr.open("POST","/api/rehearsals/"+rehearsalId+"/invite-group",true);xhr.setRequestHeader("Content-Type","application/json");xhr.send(JSON.stringify({"rehearsalId":parseInt(rehearsalId),"groupId":selected[0]}));});
-</script>
+document.addEventListener('DOMContentLoaded', function() { 
+    var inviteBtn = document.getElementById('open-invite-modal-btn');
+    if(inviteBtn){inviteBtn.onclick=function(){openAppModal('invite-members-modal')}};
+    
+    var inviteGroupBtn= document.getElementById('open-invite-group-modal-btn');
+    if(inviteGroupBtn){inviteGroupBtn.onclick=function(){openAppModal('invite-group-modal')}};
+    
+    document.getElementById('invite-selected-btn')?.addEventListener('click',function() { 
+        const selected = Array.from(document.querySelectorAll('.invite-checkbox:checked')).map(cb => parseInt(cb.value)); 
+        if (!selected.length) return window.showToast('Wybierz przynajmniej jedną osobę'); 
+        const rehearsalId = document.querySelector('#rehearsals-content').getAttribute('data-rehearsal-id'); 
+        const xhr=new XMLHttpRequest();
+        xhr.open("POST","/api/rehearsals/"+rehearsalId+"/invite",true);
+        xhr.setRequestHeader("Content-Type","application/json");
+        xhr.send(JSON.stringify({"rehearsalId":parseInt(rehearsalId),"memberIds":selected}));
+    });
+    
+    document.getElementById('invite-group-selected-btn')?.addEventListener('click', function() {
+        const selected = Array.from(document.querySelectorAll('.invite-group-checkbox:checked')).map(cb => parseInt(cb.value)); 
+        if(!selected.length) return window.showToast('Wybierz przynajmniej jedną grupę');
+        const rehearsalId = document.querySelector('#rehearsals-content').getAttribute('data-rehearsal-id'); 
+        const xhr=new XMLHttpRequest();
+        xhr.open("POST","/api/rehearsals/"+rehearsalId+"/invite-group",true);
+        xhr.setRequestHeader("Content-Type","application/json");
+        xhr.send(JSON.stringify({"rehearsalId":parseInt(rehearsalId),"groupId":selected[0]}));
+    });
+});</script>
 
     </div></section>
 </main>
