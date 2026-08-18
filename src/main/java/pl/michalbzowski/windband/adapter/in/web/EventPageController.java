@@ -114,6 +114,22 @@ public class EventPageController {
         model.addAttribute("instruments", instrumentQueryService.findAll(activeTeamId));
         model.addAttribute("event", eventDetail);
 
+        // Determine back URL from Referer header, default to events list
+        String referer = request.getHeader("Referer");
+        String backUrl = "/events"; // default
+        if (referer != null) {
+            try {
+                java.net.URL refUrl = new java.net.URL(referer);
+                String path = refUrl.getPath();
+                if (path.equals("/") || path.startsWith("/events") || path.startsWith("/rehearsals")) {
+                    backUrl = path;
+                }
+            } catch (Exception ignored) {
+                // Invalid referer, use default
+            }
+        }
+        model.addAttribute("backUrl", backUrl);
+
         boolean isHtmx = "true".equalsIgnoreCase(request.getHeader("HX-Request"));
         if (isHtmx) {
             return "events/detail :: event-detail-content";

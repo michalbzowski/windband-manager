@@ -112,6 +112,22 @@ public class RehearsalPageController {
         model.addAttribute("unexcusedCount", unexcusedCount);
         model.addAttribute("noResponseCount", noResponseCount);
 
+        // Determine back URL from Referer header, default to rehearsals list
+        String referer = request.getHeader("Referer");
+        String backUrl = "/rehearsals"; // default
+        if (referer != null) {
+            try {
+                java.net.URL refUrl = new java.net.URL(referer);
+                String path = refUrl.getPath();
+                if (path.equals("/") || path.startsWith("/events") || path.startsWith("/rehearsals")) {
+                    backUrl = path;
+                }
+            } catch (Exception ignored) {
+                // Invalid referer, use default
+            }
+        }
+        model.addAttribute("backUrl", backUrl);
+
         if ("true".equals(request.getHeader("HX-Request"))) {
             return "rehearsals/detail :: #rehearsals-content";
         }
