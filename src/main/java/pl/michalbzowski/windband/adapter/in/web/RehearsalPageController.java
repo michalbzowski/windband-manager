@@ -114,16 +114,24 @@ public class RehearsalPageController {
 
         // Determine back URL from Referer header, default to rehearsals list
         String referer = request.getHeader("Referer");
-        String backUrl = "/rehearsals"; // default
+        String backUrl = "/rehearsals"; // always defaults to the list view
         if (referer != null) {
             try {
                 java.net.URL refUrl = new java.net.URL(referer);
                 String path = refUrl.getPath();
-                if (path.equals("/") || path.startsWith("/events") || path.startsWith("/rehearsals")) {
-                    backUrl = path;
+                // Map referer paths to their respective list views:
+                // - "/" → root stays as root only for dashboard/home context
+                // - "/events" or "/events/..." → back to events list
+                // - "/rehearsals" or "/rehearsals/..." → back to rehearsals list
+                if (path.equals("/")) {
+                    backUrl = path;  // root home page
+                } else if (path.startsWith("/events")) {
+                    backUrl = "/events";
+                } else if (path.startsWith("/rehearsals")) {
+                    backUrl = "/rehearsals";
                 }
             } catch (Exception ignored) {
-                // Invalid referer, use default
+                // Invalid referer, use default list view
             }
         }
         model.addAttribute("backUrl", backUrl);
