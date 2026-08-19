@@ -8,9 +8,36 @@
     <section class="dashboard-upcoming">
         <header th:replace="~{fragments/layout :: dashboard-header}"></header>
 
+        <!-- Detail page actions bar with back navigation and action buttons -->
+        <nav class="detail-page-actions-bar" style="display:flex; align-items:center; gap:0.75rem; padding:1rem 0;">
+            <!-- Back button - navigate to rehearsals list -->
+            <a th:href="${backUrl}" class="detail-back-btn">← Powrót</a>
+
+            <!-- Page title with emoji -->
+            <h2 style="margin:0 0 auto 0; color:var(--pico-primary); flex-grow:1;">🎵 Szczegóły spotkania</h2>
+
+            <!-- Action buttons (right-aligned) - in order per issue #121 -->
+            <div style="display:flex; gap:0.5rem;">
+                <button type="button" 
+                        class="primary" 
+                        id="quick-attendance-btn"
+                        onclick="window.openQuickAttendance()"
+                        style="padding:0.5rem 1rem;">⚡ Szybka obecność</button>
+                <button type="button" 
+                        class="outline"
+                        th:hx-get="@{/rehearsals/{id}/edit(id=${rehearsal.id})}"
+                        hx-target="#rehearsals-content"
+                        hx-swap="innerHTML transition:true"
+                        style="padding:0.5rem 1rem;">✏️ Edytuj</button>
+                <button type="button" 
+                        class="outline danger" 
+                        id="delete-rehearsal-btn" 
+                        style="padding:0.5rem 1rem;">🗑️ Usuń spotkanie</button>
+            </div>
+        </nav>
+
     <div id="rehearsals-content" th:fragment="rehearsals-content"
          th:attr="data-rehearsal-id=${rehearsal.id}">
-        <h2>🎵 Szczegóły spotkania</h2>
 
         <article>
             <header>
@@ -80,108 +107,107 @@
             </tbody>
         </table>
 
-        <div style="display:flex; gap:0.5rem; margin-top:1rem; flex-wrap:wrap;">
-            <button type="button" class="primary" id="quick-attendance-btn"
-                    onclick="window.openQuickAttendance()">⚡ Szybka obecność</button>
-            <button type="button" class="secondary"
-                    th:hx-get="@{/rehearsals/{id}/edit(id=${rehearsal.id})}"
-                    hx-target="#rehearsals-content"
-                    hx-swap="innerHTML transition:true">Edytuj</button>
-            <button type="button" class="secondary"
-                    hx-get="/rehearsals/list" hx-target="#rehearsals-content"
-                    hx-swap="innerHTML transition:true">Powrót</button>
+<!-- === Quick attendance modal: one member at a time, status as buttons, save-then-advance === -->
+<dialog id="quick-attendance-modal" class="app-modal">
+    <div class="app-modal-content">
+        <header class="app-modal-header">
+            <div class="app-modal-header-text">
+                <h3 style="margin:0;">Szybka obecność</h3>
+                <small id="qa-progress">1 / 1</small>
+            </div>
+            <button type="button" class="app-modal-close" aria-label="Zamknij" data-close>×</button>
+        </header>
+        <div class="app-modal-body">
+            <p id="qa-member-name" style="font-size:1.25rem; font-weight:bold; margin:0.5rem 0;">—</p>
+            <div style="display:grid; grid-template-columns:1fr 1fr; gap:0.5rem; margin-top:1rem;">
+                <button type="button" class="qa-status primary" data-status="PRESENT"
+                        onclick="window.quickAttendanceSelect('PRESENT')">✓ Obecny</button>
+                <button type="button" class="qa-status" data-status="EXCUSED"
+                        onclick="window.quickAttendanceSelect('EXCUSED')">🕓 Usprawiedliwiony</button>
+                <button type="button" class="qa-status" data-status="UNEXCUSED"
+                        onclick="window.quickAttendanceSelect('UNEXCUSED')">✕ Nieobecny</button>
+                <button type="button" class="qa-status secondary" data-status="NO_RESPONSE"
+                        onclick="window.quickAttendanceSelect('NO_RESPONSE')">? Brak odp.</button>
+            </div>
+            <div style="display:flex; gap:0.5rem; margin-top:1rem; justify-content:space-between;">
+                <button type="button" class="secondary" id="qa-back"
+                        onclick="window.quickAttendanceBack()">← Wstecz</button>
+                <button type="button" class="secondary" data-close>Anuluj</button>
+            </div>
         </div>
-
-        <!-- Multi-member invite modal: only members NOT yet invited are shown -->
-        <dialog id="invite-members-modal" class="app-modal">
-            <div class="app-modal-content">
-                <header class="app-modal-header">
-                    <div class="app-modal-header-text">
-                        <h3>Zaproś uczestników</h3>
-                    </div>
-                    <button type="button" class="app-modal-close" aria-label="Zamknij" data-close>×</button>
-                </header>
-                <div class="app-modal-body">
-                    <p th:if="${#lists.isEmpty(inviteMembers)}" class="text-muted" style="margin:0 0 0.5rem;">Wszyscy członkowie zostali już zaproszeni.</p>
-                    <ul style="list-style:none; padding:0; margin:0; max-height:50vh; overflow-y:auto;">
-                        <li th:each="m : ${inviteMembers}" style="display:flex; align-items:center; gap:0.6rem; padding:0.5rem 0; border-bottom:1px solid var(--pico-muted-border-color);">
-                            <input type="checkbox" class="invite-checkbox" th:value="${m.id}" th:id="'invite-cb-' + ${m.id}">
-                            <label th:for="'invite-cb-' + ${m.id}" th:text="${m.firstName} + ' ' + ${m.lastName}" style="margin:0; flex:1; cursor:pointer;">Jan Kowalski</label>
-                        </li>
-                    </ul>
-                </div>
-                <footer class="app-modal-footer">
-                    <button type="button" class="outline" data-close>Anuluj</button>
-                    <button type="button" class="primary" id="invite-selected-btn">Zaproś zaznaczone osoby</button>
-                </footer>
-            </div>
-        </dialog>
-
-        <!-- Group invite modal: every group of the current band, dynamic groups marked -->
-        <dialog id="invite-group-modal" class="app-modal">
-            <div class="app-modal-content">
-                <header class="app-modal-header">
-                    <div class="app-modal-header-text">
-                        <h3>Zaproś grupę</h3>
-                    </div>
-                    <button type="button" class="app-modal-close" aria-label="Zamknij" data-close>×</button>
-                </header>
-                <div class="app-modal-body">
-                    <p th:if="${#lists.isEmpty(groups)}" class="text-muted" style="margin:0 0 0.5rem;">Brak dostępnych grup.</p>
-                    <ul style="list-style:none; padding:0; margin:0; max-height:50vh; overflow-y:auto;">
-                        <li th:each="g : ${groups}" style="display:flex; align-items:center; gap:0.6rem; padding:0.5rem 0; border-bottom:1px solid var(--pico-muted-border-color);">
-                            <input type="checkbox" class="invite-group-checkbox" th:value="${g.id}" th:id="'invite-group-cb-' + ${g.id}">
-                            <label th:for="'invite-group-cb-' + ${g.id}" style="margin:0; flex:1; cursor:pointer;">
-                                <span th:text="${g.name} + ' (' + ${g.memberCount} + ' członków)'">Sekcja dęta (5 członków)</span>
-                                <small th:if="${g.dynamic}" style="margin-left:0.4rem; color:var(--pico-muted-color);">(dynamiczna)</small>
-                            </label>
-                        </li>
-                    </ul>
-                </div>
-                <footer class="app-modal-footer">
-                    <button type="button" class="outline" data-close>Anuluj</button>
-                    <button type="button" class="primary" id="invite-group-selected-btn">Zaproś zaznaczone grupy</button>
-                </footer>
-            </div>
-        </dialog>
-
-        <!-- Quick attendance modal: one member at a time, status as buttons, save-then-advance -->
-        <dialog id="quick-attendance-modal" class="app-modal">
-            <div class="app-modal-content">
-                <header class="app-modal-header">
-                    <div class="app-modal-header-text">
-                        <h3 style="margin:0;">Szybka obecność</h3>
-                        <small id="qa-progress">1 / 1</small>
-                    </div>
-                    <button type="button" class="app-modal-close" aria-label="Zamknij" data-close>×</button>
-                </header>
-                <div class="app-modal-body">
-                    <p id="qa-member-name" style="font-size:1.25rem; font-weight:bold; margin:0.5rem 0;">—</p>
-                    <div style="display:grid; grid-template-columns:1fr 1fr; gap:0.5rem; margin-top:1rem;">
-                        <button type="button" class="qa-status primary" data-status="PRESENT"
-                                onclick="window.quickAttendanceSelect('PRESENT')">✓ Obecny</button>
-                        <button type="button" class="qa-status" data-status="EXCUSED"
-                                onclick="window.quickAttendanceSelect('EXCUSED')">🕓 Usprawiedliwiony</button>
-                        <button type="button" class="qa-status" data-status="UNEXCUSED"
-                                onclick="window.quickAttendanceSelect('UNEXCUSED')">✕ Nieobecny</button>
-                        <button type="button" class="qa-status secondary" data-status="NO_RESPONSE"
-                                onclick="window.quickAttendanceSelect('NO_RESPONSE')">? Brak odp.</button>
-                    </div>
-                    <div style="display:flex; gap:0.5rem; margin-top:1rem; justify-content:space-between;">
-                        <button type="button" class="secondary" id="qa-back"
-                                onclick="window.quickAttendanceBack()">← Wstecz</button>
-                        <button type="button" class="secondary" data-close>Anuluj</button>
-                    </div>
-                </div>
-            </div>
-        </dialog>
     </div>
-    </section>
-</main>
+</dialog>
 
-<footer th:replace="~{fragments/layout :: footer}"></footer>
-<div th:insert="~{fragments/layout :: toast-container}"></div>
-<div th:insert="~{fragments/layout :: footer-scripts}"></div>
+<!-- Multi-member invite modal: only members NOT yet invited are shown -->
+<dialog id="invite-members-modal" class="app-modal">
+    <div class="app-modal-content">
+        <header class="app-modal-header">
+            <div class="app-modal-header-text">
+                <h3>Zaproś uczestników</h3>
+            </div>
+            <button type="button" class="app-modal-close" aria-label="Zamknij" data-close>×</button>
+        </header>
+        <div class="app-modal-body">
+            <p th:if="${#lists.isEmpty(inviteMembers)}" class="text-muted" style="margin:0 0 0.5rem;">Wszyscy członkowie zostali już zaproszeni.</p>
+            <ul style="list-style:none; padding:0; margin:0; max-height:50vh; overflow-y:auto;">
+                <li th:each="m : ${inviteMembers}" style="display:flex; align-items:center; gap:0.6rem; padding:0.5rem 0; border-bottom:1px solid var(--pico-muted-border-color);">
+                    <input type="checkbox" class="invite-checkbox" th:value="${m.id}" th:id="'invite-cb-' + ${m.id}">
+                    <label th:for="'invite-cb-' + ${m.id}" th:text="${m.firstName} + ' ' + ${m.lastName}" style="margin:0; flex:1; cursor:pointer;">Jan Kowalski</label>
+                </li>
+            </ul>
+        </div>
+        <footer class="app-modal-footer">
+            <button type="button" class="outline" data-close>Anuluj</button>
+            <button type="button" class="primary" id="invite-selected-btn">Zaproś zaznaczone osoby</button>
+        </footer>
+    </div>
+</dialog>
+
+<!-- Group invite modal: every group of the current band, dynamic groups marked -->
+<dialog id="invite-group-modal" class="app-modal">
+    <div class="app-modal-content">
+        <header class="app-modal-header">
+            <div class="app-modal-header-text">
+                <h3>Zaproś grupę</h3>
+            </div>
+            <button type="button" class="app-modal-close" aria-label="Zamknij" data-close>×</button>
+        </header>
+        <div class="app-modal-body">
+            <p th:if="${#lists.isEmpty(groups)}" class="text-muted" style="margin:0 0 0.5rem;">Brak dostępnych grup.</p>
+            <ul style="list-style:none; padding:0; margin:0; max-height:50vh; overflow-y:auto;">
+                <li th:each="g : ${groups}" style="display:flex; align-items:center; gap:0.6rem; padding:0.5rem 0; border-bottom:1px solid var(--pico-muted-border-color);">
+                    <input type="checkbox" class="invite-group-checkbox" th:value="${g.id}" th:id="'invite-group-cb-' + ${g.id}">
+                    <label th:for="'invite-group-cb-' + ${g.id}" style="margin:0; flex:1; cursor:pointer;">
+                        <span th:text="${g.name} + ' (' + ${g.memberCount} + ' członków)'">Sekcja dęta (5 członków)</span>
+                        <small th:if="${g.dynamic}" style="margin-left:0.4rem; color:var(--pico-muted-color);">(dynamiczna)</small>
+                    </label>
+                </li>
+            </ul>
+        </div>
+        <footer class="app-modal-footer">
+            <button type="button" class="outline" data-close>Anuluj</button>
+            <button type="button" class="primary" id="invite-group-selected-btn">Zaproś zaznaczone grupy</button>
+        </footer>
+    </div>
+</dialog>
+
+<!-- Delete rehearsal modal -->
+<dialog id="delete-rehearsal-modal" class="app-modal">
+    <div class="app-modal-content">
+        <header class="app-modal-header">
+            <div class="app-modal-header-text">
+                <h3>Usuń spotkanie</h3>
+            </div>
+            <button type="button" class="app-modal-close" aria-label="Zamknij" data-close>×</button>
+        </header>
+        <div class="app-modal-body">
+            <p>Czy na pewno chcesz usunąć to spotkanie? Tej operacji nie można cofnąć.</p>
+        </div>
+        <footer class="app-modal-footer">
+            <button type="button" class="outline" id="delete-rehearsal-cancel-btn">Anuluj</button>
+            <button type="button" class="primary danger" id="delete-rehearsal-confirm-btn">Tak, usuń</button>
+        </footer>
+    </div>
 
 <div th:insert="~{fragments/layout :: dashboard-header-morph}"></div>
 
@@ -297,10 +323,15 @@
         var container = document.getElementById('rehearsals-content');
         if (!container) return;
         var rehearsalId = container.getAttribute('data-rehearsal-id');
-        var rows = container.querySelectorAll('tbody tr');
+        var table = document.querySelector('table[role="grid"] tbody');
+        if (!table) {
+            window.Toast.error('Brak członków do odznaczenia');
+            return;
+        }
+        var rows = table.querySelectorAll('tr');
         var members = [];
         rows.forEach(function(tr) {
-            var nameCell = tr.querySelector('td');
+            var nameCell = tr.querySelector('td:first-child');
             var name = nameCell ? nameCell.textContent.trim() : '?';
             var select = tr.querySelector('select.status-select');
             var id = select ? select.getAttribute('data-member-id') : null;
@@ -308,7 +339,7 @@
             if (id) members.push({id: id, name: name, status: status});
         });
         if (!members.length) {
-            Toast.error('Brak członków do odznaczenia');
+            window.showToast('Brak członków do oznaczenia', 'error');
             return;
         }
         window._qa = { members: members, index: 0, rehearsalId: rehearsalId };
@@ -369,7 +400,7 @@
                 htmx.ajax('GET', '/rehearsals/' + qa.rehearsalId, {target: '#rehearsals-content', swap: 'innerHTML transition:true'});
             }
         }).catch(function(err) {
-            Toast.error('Błąd zapisu: ' + (err && err.message ? err.message : 'spróbuj ponownie'));
+            window.showToast('Błąd zapisu: ' + (err && err.message ? err.message : 'spróbuj ponownie'), 'error');
         });
     };
 
@@ -379,6 +410,94 @@
         qa.index--;
         window.quickAttendanceRender();
     };
+
+    // === DELETE REHEARSAL MODAL HANDLERS ===
+    var deleteRehearsalBtn = document.getElementById('delete-rehearsal-btn');
+    if (deleteRehearsalBtn) {
+        deleteRehearsalBtn.addEventListener('click', function() {
+            openAppModal('delete-rehearsal-modal');
+        });
+    }
+
+    var confirmDeleteRehearsalBtn = document.getElementById('delete-rehearsal-confirm-btn');
+    if (confirmDeleteRehearsalBtn) {
+        confirmDeleteRehearsalBtn.addEventListener('click', async function() {
+            try {
+                var modal = document.getElementById('delete-rehearsal-modal');
+                closeAppModal(modal);
+
+                const rehearsalId = document.querySelector('#rehearsals-content') 
+                    ? document.querySelector('#rehearsals-content').getAttribute('data-rehearsal-id') 
+                    : null;
+                
+                if (!rehearsalId) {
+                    showToast('Nie znaleziono ID spotkania', 'error');
+                    return;
+                }
+
+                const response = await fetch(`/api/rehearsals/${rehearsalId}`, {
+                    method: 'DELETE',
+                    headers: {'Content-Type': 'application/json'}
+                });
+
+                if (response.ok) {
+                    window.location.href = '/rehearsals';
+                } else {
+                    showToast('Błąd podczas usuwania spotkania', 'error');
+                }
+            } catch (error) {
+                console.error('Error deleting rehearsal:', error);
+                showToast('Wystąpił błąd podczas usuwania', 'error');
+            }
+        });
+    }
+
+    var cancelDeleteRehearsalBtn = document.getElementById('delete-rehearsal-cancel-btn');
+    if (cancelDeleteRehearsalBtn) {
+        cancelDeleteRehearsalBtn.addEventListener('click', function() {
+            var modal = document.getElementById('delete-rehersal-modal');
+            closeAppModal(modal);
+        });
+    }
+
+
 </script>
-</body>
+
+<script>
+// Invite member/group handlers (existing functionality preserved)   
+document.addEventListener('DOMContentLoaded', function() { 
+    var inviteBtn = document.getElementById('open-invite-modal-btn');
+    if(inviteBtn){inviteBtn.onclick=function(){openAppModal('invite-members-modal')}};
+    
+    var inviteGroupBtn= document.getElementById('open-invite-group-modal-btn');
+    if(inviteGroupBtn){inviteGroupBtn.onclick=function(){openAppModal('invite-group-modal')}};
+    
+    document.getElementById('invite-selected-btn')?.addEventListener('click',function() { 
+        const selected = Array.from(document.querySelectorAll('.invite-checkbox:checked')).map(cb => parseInt(cb.value)); 
+        if (!selected.length) return window.showToast('Wybierz przynajmniej jedną osobę'); 
+        const rehearsalId = document.querySelector('#rehearsals-content').getAttribute('data-rehearsal-id'); 
+        const xhr=new XMLHttpRequest();
+        xhr.open("POST","/api/rehearsals/"+rehearsalId+"/invite",true);
+        xhr.setRequestHeader("Content-Type","application/json");
+        xhr.send(JSON.stringify({"rehearsalId":parseInt(rehearsalId),"memberIds":selected}));
+    });
+    
+    document.getElementById('invite-group-selected-btn')?.addEventListener('click', function() {
+        const selected = Array.from(document.querySelectorAll('.invite-group-checkbox:checked')).map(cb => parseInt(cb.value)); 
+        if(!selected.length) return window.showToast('Wybierz przynajmniej jedną grupę');
+        const rehearsalId = document.querySelector('#rehearsals-content').getAttribute('data-rehearsal-id'); 
+        const xhr=new XMLHttpRequest();
+        xhr.open("POST","/api/rehearsals/"+rehearsalId+"/invite-group",true);
+        xhr.setRequestHeader("Content-Type","application/json");
+        xhr.send(JSON.stringify({"rehearsalId":parseInt(rehearsalId),"groupId":selected[0]}));
+    });
+});</script>
+
+    </div></section>
+</main>
+
+<footer th:replace="~{fragments/layout :: footer}"></footer>
+<div th:insert="~{fragments/layout :: toast-container}"></div>
+<div th:insert="~{fragments/layout :: footer-scripts}"></div>
+
 </html>
