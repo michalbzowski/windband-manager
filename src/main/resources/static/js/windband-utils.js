@@ -79,40 +79,72 @@
      * @param {Object} options - Standard fetch options, plus:
      *   - toastMessage {string} - Message to show in a toast on response
      *   - showSuccessToast {boolean} - If false, suppresses the success toast (default true)
+     *   - timeoutMs {number} - Optional request timeout in milliseconds (default 30000)
      * @returns {Promise<Response>} The fetch response
      */
     function fetchWithToast(url, options) {
         var originalOptions = options || {};
         var toastMessage = originalOptions.toastMessage;
         var showSuccessToast = originalOptions.showSuccessToast !== false;
+        var timeoutMs = originalOptions.timeoutMs || 30000;
 
         // Add CSRF token header if present
         var csrfToken = getCookie('XSRF-TOKEN');
-        console.log('fetchWithWorkflow: CSRF token from cookie:', csrfToken);
+        console.log('[fetchWithToast] URL:', url);
+        console.log('[fetchWithToast] CSRF token from cookie:', csrfToken ? 'FOUND' : 'NOT FOUND');
+        
         if (csrfToken) {
             var headers = originalOptions.headers || {};
             headers['X-XSRF-TOKEN'] = csrfToken;
             originalOptions.headers = headers;
-            console.log('fetchWithWorkflow: Headers after adding CSRF:', originalOptions.headers);
+            console.log('[fetchWithToast] Headers after adding CSRF:', JSON.stringify(originalOptions.headers));
         }
 
-        return fetch(url, originalOptions).then(function (response) {
-            console.log('fetchWithWorkflow: Response status:', response.status);
+        // Create timeout promise to prevent hanging requests in CI
+        var timeoutPromise = new Promise(function(_, reject) {
+            setTimeout(function() {
+                reject(new Error('Request timeout after ' + timeoutMs + 'ms'));
+            }, timeoutMs);
+        });
+
+        // Race fetch against timeout
+        return Promise.race([
+            fetch(url, originalOptions),
+            timeoutPromise
+        ]).then(function(response) {
+            console.log('[fetchWithToast] Response status:', response.status);
+            console.log('[fetchWithToast] Response ok:', response.ok);
+            
             if (toastMessage) {
                 if (response.ok) {
                     if (showSuccessToast) {
                         Toast.success(toastMessage);
                     }
                 } else {
-                    Toast.error(toastMessage + ' (' + response.status + ')');
+                    // Try to parse error body for more details
+                    return response.text().then(function(bodyText) {
+                        console.log('[fetchWithToast] Error response body:', bodyText.substring(0, 200));
+                        Toast.error(toastMessage + ' (HTTP ' + response.status + ')');
+                        // Return a modified response object that's not ok
+                        var errResponse = Object.create(response);
+                        errResponse.bodyUsed = true; // consume the body
+                        throw new Error('HTTP ' + response.status + ': ' + (bodyText || ''));
+                    }).catch(function(parseErr) {
+                        Toast.error(toastMessage + ' (' + response.status + ')');
+                        throw parseErr;
+                    });
                 }
             }
             return response;
-        }).catch(function (error) {
+        }).catch(function(error) {
+            console.error('[fetchWithToast] Caught error:', error);
+            
             if (toastMessage) {
-                Toast.error(toastMessage + ': ' + (error.message || 'błąd sieci'));
+                var errorMsg = toastMessage + ': ' + (error.message || 'błąd sieci');
+                Toast.error(errorMsg);
             }
-            console.error('fetchWithWorkflow: Error:', error);
+            
+            // Re-throw so callers can handle the failure
             throw error;
         });
     }

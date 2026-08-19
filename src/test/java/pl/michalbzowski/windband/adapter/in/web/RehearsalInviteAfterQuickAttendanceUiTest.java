@@ -103,12 +103,26 @@ class RehearsalInviteAfterQuickAttendanceUiTest extends UiTestBase {
 
         // Click PRESENT for the member (only one member, so modal will close after)
         String beforeClick = driver.findElement(By.id("qa-progress")).getText();
+        System.out.println("[TEST] RehearsalInviteAfterQuickAttendanceUiTest - Before clicking: progress=" + beforeClick);
+
         driver.findElement(By.cssSelector(".qa-status[data-status='PRESENT']")).click();
 
-        // Wait for modal to close (which triggers the HTMX reload)
+        // Wait for modal to close (which triggers the HTMX reload) with timeout fallback
         WebDriverWait saveWait = new WebDriverWait(driver, Duration.ofSeconds(20));
-        saveWait.until(d -> (Boolean) ((JavascriptExecutor) d).executeScript(
-                "return document.getElementById('quick-attendance-modal').open === false;"));
+        try {
+            saveWait.until(d -> (Boolean) ((JavascriptExecutor) d).executeScript(
+                    "return document.getElementById('quick-attendance-modal').open === false;"));
+        } catch (Exception e) {
+            System.err.println("[TEST] WAIT TIMEOUT: modal did not close after quick attendance");
+            dumpBrowserLogs();
+
+            boolean isOpen = (Boolean) ((JavascriptExecutor) driver).executeScript(
+                    "return document.getElementById('quick-attendance-modal').open === true;");
+            String currentProgress = driver.findElement(By.id("qa-progress")).getText();
+            System.err.println("[TEST] Modal open: " + isOpen + ", Progress: " + currentProgress);
+
+            throw e; // Re-throw to fail the test clearly
+        }
 
         // Wait for toast
         saveWait.until(ExpectedConditions.textToBePresentInElementLocated(

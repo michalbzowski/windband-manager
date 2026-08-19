@@ -18,6 +18,9 @@ import org.springframework.test.context.ActiveProfiles;
 import java.io.BufferedReader;
 import java.io.InputStreamReader;
 import java.time.Duration;
+import org.openqa.selenium.logging.LogEntries;
+import org.openqa.selenium.logging.LogEntry;
+import org.openqa.selenium.logging.LogType;
 
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 @ActiveProfiles("test")
@@ -177,8 +180,68 @@ public abstract class UiTestBase {
         return null;
     }
 
+    /**
+     * Captures and logs browser console errors and warnings to stdout.
+     * Useful for debugging CI failures where JavaScript execution might fail silently.
+     * Logs all entries at WARNING level or higher with their source URLs when available.
+     */
+    protected void dumpBrowserLogs() {
+        if (driver == null) return;
+
+        try {
+            LogEntries browserLogs = driver.manage().logs().get(LogType.BROWSER);
+            boolean hasErrorsOrWarnings = false;
+
+            System.out.println("\n========== BROWSER LOGS START ==========\\n");
+
+            for (LogEntry log : browserLogs) {
+                // Always print errors, and also warnings that might be relevant
+                java.util.logging.Level level = log.getLevel();
+
+                if (level == java.util.logging.Level.SEVERE ||
+                    level == java.util.logging.Level.WARNING) {
+                    hasErrorsOrWarnings = true;
+                    System.out.println("[BROWSER " + log.getLevel() + "] " + log.getMessage());
+
+                    // Try to extract more context from the message for CSP/network issues
+                    String msg = log.getMessage();
+                    if (msg.contains("CSP") || msg.contains("content security policy")) {
+                        System.out.println("  ^ POTENTIAL CSP ISSUE - scripts may be blocked");
+                    } else if (msg.contains("404") || msg.contains("403")) {
+                        System.out.println("  ^ RESOURCE LOADING FAILURE detected");
+                    } else if (msg.contains("net::ERR_")) {
+                        System.out.println("  ^ NETWORK ERROR - check server response headers");
+                    }
+                }
+            }
+
+            // Also print any INFO logs containing "ERROR" keyword that browser might log as info
+            for (LogEntry log : browserLogs) {
+                java.util.logging.Level level = log.getLevel();
+                if (level == java.util.logging.Level.INFO && log.getMessage().toUpperCase().contains("ERROR")) {
+                    hasErrorsOrWarnings = true;
+                    System.out.println("[BROWSER INFO] " + log.getMessage());
+                }
+            }
+
+            if (!hasErrorsOrWarnings) {
+                System.out.println("No browser errors or warnings detected.");
+            }
+
+            System.out.println("\n========== BROWSER LOGS END ==========\\n");
+
+        } catch (Exception e) {
+            System.err.println("[UiTestBase] Could not retrieve browser logs: " + e.getMessage());
+        }
+    }
+
     @AfterEach
     void tearDown() {
+        // Dump browser logs on failure for debugging - helps diagnose CI-specific issues
+        if (driver != null && !Thread.currentThread().getStackTrace().toString().isEmpty()) {
+            dumpBrowserLogs();
+        }
+
         if (driver != null) {
             driver.quit();
         }
