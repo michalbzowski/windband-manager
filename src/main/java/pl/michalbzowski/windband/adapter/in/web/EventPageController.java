@@ -95,6 +95,10 @@ public class EventPageController {
         }
         model.addAttribute("paymentTypeDisplay", paymentTypeDisplay);
 
+        // Check if event is in the past (date <= today means already occurred)
+        boolean eventAlreadyOccurred = java.time.LocalDate.now().compareTo(eventDetail.date()) >= 0;
+        model.addAttribute("eventAlreadyOccurred", eventAlreadyOccurred);
+
         if (eventDetail.payoutPerMember() != null && "PAID_SPLIT".equals(eventDetail.paymentType())) {
             model.addAttribute("payoutPerMemberFormatted",
                 java.text.NumberFormat.getNumberInstance(java.util.Locale.forLanguageTag("pl")).format(eventDetail.payoutPerMember()));
