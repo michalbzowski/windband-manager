@@ -128,13 +128,13 @@ public class EventPageController {
                 // Map referer paths to their respective list views:
                 // - "/" → root stays as root only for dashboard/home context
                 // - "/events" or "/events/..." → back to events list
-                // - "/rehearsals" or "/rehearsals/..." → back to rehearsals list
+                // - "/rehearsals" or "/rehearsals/..." → back to meetings (redirected)
                 if (path.equals("/")) {
                     backUrl = path;  // root home page
                 } else if (path.startsWith("/events")) {
                     backUrl = "/events";
                 } else if (path.startsWith("/rehearsals")) {
-                    backUrl = "/rehearsals";
+                    backUrl = "/meetings";  // rehearsers redirects to meetings now
                 }
             } catch (Exception ignored) {
                 // Invalid referer, use default list view

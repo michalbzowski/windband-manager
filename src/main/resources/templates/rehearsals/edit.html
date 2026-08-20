@@ -1,6 +1,6 @@
 <!DOCTYPE html>
 <html lang="pl" xmlns:th="http://www.thymeleaf.org" xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
-<head th:replace="~{fragments/layout :: head('Edytuj spotkanie')}"></head>
+<head th:replace="~{fragments/layout :: head('Edytuj wydarzenie')}"></head>
 <body class="dashboard-page">
 <div th:replace="~{fragments/layout :: dialogs}"></div>
 
@@ -9,7 +9,7 @@
         <header th:replace="~{fragments/layout :: dashboard-header}"></header>
 
     <div id="rehearsals-content">
-        <h2>✏️ Edytuj spotkanie</h2>
+        <h2>✏️ Edytuj wydarzenie</h2>
 
         <form id="rehearsal-edit-form"
               hx-put="/api/rehearsals/[[${rehearsal.id}]]"

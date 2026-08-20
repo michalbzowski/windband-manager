@@ -1,6 +1,6 @@
 <!DOCTYPE html>
 <html lang="pl" xmlns:th="http://www.thymeleaf.org" xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
-<head th:replace="~{fragments/layout :: head('Nowe spotkanie')}"></head>
+<head th:replace="~{fragments/layout :: head('Nowe wydarzenie')}"></head>
 <body class="dashboard-page">
 <div th:replace="~{fragments/layout :: dialogs}"></div>
 
@@ -9,11 +9,11 @@
         <header th:replace="~{fragments/layout :: dashboard-header}"></header>
 
     <div id="meetings-content" th:fragment="meetings-content">
-        <h2>➕ Nowe spotkanie</h2>
+        <h2>➕ Nowe wydarzenie</h2>
 
         <p style="margin-bottom: 1.5rem; color: var(--pico-muted-color);">
-            Wybierz typ spotkania, które chcesz zaplanować:
-        </p>
+            Wybierz typ wydarzenia, które chcesz zaplanować:
+
 
         <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 1rem; margin-bottom: 2rem;">
 

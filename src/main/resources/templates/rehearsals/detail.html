@@ -1,6 +1,6 @@
 <!DOCTYPE html>
 <html lang="pl" xmlns:th="http://www.thymeleaf.org" xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
-<head th:replace="~{fragments/layout :: head('Szczegóły spotkania')}"></head>
+<head th:replace="~{fragments/layout :: head('Szczegóły wydarzenia')}"></head>
 <body class="dashboard-page">
 <div th:replace="~{fragments/layout :: dialogs}"></div>
 
@@ -14,7 +14,7 @@
             <a th:href="${backUrl}" class="detail-back-btn">← Powrót</a>
 
             <!-- Page title with emoji -->
-            <h2 style="margin:0 0 auto 0; color:var(--pico-primary); flex-grow:1;">🎵 Szczegóły spotkania</h2>
+            <h2 style="margin:0 0 auto 0; color:var(--pico-primary); flex-grow:1;">🏷️ Szczegóły wydarzenia</h2>
 
             <!-- Action buttons (right-aligned) - in order per issue #121 -->
             <div style="display:flex; gap:0.5rem;">
@@ -32,7 +32,7 @@
                 <button type="button" 
                         class="outline danger" 
                         id="delete-rehearsal-btn" 
-                        style="padding:0.5rem 1rem;">🗑️ Usuń spotkanie</button>
+                        style="padding:0.5rem 1rem;">🗑️ Usuń wydarzenie</button>
             </div>
         </nav>
 
@@ -48,7 +48,7 @@
             <p th:if="${rehearsal.notes}" th:text="${rehearsal.notes}">Notatki</p>
         </article>
 
-        <h3>Zaproś na spotkanie</h3>
+        <h3>Zaproś na wydarzenie</h3>
 
         <div class="rehearsal-invite-actions">
             <button type="button" class="outline" id="open-invite-modal-btn">➕ Zaproś uczestników</button>
@@ -196,12 +196,12 @@
     <div class="app-modal-content">
         <header class="app-modal-header">
             <div class="app-modal-header-text">
-                <h3>Usuń spotkanie</h3>
+                <h3>Usuń wydarzenie</h3>
             </div>
             <button type="button" class="app-modal-close" aria-label="Zamknij" data-close>×</button>
         </header>
         <div class="app-modal-body">
-            <p>Czy na pewno chcesz usunąć to spotkanie? Tej operacji nie można cofnąć.</p>
+            <p>Czy na pewno chcesz usunąć to wydarzenie? Tej operacji nie można cofnąć.</p>
         </div>
         <footer class="app-modal-footer">
             <button type="button" class="outline" id="delete-rehearsal-cancel-btn">Anuluj</button>

@@ -188,7 +188,7 @@ public class PageController {
                     rehearsal.getDate(),
                     rehearsal.getStartTime(),
                     rehearsal.getDate().isEqual(from) ? "Dziś" : formatRelativeLabel(rehearsal.getDate(), from),
-                    "/rehearsals/" + rehearsal.getId(),
+                    "/meetings",
                     "🎵",
                     attendancePercentage
             ));

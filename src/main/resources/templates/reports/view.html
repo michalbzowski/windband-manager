@@ -40,9 +40,9 @@
         </div>
     </article>
 
-    <h3>Spotkania w tym miesiącu</h3>
+    <h3>Wydarzenia w tym miesiącu</h3>
     <div th:if="${#lists.isEmpty(report.rehearsals)}">
-        <p>Brak prób w tym okresie.</p>
+        <p>Brak wydarzeń w tym okresie.</p>
     </div>
     <table th:unless="${#lists.isEmpty(report.rehearsals)}" role="grid">
         <thead>

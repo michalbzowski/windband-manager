@@ -182,7 +182,7 @@
         </div>
 
         <!-- Floating Action Button -->
-        <button class="fab" onclick="openAddEventModal()" aria-label="Dodaj wydarzenie lub próbę">+</button>
+        <button class="fab" onclick="openAddEventModal()" aria-label="Dodaj wydarzenie">+</button>
     </section>
 
     <section class="dashboard-stats">
@@ -267,9 +267,9 @@
                 <footer><a th:href="@{/members/new}" hx-target="#content" hx-swap="innerHTML transition:true" role="button" class="secondary outline">Nowy członek</a></footer>
             </article>
             <article>
-                <header><strong>📅 Zaplanuj spotkanie</strong></header>
-                <p>Dodaj nową próbę do kalendarza.</p>
-                <footer><a th:href="@{/rehearsals/new}" hx-target="#content" hx-swap="innerHTML transition:true" role="button" class="secondary outline">Nowa próba</a></footer>
+                <header><strong>📅 Zaplanuj wydarzenie</strong></header>
+                <p>Dodaj nowe wydarzenie do kalendarza.</p>
+                <footer><a th:href="@{/rehearsals/new}" hx-target="#content" hx-swap="innerHTML transition:true" role="button" class="secondary outline">Nowe wydarzenie</a></footer>
             </article>
             <article>
                 <header><strong>📦 Nowe zamówienie</strong></header>

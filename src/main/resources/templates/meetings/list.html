@@ -1,6 +1,6 @@
 <!DOCTYPE html>
 <html lang="pl" xmlns:th="http://www.thymeleaf.org" xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
-<head th:replace="~{fragments/layout :: head('Spotkania')}"></head>
+<head th:replace="~{fragments/layout :: head('Wydarzenia')}"></head>
 <body class="dashboard-page">
 <div th:replace="~{fragments/layout :: dialogs}"></div>
 
@@ -10,14 +10,14 @@
 
     <div id="meetings-content" th:attr="data-focus-id=${focusMeetingId},data-focus-prefix='meeting'">
         <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem;">
-            <h2>🎵 Spotkania</h2>
+            <h2>🏷️ Wydarzenia</h2>
             <button hx-get="/meetings/new" hx-target="#meetings-content"
-                    hx-swap="innerHTML transition:true" class="primary">+ Dodaj spotkanie</button>
+                    hx-swap="innerHTML transition:true" class="primary">+ Dodaj wydarzenie</button>
         </div>
 
         <div th:if="${#lists.isEmpty(upcomingMeetings) and #lists.isEmpty(pastMeetings)}">
             <article>
-                <p>Brak zaplanowanych spotkań.</p>
+                <p>Brak zaplanowanych wydarzeń.</p>
             </article>
         </div>
 
