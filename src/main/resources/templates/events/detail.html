@@ -67,10 +67,12 @@
         <button type="button" class="outline" id="open-invite-group-modal-btn">👥 Zaproś grupę</button>
     </div>
 
-    <h3>📧 Wyślij zaproszenia</h3>
-    <div style="display:flex; gap:0.5rem; margin-bottom:1rem; align-items:center;">
-        <button class="primary" id="send-all-btn">📧 Wyślij do wszystkich</button>
-        <span id="send-all-result" style="font-size:0.9rem;"></span>
+    <div th:if="${!eventAlreadyOccurred}">
+        <h3>📧 Wyślij zaproszenia</h3>
+        <div style="display:flex; gap:0.5rem; margin-bottom:1rem; align-items:center;">
+            <button class="primary" id="send-all-btn">📧 Wyślij do wszystkich</button>
+            <span id="send-all-result" style="font-size:0.9rem;"></span>
+        </div>
     </div>
 
     <h3>Podsumowanie - ile osób gra na każdym instrumencie</h3>
