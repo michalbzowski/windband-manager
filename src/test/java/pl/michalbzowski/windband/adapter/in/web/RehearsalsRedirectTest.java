@@ -71,7 +71,7 @@ class RehearsalsRedirectTest {
         mvc.perform(get("/rehearsals/123")
                         .session(session))
                 .andExpect(status().is3xxRedirection())
-                .andExpect(redirectedUrl("/meetings"));
+                .andExpect(redirectedUrl("/meetings/123"));
     }
 
     @Test

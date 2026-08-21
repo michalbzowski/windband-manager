@@ -1,55 +1,41 @@
 package pl.michalbzowski.windband.adapter.in.web;
 
-import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Controller;
-import org.springframework.web.bind.annotation.*;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.servlet.view.RedirectView;
 
+/**
+ * Deprecated /rehearsals routes — all redirect to the unified /meetings views.
+ * Kept to preserve bookmarks and external links after the events/rehearsals unify.
+ */
 @Controller
 @RequestMapping("/rehearsals")
-@RequiredArgsConstructor
 public class RehearsalPageController {
 
-    /**
-     * Redirect handler for deprecated /rehearsals route.
-     * All requests to /rehearsals now redirect to /meetings as the canonical location
-     * for internal band gatherings and practice sessions.
-     */
     @GetMapping
-    public String listPage() {
-        return "redirect:/meetings";
+    public RedirectView listPage() {
+        return new RedirectView("/meetings", true);
     }
 
-    /**
-     * Redirect handler for deprecated /rehearsals/list route.
-     */
     @GetMapping("/list")
-    public String listFragment() {
-        return "redirect:/meetings";
+    public RedirectView listFragment() {
+        return new RedirectView("/meetings", true);
     }
 
-    /**
-     * Redirect handler for deprecated /rehearsals/new route.
-     */
     @GetMapping("/new")
-    public String newRehearsalForm() {
-        return "redirect:/meetings/new";
+    public RedirectView newRehearsalForm() {
+        return new RedirectView("/meetings/new", true);
     }
 
-    /**
-     * Redirect handler for deprecated /rehearsals/{id} detail page.
-     * Since rehearsals don't have a 1:1 mapping to specific meetings,
-     * redirect to the general meetings list.
-     */
     @GetMapping("/{id}")
-    public String rehearsalDetail(@PathVariable Long id) {
-        return "redirect:/meetings";
+    public RedirectView rehearsalDetail(@PathVariable Long id) {
+        return new RedirectView("/meetings/" + id, true);
     }
 
-    /**
-     * Redirect handler for deprecated /rehearsals/{id}/edit route.
-     */
     @GetMapping("/{id}/edit")
-    public String editRehearsalForm(@PathVariable Long id) {
-        return "redirect:/meetings/new";
+    public RedirectView editRehearsalForm(@PathVariable Long id) {
+        return new RedirectView("/meetings/new", true);
     }
 }

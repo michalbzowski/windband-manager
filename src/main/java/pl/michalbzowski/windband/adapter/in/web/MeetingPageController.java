@@ -5,9 +5,12 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
+import pl.michalbzowski.windband.application.query.event.EventQueryService;
 import pl.michalbzowski.windband.application.query.meeting.MeetingQueryService;
+import pl.michalbzowski.windband.application.query.rehearsal.RehearsalQueryService;
 
 import java.time.LocalDate;
+
 
 @Controller
 @RequestMapping("/meetings")
@@ -15,6 +18,8 @@ import java.time.LocalDate;
 public class MeetingPageController {
 
     private final MeetingQueryService meetingQueryService;
+    private final EventQueryService eventQueryService;
+    private final RehearsalQueryService rehearsalQueryService;
 
     @GetMapping
     public String listPage(@ModelAttribute("activeTeamId") Long activeTeamId, Model model,
@@ -47,4 +52,28 @@ public class MeetingPageController {
         }
         return "meetings/new";
     }
+
+    /**
+     * Unified detail page for meetings (events or rehearsals).
+     * Delegates to appropriate controller based on meeting type.
+     */
+    @GetMapping("/{meetingId}")
+    public String meetingDetail(@PathVariable Long meetingId, Model model) {
+        // Try to load as rehearsal first
+        var rehearsalOptional = rehearsalQueryService.getRehearsalById(meetingId);
+        if (rehearsalOptional != null) {
+            return "redirect:/meetings/" + meetingId;  // Will be handled by EventPageController via unified view
+        }
+
+        // Otherwise try as event
+        var eventOptional = eventQueryService.getEventById(meetingId);
+        if (eventOptional != null) {
+            model.addAttribute("rehearsal", null);
+            return "events/detail";  // Delegate to event detail template with proper backUrl
+        }
+
+        // Not found - redirect to list
+        return "redirect:/meetings?notFound=true";
+    }
 }
+
