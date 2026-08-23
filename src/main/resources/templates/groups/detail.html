@@ -89,10 +89,10 @@
                 </header>
                 <div class="app-modal-body">
                     <p th:if="${#lists.isEmpty(members)}" class="text-muted" style="margin:0 0 0.5rem;">Wszyscy członkowie są już w tej grupie.</p>
-                    <ul style="list-style:none; padding:0; margin:0; max-height:50vh; overflow-y:auto;">
-                        <li th:each="m : ${members}" style="display:flex; align-items:center; gap:0.6rem; padding:0.5rem 0; border-bottom:1px solid var(--pico-muted-border-color);">
+                    <ul class="modal-people-list">
+                        <li th:each="m : ${members}">
                             <input type="checkbox" class="add-member-checkbox" th:value="${m.id}" th:id="'add-cb-' + ${m.id}">
-                            <label th:for="'add-cb-' + ${m.id}" th:text="${m.firstName} + ' ' + ${m.lastName} + (${m.primaryInstrument} ? ' (' + ${m.primaryInstrument} + ')' : '')" style="margin:0; flex:1; cursor:pointer;">Jan Kowalski</label>
+                            <label th:for="'add-cb-' + ${m.id}" th:text="${m.firstName} + ' ' + ${m.lastName} + (${m.primaryInstrument} ? ' (' + ${m.primaryInstrument} + ')' : '')" style="margin:0; flex:1;">Jan Kowalski</label>
                         </li>
                     </ul>
                 </div>
