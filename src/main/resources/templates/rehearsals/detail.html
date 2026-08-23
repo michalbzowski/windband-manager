@@ -149,10 +149,10 @@
         </header>
         <div class="app-modal-body">
             <p th:if="${#lists.isEmpty(inviteMembers)}" class="text-muted" style="margin:0 0 0.5rem;">Wszyscy członkowie zostali już zaproszeni.</p>
-            <ul style="list-style:none; padding:0; margin:0; max-height:50vh; overflow-y:auto;">
-                <li th:each="m : ${inviteMembers}" style="display:flex; align-items:center; gap:0.6rem; padding:0.5rem 0; border-bottom:1px solid var(--pico-muted-border-color);">
+            <ul class="modal-people-list">
+                <li th:each="m : ${inviteMembers}">
                     <input type="checkbox" class="invite-checkbox" th:value="${m.id}" th:id="'invite-cb-' + ${m.id}">
-                    <label th:for="'invite-cb-' + ${m.id}" th:text="${m.firstName} + ' ' + ${m.lastName}" style="margin:0; flex:1; cursor:pointer;">Jan Kowalski</label>
+                    <label th:for="'invite-cb-' + ${m.id}" th:text="${m.firstName} + ' ' + ${m.lastName}" style="margin:0; flex:1;">Jan Kowalski</label>
                 </li>
             </ul>
         </div>
@@ -174,10 +174,10 @@
         </header>
         <div class="app-modal-body">
             <p th:if="${#lists.isEmpty(groups)}" class="text-muted" style="margin:0 0 0.5rem;">Brak dostępnych grup.</p>
-            <ul style="list-style:none; padding:0; margin:0; max-height:50vh; overflow-y:auto;">
-                <li th:each="g : ${groups}" style="display:flex; align-items:center; gap:0.6rem; padding:0.5rem 0; border-bottom:1px solid var(--pico-muted-border-color);">
+            <ul class="modal-people-list">
+                <li th:each="g : ${groups}">
                     <input type="checkbox" class="invite-group-checkbox" th:value="${g.id}" th:id="'invite-group-cb-' + ${g.id}">
-                    <label th:for="'invite-group-cb-' + ${g.id}" style="margin:0; flex:1; cursor:pointer;">
+                    <label th:for="'invite-group-cb-' + ${g.id}" style="margin:0; flex:1;">
                         <span th:text="${g.name} + ' (' + ${g.memberCount} + ' członków)'">Sekcja dęta (5 członków)</span>
                         <small th:if="${g.dynamic}" style="margin-left:0.4rem; color:var(--pico-muted-color);">(dynamiczna)</small>
                     </label>
