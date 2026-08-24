@@ -892,12 +892,142 @@ function bindEventDetailHandlers() {
                     });
                 });
             }
+            // Inline "Edytuj" — loads the rehearsal edit form into
+            // #rehearsals-content via HTMX (same as the old hx-get on the
+            // button). URL is provided by the template through a data attr.
+            var editBtn = document.getElementById('edit-rehearsal-btn');
+            if (editBtn) {
+                editBtn.addEventListener('click', function() {
+                    var url = editBtn.getAttribute('data-edit-url');
+                    if (!url) return;
+                    htmx.ajax('GET', url, {target: '#rehearsals-content', swap: 'innerHTML transition:true'});
+                });
+            }
         }
 
         global.bindEventDetailHandlers = bindEventDetailHandlers;
     global.bindGroupDetailHandlers = bindGroupDetailHandlers;
     global.bindRehearsalDetailHandlers = bindRehearsalDetailHandlers;
     global.initFocusHighlight = initFocusHighlight;
+
+    /**
+     * Detail actions bar (unified header on event/rehearsal detail pages).
+     *
+     * The fragment (fragments/detail-page-actions-bar.html) renders:
+     *   [back-icon]  Title                  [Edytuj icon] [⋮ → Usuń …]
+     *
+     * This binder wires the behaviour:
+     *   - toggles the ⋮ overflow menu open/close (one instance at a time);
+     *   - "Edytuj"   → dispatches CustomEvent 'windband:detail-edit' on body,
+     *                  OR clicks element[data-detail-edit-target] if present;
+     *   - "Usuń"     → dispatches 'windband:detail-delete',
+     *                  OR clicks element[data-detail-delete-target] (the page's
+     *                  own delete button whose handler opens the confirm modal).
+     *
+     * Delegation on document so it survives htmx:afterSwap of #content and
+     * any full-page reload. Registered ONCE here at script load; layout.html
+     * also re-invokes bindDetailActionsOverflow() after htmx:afterSwap for
+     * the pages that swap their detail fragment in-place.
+     */
+    function bindDetailActionsOverflow(root) {
+        var scope = root || document;
+        var bars = scope.querySelectorAll('nav.detail-actions-bar[data-detail-bar]');
+        if (!bars.length) return;
+
+        bars.forEach(function(bar) {
+            if (bar.dataset.overflowBound === '1') return;
+            bar.dataset.overflowBound = '1';
+
+            var trigger = bar.querySelector('[data-detail-action="toggle-more"]');
+            var menu = bar.querySelector('.overflow-menu');
+            var editBtn = bar.querySelector('[data-detail-action="inline-edit"]');
+            var deleteItem = bar.querySelector('[data-detail-action="open-delete"]');
+
+            function closeMenu() {
+                if (!menu) return;
+                menu.classList.remove('open');
+                if (trigger) trigger.setAttribute('aria-expanded', 'false');
+            }
+
+            if (trigger && menu) {
+                trigger.addEventListener('click', function(evt) {
+                    evt.stopPropagation();
+                    var open = !menu.classList.contains('open');
+                    // Only one overflow menu open at a time.
+                    document.querySelectorAll('.overflow-menu.open').forEach(function(other) {
+                        if (other !== menu) {
+                            other.classList.remove('open');
+                            var trig = other.parentElement;
+                            var t = trig ? trig.querySelector('[data-detail-action="toggle-more"]') : null;
+                            if (t) t.setAttribute('aria-expanded', 'false');
+                        }
+                    });
+                    menu.classList.toggle('open', open);
+                    trigger.setAttribute('aria-expanded', open ? 'true' : 'false');
+                });
+            }
+
+            function dispatchOrClick(eventName, targetAttrName) {
+                // 1) Generic event for JS-only consumers.
+                bar.dispatchEvent(new CustomEvent(eventName, {bubbles: true}));
+                document.body.dispatchEvent(new CustomEvent(eventName, {bubbles: true}));
+                // 2) Optional DOM hook — if the page exposed a "click me" id,
+                //    drive it so existing inline scripts keep working.
+                var targetId = bar.getAttribute(targetAttrName);
+                if (targetId) {
+                    var el = document.getElementById(targetId);
+                    if (el && typeof el.click === 'function') el.click();
+                }
+            }
+
+            if (editBtn) {
+                editBtn.addEventListener('click', function(evt) {
+                    evt.stopPropagation();
+                    dispatchOrClick('windband:detail-edit', 'data-detail-edit-target');
+                });
+            }
+            if (deleteItem) {
+                deleteItem.addEventListener('click', function(evt) {
+                    evt.stopPropagation();
+                    closeMenu();
+                    dispatchOrClick('windband:detail-delete', 'data-detail-delete-target');
+                });
+            }
+
+            // Close the menu on outside click / Escape.
+            bar._outsideClose = function(evt) {
+                if (menu && menu.classList.contains('open') && !bar.contains(evt.target)) {
+                    closeMenu();
+                }
+            };
+            document.addEventListener('click', bar._outsideClose, true);
+            bar._escClose = function(evt) {
+                if (evt.key === 'Escape' && menu && menu.classList.contains('open')) closeMenu();
+            };
+            document.addEventListener('keydown', bar._escClose, true);
+        });
+    }
+
+    // Clean up listener references when the bar is swapped out, so we don't leak.
+    (function() {
+        var _originalRemove = Element.prototype.remove;
+        // Lightweight leak guard: remove external listeners attached by this
+        // binder whenever a nav.detail-actions-bar leaves the DOM via .remove().
+        // (htmx innerswap also calls .remove() on removed nodes.)
+        Element.prototype.remove = function(...args) {
+            var el = this;
+            try {
+                if (el.nodeType === 1 && el.matches && el.matches('nav.detail-actions-bar[data-detail-bar]')) {
+                    if (typeof el._outsideClose === 'function') document.removeEventListener('click', el._outsideClose, true);
+                    if (typeof el._escClose === 'function')   document.removeEventListener('keydown', el._escClose, true);
+                }
+            } catch (e) { /* intentionally ignored */ }
+            return _originalRemove.apply(this, args);
+        };
+    })();
+
+    global.bindDetailActionsOverflow = bindDetailActionsOverflow;
+
 
     /**
      * Send welcome/consent email for a member.
