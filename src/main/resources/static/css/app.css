@@ -634,6 +634,8 @@ html, body {
 .modal-people-list::-webkit-scrollbar {
     width: 8px;
     height: 8px;
+    /* Always show scrollbar on mobile WebKit */
+    -webkit-appearance: none;
 }
 
 .modal-people-list::-webkit-scrollbar-track {
@@ -646,12 +648,32 @@ html, body {
     border-radius: 4px;
     border: 2px solid transparent;
     background-clip: content-box;
+    /* Always visible thumb */
+    min-height: 40px;
 }
 
 .modal-people-list::-webkit-scrollbar-thumb:hover {
     background: var(--pico-muted-color);
     border: 2px solid transparent;
     background-clip: content-box;
+}
+
+/* Force scrollbar to be always visible on mobile WebKit */
+.modal-people-list::-webkit-scrollbar-corner {
+    background: transparent;
+}
+
+/* Ensure scrollbar doesn't auto-hide on mobile */
+@media (pointer: coarse) {
+    .modal-people-list::-webkit-scrollbar {
+        display: block;
+    }
+    .modal-people-list::-webkit-scrollbar-thumb {
+        opacity: 1;
+    }
+    .modal-people-list::-webkit-scrollbar-track {
+        opacity: 1;
+    }
 }
 
 /* Dark theme scrollbar for modal people list */
