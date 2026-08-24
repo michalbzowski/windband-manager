@@ -86,10 +86,8 @@ class RehearsalInviteAfterQuickAttendanceUiTest extends UiTestBase {
         wait.until(ExpectedConditions.presenceOfElementLocated(
                 By.cssSelector("#rehearsals-content .status-select[data-member-id='" + memberId + "']")));
 
-        // --- Now open quick attendance modal and complete it ---
-        // This will trigger an HTMX reload at the end
-        WebElement quickAttendanceBtn = driver.findElement(By.id("quick-attendance-btn"));
-        ((JavascriptExecutor) driver).executeScript("arguments[0].scrollIntoView({block:'center'}); arguments[0].click();", quickAttendanceBtn);
+        // --- Now open quick attendance modal and complete it (under ⋮ overflow) ---
+        clickOverflowInnerButton("quick-attendance-btn");
         wait.until(ExpectedConditions.presenceOfElementLocated(By.id("quick-attendance-modal")));
         wait.until(d -> (Boolean) ((JavascriptExecutor) d).executeScript(
                 "return document.getElementById('quick-attendance-modal').open === true;"));

@@ -55,7 +55,8 @@ class EventRehearsalDetailActionsBarUiTest extends UiTestBase {
         assertThat(driver.getCurrentUrl()).contains("/events/" + eventId);
 
         // Click back button (Powrót)
-        driver.findElement(By.cssSelector(".detail-back-btn")).click();
+        // The unified bar back icon carries aria-label="Powrót" — use that for robustness.
+        driver.findElement(By.cssSelector(".detail-actions-bar .detail-back-link")).click();
         waitHelper().until(ExpectedConditions.urlContains("/events"));
 
         // Should be back at events list
@@ -83,7 +84,8 @@ class EventRehearsalDetailActionsBarUiTest extends UiTestBase {
         assertThat(driver.getCurrentUrl()).contains("/events/" + eventId);
 
         // Click back button (Powrót) - since we navigated via driver.get(), referrer is not set, defaults to /events
-        driver.findElement(By.cssSelector(".detail-back-btn")).click();
+        // The unified bar back icon carries aria-label="Powrót" — use that for robustness.
+        driver.findElement(By.cssSelector(".detail-actions-bar .detail-back-link")).click();
         waitHelper().until(ExpectedConditions.urlContains("/events"));
 
         // Should be back at events list (default when no referrer)
@@ -110,7 +112,8 @@ class EventRehearsalDetailActionsBarUiTest extends UiTestBase {
         assertThat(driver.getCurrentUrl()).contains("/rehearsals/" + rehearsalId);
 
         // Click back button (Powrót)
-        driver.findElement(By.cssSelector(".detail-back-btn")).click();
+        // The unified bar back icon carries aria-label="Powrót" — use that for robustness.
+        driver.findElement(By.cssSelector(".detail-actions-bar .detail-back-link")).click();
         waitHelper().until(ExpectedConditions.urlContains("/rehearsals"));
 
         // Should be back at rehearsals list
@@ -135,7 +138,8 @@ class EventRehearsalDetailActionsBarUiTest extends UiTestBase {
         assertThat(driver.getCurrentUrl()).contains("/rehearsals/" + rehearsalId);
 
         // Click back button (Powrót) - since we navigated via driver.get(), referrer is not set, defaults to /rehearsals
-        driver.findElement(By.cssSelector(".detail-back-btn")).click();
+        // The unified bar back icon carries aria-label="Powrót" — use that for robustness.
+        driver.findElement(By.cssSelector(".detail-actions-bar .detail-back-link")).click();
         waitHelper().until(ExpectedConditions.urlContains("/rehearsals"));
 
         // Should be back at rehearsals list (default when no referrer)
@@ -158,7 +162,8 @@ class EventRehearsalDetailActionsBarUiTest extends UiTestBase {
         waitHelper().until(ExpectedConditions.presenceOfElementLocated(By.id("events-content")));
 
         // Click delete button
-        driver.findElement(By.id("delete-event-btn")).click();
+        // Delete lives under ⋮; open that first via helper.
+        clickOverflowInnerButton("delete-event-btn");
         waitHelper().until(ExpectedConditions.presenceOfElementLocated(By.id("delete-event-modal")));
         waitHelper().until(d -> (Boolean) ((org.openqa.selenium.JavascriptExecutor) d).executeScript(
                 "return document.getElementById('delete-event-modal').open === true;"));
@@ -198,7 +203,8 @@ class EventRehearsalDetailActionsBarUiTest extends UiTestBase {
         waitHelper().until(ExpectedConditions.presenceOfElementLocated(By.id("rehearsals-content")));
 
         // Click delete button
-        driver.findElement(By.id("delete-rehearsal-btn")).click();
+        // Delete lives under ⋮; open that first via helper.
+        clickOverflowInnerButton("delete-rehearsal-btn");
         waitHelper().until(ExpectedConditions.presenceOfElementLocated(By.id("delete-rehearsal-modal")));
         waitHelper().until(d -> (Boolean) ((org.openqa.selenium.JavascriptExecutor) d).executeScript(
                 "return document.getElementById('delete-rehearsal-modal').open === true;"));
@@ -250,7 +256,8 @@ class EventRehearsalDetailActionsBarUiTest extends UiTestBase {
                 By.cssSelector("#rehearsals-content .status-select[data-member-id='" + memberId + "']")));
 
         // Click quick attendance button
-        driver.findElement(By.id("quick-attendance-btn")).click();
+        // Quick-attendance lives under ⋮; open that first via helper.
+        clickOverflowInnerButton("quick-attendance-btn");
         waitHelper().until(ExpectedConditions.presenceOfElementLocated(By.id("quick-attendance-modal")));
         waitHelper().until(d -> (Boolean) ((org.openqa.selenium.JavascriptExecutor) d).executeScript(
                 "return document.getElementById('quick-attendance-modal').open === true;"));

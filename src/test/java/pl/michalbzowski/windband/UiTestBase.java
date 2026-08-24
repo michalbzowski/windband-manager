@@ -189,6 +189,29 @@ public abstract class UiTestBase {
     }
 
     /**
+     * Opens the {@code ⋮} overflow menu on the unified detail-actions-bar so
+     * that a hidden inner action (e.g. {@code #delete-event-btn},
+     * {@code #quick-attendance-btn}) becomes interactable, then clicks it.
+     *
+     * <p>The bar (fragments/detail-page-actions-bar.html) keeps only "Edytuj"
+     * in the visible row on all viewports — every secondary action is tucked
+     * under the 3-dot menu per product design (see DetailHeaderUnifiedUiTest).
+     * The menu toggle is a native DOM click, so this helper just simulates that
+     * click and then falls through to the inner button. Used by every UI test
+     * that previously clicked a now-hidden inner action directly:
+     * EventDeleteConfirmModalUiTest, QuickAttendanceModalUiTest,
+     * RehearsalInviteAfterQuickAttendanceUiTest,
+     * and EventRehearsalDetailActionsBarUiTest.</p>
+     */
+    protected void clickOverflowInnerButton(String innerButtonId) {
+        driver.findElement(By.cssSelector(
+                ".detail-actions-bar .icon-btn[data-detail-action='toggle-more']")).click();
+        new WebDriverWait(driver, Duration.ofSeconds(5))
+             .until(ExpectedConditions.visibilityOfElementLocated(By.id(innerButtonId)));
+        driver.findElement(By.id(innerButtonId)).click();
+    }
+
+    /**
      * Reset the shared H2 test database. Called from {@link BeforeEach} so every
      * UI test starts from a clean state. Uses TRUNCATE ... CASCADE (per table —
      * H2 does not support multi-table TRUNCATE) to drop child rows (consent
