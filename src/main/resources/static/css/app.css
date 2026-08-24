@@ -1863,3 +1863,121 @@ body.dashboard-page main.container {
         font-size: 1.5rem;
     }
 }
+
+/* ============================================================
+   DETAIL PAGE ACTIONS BAR — unified header for event/rehearsal
+   detail views. One source of truth (see fragments/detail-page-actions-bar.html).
+
+   Layout: [←]  Title                       [⋮ → Usuń / Edytuj]
+   - Back:    icon-only <a>, one system with the rest, 44×44 tap target
+   - Title:   plain h2 (no emoji), truncates with ellipsis on narrow viewports
+   - Actions: overflow menu (⋮) reveals secondary actions; primary stays inline
+
+   All colors come from Pico variables so light/dark themes work.
+   ============================================================ */
+.detail-actions-bar {
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+    padding: 0.65rem 0.75rem;
+    background: #fff;
+    border-top: 1px solid var(--pico-muted-border-color, #e5e7eb);
+    border-bottom: 1px solid var(--pico-muted-border-color, #e5e7eb);
+}
+
+/* Back link (icon-only) */
+.detail-back-link {
+    display: inline-grid;
+    place-items: center;
+    width: 44px;
+    height: 44px;
+    border-radius: 10px;
+    color: var(--pico-muted-color, #6b7280);
+    background: transparent;
+    text-decoration: none;
+    flex: none;
+    transition: background-color .15s ease, color .15s ease;
+}
+.detail-back-link:hover { background: var(--pico-hover, #f3f4f6); color: var(--pico-color, #111827); }
+
+/* View title (no emoji) */
+.detail-title {
+    flex: 1 1 auto;
+    min-width: 0;            /* allow ellipsis on narrow viewports */
+    margin: 0;
+    font-size: 1.05rem;
+    font-weight: 600;
+    color: var(--pico-color, #111827);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+/* Icon buttons (Edytuj inline + ⋮ trigger) */
+.icon-btn {
+    display: inline-grid;
+    place-items: center;
+    width: 44px;
+    height: 44px;
+    border-radius: 10px;
+    background: transparent;
+    color: var(--pico-color, #374151);
+    cursor: pointer;
+    flex: none;
+    transition: background-color .15s ease, color .15s ease;
+}
+.icon-btn:hover { background: var(--pico-hover, #f3f4f6); }
+.icon-btn svg { width: 22px; height: 22px; pointer-events: none; }
+
+/* Inline "Edytuj" (kept in the bar per product decision) */
+.detail-actions-bar .icon-btn[data-detail-action="inline-edit"] { color: var(--pico-primary, #007bff); }
+.detail-actions-bar .icon-btn[data-detail-action="inline-edit"]:hover { background: color-mix(in srgb, var(--pico-primary) 12%, transparent); }
+
+/* Overflow wrapper (⋮ + dropdown) */
+.overflow-wrap { position: relative; flex: none; }
+
+/* Dropdown menu */
+.overflow-menu {
+    position: absolute;
+    top: calc(100% + 6px);
+    right: 0;
+    min-width: 200px;
+    background: #fff;
+    border: 1px solid var(--pico-muted-border-color, #e5e7eb);
+    border-radius: 10px;
+    padding: 0.35rem;
+    box-shadow: 0 12px 30px -10px rgba(0, 0, 0, .25);
+    display: none;
+    z-index: 950;
+}
+.overflow-menu.open { display: block; animation: detailMenuIn .16s ease-out; }
+@keyframes detailMenuIn { from { opacity:0; transform: translateY(-4px); } to   { opacity:1; transform: none; } }
+
+/* Menu items */
+.overflow-item {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    width: 100%;
+    padding: 0.55rem 0.65rem;
+    border: 0;
+    background: transparent;
+    border-radius: 7px;
+    font-family: inherit;
+    font-size: 0.92rem;
+    color: var(--pico-color, #1f2937);
+    cursor: pointer;
+    text-align: left;
+}
+.overflow-item svg { width: 18px; height: 18px; flex: none; }
+.overflow-item:hover { background: var(--pico-hover, #f3f4f6); }
+.overflow-item.danger { color: #dc3545; }
+.overflow-item.danger:hover { background: #fdecec; }
+
+/* Narrow viewports: give the title a chance to breathe but never clip the
+   icons. At ≤ 320 px the back icon, title, and two actions still fit
+   (verified by DetailHeaderUnifiedUiTest at 375 px viewport). */
+@media (max-width: 480px) {
+    .detail-actions-bar { padding: 0.5rem 0.5rem; }
+    .detail-title        { font-size: 1rem; }
+}

@@ -550,6 +550,17 @@
     document.addEventListener('DOMContentLoaded', bindFocusHighlightIfPresent);
     document.addEventListener('htmx:afterSwap', bindFocusHighlightIfPresent);
 
+    // Re-bind the unified detail-actions-bar (events + rehearsals detail pages)
+    // after every HTMX swap and on initial load so the ⋮ overflow menu, inline
+    // "Edytuj" button, and back link stay wired when a detail view is swapped
+    // in-place. Registered ONCE here — guard inside the binder prevents double-bind.
+    function bindDetailActionsBarIfPresent() {
+        if (window.bindDetailActionsOverflow) window.bindDetailActionsOverflow();
+    }
+    document.addEventListener('DOMContentLoaded', bindDetailActionsBarIfPresent);
+    document.addEventListener('htmx:afterSwap', bindDetailActionsBarIfPresent);
+
+
     (function() {
         console.log('Loading build info...');
         fetchWithToast('/api/auth/build-info', { credentials: 'same-origin' })

@@ -51,8 +51,9 @@ class EventDeleteConfirmModalUiTest extends UiTestBase {
                 .executeScript("return !!document.getElementById('delete-event-confirm-btn');");
         System.out.println("DEBUG delete-event-confirm-btn exists = " + confirmExists);
 
-        // Click delete — should open a <dialog class="app-modal">, NOT a native confirm()
-        driver.findElement(By.id("delete-event-btn")).click();
+        // Click delete — should open a <dialog>, NOT a native confirm().
+        // Delete is tucked under the ⋮ overflow on the unified bar, so open it first.
+        clickOverflowInnerButton("delete-event-btn");
 
         WebElement modal = wait.until(ExpectedConditions.visibilityOfElementLocated(By.id("delete-event-modal")));
         assertThat(modal.getDomAttribute("class")).contains("app-modal");
@@ -83,7 +84,8 @@ class EventDeleteConfirmModalUiTest extends UiTestBase {
         driver.get(baseUrl() + "/events/" + eventId);
         wait.until(ExpectedConditions.presenceOfElementLocated(By.id("events-content")));
 
-        driver.findElement(By.id("delete-event-btn")).click();
+        // Delete lives under ⋮; open that first.
+        clickOverflowInnerButton("delete-event-btn");
         wait.until(ExpectedConditions.visibilityOfElementLocated(By.id("delete-event-modal")));
         driver.findElement(By.id("delete-event-confirm-btn")).click();
 

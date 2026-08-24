@@ -93,7 +93,8 @@ class QuickAttendanceModalUiTest extends UiTestBase {
         System.out.println("[TEST] memberCount=" + memberCount);
 
         // --- Open quick attendance modal ---
-        driver.findElement(By.id("quick-attendance-btn")).click();
+        // Quick-attendance lives under ⋮; open that first.
+        clickOverflowInnerButton("quick-attendance-btn");
         wait.until(ExpectedConditions.presenceOfElementLocated(By.id("quick-attendance-modal")));
         wait.until(d -> (Boolean) ((JavascriptExecutor) d).executeScript(
                 "return document.getElementById('quick-attendance-modal').open === true;"));

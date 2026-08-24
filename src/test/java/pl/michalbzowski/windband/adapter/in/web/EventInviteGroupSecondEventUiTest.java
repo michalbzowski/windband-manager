@@ -123,8 +123,11 @@ class EventInviteGroupSecondEventUiTest extends UiTestBase {
     }
 
     private void clickPowrot(WebDriverWait wait) {
-        // Powrót is now an <a> link, not a button — see fix/issue-105-past-events-navigation
-        WebElement back = driver.findElement(By.xpath("//a[contains(text(),'Powrót')]"));
+        // The "Powrót" link on event/rehearsal detail pages is now the
+        // unified detail-actions-bar back icon (fragments/detail-page-actions-bar.html).
+        // The bar's back <a> still carries aria-label="Powrót" and title="Powrót",
+        // so we locate it via aria-label for robustness.
+        WebElement back = driver.findElement(By.cssSelector(".detail-actions-bar .detail-back-link"));
         jsClick(back);
     }
 

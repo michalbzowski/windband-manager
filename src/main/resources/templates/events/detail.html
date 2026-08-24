@@ -8,26 +8,71 @@
     <section class="dashboard-upcoming">
         <header th:replace="~{fragments/layout :: dashboard-header}"></header>
 
-        <!-- Detail page actions bar with back navigation and action buttons -->
-        <nav class="detail-page-actions-bar" style="display:flex; align-items:center; gap:0.75rem; padding:1rem 0;">
-            <!-- Back button - dynamic based on referrer or default to events list -->
-            <a th:href="${backUrl}" class="detail-back-btn">← Powrót</a>
+        <!-- Unified detail-page actions bar (one source of truth —
+             see fragments/detail-page-actions-bar.html). The inline "Edytuj"
+             icon + ⋮ overflow menu keep their behaviour via the existing
+             #edit-event-btn / #delete-event-btn ids, which the bar's
+             data-* targets point to from the host <nav> below. -->
+        <nav class="detail-actions-bar"
+             role="navigation" aria-label="Akcje strony"
+             data-detail-bar
+             data-detail-edit-target="edit-event-btn"
+             data-detail-delete-target="delete-event-btn">
 
-            <!-- Page title with emoji -->
-            <h2 style="margin:0 0 auto 0; color:var(--pico-primary); flex-grow:1;">🎪 Szczegóły wydarzenia</h2>
+            <a class="detail-back-link"
+               th:href="${backUrl}"
+               title="Powrót" aria-label="Powrót">
+                <svg viewBox="0 0 24 24" width="22" height="22"
+                     fill="none" stroke="currentColor" stroke-width="2.2"
+                     stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                    <path d="M19 12H5M12 19l-7-7 7-7"/>
+                </svg>
+            </a>
 
-            <!-- Action buttons (right-aligned) -->
-            <div style="display:flex; gap:0.5rem;">
-                <button type="button" 
-                        class="outline" 
-                        id="edit-event-btn" 
-                        style="padding:0.5rem 1rem;" 
-                        title="Edytuj wydarzenie">✏️ Edytuj</button>
-                <button type="button" 
-                        class="outline danger" 
-                        id="delete-event-btn" 
-                        style="padding:0.5rem 1rem;">🗑️ Usuń wydarzenie</button>
-            </div>
+            <h2 class="detail-title">Szczegóły wydarzenia</h2>
+
+            <!-- Inline "Edytuj" — always visible on every viewport.
+                 Handler lives in the page <script> below (reads
+                 #event-edit-url hidden input) so we keep a single place
+                 that owns the navigation. -->
+            <button type="button" class="icon-btn" id="edit-event-btn"
+                    title="Edytuj wydarzenie" aria-label="Edytuj wydarzenie"
+                    data-detail-action="inline-edit">
+                <svg viewBox="0 0 24 24" width="22" height="22"
+                     fill="none" stroke="currentColor" stroke-width="1.8"
+                     stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                    <path d="M12 20h9"/>
+                    <path d="M16.5 3.5a2.12 2.12 0 013 3L7 19l-4 1 1-4L16.5 3.5z"/>
+                </svg>
+            </button>
+
+            <!-- Overflow ⋮ with "Usuń" (handler on #delete-event-btn below) -->
+            <span class="overflow-wrap">
+                <button type="button" class="icon-btn"
+                        title="Więcej akcji" aria-label="Więcej akcji"
+                        aria-haspopup="menu" aria-expanded="false"
+                        data-detail-action="toggle-more">
+                    <svg viewBox="0 0 24 24" width="22" height="22" fill="currentColor"
+                         aria-hidden="true">
+                        <circle cx="12" cy="5"  r="1.6"/>
+                        <circle cx="12" cy="12" r="1.6"/>
+                        <circle cx="12" cy="19" r="1.6"/>
+                    </svg>
+                </button>
+                <div class="overflow-menu" role="menu" aria-label="Więcej akcji">
+                    <button type="button" class="overflow-item danger"
+                            id="delete-event-btn"
+                            role="menuitem" data-detail-action="open-delete">
+                        <svg viewBox="0 0 24 24" width="18" height="18" fill="none"
+                             stroke="currentColor" stroke-width="1.8"
+                             stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                            <path d="M3 6h18"/>
+                            <path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/>
+                        </svg>
+                        Usuń wydarzenie
+                    </button>
+                </div>
+            </span>
         </nav>
 
     <div id="event-detail-wrapper">
