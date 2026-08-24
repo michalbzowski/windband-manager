@@ -625,6 +625,56 @@ html, body {
     flex: 1;
     overflow-y: auto;
     -webkit-overflow-scrolling: touch;
+    /* Always show scrollbar to indicate more content is available */
+    scrollbar-width: thin;
+    scrollbar-color: var(--pico-muted-border-color) transparent;
+}
+
+/* WebKit/Blink scrollbar styling for modal people list */
+.modal-people-list::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+}
+
+.modal-people-list::-webkit-scrollbar-track {
+    background: transparent;
+    border-radius: 4px;
+}
+
+.modal-people-list::-webkit-scrollbar-thumb {
+    background: var(--pico-muted-border-color);
+    border-radius: 4px;
+    border: 2px solid transparent;
+    background-clip: content-box;
+}
+
+.modal-people-list::-webkit-scrollbar-thumb:hover {
+    background: var(--pico-muted-color);
+    border: 2px solid transparent;
+    background-clip: content-box;
+}
+
+/* Dark theme scrollbar for modal people list */
+[data-theme="dark"] .modal-people-list {
+    scrollbar-color: var(--pico-muted-border-color) transparent;
+}
+[data-theme="dark"] .modal-people-list::-webkit-scrollbar-thumb {
+    background: var(--pico-muted-border-color);
+}
+[data-theme="dark"] .modal-people-list::-webkit-scrollbar-thumb:hover {
+    background: var(--pico-muted-color);
+}
+
+@media (prefers-color-scheme: dark) {
+    .modal-people-list {
+        scrollbar-color: var(--pico-muted-border-color) transparent;
+    }
+    .modal-people-list::-webkit-scrollbar-thumb {
+        background: var(--pico-muted-border-color);
+    }
+    .modal-people-list::-webkit-scrollbar-thumb:hover {
+        background: var(--pico-muted-color);
+    }
 }
 
 /* Individual row styling for modal people lists */
