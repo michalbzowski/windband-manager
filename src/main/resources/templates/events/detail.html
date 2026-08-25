@@ -8,18 +8,16 @@
     <section class="dashboard-upcoming">
         <header th:replace="~{fragments/layout :: dashboard-header}"></header>
 
-        <!-- Unified detail-page actions bar — single source of truth.
-             fragments/detail-page-actions-bar.html owns the markup (back link,
-             title, inline ✎, ⋮ overflow). The host page supplies:
-               • data-detail-edit-target / data-detail-delete-target → ids of
-                 page-specific buttons (see #edit-event-btn in the script below,
-                 and the delete-confirm wiring inside this <nav> menu item).
-             This eliminates the previous inline-copy drift where the ⋮ icon
-             kept a hardcoded solid fill that broke theme awareness. -->
-        <nav th:replace="~{fragments/detail-page-actions-bar :: bar(${backUrl}, 'Szczegóły wydarzenia', 'edit-event-btn', 'delete-event-btn')}"
-             class="detail-actions-bar"
-             data-detail-edit-target="edit-event-btn"
-             data-detail-delete-target="delete-event-btn"></nav>
+        <!-- Unified page header (fragments/page-header.html) — single source of truth.
+             Actions are passed as scalar params so the fragment stays single-source without
+             relying on SpEL collection-literals in fragment-parameter position (Thymeleaf 3.1.2
+             limitation, see PR A). -->
+        <nav th:replace="~{fragments/page-header :: page-header(
+               ${backUrl},
+               'Szczegóły wydarzenia',
+               'Edytuj',  @{/events/{id}/edit(id=${event.id})},  'edit',  'edit-event-btn',
+               'Usuń',    null,                                   'trash', 'delete-event-btn'
+           )}"></nav>
 
         <!-- Event-specific page actions that the bar's overflow menu references:
              the ⋮ "Usuń wydarzenie" item below is rendered by the fragment and
@@ -279,34 +277,11 @@
     // No StickyManager initialization needed here.
 
     document.addEventListener('DOMContentLoaded', function() {
-        // ---- Wire the shared detail-actions-bar (fragment) to this page ----
-        // The fragment (fragments/detail-page-actions-bar.html) renders the
-        // generic bar with no page-specific ids. We:
-        //   1) assign #edit-event-btn / #delete-event-btn to the bar's inline
-        //      edit and delete buttons (matching the pre-refactor ids that
-        //      this page's script targets below);
-        //   2) wire #edit-event-btn to navigate to #event-edit-url.value —
-        //      the existing behaviour preserved from the old inline nav.
-        // (There is no extra "Szybka obecność" item on the events page, so
-        //  nothing else to inject.)
-        var bar = document.querySelector('nav.detail-actions-bar[data-detail-bar]');
-        if (bar) {
-            var editBtn = bar.querySelector('.icon-btn[data-detail-action="inline-edit"]');
-            if (editBtn && !editBtn.id) editBtn.id = 'edit-event-btn';
-
-            var deleteItem = bar.querySelector('[data-detail-action="open-delete"]');
-            if (deleteItem && !deleteItem.id) deleteItem.id = 'delete-event-btn';
-
-            // Edit button → navigate to the event edit URL.
-            if (editBtn) {
-                var editUrlInput = document.getElementById('event-edit-url');
-                if (editUrlInput && editUrlInput.value) {
-                    editBtn.addEventListener('click', function() {
-                        window.location.href = editUrlInput.value;
-                    });
-                }
-            }
-        }
+        // ---- The page-header fragment already assigns #edit-event-btn /
+        //      #delete-event-btn server-side (see fragments/page-header.html).
+        //      The delete handler below is registered at script-parse time and
+        //      uses getElementById, so it picks them up. Nothing needed here
+        //      for the bar on the events page. ----
 
         // Participant filter for events detail
         var filterInput = document.getElementById('participant-filter');
