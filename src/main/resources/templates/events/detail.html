@@ -8,72 +8,25 @@
     <section class="dashboard-upcoming">
         <header th:replace="~{fragments/layout :: dashboard-header}"></header>
 
-        <!-- Unified detail-page actions bar (one source of truth —
-             see fragments/detail-page-actions-bar.html). The inline "Edytuj"
-             icon + ⋮ overflow menu keep their behaviour via the existing
-             #edit-event-btn / #delete-event-btn ids, which the bar's
-             data-* targets point to from the host <nav> below. -->
-        <nav class="detail-actions-bar"
-             role="navigation" aria-label="Akcje strony"
-             data-detail-bar
+        <!-- Unified detail-page actions bar — single source of truth.
+             fragments/detail-page-actions-bar.html owns the markup (back link,
+             title, inline ✎, ⋮ overflow). The host page supplies:
+               • data-detail-edit-target / data-detail-delete-target → ids of
+                 page-specific buttons (see #edit-event-btn in the script below,
+                 and the delete-confirm wiring inside this <nav> menu item).
+             This eliminates the previous inline-copy drift where the ⋮ icon
+             kept a hardcoded solid fill that broke theme awareness. -->
+        <nav th:replace="~{fragments/detail-page-actions-bar :: bar(${backUrl}, 'Szczegóły wydarzenia', 'edit-event-btn', 'delete-event-btn')}"
+             class="detail-actions-bar"
              data-detail-edit-target="edit-event-btn"
-             data-detail-delete-target="delete-event-btn">
+             data-detail-delete-target="delete-event-btn"></nav>
 
-            <a class="detail-back-link"
-               th:href="${backUrl}"
-               title="Powrót" aria-label="Powrót">
-                <svg viewBox="0 0 24 24" width="22" height="22"
-                     fill="none" stroke="currentColor" stroke-width="2.2"
-                     stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                    <path d="M19 12H5M12 19l-7-7 7-7"/>
-                </svg>
-            </a>
-
-            <h2 class="detail-title">Szczegóły wydarzenia</h2>
-
-            <!-- Inline "Edytuj" — always visible on every viewport.
-                 Handler lives in the page <script> below (reads
-                 #event-edit-url hidden input) so we keep a single place
-                 that owns the navigation. -->
-            <button type="button" class="icon-btn" id="edit-event-btn"
-                    title="Edytuj wydarzenie" aria-label="Edytuj wydarzenie"
-                    data-detail-action="inline-edit">
-                <svg viewBox="0 0 24 24" width="22" height="22"
-                     fill="none" stroke="currentColor" stroke-width="1.8"
-                     stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                    <path d="M12 20h9"/>
-                    <path d="M16.5 3.5a2.12 2.12 0 013 3L7 19l-4 1 1-4L16.5 3.5z"/>
-                </svg>
-            </button>
-
-            <!-- Overflow ⋮ with "Usuń" (handler on #delete-event-btn below) -->
-            <span class="overflow-wrap">
-                <button type="button" class="icon-btn"
-                        title="Więcej akcji" aria-label="Więcej akcji"
-                        aria-haspopup="menu" aria-expanded="false"
-                        data-detail-action="toggle-more">
-                    <svg viewBox="0 0 24 24" width="22" height="22" fill="currentColor"
-                         aria-hidden="true">
-                        <circle cx="12" cy="5"  r="1.6"/>
-                        <circle cx="12" cy="12" r="1.6"/>
-                        <circle cx="12" cy="19" r="1.6"/>
-                    </svg>
-                </button>
-                <div class="overflow-menu" role="menu" aria-label="Więcej akcji">
-                    <button type="button" class="overflow-item danger"
-                            id="delete-event-btn"
-                            role="menuitem" data-detail-action="open-delete">
-                        <svg viewBox="0 0 24 24" width="18" height="18" fill="none"
-                             stroke="currentColor" stroke-width="1.8"
-                             stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                            <path d="M3 6h18"/>
-                            <path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/>
-                        </svg>
-                        Usuń wydarzenie
-                    </button>
-                </div>
-            </span>
-        </nav>
+        <!-- Event-specific page actions that the bar's overflow menu references:
+             the ⋮ "Usuń wydarzenie" item below is rendered by the fragment and
+             fires 'windband:detail-delete' (dispatched or clicked via the host
+             data-attribute above). The actual modal open / DELETE fetch lives
+             in this page's script — kept out of the shared fragment on purpose. -->
+        <input type="hidden" id="event-edit-url" th:value="@{/events/{id}/edit(id=${event.id})}">
 
     <div id="event-detail-wrapper">
 <div id="events-content"
@@ -243,8 +196,7 @@
         </tbody>
     </table>
 
-<!-- Hidden input for edit URL -->
-<input type="hidden" id="event-edit-url" th:value="@{/events/{id}/edit(id=${event.id})}">
+<!-- (moved up: #event-edit-url now lives next to the bar, above #events-content) -->
 
 <dialog id="invite-members-modal" class="app-modal">
     <div class="app-modal-content">
@@ -327,6 +279,35 @@
     // No StickyManager initialization needed here.
 
     document.addEventListener('DOMContentLoaded', function() {
+        // ---- Wire the shared detail-actions-bar (fragment) to this page ----
+        // The fragment (fragments/detail-page-actions-bar.html) renders the
+        // generic bar with no page-specific ids. We:
+        //   1) assign #edit-event-btn / #delete-event-btn to the bar's inline
+        //      edit and delete buttons (matching the pre-refactor ids that
+        //      this page's script targets below);
+        //   2) wire #edit-event-btn to navigate to #event-edit-url.value —
+        //      the existing behaviour preserved from the old inline nav.
+        // (There is no extra "Szybka obecność" item on the events page, so
+        //  nothing else to inject.)
+        var bar = document.querySelector('nav.detail-actions-bar[data-detail-bar]');
+        if (bar) {
+            var editBtn = bar.querySelector('.icon-btn[data-detail-action="inline-edit"]');
+            if (editBtn && !editBtn.id) editBtn.id = 'edit-event-btn';
+
+            var deleteItem = bar.querySelector('[data-detail-action="open-delete"]');
+            if (deleteItem && !deleteItem.id) deleteItem.id = 'delete-event-btn';
+
+            // Edit button → navigate to the event edit URL.
+            if (editBtn) {
+                var editUrlInput = document.getElementById('event-edit-url');
+                if (editUrlInput && editUrlInput.value) {
+                    editBtn.addEventListener('click', function() {
+                        window.location.href = editUrlInput.value;
+                    });
+                }
+            }
+        }
+
         // Participant filter for events detail
         var filterInput = document.getElementById('participant-filter');
         if (filterInput) {

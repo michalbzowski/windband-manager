@@ -1887,8 +1887,9 @@ body.dashboard-page main.container {
 
 /* Back link (icon-only) */
 .detail-back-link {
-    display: inline-grid;
-    place-items: center;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
     width: 44px;
     height: 44px;
     border-radius: 10px;
@@ -1920,10 +1921,21 @@ body.dashboard-page main.container {
 
 /* Icon buttons (Edytuj inline + ⋮ trigger) */
 .icon-btn {
-    display: inline-grid;
-    place-items: center;
+    /* Pico's form-element reset gives <button> a `margin-bottom` (~18px on this page,
+       measured via getComputedStyle in DetailBarAlignmentDiagnosticUiTest). In the
+       flex bar (align-items:center) that margin inflates each icon button's cross
+       size to 44+18=62px, so it is centred 9px HIGHER than the back link and the
+       title — the "strzałka w środku, ikony wyżej" bug from the 2026-08-25 report.
+       `margin: 0` removes it; flex then centres all three at the true bar centre. */
+    margin: 0;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
     width: 44px;
     height: 44px;
+    min-height: 0;              /* override any Pico form-element min-height */
+    padding: 0;                /* strip Pico's default button padding (see above) */
+    border: 0;                 /* strip Pico's form-element border so it can't inflate the box */
     border-radius: 10px;
     background: transparent;
     color: var(--pico-color);
