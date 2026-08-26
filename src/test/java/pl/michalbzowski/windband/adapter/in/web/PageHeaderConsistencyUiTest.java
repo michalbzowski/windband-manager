@@ -175,7 +175,10 @@ class PageHeaderConsistencyUiTest extends pl.michalbzowski.windband.UiTestBase {
                 ".ph-primary-action, .ph-secondary-action")));
         if (actions.isEmpty()) {
             for (WebElement a : driver.findElements(By.cssSelector(".ph-primary-action, .ph-secondary-action"))) {
-                if (a.isDisplayed()) { actions.add(a); break; }
+                if (a.isDisplayed()) {
+                    actions.add(a);
+                    break;
+                }
             }
         }
         assertThat(actions).as("list action button/link must render on %s", path).isNotEmpty();

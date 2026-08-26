@@ -9,14 +9,10 @@
         <header th:replace="~{fragments/layout :: dashboard-header}"></header>
 
     <div id="orders-content">
-        <nav th:replace="~{fragments/page-header :: page-header(
-                            null,
-                            'Zamówienia',
-                            null, null, null, null,
-                            null, null, null, null,
-                            null, null, null, null,
-                            null, null
-                         )}"></nav>
+        <nav th:replace="~{fragments/page-header :: page-header-b(
+                                null, 'Zamówienia',
+                                null, null, null, null, null,
+                                null, null, null, null)}"></nav>
         <button type="button" class="ph-secondary-action" id="new-order-btn"
                 onclick="if(typeof showOrderForm === 'function'){ showOrderForm(); }">
             <th:block th:insert="~{fragments/icons :: plus}"></th:block>

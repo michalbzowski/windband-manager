@@ -43,14 +43,10 @@
                     </style>
            
                     <!-- Header with toggle button (Issue #108) -->
-        <nav th:replace="~{fragments/page-header :: page-header(
-                            null,
-                            'Członkowie',
-                            'Dodaj członka', @{/members/new}, 'plus', 'add-member-btn',
-                            null, null, null, null,
-                            null, null, null, null,
-                            '#content', null
-                         )"}></nav>
+        <nav th:replace="~{fragments/page-header :: page-header-b(
+                            null, 'Członkowie', 'Dodaj członka', @{/members/new},
+                            'plus', 'add-member-btn', '#content',
+                            null, null, null, null)}"></nav>
 
                         <!-- Toggle button for Active/Inactive members (Issue #108) -->
                         <div class="members-header-actions">

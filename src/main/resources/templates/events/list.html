@@ -9,14 +9,10 @@
         <header th:replace="~{fragments/layout :: dashboard-header}"></header>
 
     <div id="events-list-container" th:attr="data-focus-id=${focusEventId},data-focus-prefix='event'">
-        <nav th:replace="~{fragments/page-header :: page-header(
-                            null,
-                            'Wydarzenia',
-                            'Dodaj wydarzenie', @{/events/new}, 'plus', 'add-event-btn',
-                            null, null, null, null,
-                            null, null, null, null,
-                            '#events-list-container', null
-                         )}"></nav>
+        <nav th:replace="~{fragments/page-header :: page-header-b(
+                            null, 'Wydarzenia', 'Dodaj wydarzenie', @{/events/new},
+                            'plus', 'add-event-btn', '#events-list-container',
+                            null, null, null, null)}"></nav>
 
             <div th:if="${#lists.isEmpty(upcomingEvents) and #lists.isEmpty(pastEvents)}">
                 <article>

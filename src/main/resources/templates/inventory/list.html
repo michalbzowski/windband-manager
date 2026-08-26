@@ -10,14 +10,10 @@
 
         <div id="debug-info" style="display:none;" th:text="${debugInfo}"></div>
         <div id="inventory-content">
-            <nav th:replace="~{fragments/page-header :: page-header(
-                                null,
-                                'Zasoby',
-                                null, null, null, null,
-                                null, null, null, null,
-                                null, null, null, null,
-                                null, null
-                             )}"></nav>
+            <nav th:replace="~{fragments/page-header :: page-header-b(
+                                null, 'Zasoby',
+                                null, null, null, null, null,
+                                null, null, null, null)}"></nav>
 
             <!-- Tabs: tab buttons carry their own visual identity (primary/secondary state)
                  and stay as plain <button>; the icon policy applies to titles/action bars. -->

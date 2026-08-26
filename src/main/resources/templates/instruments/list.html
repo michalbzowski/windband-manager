@@ -9,14 +9,10 @@
         <header th:replace="~{fragments/layout :: dashboard-header}"></header>
 
     <div id="instruments-content">
-        <nav th:replace="~{fragments/page-header :: page-header(
-                            null,
-                            'Instrumenty',
-                            'Dodaj instrument', @{/instruments/new}, 'plus', 'add-instrument-btn',
-                            null, null, null, null,
-                            null, null, null, null,
-                            '#instruments-content', null
-                         )}"></nav>
+        <nav th:replace="~{fragments/page-header :: page-header-b(
+                            null, 'Instrumenty', 'Dodaj instrument', @{/instruments/new},
+                            'plus', 'add-instrument-btn', '#instruments-content',
+                            null, null, null, null)}"></nav>
 
             <div th:if="${#lists.isEmpty(instruments)}">
                 <article>

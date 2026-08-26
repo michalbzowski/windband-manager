@@ -9,14 +9,10 @@
         <header th:replace="~{fragments/layout :: dashboard-header}"></header>
 
     <div id="rehearsals-content" th:attr="data-focus-id=${focusRehearsalId},data-focus-prefix='rehearsal'">
-        <nav th:replace="~{fragments/page-header :: page-header(
-                            null,
-                            'Spotkania',
-                            'Zaplanuj spotkanie', @{/rehearsals/new}, 'plus', 'add-rehearsal-btn',
-                            null, null, null, null,
-                            null, null, null, null,
-                            '#rehearsals-content', null
-                         )}"></nav>
+        <nav th:replace="~{fragments/page-header :: page-header-b(
+                            null, 'Spotkania', 'Zaplanuj spotkanie', @{/rehearsals/new},
+                            'plus', 'add-rehearsal-btn', '#rehearsals-content',
+                            null, null, null, null)}"></nav>
 
             <div th:if="${#lists.isEmpty(upcomingRehearsals) and #lists.isEmpty(pastRehearsals)}">
                 <article>

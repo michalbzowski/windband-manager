@@ -2,45 +2,34 @@
 <!--
   fragments/page-header.html — single source of truth for EVERY view's header.
 
-  API (scalar params, all optional). Variants inferred from which params are set:
-      page-header(backUrl, title,
-                  editLabel?,  editUrl?,  editIcon?,  editId?    )   // inline primary action
-                  deleteLabel?, deleteUrl?, deleteIcon?, deleteId?)  // overflow ⋮ danger entry
+  Two fragment signatures (Thymeleaf params are positional and must match exact count):
 
-  PR B additions (list variant), all optional — existing PR A call sites unaffected:
-      page-header(…,
-                  action2Label?,  action2Url?,  action2Icon?,  action2Id?   )  // 2nd inline action
-                  editHxTarget?, editHxSwap?)                              // primary as htmx button
+  page-header(backUrl, title, editLabel, editUrl, editIcon, editId,
+              deleteLabel, deleteUrl, deleteIcon, deleteId)         // PR A — detail pages
+  page-header-b(backUrl, title, editLabel, editUrl, editIconName, editId,
+                editHxTarget, deleteLabel, deleteUrl, deleteIcon, deleteId)   // PR B — list pages (htmx + named icon)
 
-  Param 4 (`editIcon`) in PR B: icon NAME from fragments/icons.html.
-  "edit" (or null/"") keeps the PR A legacy inline pencil; any other name
-  (e.g. "plus", "music") renders that named stroke-based fragment instead.
-
-  Rendering:
+  Rendering rules (shared):
     • backUrl != null              → <a class="detail-back-link"> + icons::back
     • title                        → <h2 class="detail-title">
-    • editLabel & editUrl set      → <a class="ph-primary-action" th:id="${editId}"> + icon
-                                     (icon defaults to icons::edit; pass editIcon to override)
-    • deleteLabel set              → ⋮ trigger (.icon-btn) + .overflow-item.danger[th:id=${deleteId}]
-                                     (icon defaults to icons::trash)
+    • editLabel & editUrl set      → primary action (<a> or <button hx-get>)
+                                     (icon: icons::${editIconName} or legacy inline pencil)
+    • deleteLabel set              → ⋮ trigger + overflow menu with danger item
 
-  Notes:
-  • Scalar params, not a list-of-maps — Thymeleaf 3.1.2 cannot evaluate SpEL collection
-    literals or @{}/#spring.url link-exprs inside a fragment *parameter* position reliably
-    (PR A bug). Pass individual strings + booleans for bulletproof rendering. PRs B–D
-    may still call the same API with more actions by either passing extra optional params
-    (e.g., primaryAction2Label…/Url…) or, better, pre-building the list in a controller +
-    model attr and using th:each inside the fragment — but that's out of scope for PR A.
-  • NO inline styles; geometry from app.css (.detail-actions-bar/.icon-btn/.detail-title/…).
+  • NO inline styles; geometry from app.css (.detail-actions-bar/.icon-btn/.detail-title/…)
   • ARIA: role=navigation, aria-label="Nagłówek widoku", aria-haspopup=menu on ⋮.
 -->
-<html xmlns:th="http://www.w3.org/1999/xhtml">
+<html xmlns:th="http://www.thymeleaf.org">
 <head><title>page-header fragment</title></head>
 <body>
+
+<!-- ════════════════════════════════════════════════════
+     PR A — detail variant (10 params, unchanged from PR A)
+     ════════════════════════════════════════════════════ -->
 <nav class="detail-actions-bar page-header"
      role="navigation"
      aria-label="Nagłówek widoku"
-     th:fragment="page-header(backUrl, title, editLabel, editUrl, editIcon, editId, deleteLabel, deleteUrl, deleteIcon, deleteId, action2Label, action2Url, action2Icon, action2Id, editHxTarget, editHxSwap)"
+     th:fragment="page-header(backUrl, title, editLabel, editUrl, editIcon, editId, deleteLabel, deleteUrl, deleteIcon, deleteId)"
      data-page-header="v1"
      data-detail-bar="true">
 
@@ -56,63 +45,20 @@
     <!-- title -->
     <h2 class="detail-title" th:text="${title}" th:title="${title}">Tytuł</h2>
 
-    <!-- inline primary action.
-         Icon resolution (PR B): param 4 is an icon NAME from fragments/icons.html.
-         "edit"/"" → legacy inline pencil (PR A behaviour, kept for compatibility);
-         any other name → th:insert of the named stroke-based fragment ("plus" etc.). -->
+    <!-- inline primary action — legacy pencil icon (PR A behaviour) -->
     <a class="ph-primary-action"
-       th:if="${editLabel != null and editUrl != null and editHxTarget == null}"
+       th:if="${editLabel != null and editUrl != null}"
        th:href="${editUrl}"
        th:id="${editId}">
-        <th:block th:if="${editIcon == null or editIcon == '' or editIcon == 'edit'}">
-            <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor"
-                 stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                <path d="M12 20h9"/>
-                <path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/>
-            </svg>
-        </th:block>
-        <th:block th:if="${editIcon != null and editIcon != '' and editIcon != 'edit'}"
-                  th:insert="${'fragments/icons :: ' + editIcon}"></th:block>
+        <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor"
+             stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M12 20h9"/>
+            <path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/>
+        </svg>
         <span th:text="${editLabel}">Edytuj</span>
     </a>
 
-    <!-- optional second inline action (PR B, list views with a secondary primary-like
-         affordance such as "Aktualizuj grupy dynamiczne"). Same rendering contract:
-         stroke-based icon from fragments/icons.html, no inline styles. -->
-    <a class="ph-secondary-action"
-       th:if="${action2Label != null and action2Url != null}"
-       th:href="${action2Url}"
-       th:id="${action2Id}">
-        <th:block th:if="${action2Icon == null or action2Icon == ''}"
-                  th:insert="${'fragments/icons :: plus'}"></th:block>
-        <th:block th:if="${action2Icon != null and action2Icon != ''}"
-                  th:insert="${'fragments/icons :: ' + action2Icon}"></th:block>
-        <span th:text="${action2Label}">Akcja</span>
-    </a>
-
-    <!-- HTMX variant of the primary action (list "+ Dodaj …" flows): htmx auto-upgrades
-         <button hx-get=…> on DOMContentLoaded, so a plain button carries no inline JS.
-         When both are set, this replaces the plain <a> primary and hosts pass
-         editHxTarget (e.g. '#events-content'). -->
-    <button type="button" class="ph-primary-action htmx"
-            th:if="${editLabel != null and editUrl != null and editHxTarget != null}"
-            th:id="${editId}"
-            th:hx-get="${editUrl}"
-            th:hx-target="${editHxTarget}"
-            th:hx-swap="${editHxSwap != null ? editHxSwap : 'innerHTML transition:true'}">
-        <th:block th:if="${editIcon == null or editIcon == '' or editIcon == 'edit'}">
-            <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor"
-                 stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                <path d="M12 20h9"/>
-                <path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/>
-            </svg>
-        </th:block>
-        <th:block th:if="${editIcon != null and editIcon != '' and editIcon != 'edit'}"
-                  th:insert="${'fragments/icons :: ' + editIcon}"></th:block>
-        <span th:text="${editLabel}">Dodaj</span>
-    </button>
-
-    <!-- overflow ⋮ (delete / other danger actions) -->
+    <!-- overflow ⋮ -->
     <th:block th:if="${deleteLabel != null}">
         <span class="overflow-wrap">
             <button type="button" class="icon-btn"
@@ -135,5 +81,76 @@
     </th:block>
 
 </nav>
+
+<!-- ════════════════════════════════════════════════════
+     PR B — list variant (11 params, htmx + named icon)
+     editIconName: "plus", "music", "people", … from fragments/icons.html
+     editHxTarget: CSS selector string like '#events-content' or null for plain <a>
+     ════════════════════════════════════════════════════ -->
+<nav class="detail-actions-bar page-header"
+     role="navigation"
+     aria-label="Nagłówek widoku"
+     th:fragment="page-header-b(backUrl, title, editLabel, editUrl, editIconName, editId, editHxTarget, deleteLabel, deleteUrl, deleteIcon, deleteId)"
+     data-page-header="v1"
+     data-detail-bar="true">
+
+    <!-- back (same as PR A) -->
+    <a class="detail-back-link"
+       th:if="${backUrl != null}"
+       th:href="${backUrl}"
+       title="Powrót" aria-label="Powrót"
+       data-detail-action="back">
+        <th:block th:insert="~{fragments/icons :: back}"></th:block>
+    </a>
+
+    <!-- title (same as PR A) -->
+    <h2 class="detail-title" th:text="${title}" th:title="${title}">Tytuł</h2>
+
+    <!-- inline primary action — htmx button or plain link, with named icon from icons.html -->
+    <th:block th:if="${editLabel != null and editUrl != null}">
+        <!-- htmx button variant -->
+        <button type="button" class="ph-primary-action htmx"
+                th:if="${editHxTarget != null}"
+                th:id="${editId}"
+                th:hx-get="${editUrl}"
+                th:hx-target="${editHxTarget}"
+                th:hx-swap="'innerHTML transition:true'">
+            <th:block th:insert="${'fragments/icons :: ' + (editIconName != null ? editIconName : 'plus')}"></th:block>
+            <span th:text="${editLabel}">Dodaj</span>
+        </button>
+        <!-- plain link variant -->
+        <a class="ph-primary-action"
+           th:if="${editHxTarget == null}"
+           th:href="${editUrl}"
+           th:id="${editId}">
+            <th:block th:insert="${'fragments/icons :: ' + (editIconName != null ? editIconName : 'plus')}"></th:block>
+            <span th:text="${editLabel}">Dodaj</span>
+        </a>
+    </th:block>
+
+    <!-- overflow ⋮ (same as PR A) -->
+    <th:block th:if="${deleteLabel != null}">
+        <span class="overflow-wrap">
+            <button type="button" class="icon-btn"
+                    title="Więcej akcji" aria-label="Więcej akcji"
+                    aria-haspopup="menu" aria-expanded="false"
+                    data-detail-action="toggle-more">
+                <th:block th:insert="~{fragments/icons :: dots}"></th:block>
+            </button>
+            <div class="overflow-menu" role="menu" aria-label="Więcej akcji…">
+                <button type="button" class="overflow-item danger"
+                        role="menuitem"
+                        th:href="${deleteUrl}"
+                        th:id="${deleteId}">
+                    <th:block th:if="${deleteIcon == null or deleteIcon == 'trash'}" th:insert="~{fragments/icons :: trash}"></th:block>
+                    <th:block th:if="${deleteIcon != null and deleteIcon == 'close'}" th:insert="~{fragments/icons :: close}"></th:block>
+                    <span th:text="${deleteLabel}">Usuń</span>
+                </button>
+            </div>
+        </span>
+    </th:block>
+
+</nav>
+
 </body>
 </html>
