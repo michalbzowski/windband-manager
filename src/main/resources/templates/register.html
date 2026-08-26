@@ -7,7 +7,7 @@
         <!-- ==================== FORMULARZ TWORZENIA ZESPOŁU ==================== -->
         <div id="register-step-1">
             <hgroup>
-                <h1>⚡ Team Manager</h1>
+                <h1 class="ph-brand"><th:block th:insert="~{fragments/icons :: bolt}"></th:block>Team Manager</h1>
                 <h2>Utwórz swój zespół</h2>
                 <p style="color:var(--pico-muted-color);">
                     Jesteś zalogowany przez Keycloak. Teraz utwórz zespół zespołu,
@@ -17,8 +17,8 @@
 
             <!-- Info o zalogowanym użytkowniku -->
             <article style="background:#e7f3ff; border:1px solid #b8daff; border-radius:8px; padding:1rem; margin-bottom:1rem;">
-                <p style="margin:0;">
-                    🔐 Zalogowano jako: <strong th:text="${#authentication.principal.wbUsername}">użytkownik</strong>
+                <p class="ph-key-label" style="margin:0;">
+                    <th:block th:insert="~{fragments/icons :: key}"></th:block>Zalogowano jako: <strong th:text="${#authentication.principal.wbUsername}">użytkownik</strong>
                 </p>
             </article>
 
@@ -28,7 +28,7 @@
             <!-- Sukces -->
             <div id="register-success" style="display:none;">
                 <article style="background:#d4edda; border:1px solid #c3e6cb; border-radius:8px; padding:1.5rem;">
-                    <h3 style="color:#155724; margin-top:0;">✅ Zespół utworzony pomyślnie!</h3>
+                    <h3 class="ph-success" style="color:#155724; margin-top:0;"><th:block th:insert="~{fragments/icons :: check}"></th:block>Zespół utworzony pomyślnie!</h3>
                     <p>Twój zespół <strong id="success-team-name"></strong> został utworzony.</p>
                     <p>Możesz teraz zacząć zarządzać zespołem.</p>
                     <a href="/" role="button" class="primary" style="margin-top:1rem;">Przejdź do panelu</a>
@@ -39,7 +39,7 @@
 
                 <!-- ===== SEKCJA: DANE ZESPOŁU ===== -->
                 <fieldset>
-                    <legend>📋 Dane zespołu</legend>
+                    <legend class="ph-section-legend"><th:block th:insert="~{fragments/icons :: clipboard}"></th:block>Dane zespołu</legend>
 
                     <div class="grid">
                         <label>

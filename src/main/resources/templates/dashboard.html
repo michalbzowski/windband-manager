@@ -11,7 +11,7 @@
         <!-- Attention list -->
         <div th:unless="${#lists.isEmpty(attentionItems)}" class="attention-section">
             <header class="section-head attention-head">
-                <h2><span class="attention-head-icon" aria-hidden="true">⚠️</span>Wymaga Twojej uwagi</h2>
+                <h2 class="ph-section-title"><th:block th:insert="~{fragments/icons :: warn}"></th:block>Wymaga Twojej uwagi</h2>
                 <span class="attention-head-count" th:text="${#lists.size(attentionItems)} + ' ' + (${#lists.size(attentionItems)} == 1 ? 'pozycja' : 'pozycji')">0 pozycji</span>
             </header>
 
@@ -102,7 +102,7 @@
         <!-- Upcoming section header — always shown when there are upcoming items
              (the empty-state above already covers the all-empty case) -->
         <header th:unless="${#lists.isEmpty(upcoming)}" class="section-head upcoming-head">
-            <h2><span class="upcoming-head-icon" aria-hidden="true">📅</span>Nadchodzące</h2>
+            <h2 class="ph-section-title"><th:block th:insert="~{fragments/icons :: calendar}"></th:block>Nadchodzące</h2>
         </header>
 
         <!-- Mobile view: cards -->
@@ -188,7 +188,7 @@
     <section class="dashboard-stats">
         <div class="stat-grid">
             <article>
-                <header>👥 Członkowie</header>
+                <header class="ph-stat-title"><th:block th:insert="~{fragments/icons :: people}"></th:block>Członkowie</header>
                 <div class="stat-value-row">
                     <span th:text="${activeMembers}">0</span>
                     <small>aktywnych</small>
@@ -202,7 +202,7 @@
             </article>
 
             <article>
-                <header>🎵 Próby</header>
+                <header class="ph-stat-title"><th:block th:insert="~{fragments/icons :: music}"></th:block>Próby</header>
                 <div class="stat-value-row">
                     <span th:text="${rehearsalsThisWeek}">0</span>
                     <small>tym tygodniu</small>
@@ -213,7 +213,7 @@
             </article>
 
             <article>
-                <header>🎪 Wydarzenia</header>
+                <header class="ph-stat-title"><th:block th:insert="~{fragments/icons :: event}"></th:block>Wydarzenia</header>
                 <div class="stat-value-row">
                     <span th:text="${upcomingEvents}">0</span>
                     <small>nadchodzących</small>
@@ -224,7 +224,7 @@
             </article>
 
             <article>
-                <header>📦 Zamówienia</header>
+                <header class="ph-stat-title"><th:block th:insert="~{fragments/icons :: box}"></th:block>Zamówienia</header>
                 <div class="stat-value-row">
                     <span th:text="${activeOrders}">0</span>
                     <small>aktywnych</small>
@@ -235,7 +235,7 @@
             </article>
 
             <article>
-                <header>🎖️ Ekwipunek</header>
+                <header class="ph-stat-title"><th:block th:insert="~{fragments/icons :: award}"></th:block>Ekwipunek</header>
                 <div class="stat-value-row">
                     <span th:text="${totalUniforms}">0</span>
                     <small>w inwentarzu</small>
@@ -246,7 +246,7 @@
             </article>
 
             <article>
-                <header>⚡ Instrumenty</header>
+                <header class="ph-stat-title"><th:block th:insert="~{fragments/icons :: bolt}"></th:block>Instrumenty</header>
                 <div class="stat-value-row">
                     <span th:text="${totalInstruments}">0</span>
                     <small>w inwentarzu</small>
@@ -262,17 +262,17 @@
         <h3>Szybkie linki</h3>
         <div class="quick-grid">
             <article>
-                <header><strong>➕ Dodaj członka</strong></header>
+                <header class="ph-quick-title"><th:block th:insert="~{fragments/icons :: plus}"></th:block><strong>Dodaj członka</strong></header>
                 <p>Dodaj nowego członka do zespołu.</p>
                 <footer><a th:href="@{/members/new}" hx-target="#content" hx-swap="innerHTML transition:true" role="button" class="secondary outline">Nowy członek</a></footer>
             </article>
             <article>
-                <header><strong>📅 Zaplanuj spotkanie</strong></header>
+                <header class="ph-quick-title"><th:block th:insert="~{fragments/icons :: calendar}"></th:block><strong>Zaplanuj spotkanie</strong></header>
                 <p>Dodaj nową próbę do kalendarza.</p>
                 <footer><a th:href="@{/rehearsals/new}" hx-target="#content" hx-swap="innerHTML transition:true" role="button" class="secondary outline">Nowa próba</a></footer>
             </article>
             <article>
-                <header><strong>📦 Nowe zamówienie</strong></header>
+                <header class="ph-quick-title"><th:block th:insert="~{fragments/icons :: box}"></th:block><strong>Nowe zamówienie</strong></header>
                 <p>Złóż zamówienie na ekwipunek lub instrument.</p>
                 <footer><a th:href="@{/inventory}" hx-target="#content" hx-swap="innerHTML transition:true" role="button" class="secondary outline">Zamówienie</a></footer>
             </article>
