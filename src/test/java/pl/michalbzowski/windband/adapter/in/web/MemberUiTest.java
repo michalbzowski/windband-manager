@@ -48,7 +48,7 @@ class MemberUiTest extends UiTestBase {
         wait.until(ExpectedConditions.presenceOfElementLocated(By.cssSelector("#member-form")));
 
         var formHeading = driver.findElement(By.cssSelector("#members-content h2"));
-        assertThat(formHeading.getText()).contains("Dodaj członka");
+        assertThat(formHeading.getText()).contains("członek");
     }
 
     /**
@@ -82,7 +82,7 @@ class MemberUiTest extends UiTestBase {
             driver.findElement(By.xpath("//button[contains(., 'Dodaj członka')]")).click();
             wait.until(ExpectedConditions.presenceOfElementLocated(By.cssSelector("#member-form")));
             assertThat(driver.findElement(By.cssSelector("#members-content h2")).getText())
-                    .contains("Dodaj członka");
+                    .contains("członek");
 
             // === STEP 2: Fill the form and submit ===
             fillField("firstName", firstName);

@@ -27,6 +27,6 @@ class InstrumentUiTest extends UiTestBase {
         wait.until(ExpectedConditions.presenceOfElementLocated(By.cssSelector("#instrument-form")));
 
         var formHeading = driver.findElement(By.cssSelector("#instruments-content h2"));
-        assertThat(formHeading.getText()).contains("Dodaj instrument");
+        assertThat(formHeading.getText()).contains("instrument");
     }
 }

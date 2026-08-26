@@ -9,7 +9,7 @@
         <header th:replace="~{fragments/layout :: dashboard-header}"></header>
 
     <div id="groups-content">
-        <h2>🎼 Nowa grupa</h2>
+        <nav th:replace="~{fragments/page-header :: page-header-c(@{/groups}, 'Nowa grupa', null, null)}"></nav>
 
         <form hx-post="/groups" hx-target="#groups-content" hx-swap="innerHTML transition:true">
             <label for="name">Nazwa</label>

@@ -1,5 +1,5 @@
 <div id="tags-content">
-    <h2 th:text="${instrument.id() != null ? '✏️ Edytuj tag' : '➕ Dodaj tag'}">Dodaj tag</h2>
+    <nav th:replace="~{fragments/page-header :: page-header-c(@{/tags}, ${instrument.id() != null and instrument.id() != 0} ? 'Edytuj tag' : 'Nowy tag', null, null)}"></nav>
 
     <form id="tag-form"
           th:attr="data-instrument-id=${instrument.id()}"
