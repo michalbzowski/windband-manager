@@ -9,10 +9,8 @@
         <header th:replace="~{fragments/layout :: dashboard-header}"></header>
 
     <div id="reports-content">
-        <header class="reports-header">
-            <h2>⚙️ Skonfiguruj Sprawozdanie Zespołu</h2>
-            <p class="reports-subtitle">Wypełnij parametry i pobierz gotowy PDF</p>
-        </header>
+        <nav th:replace="~{fragments/page-header :: page-header-b(null, 'Konfiguruj Sprawozdanie Zespołu', null, null, null, null, null, null, null, null, null)}"></nav>
+
 
         <article class="report-config-card">
             <form id="sprawozdanie-form" class="config-form">
@@ -20,7 +18,7 @@
                 <input type="hidden" name="reportPath" value="/bands/test/sprawozdanie.jrxml">
                 
                 <div class="form-section">
-                    <h3>📋 Informacje podstawowe</h3>
+                    <h3>Informacje podstawowe</h3>
                     <div class="form-grid">
                         <label class="form-field">
                             <span class="field-label">Nazwa zespołu <span class="required">*</span></span>
@@ -35,7 +33,7 @@
                 </div>
 
                 <div class="form-section">
-                    <h3>📅 Okres sprawozdawczy</h3>
+                    <h3>Okres sprawozdawczy</h3>
                     <p class="section-description">Wybierz miesiąc i rok dla którego chcesz wygenerować raport (domyślnie: obecny okres)</p>
                     <div class="form-grid">
                         <label class="form-field">

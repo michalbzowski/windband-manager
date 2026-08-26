@@ -9,7 +9,7 @@
         <header th:replace="~{fragments/layout :: dashboard-header}"></header>
 
     <div id="dashboards-content">
-        <h2>📊 Dashboardy</h2>
+        <nav th:replace="~{fragments/page-header :: page-header-b(null, 'Dashboardy', null, null, null, null, null, null, null, null, null)}"></nav>
         <p>Wybierz dashboard, aby zobaczyć statystyki swojego zespołu.</p>
 
         <div th:if="${error != null}" class="toast-error" th:text="${error}">Błąd</div>

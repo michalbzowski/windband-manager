@@ -9,14 +9,11 @@
         <header th:replace="~{fragments/layout :: dashboard-header}"></header>
 
         <div id="attribute-defs-content">
-            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem;">
-                <h2>🏷️ Atrybuty członeków</h2>
-                <button class="primary"
-                        th:hx-get="@{/band/attributes/new}"
-                        hx-target="body"
-                        hx-swap="innerHTML">+ Dodaj atrybut</button>
-            </div>
-
+        <nav th:replace="~{fragments/page-header :: page-header-b(
+                            null, 'Atrybuty członeków',
+                            'Dodaj atrybut', @{/band/attributes/new},
+                            'plus', 'add-attr-btn', 'body',
+                            null, null, null, null)}"></nav>
 
             <div th:if="${attributeDefs == null or #lists.isEmpty(attributeDefs)}">
                 <p>Brak atrybutów w systemie. Dodaj pierwszy!</p>
