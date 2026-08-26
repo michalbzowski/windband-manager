@@ -115,7 +115,7 @@
                 th:hx-get="${editUrl}"
                 th:hx-target="${editHxTarget}"
                 th:hx-swap="'innerHTML transition:true'">
-            <th:block th:insert="${'fragments/icons :: ' + (editIconName != null ? editIconName : 'plus')}"></th:block>
+            <th:block th:insert="~{fragments/icons :: plus}"></th:block>
             <span th:text="${editLabel}">Dodaj</span>
         </button>
         <!-- plain link variant -->
@@ -123,7 +123,7 @@
            th:if="${editHxTarget == null}"
            th:href="${editUrl}"
            th:id="${editId}">
-            <th:block th:insert="${'fragments/icons :: ' + (editIconName != null ? editIconName : 'plus')}"></th:block>
+            <th:block th:insert="~{fragments/icons :: plus}"></th:block>
             <span th:text="${editLabel}">Dodaj</span>
         </a>
     </th:block>

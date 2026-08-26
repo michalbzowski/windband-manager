@@ -1,8 +1,6 @@
 package pl.michalbzowski.windband.adapter.in.web;
 
 import org.junit.jupiter.api.DisplayName;
-import org.junit.jupiter.params.ParameterizedTest;
-import org.junit.jupiter.params.provider.CsvSource;
 import org.junit.jupiter.api.Test;
 import org.openqa.selenium.By;
 import org.openqa.selenium.WebElement;
@@ -137,40 +135,19 @@ class PageHeaderConsistencyUiTest extends pl.michalbzowski.windband.UiTestBase {
     }
 
     // ------------------------------------------------------------------
-    //  PR B — list variant coverage (CSV contract rows).
-    //  Every list route MUST render the shared page-header: correct title,
-    //  stroke-based (theme-aware) action icon(s), no inline styles, and NO
-    //  emoji in the title (the "🎪 Wydarzenia" class of bug is regression-proofed).
+    //  PR B — list variant coverage. One @Test method per route.
     // ------------------------------------------------------------------
 
-    @ParameterizedTest(name = "{0}: unified page-header — title '{1}', action present, theme-aware, clean")
-    @CsvSource({
-            /* path,                      expectedTitle  */
-            "/events",                   "Wydarzenia",
-            "/rehearsals",               "Spotkania",
-            "/members",                  "Członkowie",
-            "/groups",                   "Grupy",
-            "/tags",                     "Tagi",
-            "/instruments",              "Instrumenty",
-            "/inventory",                "Zasoby",
-            "/orders",                   "Zamówienia",
-    })
-    @DisplayName("list variant: header present + title correct + action icon theme-aware + no inline styles")
-    void listView_pageHeaderContract(String path, String expectedTitle) {
+    private void assertListPageHeader(String path, String expectedTitle) {
         WebDriverWait wait = new WebDriverWait(driver, Duration.ofSeconds(10));
         loginAndNavigateTo(path);
         WebElement bar = wait.until(ExpectedConditions.presenceOfElementLocated(
                 By.cssSelector("nav[data-page-header='v1']")));
 
-        // (a) contract marker + exact title
         assertThat(bar.getAttribute("data-page-header")).isEqualTo("v1");
         assertThat(titleText(bar)).isEqualTo(expectedTitle);
         assertNoEmoji(titleText(bar));
 
-        // (b) a primary/secondary action is rendered on this list page.
-        //     It may be a <button> (htmx variants) or an <a>; both must exist.
-        //     Some pages keep the action as a host-level secondary button right under
-        //     the bar — fall back to a page-wide search in that case.
         List<WebElement> actions = new ArrayList<>(bar.findElements(By.cssSelector(
                 ".ph-primary-action, .ph-secondary-action")));
         if (actions.isEmpty()) {
@@ -183,44 +160,41 @@ class PageHeaderConsistencyUiTest extends pl.michalbzowski.windband.UiTestBase {
         }
         assertThat(actions).as("list action button/link must render on %s", path).isNotEmpty();
 
-        // (c) every action icon is theme-aware (stroke-based, fill=none).
         for (WebElement action : actions) {
             assertIconThemeAware(action.findElements(By.tagName("svg")));
         }
-
-        // (d) no inline styles inside the bar
         assertNoInlineStyles(bar);
     }
 
-    /**
-     * Regression guard: no emoji in h2/h3/h4 headings rendered inside {@code #content}
-     * — i.e. within the migrated list region, not in the global dashboard header.
-     * The original "🎪 Wydarzenia" class of bug lives here.  A <h1> in the
-     * dashboard-header (team name) is out of scope; the user may have typed anything
-     * there and it's not our UI chrome.
-     */
-    @ParameterizedTest(name = "{0}: no emoji in list-region headings")
-    @CsvSource({
-            "/events", "/rehearsals", "/members", "/groups",
-            "/tags",   "/instruments", "/inventory", "/orders",
-    })
-    @DisplayName("list pages: no emoji glyphs in h2/h3/h4 inside content region")
-    void listView_noEmojiInContentHeadings(String path) {
+    private void assertListPageHeadingsNoEmoji(String path) {
         WebDriverWait wait = new WebDriverWait(driver, Duration.ofSeconds(10));
         loginAndNavigateTo(path);
-        WebElement bar = wait.until(ExpectedConditions.presenceOfElementLocated(
-                By.cssSelector("nav[data-page-header='v1']")));
-        // The bar's own <h2> must be clean.
-        assertNoEmoji(titleText(bar));
-
-        // Scan headings in the sibling content container (everything after the nav).
-        WebElement content = driver.findElement(By.cssSelector("#content"));
+        WebElement content = wait.until(ExpectedConditions.presenceOfElementLocated(By.cssSelector("#content")));
         for (WebElement h : content.findElements(By.cssSelector("h1, h2, h3, h4"))) {
             String text = h.getText().trim();
-            if (text.isEmpty()) continue;
-            assertNoEmoji(text);
+            if (!text.isEmpty()) {
+                assertNoEmoji(text);
+            }
         }
     }
+
+    @Test void listEvents_pageHeader()           { assertListPageHeader("/events", "Wydarzenia"); }
+    @Test void listRehearsals_pageHeader()       { assertListPageHeader("/rehearsals", "Spotkania"); }
+    @Test void listMembers_pageHeader()          { assertListPageHeader("/members", "Członkowie"); }
+    @Test void listGroups_pageHeader()           { assertListPageHeader("/groups", "Grupy"); }
+    @Test void listTags_pageHeader()             { assertListPageHeader("/tags", "Tagi"); }
+    @Test void listInstruments_pageHeader()      { assertListPageHeader("/instruments", "Instrumenty"); }
+    @Test void listInventory_pageHeader()        { assertListPageHeader("/inventory", "Zasoby"); }
+    @Test void listOrders_pageHeader()           { assertListPageHeader("/orders", "Zamówienia"); }
+
+    @Test void listEvents_noEmojiHeadings()      { assertListPageHeadingsNoEmoji("/events"); }
+    @Test void listRehearsals_noEmojiHeadings()  { assertListPageHeadingsNoEmoji("/rehearsals"); }
+    @Test void listMembers_noEmojiHeadings()     { assertListPageHeadingsNoEmoji("/members"); }
+    @Test void listGroups_noEmojiHeadings()      { assertListPageHeadingsNoEmoji("/groups"); }
+    @Test void listTags_noEmojiHeadings()        { assertListPageHeadingsNoEmoji("/tags"); }
+    @Test void listInstruments_noEmojiHeadings() { assertListPageHeadingsNoEmoji("/instruments"); }
+    @Test void listInventory_noEmojiHeadings()   { assertListPageHeadingsNoEmoji("/inventory"); }
+    @Test void listOrders_noEmojiHeadings()      { assertListPageHeadingsNoEmoji("/orders"); }
 
     // ==================================================================
     //  helpers — create test data (mirrors DetailHeaderUnifiedUiTest pattern)
