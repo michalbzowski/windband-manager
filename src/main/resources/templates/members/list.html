@@ -43,9 +43,15 @@
                     </style>
            
                     <!-- Header with toggle button (Issue #108) -->
-                    <div style="max-width: 100%; display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
-                        <h2 style="margin: 0;">👥 Członkowie</h2>
-               
+        <nav th:replace="~{fragments/page-header :: page-header(
+                            null,
+                            'Członkowie',
+                            'Dodaj członka', @{/members/new}, 'plus', 'add-member-btn',
+                            null, null, null, null,
+                            null, null, null, null,
+                            '#content', null
+                         )"}></nav>
+
                         <!-- Toggle button for Active/Inactive members (Issue #108) -->
                         <div class="members-header-actions">
                             <!-- Toggle button for Active/Resigned - elevated priority on mobile with order: -1 -->
@@ -56,17 +62,11 @@
                                 <span>
                                     <th:block th:if="${!showingInactiveMembers}">Pokaż nieaktywnych (<span th:text="${inactiveCount}" />)</th:block>
                                     <th:block th:if="${showingInactiveMembers}">Aktywni członkowie</th:block>
-                                    <th:block th:if="${!showingResignedMembers}">👁 Pokaż rezygnujących (<span th:text="${resignedCount}"/>)</th:block>
-                                    <th:block th:if="${showingResignedMembers}">✓ Aktywni członkowie</th:block>
+                                    <th:block th:if="${!showingResignedMembers}">Pokaż rezygnujących (<span th:text="${resignedCount}" />)</th:block>
+                                    <th:block th:if="${showingResignedMembers}">Aktywni członkowie</th:block>
                                 </span>
                             </button>
-                   
-                            <!-- Add member button (only showing when active members are visible) -->
-                            <button hx-get="/members/new" 
-                                    hx-target="#content"
-                                    class="primary" th:if="${!showingInactiveMembers}">+ Dodaj członka</button>
                         </div>
-                    </div>
 
         <!-- Show inactive members list only if showingInactiveMembers is true -->
         <th:block th:if="${showingInactiveMembers}">

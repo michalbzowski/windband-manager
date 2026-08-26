@@ -9,16 +9,24 @@
         <header th:replace="~{fragments/layout :: dashboard-header}"></header>
 
     <div id="groups-content">
-        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem;">
-            <h2>🎼 Grupy</h2>
-            <div style="display:flex; gap:0.5rem; align-items:center;">
-                <form th:action="@{/admin/groups/backfill}" method="post" style="margin:0;">
-                    <button type="submit" class="outline" title="Utwórz/zsynchronizuj grupy dynamiczne (np. Aktywni) dla wszystkich zespołów">🔄 Aktualizuj grupy dynamiczne</button>
-                </form>
-                <button hx-get="/groups/new" hx-target="#groups-content"
-                        hx-swap="innerHTML transition:true" class="primary">+ Dodaj grupę</button>
-            </div>
-        </div>
+        <!-- PR B: header uses the unified page-header fragment. The primary "+ Dodaj grupę"
+             is an htmx GET (target #groups-content). "Aktualizuj grupy dynamiczne" is a
+             POST — the scalar fragment API only carries GET-ish link/hx actions, so it stays
+             in place as a neutral secondary button under the bar. -->
+        <nav th:replace="~{fragments/page-header :: page-header(
+                            null,
+                            'Grupy',
+                            'Dodaj grupę', @{/groups/new}, 'plus', 'add-group-btn',
+                            null, null, null, null,
+                            null, null, null, null,
+                            '#groups-content', null
+                         )}"></nav>
+        <button type="button" class="ph-secondary-action" form="groups-backfill-form"
+                th:title="Utwórz/zsynchronizuj grupy dynamiczne (np. Aktywni) dla wszystkich zespołów">
+            <th:block th:insert="~{fragments/icons :: group}"></th:block>
+            Aktualizuj grupy dynamiczne
+        </button>
+        <form th:action="@{/admin/groups/backfill}" method="post" id="groups-backfill-form" style="display:none;"></form>
 
             <div th:if="${#lists.isEmpty(groups)}">
                 <article>

@@ -10,27 +10,36 @@
 
         <div id="debug-info" style="display:none;" th:text="${debugInfo}"></div>
         <div id="inventory-content">
-            <h2>📦 Zasoby</h2>
+            <nav th:replace="~{fragments/page-header :: page-header(
+                                null,
+                                'Zasoby',
+                                null, null, null, null,
+                                null, null, null, null,
+                                null, null, null, null,
+                                null, null
+                             )}"></nav>
 
-            <!-- Tabs -->
+            <!-- Tabs: tab buttons carry their own visual identity (primary/secondary state)
+                 and stay as plain <button>; the icon policy applies to titles/action bars. -->
             <div id="inventory-tabs" style="display:flex; gap:0.5rem; margin-bottom:1rem; border-bottom:1px solid #ddd;">
                 <button class="tab-btn primary" data-tab="orders"
-                        onclick="switchTab('orders')">📋 Zamówienia</button>
+                        onclick="switchTab('orders')">Zamówienia</button>
                 <button class="tab-btn secondary" data-tab="uniforms"
-                        onclick="switchTab('uniforms')">🎖️ Ekwipunek</button>
+                        onclick="switchTab('uniforms')">Ekwipunek</button>
                 <button class="tab-btn secondary" data-tab="instruments"
-                        onclick="switchTab('instruments')">⚡ Instrumenty</button>
+                        onclick="switchTab('instruments')">Instrumenty</button>
                 <button class="tab-btn secondary" data-tab="awards"
-                        onclick="switchTab('awards')">🏅 Odznaczenia</button>
+                        onclick="switchTab('awards')">Odznaczenia</button>
             </div>
 
             <!-- ===== ORDERS TAB ===== -->
             <div id="tab-orders">
                 <div id="orders-content">
-                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem;">
-                        <h3>Zamówienia</h3>
-                        <button class="primary small" onclick="showOrderForm()">+ Nowe zamówienie</button>
-                    </div>
+                    <h3 class="section-heading">Zamówienia</h3>
+                    <button class="ph-secondary-action" onclick="showOrderForm()">
+                        <th:block th:insert="~{fragments/icons :: plus}"></th:block>
+                        Nowe zamówienie
+                    </button>
 
                     <!-- New order form (hidden by default) -->
                     <div id="order-form" style="display:none; margin-bottom:1rem;">
@@ -108,19 +117,19 @@
                                         <div style="display:flex; gap:0.25rem; flex-wrap:wrap;">
                                             <button th:if="${o.status == 'SUBMITTED'}"
                                                     class="outline small"
-                                                    th:onclick="'advanceOrder(' + ${o.id} + ', \'approve\')'">✓ Akceptuj</button>
+                                                    th:onclick="'advanceOrder(' + ${o.id} + ', \'approve\')'">Akceptuj</button>
                                             <button th:if="${o.status == 'PENDING_APPROVAL'}"
                                                     class="outline small"
-                                                    th:onclick="'advanceOrder(' + ${o.id} + ', \'produce\')'">⚙ Realizuj</button>
+                                                    th:onclick="'advanceOrder(' + ${o.id} + ', \'produce\')'">Realizuj</button>
                                             <button th:if="${o.status == 'IN_PRODUCTION'}"
                                                     class="outline small"
-                                                    th:onclick="'advanceOrder(' + ${o.id} + ', \'ship\')'">📦 Wyślij</button>
+                                                    th:onclick="'advanceOrder(' + ${o.id} + ', \'ship\')'">Wyślij</button>
                                             <button th:if="${o.status == 'SHIPPED'}"
                                                     class="outline small"
-                                                    th:onclick="'advanceOrder(' + ${o.id} + ', \'deliver\')'">✅ Odebrano</button>
+                                                    th:onclick="'advanceOrder(' + ${o.id} + ', \'deliver\')'">Odebrano</button>
                                             <button th:if="${o.status != 'DELIVERED' and o.status != 'CANCELLED'}"
                                                     class="outline small secondary"
-                                                    th:onclick="'advanceOrder(' + ${o.id} + ', \'cancel\')'">✕ Anuluj</button>
+                                                    th:onclick="'advanceOrder(' + ${o.id} + ', \'cancel\')'">Anuluj</button>
                                         </div>
                                     </td>
                                 </tr>
@@ -222,19 +231,19 @@
                                     <div style="display:flex; gap:0.25rem; flex-wrap:wrap;">
                                         <button th:if="${u.assignedMemberName == null && u.lifecycleStatus != 'DISPOSED'}"
                                                 class="outline small"
-                                                th:onclick="'assignUniform(' + ${u.id} + ')'">👤 Przydziel</button>
+                                                th:onclick="'assignUniform(' + ${u.id} + ')'">Przydziel</button>
                                         <button th:if="${u.assignedMemberName != null}"
                                                 class="outline small"
                                                 th:onclick="'returnUniform(' + ${u.id} + ')'">↩ Zwróć</button>
                                         <button th:if="${u.lifecycleStatus == 'AVAILABLE'}"
                                                 class="outline small secondary"
-                                                th:onclick="'retireUniform(' + ${u.id} + ')'">📦 Likwiduj ze stanu</button>
+                                                th:onclick="'retireUniform(' + ${u.id} + ')'">Likwiduj ze stanu</button>
                                         <button th:if="${u.lifecycleStatus != 'DISPOSED' && u.assignedMemberName == null}"
                                                 class="outline small secondary"
-                                                th:onclick="'disposeUniform(' + ${u.id} + ')'">🗑 Zlikwiduj</button>
+                                                th:onclick="'disposeUniform(' + ${u.id} + ')'">Zlikwiduj</button>
                                         <button th:if="${u.lifecycleStatus != 'DISPOSED'}"
                                                 class="outline small"
-                                                th:onclick="'showUniformHistory(' + ${u.id} + ')'">📜 Historia</button>
+                                                th:onclick="'showUniformHistory(' + ${u.id} + ')'">Historia</button>
                                     </div>
                                 </td>
                             </tr>
@@ -359,19 +368,19 @@
                                     <div style="display:flex; gap:0.25rem; flex-wrap:wrap;">
                                         <button th:if="${i.assignedMemberName == null && i.lifecycleStatus != 'DISPOSED'}"
                                                 class="outline small"
-                                                th:onclick="'assignInstrument(' + ${i.id} + ')'">👤 Przydziel</button>
+                                                th:onclick="'assignInstrument(' + ${i.id} + ')'">Przydziel</button>
                                         <button th:if="${i.assignedMemberName != null}"
                                                 class="outline small"
                                                 th:onclick="'returnInstrument(' + ${i.id} + ')'">↩ Zwróć</button>
                                         <button th:if="${i.lifecycleStatus == 'AVAILABLE'}"
                                                 class="outline small secondary"
-                                                th:onclick="'retireInstrument(' + ${i.id} + ')'">📦 Likwiduj ze stanu</button>
+                                                th:onclick="'retireInstrument(' + ${i.id} + ')'">Likwiduj ze stanu</button>
                                         <button th:if="${i.lifecycleStatus != 'DISPOSED' && i.assignedMemberName == null}"
                                                 class="outline small secondary"
-                                                th:onclick="'disposeInstrument(' + ${i.id} + ')'">🗑 Zlikwiduj</button>
+                                                th:onclick="'disposeInstrument(' + ${i.id} + ')'">Zlikwiduj</button>
                                         <button th:if="${i.lifecycleStatus != 'DISPOSED'}"
                                                 class="outline small"
-                                                th:onclick="'showInstrumentHistory(' + ${i.id} + ')'">📜 Historia</button>
+                                                th:onclick="'showInstrumentHistory(' + ${i.id} + ')'">Historia</button>
                                     </div>
                                 </td>
                             </tr>
@@ -498,12 +507,12 @@
                                     <div style="display:flex; gap:0.25rem; flex-wrap:wrap;">
                                         <button th:if="${a.assignedMemberName == null}"
                                                 class="outline small"
-                                                th:onclick="'assignAward(' + ${a.id} + ')'">👤 Przydziel</button>
+                                                th:onclick="'assignAward(' + ${a.id} + ')'">Przydziel</button>
                                         <button th:if="${a.assignedMemberName != null}"
                                                 class="outline small"
                                                 th:onclick="'returnAward(' + ${a.id} + ')'">↩ Zwróć</button>
                                         <button class="outline small secondary"
-                                                th:onclick="'disposeAward(' + ${a.id} + ')'">🗑 Zlikwiduj</button>
+                                                th:onclick="'disposeAward(' + ${a.id} + ')'">Zlikwiduj</button>
                                     </div>
                                 </td>
                             </tr>
@@ -917,7 +926,7 @@
             .then(function(data) { showHistoryModal('instrument', data); });
         }
         function showHistoryModal(type, data) {
-            var html = '<article><h4>📜 Historia przypisań</h4>';
+            var html = '<article><h4>Historia przypisań</h4>';
             if (!data || data.length === 0) { html += '<p>Brak historii.</p>'; }
             else {
                 html += '<table role="grid"><thead><tr><th>Członek</th><th>Przydzielił</th><th>Od</th><th>Do</th><th>Stan przy przydz.</th><th>Stan przy zwrot.</th><th>Status</th></tr></thead><tbody>';

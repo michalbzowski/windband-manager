@@ -9,11 +9,14 @@
         <header th:replace="~{fragments/layout :: dashboard-header}"></header>
 
     <div id="rehearsals-content" th:attr="data-focus-id=${focusRehearsalId},data-focus-prefix='rehearsal'">
-        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem;">
-            <h2>🎵 Spotkania</h2>
-            <button hx-get="/rehearsals/new" hx-target="#rehearsals-content"
-                    hx-swap="innerHTML transition:true" class="primary">+ Zaplanuj spotkanie</button>
-        </div>
+        <nav th:replace="~{fragments/page-header :: page-header(
+                            null,
+                            'Spotkania',
+                            'Zaplanuj spotkanie', @{/rehearsals/new}, 'plus', 'add-rehearsal-btn',
+                            null, null, null, null,
+                            null, null, null, null,
+                            '#rehearsals-content', null
+                         )}"></nav>
 
             <div th:if="${#lists.isEmpty(upcomingRehearsals) and #lists.isEmpty(pastRehearsals)}">
                 <article>
@@ -59,7 +62,7 @@
 
             <!-- ===================== PAST ===================== -->
             <div th:if="${not #lists.isEmpty(pastRehearsals)}">
-                <h3 class="section-heading">📅 Przeszłe spotkania</h3>
+                <h3 class="section-heading">Przeszłe spotkania</h3>
                 <table role="grid">
                     <thead>
                         <tr>

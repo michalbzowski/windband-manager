@@ -9,11 +9,14 @@
         <header th:replace="~{fragments/layout :: dashboard-header}"></header>
 
     <div id="instruments-content">
-        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem;">
-            <h2>🎼 Instrumenty</h2>
-            <button hx-get="/instruments/new" hx-target="#instruments-content" hx-swap="innerHTML transition:true"
-                    class="primary">+ Dodaj instrument</button>
-        </div>
+        <nav th:replace="~{fragments/page-header :: page-header(
+                            null,
+                            'Instrumenty',
+                            'Dodaj instrument', @{/instruments/new}, 'plus', 'add-instrument-btn',
+                            null, null, null, null,
+                            null, null, null, null,
+                            '#instruments-content', null
+                         )}"></nav>
 
             <div th:if="${#lists.isEmpty(instruments)}">
                 <article>
