@@ -52,10 +52,7 @@ class EventCreateScrollHighlightUiTest extends UiTestBase {
     }
 
     private void loginAsAdmin(WebDriver driver, WebDriverWait wait) {
-        driver.get(baseUrl() + "/login");
-        driver.findElement(By.name("username")).sendKeys("admin");
-        driver.findElement(By.name("password")).sendKeys("admin");
-        driver.findElement(By.cssSelector("button[type='submit']")).click();
+        loginViaUi();
         wait.until(ExpectedConditions.not(ExpectedConditions.urlContains("/login")));
     }
 

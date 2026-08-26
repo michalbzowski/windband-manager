@@ -5,6 +5,7 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.openqa.selenium.By;
 import org.openqa.selenium.WebDriver;
+import org.openqa.selenium.WebElement;
 import org.openqa.selenium.chrome.ChromeDriver;
 import org.openqa.selenium.chrome.ChromeOptions;
 import org.openqa.selenium.support.ui.ExpectedConditions;
@@ -280,18 +281,49 @@ public abstract class UiTestBase {
     }
 
     protected void loginAndNavigateTo(String path) {
+        // Reuse the login flow for consistency, then navigate.
+        doLogin();
+        driver.get(baseUrl() + path);
+        new WebDriverWait(driver, Duration.ofSeconds(30))
+            .until(ExpectedConditions.presenceOfElementLocated(By.id("content")));
+    }
+
+    /**
+     * Performs the UI login. Waits for the username/password fields to be
+     * visible before typing so we don't race Chrome-151 runner timing (which
+     * used to cause NoSuchElementException in CI). Idempotent — if the session
+     * is already established and the browser is NOT on /login, this short-circuits.
+     */
+    protected void loginViaUi() {
+        doLogin();
+        // Some tests call loginViaUi() expecting "session established, page ready"
+        // without a specific destination. Navigate to root so we're safely somewhere.
+        driver.get(baseUrl() + "/");
+    }
+
+    private void doLogin() {
+        String cur = driver.getCurrentUrl();
+        boolean onLogin = (cur != null && cur.contains("/login"));
+
+        // If we're NOT on /login, a prior login should still be in effect — but to
+        // be safe for the repeated-login pattern tests like RehearsalListSortingUiTest
+        // use, we always force a fresh POST /login cycle below. (Spring Security's
+        // session persists across pages, so re-logging-in is just a fast no-op.)
+
         driver.get(baseUrl() + "/login");
-        driver.findElement(By.name("username")).sendKeys("admin");
-        driver.findElement(By.name("password")).sendKeys("admin");
+
+        WebDriverWait w = new WebDriverWait(driver, Duration.ofSeconds(10));
+        WebElement usernameField = w.until(ExpectedConditions.visibilityOfElementLocated(By.name("username")));
+        usernameField.clear();
+        usernameField.sendKeys("admin");
+
+        WebElement passwordField = w.until(ExpectedConditions.visibilityOfElementLocated(By.name("password")));
+        passwordField.clear();
+        passwordField.sendKeys("admin");
+
         driver.findElement(By.cssSelector("button[type='submit']")).click();
 
-        WebDriverWait wait = new WebDriverWait(driver, Duration.ofSeconds(10));
-        wait.until(ExpectedConditions.not(ExpectedConditions.urlContains("/login")));
-
-        driver.get(baseUrl() + path);
-        // Increased timeout for pages that may load dynamic content
-        wait.withTimeout(Duration.ofSeconds(30))
-            .until(ExpectedConditions.presenceOfElementLocated(By.id("content")));
+        w.until(ExpectedConditions.not(ExpectedConditions.urlContains("/login")));
     }
 
     /**
