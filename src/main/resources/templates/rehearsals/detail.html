@@ -227,7 +227,6 @@
                 qaBtn.id = 'quick-attendance-btn';
                 qaBtn.setAttribute('role', 'menuitem');
                 qaBtn.textContent = '';
-                qaBtn.style.cursor = 'pointer';
                 // SVG (stroke-based, theme-aware — same system as the rest of the bar).
                 var svgNS = 'http://www.w3.org/2000/svg';
                 var svg = document.createElementNS(svgNS, 'svg');
@@ -252,7 +251,8 @@
                         window.openQuickAttendance();
                     }
                 });
-                overflowMenu.insertBefore(qaBtn, deleteItem || null);
+                var deleteBtn = overflowMenu.querySelector('[id=delete-rehearsal-btn], .overflow-item.danger');
+                overflowMenu.insertBefore(qaBtn, deleteBtn || null);
             }
         }
 
