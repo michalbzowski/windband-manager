@@ -1991,6 +1991,38 @@ body.dashboard-page main.container {
 .overflow-item.danger { color: #dc3545; }
 .overflow-item.danger:hover { background: #fdecec; }
 
+/* Primary action button (e.g. "+ Dodaj wydarzenie") rendered by the unified page-header fragment.
+   Reuses icon-btn geometry but wider, with text + inline icon + a hairline separator from the
+   title so it reads as an affordance without competing for focus with the ⋮ trigger. */
+.ph-primary-action {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.45rem;
+    height: 40px;
+    padding: 0 0.8rem;
+    border-radius: 10px;
+    margin: 0;
+    padding-left: 0.8rem;
+    font-family: inherit;
+    font-size: 0.92rem;
+    font-weight: 500;
+    color: var(--pico-primary);
+    background: transparent;
+    text-decoration: none;
+    border: none;
+    cursor: pointer;
+    white-space: nowrap;
+    flex: none;
+    transition: background 120ms ease, color 120ms ease;
+}
+.ph-primary-action > svg { width: 18px; height: 18px; fill: none; stroke: currentColor; flex: none; }
+.ph-primary-action:hover,
+.ph-primary-action:focus-visible {
+    background: color-mix(in srgb, var(--pico-primary) 12%, transparent);
+    color: var(--pico-primary-hover, var(--pico-primary));
+    outline: none;
+}
+
 /* Narrow viewports: give the title a chance to breathe but never clip the
    icons. At ≤ 320 px the back icon, title, and two actions still fit
    (verified by DetailHeaderUnifiedUiTest at 375 px viewport). */

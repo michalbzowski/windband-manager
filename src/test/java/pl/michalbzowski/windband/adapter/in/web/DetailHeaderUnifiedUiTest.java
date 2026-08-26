@@ -148,8 +148,10 @@ class DetailHeaderUnifiedUiTest extends UiTestBase {
         driver.get(baseUrl() + "/events/" + id);
         wait.until(ExpectedConditions.presenceOfElementLocated(By.cssSelector(".detail-actions-bar")));
 
+        // PR A: the inline edit action is now rendered by fragments/page-header.html
+        // as a .ph-primary-action link (was the old .icon-btn[data-detail-action='inline-edit']).
         WebElement editBtn = driver.findElement(By.cssSelector(
-                ".detail-actions-bar .icon-btn[data-detail-action='inline-edit']"));
+                ".detail-actions-bar .ph-primary-action"));
         assertThat(editBtn.isDisplayed()).as("edit icon visible in row").isTrue();
         assertThat(editBtn.findElements(By.tagName("svg")))
                 .as("edit button contains an SVG")
@@ -248,8 +250,9 @@ class DetailHeaderUnifiedUiTest extends UiTestBase {
         driver.get(baseUrl() + "/rehearsals/" + id);
         wait.until(ExpectedConditions.presenceOfElementLocated(By.cssSelector(".detail-actions-bar")));
 
+        // PR A: see events variant above — inline edit is now a .ph-primary-action link.
         WebElement editBtn = driver.findElement(By.cssSelector(
-                ".detail-actions-bar .icon-btn[data-detail-action='inline-edit']"));
+                ".detail-actions-bar .ph-primary-action"));
         assertThat(editBtn.isDisplayed()).as("edit icon visible in row").isTrue();
         assertThat(editBtn.findElements(By.tagName("svg")))
                 .as("edit button contains an SVG")

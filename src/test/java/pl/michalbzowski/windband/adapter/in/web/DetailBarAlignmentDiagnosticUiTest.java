@@ -82,7 +82,7 @@ class DetailBarAlignmentDiagnosticUiTest extends UiTestBase {
             "var bar = document.querySelector('.detail-actions-bar');" +
             "var backSvg = document.querySelector('.detail-back-link svg');" +
             "var titleEl = document.querySelector('.detail-title');" +
-            "var editBtn = document.querySelector('.icon-btn[data-detail-action=\"inline-edit\"]');" +
+            "var editBtn = document.querySelector('.ph-primary-action');" +
             "var editSvg = editBtn ? editBtn.querySelector('svg') : null;" +
             "var moreBtn = document.querySelector('[data-detail-action=\"toggle-more\"]');" +
             "var moreSvg = moreBtn ? moreBtn.querySelector('svg') : null;" +
@@ -101,9 +101,9 @@ class DetailBarAlignmentDiagnosticUiTest extends UiTestBase {
             "  barPadTop: getComputedStyle(bar).paddingTop," +
             "  barDisplay: getComputedStyle(bar).display," +
             "  barAlignItems: getComputedStyle(bar).alignItems," +
-            "  childAlign: (function(){ function a(sel){var e=document.querySelector(sel); if(!e) return null; var c=getComputedStyle(e); var r=e.getBoundingClientRect(); return {alignSelf:c.alignSelf, pos:c.position, mtop:c.marginTop, mbot:c.marginBottom, top:Math.round(r.top*10)/10, h:Math.round(r.height*10)/10};} return { back:a('.detail-back-link'), edit:a('.icon-btn[data-detail-action=\"inline-edit\"]'), more:a('[data-detail-action=\"toggle-more\"]') }; })()," +
+            "  childAlign: (function(){ function a(sel){var e=document.querySelector(sel); if(!e) return null; var c=getComputedStyle(e); var r=e.getBoundingClientRect(); return {alignSelf:c.alignSelf, pos:c.position, mtop:c.marginTop, mbot:c.marginBottom, top:Math.round(r.top*10)/10, h:Math.round(r.height*10)/10};} return { back:a('.detail-back-link'), edit:a('.ph-primary-action'), more:a('[data-detail-action=\"toggle-more\"]') }; })()," +
             "  barAlignItems: getComputedStyle(bar).alignItems," +
-            "  editMargin: (function(){var b=document.querySelector('.icon-btn[data-detail-action=\"inline-edit\"]'); if(!b) return null; var cs=getComputedStyle(b); return {mt:cs.marginTop, mb:cs.marginBottom, alignSelf:cs.alignSelf, boxSizing:cs.boxSizing};})()," +
+            "  editMargin: (function(){var b=document.querySelector('.ph-primary-action'); if(!b) return null; var cs=getComputedStyle(b); return {mt:cs.marginTop, mb:cs.marginBottom, alignSelf:cs.alignSelf, boxSizing:cs.boxSizing};})()," +
             "  backMargin: (function(){var b=document.querySelector('.detail-back-link'); if(!b) return null; var cs=getComputedStyle(b); return {mt:cs.marginTop, mb:cs.marginBottom, alignSelf:cs.alignSelf, boxSizing:cs.boxSizing};})()," +
             "  back: cy(backSvg)," +
             "  edit: cy(editSvg)," +
@@ -148,7 +148,7 @@ class DetailBarAlignmentDiagnosticUiTest extends UiTestBase {
             " var cs=getComputedStyle(el);" +
             " return el.tagName+'.'+(el.className||'')+' top='+r.top+' h='+r.height" +
             " +' pos='+cs.position+' mt='+cs.marginTop; }" +
-            "var el = document.querySelector('.icon-btn[data-detail-action=\"inline-edit\"]');" +
+            "var el = document.querySelector('.ph-primary-action');" +
             "var res=[];" +
             "while(el){ res.push(info(el)); el=el.parentElement; }" +
             "return res;");
@@ -189,7 +189,7 @@ class DetailBarAlignmentDiagnosticUiTest extends UiTestBase {
             "          btnColor: getComputedStyle(btn).color };" +
             "}" +
             "var back = document.querySelector('.detail-back-link');" +
-            "var edit = document.querySelector('.icon-btn[data-detail-action=\"inline-edit\"]');" +
+            "var edit = document.querySelector('.ph-primary-action');" +
             "var more = document.querySelector('[data-detail-action=\"toggle-more\"]');" +
             "return {" +
             "  back: info(back, back.querySelector('svg'))," +

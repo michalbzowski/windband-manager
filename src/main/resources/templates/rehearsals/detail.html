@@ -8,22 +8,16 @@
     <section class="dashboard-upcoming">
         <header th:replace="~{fragments/layout :: dashboard-header}"></header>
 
-        <!-- Unified detail-page actions bar — single source of truth.
-             The markup lives in fragments/detail-page-actions-bar.html; this
-             host page contributes only:
-               • data-detail-edit-target / data-detail-delete-target → page ids;
-               • post-render JS (see <script> below) injects the extra
-                 "Szybka obecność" overflow menu item BEFORE the delete item,
-                 and wires #edit-rehearsal-btn to the edit URL via
-                 data-edit-url.
-             This removes the old inline copy whose ⋮ icon kept a hardcoded
-             solid fill (drift from the fragment's stroke-based, theme-aware SVG). -->
-
-        <!-- Bar (fragment) — see fragments/detail-page-actions-bar.html -->
-        <nav th:replace="~{fragments/detail-page-actions-bar :: bar(${backUrl}, 'Szczegóły spotkania', 'edit-rehearsal-btn', 'delete-rehearsal-btn')}"
-             class="detail-actions-bar"
-             data-detail-edit-target="edit-rehearsal-btn"
-             data-detail-delete-target="delete-rehearsal-btn"></nav>
+        <!-- Unified page header (fragments/page-header.html) — single source of truth.
+             The existing <script> below still injects "Szybka obecność" into .overflow-menu
+             on DOMContentLoaded — that contract is unchanged, only the bar's origin moved.
+             Scalar action params so we don't hit Thymeleaf collection-literal limitations. -->
+        <nav th:replace="~{fragments/page-header :: page-header(
+               ${backUrl},
+               'Szczegóły spotkania',
+               'Edytuj',  @{/rehearsals/{id}/edit(id=${rehearsal.id})},  'edit',  'edit-rehearsal-btn',
+               'Usuń',    null,                                          'trash', 'delete-rehearsal-btn'
+           )}"></nav>
 
         <!-- Extra overflow menu item injected AFTER fragment renders (DOMContentLoaded below). -->
         <input type="hidden" id="rehearsal-edit-url" th:value="@{/rehearsals/{id}/edit(id=${rehearsal.id})}">
@@ -219,21 +213,10 @@
         //      data-edit-url, reading #rehearsal-edit-url hidden input.
         var bar = document.querySelector('nav.detail-actions-bar[data-detail-bar]');
         if (bar) {
-            var editBtn = bar.querySelector('.icon-btn[data-detail-action="inline-edit"]');
-            if (editBtn && !editBtn.id) editBtn.id = 'edit-rehearsal-btn';
-
-            var deleteItem = bar.querySelector('[data-detail-action="open-delete"]');
-            if (deleteItem && !deleteItem.id) deleteItem.id = 'delete-rehearsal-btn';
-
-            // Wire the edit button to the edit URL (see #rehearsal-edit-url input above).
-            if (editBtn) {
-                var editUrlInput = document.getElementById('rehearsal-edit-url');
-                if (editUrlInput && editUrlInput.value) {
-                    editBtn.addEventListener('click', function() {
-                        window.location.href = editUrlInput.value;
-                    });
-                }
-            }
+            // The page-header fragment already assigns #edit-rehearsal-btn and
+            // #delete-rehearsal-btn server-side; the edit button is an <a> that
+            // navigates natively. Only the "Szybka obecność" injection below is
+            // page-specific and needs JS.
 
             // Inject the extra "Szybka obecność" menu item before the delete item.
             var overflowMenu = bar.querySelector('.overflow-menu');
@@ -244,7 +227,6 @@
                 qaBtn.id = 'quick-attendance-btn';
                 qaBtn.setAttribute('role', 'menuitem');
                 qaBtn.textContent = '';
-                qaBtn.style.cursor = 'pointer';
                 // SVG (stroke-based, theme-aware — same system as the rest of the bar).
                 var svgNS = 'http://www.w3.org/2000/svg';
                 var svg = document.createElementNS(svgNS, 'svg');
@@ -269,7 +251,8 @@
                         window.openQuickAttendance();
                     }
                 });
-                overflowMenu.insertBefore(qaBtn, deleteItem || null);
+                var deleteBtn = overflowMenu.querySelector('[id=delete-rehearsal-btn], .overflow-item.danger');
+                overflowMenu.insertBefore(qaBtn, deleteBtn || null);
             }
         }
 
