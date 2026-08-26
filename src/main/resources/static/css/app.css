@@ -2079,3 +2079,38 @@ body.dashboard-page main.container {
     .detail-actions-bar { padding: 0.5rem 0.5rem; }
     .detail-title        { font-size: 1rem; }
 }
+
+/* ===== Icon+text alignment helpers (PR E — icon-policy-clean-tail) ===== */
+/* Inline SVG in headings, legends, and action labels: center-align the icon with
+   the adjacent text without adding inline styles to hosts.
+
+   Usage (host):
+     <h1 class="ph-brand"><th:block th:insert="~{fragments/icons :: bolt}"></th:block>Team Manager</h1>
+     <h2 class="ph-section-title">…</h2>
+     <legend class="ph-section-legend">…</legend>
+     <p class="ph-key-label">…</p>
+     <h3 class="ph-success">…</h3>       (success confirmation heading)
+
+   All rules are opt-in via class — hosts that need icon+text use them;
+   regular page headings remain unaffected. */
+
+.ph-brand, .ph-section-title, .ph-stat-title, .ph-quick-title,
+.ph-key-label, .ph-success, .ph-section-legend {
+    display: inline-flex; align-items: center; gap: 0.4rem;
+}
+svg, path { flex: none; }
+/* Size the inline SVG to match its text. Use font-size of nearest ancestor
+   (the element itself in these hosts) rather than a hard-coded px so the icon
+   scales with any future responsive typography. */
+.ph-brand                 svg { width: 1.0em; height: 1.0em; }
+.ph-section-title         svg { width: 1.05em; height: 1.05em; }
+.ph-stat-title            svg { width: 1.0em; height: 1.0em; }
+.ph-quick-title           svg { width: 1.0em; height: 1.0em; }
+.ph-key-label             svg { width: 1.05em; height: 1.05em; flex: none; }
+.ph-success               svg { width: 1.1em; height: 1.1em; color: inherit; }
+.ph-section-legend        svg { width: 1.05em; height: 1.05em; }
+
+/* Stat-card headers on dashboard — keep existing vertical rhythm */
+.stat-grid .ph-stat-title,
+.quick-grid .ph-quick-title { gap: 0.35rem; }
+

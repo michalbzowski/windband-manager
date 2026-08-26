@@ -4,7 +4,7 @@
 <body>
     <main class="container" style="max-width: 400px; margin-top: 4rem;">
         <hgroup>
-            <h1>⚡ Team Manager</h1>
+            <h1 class="ph-brand"><th:block th:insert="~{fragments/icons :: bolt}"></th:block>Team Manager</h1>
             <h2>Zaloguj się</h2>
         </hgroup>
 
@@ -17,8 +17,8 @@
         </div>
 
         <!-- Primary: Keycloak SSO -->
-        <a href="/oauth2/authorization/keycloak" class="btn btn-primary" style="width:100%; text-align:center; display:block; padding:0.75rem; background:#4f46e5; color:white; border-radius:8px; text-decoration:none; font-weight:bold;">
-            🔐 Zaloguj przez Keycloak
+        <a href="/oauth2/authorization/keycloak" class="btn btn-primary ph-key-link" style="width:100%; text-align:center; display:block; padding:0.75rem; background:#4f46e5; color:white; border-radius:8px; text-decoration:none; font-weight:bold;">
+            <th:block th:insert="~{fragments/icons :: key}"></th:block>Zaloguj przez Keycloak
         </a>
 
         <hr style="margin: 1.5rem 0; border: none; border-top: 1px solid #ddd;" />

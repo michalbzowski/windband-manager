@@ -3,6 +3,7 @@ package pl.michalbzowski.windband.adapter.in.web;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.openqa.selenium.By;
+import org.openqa.selenium.JavascriptExecutor;
 import org.openqa.selenium.WebElement;
 import org.openqa.selenium.support.ui.ExpectedConditions;
 import org.openqa.selenium.support.ui.WebDriverWait;
@@ -325,6 +326,126 @@ class PageHeaderConsistencyUiTest extends pl.michalbzowski.windband.UiTestBase {
 
 
     // ==================================================================
+    //  PR E — Icon-policy (no emoji in UI chrome; only SVGs allowed)
+    //  Pages audited: login.html, register.html, dashboard.html.
+    //  The rule from the unified-page-header skill applies to the entire
+    //  view's chrome, not just the top nav bar.  Any future regression —
+    //  "🎪 Wydarzenia" snuck back into a dashboard section header for
+    //  example — is caught here.
+    // ==================================================================
+
+    @Test
+    @DisplayName("login: brand h1 + Keycloak button use SVG icons, no emoji in chrome")
+    void login_iconPolicy() {
+        // login is anonymous — skip auth setup
+        driver.get(baseUrl() + "/login");
+        WebDriverWait wait = new WebDriverWait(driver, Duration.ofSeconds(6));
+
+        WebElement brandH1 = wait.until(ExpectedConditions.presenceOfElementLocated(
+                By.cssSelector("h1.ph-brand")));
+        List<WebElement> svgs = brandH1.findElements(By.tagName("svg"));
+        assertThat(svgs).as("brand h1 must carry at least one inline SVG (bolt)").isNotEmpty();
+        assertIconThemeAware(svgs);
+        assertNoEmojiInElement(brandH1);
+
+        WebElement keycloakLink = driver.findElement(By.cssSelector("a[href='/oauth2/authorization/keycloak']"));
+        assertThat(keycloakLink.getAttribute("class")).contains("ph-key-link");
+        List<WebElement> keySvgs = keycloakLink.findElements(By.tagName("svg"));
+        assertThat(keySvgs).as("Keycloak link must embed the key SVG").isNotEmpty();
+        assertIconThemeAware(keySvgs);
+    }
+
+    @Test
+    @DisplayName("register: brand h1 + success h3 + legend use SVG icons, no emoji in chrome")
+    void register_iconPolicy() {
+        // /register has no id="content" so we can't use loginAndNavigateTo().
+        // Login directly via the parent helper, then navigate.
+        loginViaUi();
+        driver.get(baseUrl() + "/register");
+
+        WebElement brandH1 = driver.findElement(By.cssSelector("h1.ph-brand"));
+        List<WebElement> svgs = brandH1.findElements(By.tagName("svg"));
+        assertThat(svgs).as("brand h1 must carry a bolt SVG").isNotEmpty();
+        assertIconThemeAware(svgs);
+        assertNoEmojiInElement(brandH1);
+
+        // Logged-in-as label (Keycloak info card)
+        WebElement keyLabel = driver.findElement(By.cssSelector("p.ph-key-label"));
+        List<WebElement> keySvgs = keyLabel.findElements(By.tagName("svg"));
+        assertThat(keySvgs).as("logged-in-as label must embed the key SVG").isNotEmpty();
+        assertIconThemeAware(keySvgs);
+
+        // Success block is hidden (display:none) initially — force it visible for assertion.
+        JavascriptExecutor js = (JavascriptExecutor) driver;
+        js.executeScript("document.getElementById('register-success').style.display='block'");
+        WebElement successH3 = driver.findElement(By.cssSelector("h3.ph-success"));
+        List<WebElement> checkSvgs = successH3.findElements(By.tagName("svg"));
+        assertThat(checkSvgs).as("success h3 must embed the check SVG").isNotEmpty();
+        assertIconThemeAware(checkSvgs);
+
+        // Legend "Dane zespołu" — form section header, part of chrome.
+        WebElement legend = driver.findElement(By.cssSelector("legend.ph-section-legend"));
+        List<WebElement> clipSvgs = legend.findElements(By.tagName("svg"));
+        assertThat(clipSvgs).as("Dane zespołu legend must embed the clipboard SVG").isNotEmpty();
+        assertIconThemeAware(clipSvgs);
+    }
+
+    @Test
+    @DisplayName("dashboard: section headers + stat titles + quick-link headers use SVG icons, no emoji in chrome")
+    void dashboard_iconPolicy() {
+        loginAndGoTo("/");
+        WebDriverWait wait = new WebDriverWait(driver, Duration.ofSeconds(6));
+
+        // At least one themed section title is always visible (attention or upcoming).
+        // If seeded data makes both empty, fall back to asserting the stat-grid titles.
+        java.util.List<WebElement> sectionH2s = new java.util.ArrayList<>(
+                wait.until(ExpectedConditions.presenceOfAllElementsLocatedBy(By.cssSelector("h2.ph-section-title"))));
+        if (sectionH2s.isEmpty()) {
+            // no attention + no upcoming rows — both th:unless skipped. Still assert stats below.
+        } else {
+            for (WebElement h2 : sectionH2s) {
+                List<WebElement> svgs = h2.findElements(By.tagName("svg"));
+                assertThat(svgs).as("section h2 (%s) must embed an SVG icon", h2.getText()).isNotEmpty();
+                assertIconThemeAware(svgs);
+                assertNoEmojiInElement(h2);
+            }
+        }
+
+        // Stat-card titles (6 fixed: Członkowie, Próby, Wydarzenia, Zamówienia, Ekwipunek, Instrumenty)
+        List<WebElement> statTitles = driver.findElements(By.cssSelector("header.ph-stat-title"));
+        assertThat(statTitles).as("dashboard should always render 6 stat-card titles").hasSize(6);
+        for (WebElement t : statTitles) {
+            List<WebElement> svgs = t.findElements(By.tagName("svg"));
+            assertThat(svgs).as("stat title %s must embed an SVG icon", t.getText()).isNotEmpty();
+            assertIconThemeAware(svgs);
+            assertNoEmojiInElement(t);
+        }
+
+        // Quick-link card titles (3 fixed: Dodaj członka, Zaplanuj spotkanie, Nowe zamówienie)
+        List<WebElement> quickTitles = driver.findElements(By.cssSelector("header.ph-quick-title"));
+        assertThat(quickTitles).as("dashboard should render 3 quick-link titles").hasSize(3);
+        for (WebElement t : quickTitles) {
+            List<WebElement> svgs = t.findElements(By.tagName("svg"));
+            assertThat(svgs).as("quick title %s must embed an SVG icon", t.getText()).isNotEmpty();
+            assertIconThemeAware(svgs);
+            // the <strong> inside may carry emoji in principle — but this PR's chrome policy bans it.
+            assertNoEmojiInElement(t);
+        }
+
+        // data-page-header should NOT be rendered on dashboard (home page, intentionally headerless)
+        assertThat(driver.findElements(By.cssSelector("nav[data-page-header]")))
+                .as("dashboard MUST NOT render the unified page-header (intentional exception)")
+                .isEmpty();
+    }
+
+    /** Emulates UiTestBase.loginViaUi() + navigate — for the PR E icon-policy tests.
+     *  For /register the page must be hit AFTER login so the "#authentication" field
+     *  is available (Thymeleaf renders the logged-in-as label). */
+    private void loginAndGoTo(String path) {
+        loginAndNavigateTo(path);
+    }
+
+    // ==================================================================
     //  helpers — create test data (mirrors DetailHeaderUnifiedUiTest pattern)
     // ==================================================================
 
@@ -452,6 +573,26 @@ class PageHeaderConsistencyUiTest extends pl.michalbzowski.windband.UiTestBase {
                 throw new AssertionError("Page header title contains emoji char U+"
                         + String.format("%04X", cp) + " in: " + title);
             }
+        }
+    }
+
+    /** PR E — element-level version: walks the whole visible text tree of an
+     *  element and fails if any character is in the emoji/pictograph ranges. */
+    private static void assertNoEmojiInElement(WebElement element) {
+        String text = element.getText() == null ? "" : element.getText();
+        // Also walk into nested elements (e.g. a <strong> inside a <header>).
+        for (WebElement child : element.findElements(By.cssSelector("*"))) {
+            String inner = child.getText();
+            if (inner != null) text = text + " " + inner;
+        }
+        for (int i = 0; i < text.length(); ) {
+            int cp = text.codePointAt(i);
+            if (UnicodeChecker.isEmojiLike(cp)) {
+                throw new AssertionError(element.getTagName()
+                        + " element must not contain U+" + String.format("%04X", cp)
+                        + " (icon-policy violation). Text: " + text);
+            }
+            i += Character.charCount(cp);
         }
     }
 
