@@ -8,7 +8,7 @@
     <section class="dashboard-upcoming">
         <header th:replace="~{fragments/layout :: dashboard-header}"></header>
 
-        <h2>👑 System Administratorzy</h2>
+        <nav th:replace="~{fragments/page-header :: page-header-b(null, 'Administratorzy systemu', null, null, null, null, null, null, null, null, null)}"></nav>
         <p class="text-muted">Zarządzaj rolami SYSTEM_ADMIN. Tylko administratorzy systemu mają dostęp do tej strony.</p>
 
         <div th:if="${#lists.isEmpty(users)}" class="alert alert-info">

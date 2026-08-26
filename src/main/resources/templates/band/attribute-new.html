@@ -8,11 +8,7 @@
     <section class="dashboard-upcoming">
         <header th:replace="~{fragments/layout :: dashboard-header}"></header>
 
-        <div style="margin-bottom:1rem;">
-            <a href="/band/attributes" style="font-size:0.9rem;">← Powrót do listy atrybutów</a>
-        </div>
-
-        <h4>➕ Nowy atrybut</h4>
+        <nav th:replace="~{fragments/page-header :: page-header-c(@{/band/attributes}, 'Nowy atrybut', null, null)}"></nav>
         <div style="margin-bottom:1rem; padding:1rem; border:1px solid var(--pico-muted-border-color); border-radius:8px;">
             <form th:hx-post="@{/band/attributes}"
                   hx-target="body"

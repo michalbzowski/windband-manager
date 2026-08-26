@@ -9,11 +9,11 @@
         <header th:replace="~{fragments/layout :: dashboard-header}"></header>
 
     <div id="meetings-content" th:attr="data-focus-id=${focusMeetingId},data-focus-prefix='meeting'">
-        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem;">
-            <h2>🎵 Spotkania</h2>
-            <button hx-get="/meetings/new" hx-target="#meetings-content"
-                    hx-swap="innerHTML transition:true" class="primary">+ Dodaj spotkanie</button>
-        </div>
+        <nav th:replace="~{fragments/page-header :: page-header-b(
+                            null, 'Spotkania',
+                            'Dodaj spotkanie', @{/meetings/new},
+                            'plus', 'add-meeting-btn', '#meetings-content',
+                            null, null, null, null)}"></nav>
 
         <div th:if="${#lists.isEmpty(upcomingMeetings) and #lists.isEmpty(pastMeetings)}">
             <article>

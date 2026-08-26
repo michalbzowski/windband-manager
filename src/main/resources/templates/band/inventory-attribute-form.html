@@ -8,11 +8,7 @@
     <section class="dashboard-upcoming">
         <header th:replace="~{fragments/layout :: dashboard-header}"></header>
 
-        <div style="margin-bottom:1rem;">
-            <a th:href="@{/band/inventory-attributes(type=${type})}" style="font-size:0.9rem;">← Powrót do listy</a>
-        </div>
-
-        <h4 th:text="${attributeDefId != null} ? '✏️ Edytuj atrybut' : '➕ Nowy atrybut'">Nowy atrybut</h4>
+        <nav th:replace="~{fragments/page-header :: page-header-c(@{/band/inventory-attributes(type=${type})}, ${attributeDefId != null} ? 'Edytuj atrybut' : 'Nowy atrybut', null, null)}"></nav>
         <p style="font-size:0.85rem; color:var(--pico-muted-color);">
             Typ: <span th:switch="${type}"><span th:case="'UNIFORM'">Ubrania</span><span th:case="'INSTRUMENT'">Instrumenty</span><span th:case="*">Zamówienia</span></span>
         </p>

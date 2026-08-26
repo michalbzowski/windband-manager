@@ -9,7 +9,7 @@
         <header th:replace="~{fragments/layout :: dashboard-header}"></header>
 
     <div id="rehearsals-content">
-        <h2>✏️ Edytuj spotkanie</h2>
+        <nav th:replace="~{fragments/page-header :: page-header-c(@{/rehearsals}, 'Edytuj spotkanie', null, null)}"></nav>
 
         <form id="rehearsal-edit-form"
               hx-put="/api/rehearsals/[[${rehearsal.id}]]"
