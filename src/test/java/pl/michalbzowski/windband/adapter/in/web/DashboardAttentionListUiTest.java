@@ -76,7 +76,7 @@ public class DashboardAttentionListUiTest extends UiTestBase {
 
         // Assert: attention list section is visible
         WebDriverWait wait = new WebDriverWait(driver, java.time.Duration.ofSeconds(10));
-        var attentionListContainer = wait.until(presenceOfElementLocated(By.xpath("//h2[contains(text(), 'Wymaga Twojej uwagi')]")));
+        var attentionListContainer = wait.until(presenceOfElementLocated(By.xpath("//h2[contains(., 'Wymaga Twojej uwagi')]")));
         assertThat(attentionListContainer).isNotNull();
 
         // Assert: attention item is present with correct details
@@ -84,11 +84,11 @@ public class DashboardAttentionListUiTest extends UiTestBase {
         assertThat(attentionCard).isNotNull();
 
         // Assert: danger icon is displayed
-        var dangerIcon = attentionCard.findElement(By.xpath(".//div[contains(text(), '\uD83D\uDEA8')]"));
+        var dangerIcon = attentionCard.findElement(By.xpath(".//div[contains(., '\uD83D\uDEA8')]"));
         assertThat(dangerIcon).isNotNull();
 
         // Assert: subtitle indicates payment issue
-        var subtitle = attentionCard.findElement(By.xpath(".//*[contains(text(), 'Wypłata')]"));
+        var subtitle = attentionCard.findElement(By.xpath(".//*[contains(., 'Wypłata')]"));
         // Use textContent attribute to get the raw text even when the element
         // is hidden or only present in the DOM tree. innerText (getText) can
         // return "" when the element has only inline children or no visible content
@@ -125,7 +125,7 @@ public class DashboardAttentionListUiTest extends UiTestBase {
 
         // Assert: attention list should not mention the free event (only the past paid-split one)
         WebDriverWait wait = new WebDriverWait(driver, java.time.Duration.ofSeconds(5));
-        var eventNames = driver.findElements(By.xpath("//a[contains(@href, '/events/')]//*[contains(text(), 'Free Concert')]"));
+        var eventNames = driver.findElements(By.xpath("//a[contains(@href, '/events/')]//*[contains(., 'Free Concert')]"));
         assertThat(eventNames).isEmpty();
     }
 
@@ -154,7 +154,7 @@ public class DashboardAttentionListUiTest extends UiTestBase {
 
         // Assert: attention list should not mention the declined event
         WebDriverWait wait = new WebDriverWait(driver, java.time.Duration.ofSeconds(5));
-        var declinedEventNames = driver.findElements(By.xpath("//a[contains(@href, '/events/')]//*[contains(text(), 'Declined Event')]"));
+        var declinedEventNames = driver.findElements(By.xpath("//a[contains(@href, '/events/')]//*[contains(., 'Declined Event')]"));
         assertThat(declinedEventNames).isEmpty();
     }
 

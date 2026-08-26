@@ -39,7 +39,7 @@ class MemberUiTest extends UiTestBase {
 
         assertThat(driver.getTitle()).contains("Członkowie");
 
-        var addButton = driver.findElement(By.xpath("//button[contains(text(), 'Dodaj członka')]"));
+        var addButton = driver.findElement(By.xpath("//button[contains(., 'Dodaj członka')]"));
         assertThat(addButton).isNotNull();
 
         addButton.click();
@@ -79,7 +79,7 @@ class MemberUiTest extends UiTestBase {
         try {
             // === STEP 1: Open the new-member form via UI ===
             loginAndNavigateTo("/members");
-            driver.findElement(By.xpath("//button[contains(text(), 'Dodaj członka')]")).click();
+            driver.findElement(By.xpath("//button[contains(., 'Dodaj członka')]")).click();
             wait.until(ExpectedConditions.presenceOfElementLocated(By.cssSelector("#member-form")));
             assertThat(driver.findElement(By.cssSelector("#members-content h2")).getText())
                     .contains("Dodaj członka");
@@ -199,7 +199,7 @@ class MemberUiTest extends UiTestBase {
         try {
             // === STEP 1: Add a member via UI ===
             loginAndNavigateTo("/members");
-            driver.findElement(By.xpath("//button[contains(text(), 'Dodaj członka')]")).click();
+            driver.findElement(By.xpath("//button[contains(., 'Dodaj członka')]")).click();
             wait.until(ExpectedConditions.presenceOfElementLocated(By.cssSelector("#member-form")));
 
             fillField("firstName", firstName);
@@ -332,7 +332,7 @@ class MemberUiTest extends UiTestBase {
      */
     private void clickEditForMember(WebDriverWait wait, String fullName) {
         String xpath = String.format(
-                "//tr[td[contains(., '%s')]]//button[contains(text(), 'Edytuj')]", fullName);
+                "//tr[td[contains(., '%s')]]//button[contains(., 'Edytuj')]", fullName);
         WebElement btn = wait.until(ExpectedConditions.presenceOfElementLocated(By.xpath(xpath)));
         ((JavascriptExecutor) driver).executeScript("arguments[0].click();", btn);
     }
@@ -343,7 +343,7 @@ class MemberUiTest extends UiTestBase {
      */
     private Long readMemberIdFromEditButton(WebDriverWait wait, String fullName) {
         String xpath = String.format(
-                "//tr[td[contains(., '%s')]]//button[contains(text(), 'Edytuj')]", fullName);
+                "//tr[td[contains(., '%s')]]//button[contains(., 'Edytuj')]", fullName);
         WebElement btn = wait.until(ExpectedConditions.presenceOfElementLocated(By.xpath(xpath)));
         String hxGet = btn.getAttribute("hx-get");
         // hx-get="/members/{id}/edit"

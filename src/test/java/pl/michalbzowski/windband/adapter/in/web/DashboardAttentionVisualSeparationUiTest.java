@@ -85,7 +85,7 @@ public class DashboardAttentionVisualSeparationUiTest extends UiTestBase {
 
         WebDriverWait wait = new WebDriverWait(driver, java.time.Duration.ofSeconds(10));
         var attentionHead = wait.until(presenceOfElementLocated(
-                By.xpath("//h2[contains(text(), 'Wymaga Twojej uwagi')]")));
+                By.xpath("//h2[contains(., 'Wymaga Twojej uwagi')]")));
         assertThat(attentionHead).isNotNull();
     }
 
@@ -96,7 +96,7 @@ public class DashboardAttentionVisualSeparationUiTest extends UiTestBase {
         WebDriverWait wait = new WebDriverWait(driver, java.time.Duration.ofSeconds(10));
         // The upcoming section must now have its own header (previously was missing)
         var upcomingHead = wait.until(presenceOfElementLocated(
-                By.xpath("//h2[contains(text(), 'Nadchodzące')]")));
+                By.xpath("//h2[contains(., 'Nadchodzące')]")));
         assertThat(upcomingHead).isNotNull();
     }
 
@@ -106,7 +106,7 @@ public class DashboardAttentionVisualSeparationUiTest extends UiTestBase {
 
         WebDriverWait wait = new WebDriverWait(driver, java.time.Duration.ofSeconds(10));
         wait.until(presenceOfElementLocated(
-                By.xpath("//h2[contains(text(), 'Wymaga Twojej uwagi')]")));
+                By.xpath("//h2[contains(., 'Wymaga Twojej uwagi')]")));
 
         // Attention cards must be inside an element with class attention-list
         // and themselves carry the attention-card class.
@@ -125,7 +125,7 @@ public class DashboardAttentionVisualSeparationUiTest extends UiTestBase {
 
         WebDriverWait wait = new WebDriverWait(driver, java.time.Duration.ofSeconds(10));
         wait.until(presenceOfElementLocated(
-                By.xpath("//h2[contains(text(), 'Wymaga Twojej uwagi')]")));
+                By.xpath("//h2[contains(., 'Wymaga Twojej uwagi')]")));
 
         WebElement attentionBadge = driver.findElement(
                 By.cssSelector("section.dashboard-upcoming .attention-list .attention-badge"));
@@ -158,7 +158,7 @@ public class DashboardAttentionVisualSeparationUiTest extends UiTestBase {
 
         WebDriverWait wait = new WebDriverWait(driver, java.time.Duration.ofSeconds(10));
         wait.until(presenceOfElementLocated(
-                By.xpath("//h2[contains(text(), 'Wymaga Twojej uwagi')]")));
+                By.xpath("//h2[contains(., 'Wymaga Twojej uwagi')]")));
 
         WebElement attentionCard = driver.findElement(
                 By.cssSelector("section.dashboard-upcoming .attention-card"));

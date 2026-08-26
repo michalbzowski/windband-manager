@@ -100,7 +100,7 @@ class RehearsalListSortingUiTest extends UiTestBase {
     private void createRehearsal(LocalDate date, String location) {
         WebDriverWait wait = new WebDriverWait(driver, Duration.ofSeconds(10));
         loginAndNavigateTo("/rehearsals");
-        driver.findElement(By.xpath("//button[contains(text(), 'Zaplanuj spotkanie')]")).click();
+        driver.findElement(By.xpath("//button[contains(., 'Zaplanuj spotkanie')]")).click();
         wait.until(ExpectedConditions.presenceOfElementLocated(By.cssSelector("#rehearsal-form")));
         ((JavascriptExecutor) driver).executeScript(
                 "document.querySelector(\"input[name='date']\").value = '" + date + "';");

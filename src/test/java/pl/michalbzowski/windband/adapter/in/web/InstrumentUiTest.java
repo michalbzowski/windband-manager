@@ -18,7 +18,7 @@ class InstrumentUiTest extends UiTestBase {
 
         assertThat(driver.getTitle()).contains("Instrumenty");
 
-        var addButton = driver.findElement(By.xpath("//button[contains(text(), 'Dodaj instrument')]"));
+        var addButton = driver.findElement(By.xpath("//button[contains(., 'Dodaj instrument')]"));
         assertThat(addButton).isNotNull();
 
         addButton.click();

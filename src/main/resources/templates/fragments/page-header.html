@@ -115,17 +115,17 @@
                 th:hx-get="${editUrl}"
                 th:hx-target="${editHxTarget}"
                 th:hx-swap="'innerHTML transition:true'">
-            <th:block th:insert="~{fragments/icons :: plus}"></th:block>
-            <span th:text="${editLabel}">Dodaj</span>
+            <th:block class="ph-btn-icon" th:insert="~{fragments/icons :: plus}"></th:block>
+             [[${editLabel}]]
         </button>
         <!-- plain link variant -->
         <a class="ph-primary-action"
            th:if="${editHxTarget == null}"
            th:href="${editUrl}"
            th:id="${editId}">
-            <th:block th:insert="~{fragments/icons :: plus}"></th:block>
-            <span th:text="${editLabel}">Dodaj</span>
-        </a>
+           <th:block th:insert="~{fragments/icons :: plus}"></th:block>
+            [[${editLabel}]]
+           </a>
     </th:block>
 
     <!-- overflow ⋮ (same as PR A) -->

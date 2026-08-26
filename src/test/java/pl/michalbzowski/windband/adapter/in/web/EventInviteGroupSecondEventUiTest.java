@@ -118,7 +118,7 @@ class EventInviteGroupSecondEventUiTest extends UiTestBase {
 
     private void clickSzczegoly(WebDriverWait wait, Long eventId) {
         WebElement row = driver.findElement(By.id("event-" + eventId));
-        WebElement btn = row.findElement(By.xpath(".//a[contains(text(),'Szczegóły')]"));
+        WebElement btn = row.findElement(By.xpath(".//a[contains(., 'Szczegóły')]"));
         jsClick(btn);
     }
 
@@ -138,7 +138,7 @@ class EventInviteGroupSecondEventUiTest extends UiTestBase {
         // groups table, so they accumulate across the full suite) and the invite
         // POSTs the wrong groupId, adding zero participants.
         driver.findElement(By.xpath(
-                "//*[@id='invite-group-modal']//label[contains(text(), '" + groupName + "')]/preceding-sibling::input[@type='checkbox']"))
+                "//*[@id='invite-group-modal']//label[contains(., '" + groupName + "')]/preceding-sibling::input[@type='checkbox']"))
                 .click();
         jsClick(driver.findElement(By.id("invite-group-selected-btn")));
         // Selenium: czekamy na wiersze uczestników wyrenderowane po swapie HTMX.
@@ -185,7 +185,7 @@ class EventInviteGroupSecondEventUiTest extends UiTestBase {
 
     private void createMemberViaUi(WebDriver driver, WebDriverWait wait, String first, String last) {
         loginAndNavigateTo("/members");
-        driver.findElement(By.xpath("//button[contains(text(), 'Dodaj członka')]")).click();
+        driver.findElement(By.xpath("//button[contains(., 'Dodaj członka')]")).click();
         wait.until(ExpectedConditions.presenceOfElementLocated(By.id("member-form")));
         fillField("firstName", first);
         fillField("lastName", last);

@@ -56,7 +56,7 @@ class MemberDetailWithEmailUiTest extends UiTestBase {
         try {
             // === STEP 1: Add a member WITH EMAIL ===
             loginAndNavigateTo("/members");
-            driver.findElement(By.xpath("//button[contains(text(), 'Dodaj członka')]")).click();
+            driver.findElement(By.xpath("//button[contains(., 'Dodaj członka')]")).click();
             wait.until(ExpectedConditions.presenceOfElementLocated(By.cssSelector("#member-form")));
 
             driver.findElement(By.cssSelector("input[name='firstName']")).sendKeys(firstName);
@@ -130,7 +130,7 @@ class MemberDetailWithEmailUiTest extends UiTestBase {
         try {
             // === STEP 1: Add a member WITH EMAIL ===
             loginAndNavigateTo("/members");
-            driver.findElement(By.xpath("//button[contains(text(), 'Dodaj członka')]")).click();
+            driver.findElement(By.xpath("//button[contains(., 'Dodaj członka')]")).click();
             wait.until(ExpectedConditions.presenceOfElementLocated(By.cssSelector("#member-form")));
 
             driver.findElement(By.cssSelector("input[name='firstName']")).sendKeys(firstName);
@@ -231,7 +231,7 @@ class MemberDetailWithEmailUiTest extends UiTestBase {
 
     private Long readMemberIdFromEditButton(WebDriverWait wait, String fullName) {
         String xpath = String.format(
-                "//tr[td[contains(., '%s')]]//button[contains(text(), 'Edytuj')]", fullName);
+                "//tr[td[contains(., '%s')]]//button[contains(., 'Edytuj')]", fullName);
         WebElement btn = wait.until(ExpectedConditions.presenceOfElementLocated(By.xpath(xpath)));
         String hxGet = btn.getAttribute("hx-get");
         if (hxGet == null) {

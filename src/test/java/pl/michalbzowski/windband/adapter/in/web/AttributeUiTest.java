@@ -44,7 +44,7 @@ class AttributeUiTest extends UiTestBase {
             var heading = driver.findElement(By.cssSelector("#content h2"));
             assertThat(heading.getText()).as("Heading for type " + type).contains("Atrybuty");
 
-            var addButton = driver.findElement(By.xpath("//button[contains(text(), 'Dodaj atrybut')]"));
+            var addButton = driver.findElement(By.xpath("//button[contains(., 'Dodaj atrybut')]"));
             assertThat(addButton).as("Add button for type " + type).isNotNull();
         }
     }
@@ -59,7 +59,7 @@ class AttributeUiTest extends UiTestBase {
             driver.get(baseUrl() + "/band/inventory-attributes?type=" + type);
             wait.until(ExpectedConditions.presenceOfElementLocated(By.cssSelector("#content")));
 
-            var addBtn = driver.findElement(By.xpath("//button[contains(text(), 'Dodaj atrybut')]"));
+            var addBtn = driver.findElement(By.xpath("//button[contains(., 'Dodaj atrybut')]"));
             addBtn.click();
 
             wait.until(ExpectedConditions.presenceOfElementLocated(By.cssSelector("form input[name='name']")));
@@ -117,7 +117,7 @@ class AttributeUiTest extends UiTestBase {
         driver.get(baseUrl() + "/inventory");
         wait.until(ExpectedConditions.presenceOfElementLocated(By.cssSelector("#content")));
 
-        var addUniformBtn = driver.findElement(By.xpath("//button[contains(text(), 'Dodaj ekwipunek')]"));
+        var addUniformBtn = driver.findElement(By.xpath("//button[contains(., 'Dodaj ekwipunek')]"));
         addUniformBtn.click();
         wait.until(ExpectedConditions.presenceOfElementLocated(By.id("uniform-form")));
         assertThat(driver.getPageSource()).contains("Rozmiar czapki");
@@ -134,8 +134,8 @@ class AttributeUiTest extends UiTestBase {
         driver.get(baseUrl() + "/inventory");
         wait.until(ExpectedConditions.presenceOfElementLocated(By.cssSelector("#content")));
 
-        driver.findElement(By.xpath("//button[contains(text(), 'Instrumenty')]")).click();
-        var addInstBtn = driver.findElement(By.xpath("//button[contains(text(), 'Dodaj instrument')]"));
+        driver.findElement(By.xpath("//button[contains(., 'Instrumenty')]")).click();
+        var addInstBtn = driver.findElement(By.xpath("//button[contains(., 'Dodaj instrument')]"));
         addInstBtn.click();
         wait.until(ExpectedConditions.presenceOfElementLocated(By.id("instrument-form")));
         assertThat(driver.getPageSource()).contains("Liczba wentyli");

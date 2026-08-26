@@ -18,7 +18,7 @@ class EventUiTest extends UiTestBase {
 
         assertThat(driver.getTitle()).contains("Wydarzenia");
 
-        var addButton = driver.findElement(By.xpath("//button[contains(text(), 'Dodaj wydarzenie')]"));
+        var addButton = driver.findElement(By.xpath("//button[contains(., 'Dodaj wydarzenie')]"));
         assertThat(addButton).isNotNull();
 
         addButton.click();

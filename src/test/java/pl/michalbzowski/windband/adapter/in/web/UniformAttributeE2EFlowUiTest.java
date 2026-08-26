@@ -109,7 +109,7 @@ class UniformAttributeE2EFlowUiTest extends UiTestBase {
 
             // Click "+ Dodaj ekwipunek"
             WebElement addUniformBtn = driver.findElement(
-                    By.xpath("//div[@id='uniforms-content']//button[contains(text(), 'Dodaj ekwipunek')]"));
+                    By.xpath("//div[@id='uniforms-content']//button[contains(., 'Dodaj ekwipunek')]"));
             addUniformBtn.click();
 
             // Wait for form to appear
@@ -124,7 +124,7 @@ class UniformAttributeE2EFlowUiTest extends UiTestBase {
                     .isTrue();
 
             // Verify the label is present
-            String attrLabelXpath = "//div[@id='uniform-attributes']//label[contains(text(), '" + attrName + "')]";
+            String attrLabelXpath = "//div[@id='uniform-attributes']//label[contains(., '" + attrName + "')]";
             WebElement attrLabel = wait.until(
                     ExpectedConditions.presenceOfElementLocated(By.xpath(attrLabelXpath)));
             assertThat(attrLabel.isDisplayed())
@@ -251,7 +251,7 @@ class UniformAttributeE2EFlowUiTest extends UiTestBase {
 
     private Long createMemberViaUi(WebDriverWait wait, String firstName, String lastName, String dob, Long instrumentId) {
         loginAndNavigateTo("/members");
-        driver.findElement(By.xpath("//button[contains(text(), 'Dodaj członka')]")).click();
+        driver.findElement(By.xpath("//button[contains(., 'Dodaj członka')]")).click();
         wait.until(ExpectedConditions.presenceOfElementLocated(By.cssSelector("#member-form")));
 
         driver.findElement(By.cssSelector("input[name='firstName']")).sendKeys(firstName);
@@ -277,7 +277,7 @@ class UniformAttributeE2EFlowUiTest extends UiTestBase {
 
     private Long readMemberIdFromEditButton(WebDriverWait wait, String fullName) {
         String xpath = String.format(
-                "//tr[td[contains(., '%s')]]//button[contains(text(), 'Edytuj')]", fullName);
+                "//tr[td[contains(., '%s')]]//button[contains(., 'Edytuj')]", fullName);
         WebElement btn = wait.until(ExpectedConditions.presenceOfElementLocated(By.xpath(xpath)));
         String hxGet = btn.getAttribute("hx-get");
         if (hxGet == null) {

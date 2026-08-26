@@ -63,11 +63,11 @@ class GroupAddMembersModalUiTest extends UiTestBase {
 
         // Check that both created members appear in the modal
         assertThat(driver.findElements(By.xpath(
-                "//*[@id='add-members-to-group-modal']//label[contains(text(), '" + aFirst + "')]")))
+                "//*[@id='add-members-to-group-modal']//label[contains(., '" + aFirst + "')]")))
                 .as("Member A should be in the add-members modal")
                 .hasSize(1);
         assertThat(driver.findElements(By.xpath(
-                "//*[@id='add-members-to-group-modal']//label[contains(text(), '" + bFirst + "')]")))
+                "//*[@id='add-members-to-group-modal']//label[contains(., '" + bFirst + "')]")))
                 .as("Member B should be in the add-members modal")
                 .hasSize(1);
 
@@ -97,16 +97,16 @@ class GroupAddMembersModalUiTest extends UiTestBase {
 
     private void checkMember(String memberName) {
         var cb = driver.findElement(By.xpath(
-                "//*[@id='add-members-to-group-modal']//label[contains(text(), '" + memberName + "')]"));
+                "//*[@id='add-members-to-group-modal']//label[contains(., '" + memberName + "')]"));
         driver.findElement(By.xpath(
-                "//*[@id='add-members-to-group-modal']//label[contains(text(), '" + memberName + "')]/preceding-sibling::input[@type='checkbox']"))
+                "//*[@id='add-members-to-group-modal']//label[contains(., '" + memberName + "')]/preceding-sibling::input[@type='checkbox']"))
                 .click();
     }
 
     private void createMember(String first, String last) {
         WebDriverWait wait = new WebDriverWait(driver, Duration.ofSeconds(10));
         loginAndNavigateTo("/members");
-        driver.findElement(By.xpath("//button[contains(text(), 'Dodaj członka')]")).click();
+        driver.findElement(By.xpath("//button[contains(., 'Dodaj członka')]")).click();
         wait.until(ExpectedConditions.presenceOfElementLocated(By.cssSelector("#member-form")));
         fill("firstName", first);
         fill("lastName", last);

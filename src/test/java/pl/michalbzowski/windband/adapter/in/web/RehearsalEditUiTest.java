@@ -81,7 +81,7 @@ public class RehearsalEditUiTest extends UiTestBase {
 
         // 5. Click "Zapisz zmiany".
         WebElement saveButton = driver.findElement(
-                By.xpath("//button[contains(text(), 'Zapisz zmiany')]"));
+                By.xpath("//button[contains(., 'Zapisz zmiany')]"));
         ((JavascriptExecutor) driver).executeScript("arguments[0].click();", saveButton);
     }
 
@@ -109,7 +109,7 @@ public class RehearsalEditUiTest extends UiTestBase {
                 "el.dispatchEvent(new Event('change', {bubbles: true}));",
                 new Object[]{});
 
-        driver.findElement(By.xpath("//button[contains(text(), 'Zapisz zmiany')]")).click();
+        driver.findElement(By.xpath("//button[contains(., 'Zapisz zmiany')]")).click();
 
         wait.until(d -> d.getCurrentUrl().matches(".*/rehearsals/\\d+(?!.*/edit).*"));
 
@@ -147,7 +147,7 @@ public class RehearsalEditUiTest extends UiTestBase {
         locationInput.clear();
         locationInput.sendKeys("Nowa lokalizacja " + uid);
 
-        driver.findElement(By.xpath("//button[contains(text(), 'Zapisz zmiany')]")).click();
+        driver.findElement(By.xpath("//button[contains(., 'Zapisz zmiany')]")).click();
 
         wait.until(d -> d.getCurrentUrl().matches(".*/rehearsals/\\d+(?!.*/edit).*"));
 
@@ -190,7 +190,7 @@ public class RehearsalEditUiTest extends UiTestBase {
                 "el.dispatchEvent(new Event('change', {bubbles: true}));",
                 new Object[]{});
 
-        driver.findElement(By.xpath("//button[contains(text(), 'Zapisz zmiany')]")).click();
+        driver.findElement(By.xpath("//button[contains(., 'Zapisz zmiany')]")).click();
 
         wait.until(d -> d.getCurrentUrl().matches(".*/rehearsals/\\d+(?!.*/edit).*"));
 
@@ -303,7 +303,7 @@ public class RehearsalEditUiTest extends UiTestBase {
         // freshly-created rehearsal. Use the specific id to avoid that
         // race.
         WebElement detailButton = driver.findElement(
-                By.xpath("//tr[@id='meeting-" + rehearsalId + "']//button[contains(text(), 'Szczegóły')]"));
+                By.xpath("//tr[@id='meeting-" + rehearsalId + "']//button[contains(., 'Szczegóły')]"));
         // Scroll the row to the top of the viewport so the button is
         // not obscured by the sticky dashboard header (skill: "ElementClick
         // Intercepted in the FULL suite but not solo: Fix: click via JS
@@ -352,7 +352,7 @@ public class RehearsalEditUiTest extends UiTestBase {
         System.err.println("[DEBUG] tr#meeting-" + rehearsalId + " count after reload = " + ourRowExists);
 
         detailButton = driver.findElement(
-                By.xpath("//tr[@id='meeting-" + rehearsalId + "']//button[contains(text(), 'Szczegóły')]"));
+                By.xpath("//tr[@id='meeting-" + rehearsalId + "']//button[contains(., 'Szczegóły')]"));
         ((JavascriptExecutor) driver).executeScript(
                 "var row = document.getElementById('meeting-" + rehearsalId + "');" +
                 "if (row) row.scrollIntoView({block:'start'});" +
@@ -416,13 +416,13 @@ public class RehearsalEditUiTest extends UiTestBase {
 
         new WebDriverWait(driver, Duration.ofSeconds(15)).until(
                 ExpectedConditions.presenceOfElementLocated(
-                        By.xpath("//button[contains(text(), 'Edytuj')]")));
+                        By.xpath("//button[contains(., 'Edytuj')]")));
 
         // Click "Edytuj" — another HTMX GET, this time to
         // /rehearsals/{id}/edit, swapping #rehearsals-content with the
         // edit form fragment.
         WebElement editButton = driver.findElement(
-                By.xpath("//button[contains(text(), 'Edytuj')]"));
+                By.xpath("//button[contains(., 'Edytuj')]"));
         ((JavascriptExecutor) driver).executeScript(
                 "arguments[0].scrollIntoView({block:'start'});" +
                 "window.scrollBy(0, -120);" +
@@ -466,7 +466,7 @@ public class RehearsalEditUiTest extends UiTestBase {
 
         // Click "Zapisz zmiany".
         WebElement saveButton = driver.findElement(
-                By.xpath("//button[contains(text(), 'Zapisz zmiany')]"));
+                By.xpath("//button[contains(., 'Zapisz zmiany')]"));
         ((JavascriptExecutor) driver).executeScript(
                 "arguments[0].scrollIntoView({block:'center'});" +
                 "arguments[0].click();",

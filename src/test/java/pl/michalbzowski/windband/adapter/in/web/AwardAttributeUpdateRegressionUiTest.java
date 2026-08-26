@@ -134,7 +134,7 @@ class AwardAttributeUpdateRegressionUiTest extends UiTestBase {
 
         // Find the edit button in the visible awards table
         var editButton = driver.findElement(By.xpath(
-            "//div[@id='tab-awards']//tr[.//text()[contains(., '" + attrName + "')]]//button[contains(text(), 'Edytuj')]"
+            "//div[@id='tab-awards']//tr[.//text()[contains(., '" + attrName + "')]]//button[contains(., 'Edytuj')]"
         ));
 
         // Use JavaScriptExecutor to click the button (more reliable with HTMX)
@@ -172,7 +172,7 @@ class AwardAttributeUpdateRegressionUiTest extends UiTestBase {
         wait.until(ExpectedConditions.presenceOfElementLocated(By.cssSelector("#content h2")));
 
         var editButton2 = driver.findElement(By.xpath(
-            "//tr[.//text()[contains(., '" + updatedName + "')]]//button[contains(text(), 'Edytuj')]"
+            "//tr[.//text()[contains(., '" + updatedName + "')]]//button[contains(., 'Edytuj')]"
         ));
         ((JavascriptExecutor) driver).executeScript("arguments[0].click();", editButton2);
 

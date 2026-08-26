@@ -18,7 +18,7 @@ class RehearsalUiTest extends UiTestBase {
 
         assertThat(driver.getTitle()).contains("Spotkania");
 
-        var addButton = driver.findElement(By.xpath("//button[contains(text(), 'Zaplanuj spotkanie')]"));
+        var addButton = driver.findElement(By.xpath("//button[contains(., 'Zaplanuj spotkanie')]"));
         assertThat(addButton).isNotNull();
 
         addButton.click();

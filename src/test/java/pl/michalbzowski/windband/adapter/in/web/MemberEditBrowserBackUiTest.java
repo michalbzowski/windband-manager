@@ -106,7 +106,7 @@ class MemberEditBrowserBackUiTest extends UiTestBase {
     }
 
     private void clickEditForMember(WebDriverWait wait, String firstName) {
-        String xpath = "//tr[td[contains(., '" + firstName + "')]]//button[contains(text(), 'Edytuj')]";
+        String xpath = "//tr[td[contains(., '" + firstName + "')]]//button[contains(., 'Edytuj')]";
         WebElement btn = wait.until(ExpectedConditions.presenceOfElementLocated(By.xpath(xpath)));
         ((JavascriptExecutor) driver).executeScript("arguments[0].click();", btn);
     }

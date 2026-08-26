@@ -189,7 +189,7 @@ class UniformAttributeFlowUiTest extends UiTestBase {
 
     private Long createMemberViaUi(WebDriverWait wait, String firstName, String lastName, String dob, Long instrumentId) {
         loginAndNavigateTo("/members");
-        driver.findElement(By.xpath("//button[contains(text(), 'Dodaj członka')]")).click();
+        driver.findElement(By.xpath("//button[contains(., 'Dodaj członka')]")).click();
         wait.until(ExpectedConditions.presenceOfElementLocated(By.cssSelector("#member-form")));
 
         driver.findElement(By.cssSelector("input[name='firstName']")).sendKeys(firstName);
@@ -236,7 +236,7 @@ class UniformAttributeFlowUiTest extends UiTestBase {
 
     private Long readMemberIdFromEditButton(WebDriverWait wait, String fullName) {
         String xpath = String.format(
-                "//tr[td[contains(., '%s')]]//button[contains(text(), 'Edytuj')]", fullName);
+                "//tr[td[contains(., '%s')]]//button[contains(., 'Edytuj')]", fullName);
         WebElement btn = wait.until(ExpectedConditions.presenceOfElementLocated(By.xpath(xpath)));
         String hxGet = btn.getAttribute("hx-get");
         if (hxGet == null) {

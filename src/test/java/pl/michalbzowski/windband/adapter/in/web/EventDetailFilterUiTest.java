@@ -40,7 +40,7 @@ class EventDetailFilterUiTest extends UiTestBase {
 
         // --- Create an event via UI ---
         loginAndNavigateTo("/events");
-        driver.findElement(By.xpath("//button[contains(text(), 'Dodaj wydarzenie')]")).click();
+        driver.findElement(By.xpath("//button[contains(., 'Dodaj wydarzenie')]")).click();
         wait.until(ExpectedConditions.presenceOfElementLocated(By.cssSelector("#event-form")));
 
         String today = LocalDate.now().toString();
@@ -117,7 +117,7 @@ class EventDetailFilterUiTest extends UiTestBase {
 
         // --- Create an event via UI ---
         loginAndNavigateTo("/events");
-        driver.findElement(By.xpath("//button[contains(text(), 'Dodaj wydarzenie')]")).click();
+        driver.findElement(By.xpath("//button[contains(., 'Dodaj wydarzenie')]")).click();
         wait.until(ExpectedConditions.presenceOfElementLocated(By.cssSelector("#event-form")));
 
         String today = LocalDate.now().toString();
@@ -195,7 +195,7 @@ class EventDetailFilterUiTest extends UiTestBase {
 
         // --- Create an event via UI ---
         loginAndNavigateTo("/events");
-        driver.findElement(By.xpath("//button[contains(text(), 'Dodaj wydarzenie')]")).click();
+        driver.findElement(By.xpath("//button[contains(., 'Dodaj wydarzenie')]")).click();
         wait.until(ExpectedConditions.presenceOfElementLocated(By.cssSelector("#event-form")));
 
         String today = LocalDate.now().toString();
@@ -358,7 +358,7 @@ class EventDetailFilterUiTest extends UiTestBase {
 
         // --- Create an event via UI ---
         loginAndNavigateTo("/events");
-        driver.findElement(By.xpath("//button[contains(text(), 'Dodaj wydarzenie')]")).click();
+        driver.findElement(By.xpath("//button[contains(., 'Dodaj wydarzenie')]")).click();
         wait.until(ExpectedConditions.presenceOfElementLocated(By.cssSelector("#event-form")));
 
         String today = LocalDate.now().toString();
@@ -450,7 +450,7 @@ class EventDetailFilterUiTest extends UiTestBase {
 
         // --- Create an event via UI ---
         loginAndNavigateTo("/events");
-        driver.findElement(By.xpath("//button[contains(text(), 'Dodaj wydarzenie')]")).click();
+        driver.findElement(By.xpath("//button[contains(., 'Dodaj wydarzenie')]")).click();
         wait.until(ExpectedConditions.presenceOfElementLocated(By.cssSelector("#event-form")));
 
         String today = LocalDate.now().toString();
@@ -534,7 +534,7 @@ class EventDetailFilterUiTest extends UiTestBase {
 
     private void createMember(String firstName, String lastName, WebDriverWait wait) throws Exception {
         loginAndNavigateTo("/members");
-        driver.findElement(By.xpath("//button[contains(text(), 'Dodaj członka')]")).click();
+        driver.findElement(By.xpath("//button[contains(., 'Dodaj członka')]")).click();
         wait.until(ExpectedConditions.presenceOfElementLocated(By.cssSelector("#member-form")));
         fill("firstName", firstName);
         fill("lastName", lastName);

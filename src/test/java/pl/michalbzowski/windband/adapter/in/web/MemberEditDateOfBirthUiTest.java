@@ -36,7 +36,7 @@ class MemberEditDateOfBirthUiTest extends UiTestBase {
         try {
             // === STEP 1: Add a member via UI ===
             loginAndNavigateTo("/members");
-            driver.findElement(By.xpath("//button[contains(text(), 'Dodaj członka')]")).click();
+            driver.findElement(By.xpath("//button[contains(., 'Dodaj członka')]")).click();
             wait.until(ExpectedConditions.presenceOfElementLocated(By.cssSelector("#member-form")));
 
             driver.findElement(By.cssSelector("input[name='firstName']")).sendKeys(firstName);
@@ -51,7 +51,7 @@ class MemberEditDateOfBirthUiTest extends UiTestBase {
 
             // Read the new member's id
             String xpath = String.format(
-                    "//tr[td[contains(., '%s')]]//button[contains(text(), 'Edytuj')]",
+                    "//tr[td[contains(., '%s')]]//button[contains(., 'Edytuj')]",
                     firstName + " " + lastName);
             WebElement editBtn = wait.until(ExpectedConditions.presenceOfElementLocated(By.xpath(xpath)));
             String hxGet = editBtn.getAttribute("hx-get");

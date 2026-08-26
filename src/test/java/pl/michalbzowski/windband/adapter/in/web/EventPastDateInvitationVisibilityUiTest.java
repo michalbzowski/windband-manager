@@ -58,7 +58,7 @@ class EventPastDateInvitationVisibilityUiTest extends UiTestBase {
         assertThat(driver.getCurrentUrl()).contains("/events/" + eventId);
 
         // The invitation sending section should NOT be visible for past events
-        By invitationSectionLocator = By.xpath("//h3[contains(text(), '📧 Wyślij zaproszenia')]");
+        By invitationSectionLocator = By.xpath("//h3[contains(., '📧 Wyślij zaproszenia')]");
 
         try {
             waitHelper().until(ExpectedConditions.presenceOfElementLocated(invitationSectionLocator));
@@ -87,7 +87,7 @@ class EventPastDateInvitationVisibilityUiTest extends UiTestBase {
         assertThat(driver.getCurrentUrl()).contains("/events/" + eventId);
 
         // The invitation section should be hidden for events dated today
-        By invitationSectionLocator = By.xpath("//h3[contains(text(), '📧 Wyślij zaproszenia')]");
+        By invitationSectionLocator = By.xpath("//h3[contains(., '📧 Wyślij zaproszenia')]");
 
         try {
             waitHelper().until(ExpectedConditions.presenceOfElementLocated(invitationSectionLocator));
@@ -116,7 +116,7 @@ class EventPastDateInvitationVisibilityUiTest extends UiTestBase {
         assertThat(driver.getCurrentUrl()).contains("/events/" + eventId);
 
         // The invitation section should be visible for future events
-        By invitationSectionLocator = By.xpath("//h3[contains(text(), '📧 Wyślij zaproszenia')]");
+        By invitationSectionLocator = By.xpath("//h3[contains(., '📧 Wyślij zaproszenia')]");
 
         WebDriverWait wait = new WebDriverWait(driver, Duration.ofSeconds(10));
         WebElement element = wait.until(ExpectedConditions.presenceOfElementLocated(invitationSectionLocator));
@@ -138,7 +138,7 @@ class EventPastDateInvitationVisibilityUiTest extends UiTestBase {
         assertThat(driver.getCurrentUrl()).contains("/events/" + eventId);
 
         // The invitation section should be visible for future events
-        By invitationSectionLocator = By.xpath("//h3[contains(text(), '📧 Wyślij zaproszenia')]");
+        By invitationSectionLocator = By.xpath("//h3[contains(., '📧 Wyślij zaproszenia')]");
 
         WebDriverWait wait = new WebDriverWait(driver, Duration.ofSeconds(10));
         WebElement element = wait.until(ExpectedConditions.presenceOfElementLocated(invitationSectionLocator));
@@ -156,7 +156,7 @@ class EventPastDateInvitationVisibilityUiTest extends UiTestBase {
         // Verify that other sections are still visible (not affected by hiding invocation section)
 
         // "Zaproś na wydarzenie" section should still be visible (different from invitation sending)
-        By inviteSectionLocator = By.xpath("//h3[contains(text(), 'Zaproś na wydarzenie')]");
+        By inviteSectionLocator = By.xpath("//h3[contains(., 'Zaproś na wydarzenie')]");
         WebElement element = waitHelper().until(ExpectedConditions.presenceOfElementLocated(inviteSectionLocator));
         assertThat(element.isDisplayed()).as("Invite participants section remains visible").isTrue();
 

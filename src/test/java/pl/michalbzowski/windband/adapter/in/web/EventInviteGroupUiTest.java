@@ -74,7 +74,7 @@ class EventInviteGroupUiTest extends UiTestBase {
 
 // Check the group in the modal and click checkbox
         driver.findElement(By.xpath(
-                "//*[@id='invite-group-modal']//label[contains(text(), '" + groupName + "')]/preceding-sibling::input[@type='checkbox']"))
+                "//*[@id='invite-group-modal']//label[contains(., '" + groupName + "')]/preceding-sibling::input[@type='checkbox']"))
                 .click();
 
         // Click invite selected
@@ -98,7 +98,7 @@ class EventInviteGroupUiTest extends UiTestBase {
 
     private void createMemberViaUi(WebDriver driver, WebDriverWait wait, String first, String last) {
         loginAndNavigateTo("/members");
-        driver.findElement(By.xpath("//button[contains(text(), 'Dodaj członka')]")).click();
+        driver.findElement(By.xpath("//button[contains(., 'Dodaj członka')]")).click();
         wait.until(ExpectedConditions.presenceOfElementLocated(By.id("member-form")));
         fillField("firstName", first);
         fillField("lastName", last);
