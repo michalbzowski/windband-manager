@@ -71,10 +71,9 @@
                     <td th:text="${order.requesterName} ?: '-'">Jan Kowalski</td>
                     <td th:text="${order.orderType}">UNIFORM</td>
                     <td>
-                        <span class="badge" th:text="${{order.status}}"
-                              th:classappend="${order.status.name() == 'DELIVERED'} ? 'success'
-                                           : ${order.status.name() == 'CANCELLED'} ? 'danger'
-                                           : 'info'">SUBMITTED</span>
+                        <span class="badge" th:text="${order.status}"
+                              th:with="status=${order.status}, badgeClass=${(status == 'SUBMITTED') ? 'info' : ((status == 'DELIVERED') ? 'success' : ((status == 'CANCELLED') ? 'danger' : 'info'))}"
+                              th:classappend="${badgeClass}">SUBMITTED</span>
                     </td>
                     <td th:text="${order.createdAt}">2025-01-01</td>
                     <td>

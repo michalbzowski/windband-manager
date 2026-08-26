@@ -138,7 +138,12 @@ class PageHeaderConsistencyUiTest extends pl.michalbzowski.windband.UiTestBase {
     //  PR B — list variant coverage. One @Test method per route.
     // ------------------------------------------------------------------
 
-    private void assertListPageHeader(String path, String expectedTitle) {
+    /** Runs an optional one-shot SQL seed (e.g. {@code "seedOrder(1)"}), then
+     *  navigates to the list page and asserts the unified page-header contract. */
+    private void assertListPageHeader(String maybeSeed, String path, String expectedTitle) {
+        if (maybeSeed != null) {
+            runSeed(maybeSeed);
+        }
         WebDriverWait wait = new WebDriverWait(driver, Duration.ofSeconds(10));
         loginAndNavigateTo(path);
         WebElement bar = wait.until(ExpectedConditions.presenceOfElementLocated(
@@ -178,14 +183,30 @@ class PageHeaderConsistencyUiTest extends pl.michalbzowski.windband.UiTestBase {
         }
     }
 
-    @Test void listEvents_pageHeader()           { assertListPageHeader("/events", "Wydarzenia"); }
-    @Test void listRehearsals_pageHeader()       { assertListPageHeader("/rehearsals", "Spotkania"); }
-    @Test void listMembers_pageHeader()          { assertListPageHeader("/members", "Członkowie"); }
-    @Test void listGroups_pageHeader()           { assertListPageHeader("/groups", "Grupy"); }
-    @Test void listTags_pageHeader()             { assertListPageHeader("/tags", "Tagi"); }
-    @Test void listInstruments_pageHeader()      { assertListPageHeader("/instruments", "Instrumenty"); }
-    @Test void listInventory_pageHeader()        { assertListPageHeader("/inventory", "Zasoby"); }
-    @Test void listOrders_pageHeader()           { assertListPageHeader("/orders", "Zamówienia"); }
+    @Test void listEvents_pageHeader()           { assertListPageHeader(null, "/events", "Wydarzenia"); }
+    @Test void listRehearsals_pageHeader()       { assertListPageHeader(null, "/rehearsals", "Spotkania"); }
+    @Test void listMembers_pageHeader()          { assertListPageHeader(null, "/members", "Członkowie"); }
+    @Test void listGroups_pageHeader()           { assertListPageHeader(null, "/groups", "Grupy"); }
+    @Test void listTags_pageHeader()             { assertListPageHeader(null, "/tags", "Tagi"); }
+    @Test void listInstruments_pageHeader()      { assertListPageHeader(null, "/instruments", "Instrumenty"); }
+    @Test void listInventory_pageHeader()        { assertListPageHeader(null, "/inventory", "Zasoby"); }
+    @Test void listOrders_pageHeader()           { assertListPageHeader(null, "/orders", "Zamówienia"); }
+
+    /** Regression: CI build #456 — orders table branch threw Thymeleaf
+     *  TemplateParsingException (multiline ternary in th:classappend) → 500 on
+     *  /orders when any order existed. The seeded SUBMITTED order forces the
+     *  {@code <table>} branch to render, so this test catches the bug that the
+     *  seed-less variant could never see (empty band renders no table). */
+    @Test void listOrders_pageHeaderRenderedOrderRow() {
+        assertListPageHeader("seedOrder(1)", "/orders", "Zamówienia");
+        // The seeded order must render as a real <tr> in the orders table — prove it
+        // via stable rendered facts (row present + requester name from data.sql).
+        WebElement content = driver.findElement(By.cssSelector("#content"));
+        List<WebElement> rows = content.findElements(By.cssSelector("table tbody tr"));
+        assertThat(rows).as("seeded order must render as a table row").isNotEmpty();
+        assertThat(content.getText()).as("seeded order belongs to band-1 member Jan")
+                .contains("Jan Kowalski");
+    }
 
     @Test void listEvents_noEmojiHeadings()      { assertListPageHeadingsNoEmoji("/events"); }
     @Test void listRehearsals_noEmojiHeadings()  { assertListPageHeadingsNoEmoji("/rehearsals"); }
@@ -217,6 +238,31 @@ class PageHeaderConsistencyUiTest extends pl.michalbzowski.windband.UiTestBase {
         cmd.setStartTime(LocalTime.of(18, 0));
         cmd.setLocation("Sala");
         return rehearsalCommandService.scheduleRehearsal(cmd, 1L).getId();
+    }
+
+    /** Executes a tiny one-shot seed fixture. {@code "seedOrder(<bandId>")} inserts a
+     *  SUBMITTED band order owned by the first seeded member so the orders table
+     *  branch of {@code templates/orders/list.html} actually renders. */
+    private void runSeed(String spec) {
+        if (!spec.startsWith("seedOrder(")) {
+            throw new IllegalArgumentException("Unknown seed: " + spec);
+        }
+        long bandId = Long.parseLong(spec.substring("seedOrder(".length(), spec.length() - 1));
+        // The shared H2 (DB_CLOSE_DELAY=-1, one JVM per fork) keeps rows from
+        // earlier @SpringBootTest contexts in the reuse-fork pool. Wipe any
+        // leaked inventory items/orders + our own rows so this test is deterministic
+        // no matter what ran before it.
+        for (String t : new String[]{"inventory_orders", "uniform_items", "instrument_items",
+                "award_items", "asset_assignment_history"}) {
+            try { jdbcTemplate.execute("DELETE FROM " + t); } catch (Exception ignored) { /* table may not exist */ }
+        }
+        List<Long> memberIds = jdbcTemplate.queryForList(
+                "SELECT id FROM members WHERE band_id = ? ORDER BY id LIMIT 1", Long.class, bandId);
+        assertThat(memberIds).as("seeded member for band %d must exist", bandId).isNotEmpty();
+        jdbcTemplate.update("""
+                        INSERT INTO inventory_orders (member_id, order_type, status, created_at)
+                        VALUES (?, 'UNIFORM', 'SUBMITTED', CURRENT_TIMESTAMP)
+                        """, memberIds.get(0));
     }
 
     // ==================================================================
