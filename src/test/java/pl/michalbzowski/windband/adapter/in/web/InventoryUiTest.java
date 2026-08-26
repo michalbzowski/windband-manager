@@ -17,10 +17,10 @@ class InventoryUiTest extends UiTestBase {
         var heading = driver.findElement(By.cssSelector("#inventory-content h2"));
         assertThat(heading.getText()).contains("Zasoby");
 
-        var uniformHeading = driver.findElement(By.xpath("//h3[contains(text(), 'Ekwipunek')]"));
+        var uniformHeading = driver.findElement(By.xpath("//h3[contains(., 'Ekwipunek')]"));
         assertThat(uniformHeading).isNotNull();
 
-        var instrumentHeading = driver.findElement(By.xpath("//h3[contains(text(), 'Instrumenty')]"));
+        var instrumentHeading = driver.findElement(By.xpath("//h3[contains(., 'Instrumenty')]"));
         assertThat(instrumentHeading).isNotNull();
     }
 }

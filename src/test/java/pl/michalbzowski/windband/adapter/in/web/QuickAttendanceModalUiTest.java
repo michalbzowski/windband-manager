@@ -44,7 +44,7 @@ class QuickAttendanceModalUiTest extends UiTestBase {
         createMember(firstName2, "Test" + uid);
 
         loginAndNavigateTo("/rehearsals");
-        driver.findElement(By.xpath("//button[contains(text(), 'Zaplanuj spotkanie')]")).click();
+        driver.findElement(By.xpath("//button[contains(., 'Zaplanuj spotkanie')]")).click();
         wait.until(ExpectedConditions.presenceOfElementLocated(By.cssSelector("#rehearsal-form")));
         String today = LocalDate.now().toString();
         ((JavascriptExecutor) driver).executeScript(
@@ -189,7 +189,7 @@ class QuickAttendanceModalUiTest extends UiTestBase {
     private void createMember(String firstName, String lastName) throws Exception {
         WebDriverWait wait = new WebDriverWait(driver, Duration.ofSeconds(10));
         loginAndNavigateTo("/members");
-        driver.findElement(By.xpath("//button[contains(text(), 'Dodaj członka')]")).click();
+        driver.findElement(By.xpath("//button[contains(., 'Dodaj członka')]")).click();
         wait.until(ExpectedConditions.presenceOfElementLocated(By.cssSelector("#member-form")));
         fill("firstName", firstName);
         fill("lastName", lastName);

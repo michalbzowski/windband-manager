@@ -39,7 +39,7 @@ class EventInviteModalUiTest extends UiTestBase {
 
         // --- Create an event (band_events are truncated per test, so list starts empty) ---
         loginAndNavigateTo("/events");
-        driver.findElement(By.xpath("//button[contains(text(), 'Dodaj wydarzenie')]")).click();
+        driver.findElement(By.xpath("//button[contains(., 'Dodaj wydarzenie')]")).click();
         wait.until(ExpectedConditions.presenceOfElementLocated(By.cssSelector("#event-form")));
         String eventName = "InviteEvt" + uid;
         fill("name", eventName);
@@ -50,10 +50,10 @@ class EventInviteModalUiTest extends UiTestBase {
         // The form does a full navigation to /events?focus=<id>; wait for the list to
         // reload with the new event (the Szczegóły button only exists on the list view).
         wait.until(ExpectedConditions.presenceOfElementLocated(
-                By.xpath("//a[contains(text(), 'Szczegóły')]")));
+                By.xpath("//a[contains(., 'Szczegóły')]")));
 
         // --- Open event detail (JS click: avoid overlay/scroll interception in full suite) ---
-        jsClick(driver.findElement(By.xpath("//a[contains(text(), 'Szczegóły')]")));
+        jsClick(driver.findElement(By.xpath("//a[contains(., 'Szczegóły')]")));
         wait.until(ExpectedConditions.presenceOfElementLocated(By.id("open-invite-modal-btn")));
 
         // --- Open the invite modal (JS click: the button sits under the sticky top nav) ---
@@ -75,9 +75,9 @@ class EventInviteModalUiTest extends UiTestBase {
 
         // Participants table should now contain both invited members
         wait.until(ExpectedConditions.presenceOfElementLocated(By.xpath(
-                "//*[@id='participants-table']//tr[.//td[contains(text(), '" + aFirst + "')]]")));
+                "//*[@id='participants-table']//tr[.//td[contains(., '" + aFirst + "')]]")));
         wait.until(ExpectedConditions.presenceOfElementLocated(By.xpath(
-                "//*[@id='participants-table']//tr[.//td[contains(text(), '" + bFirst + "')]]")));
+                "//*[@id='participants-table']//tr[.//td[contains(., '" + bFirst + "')]]")));
 
         // At least one newly invited row should be highlighted (green pulse)
         wait.until(ExpectedConditions.presenceOfElementLocated(
@@ -92,7 +92,7 @@ class EventInviteModalUiTest extends UiTestBase {
     private void createMember(String first, String last) {
         WebDriverWait wait = new WebDriverWait(driver, Duration.ofSeconds(10));
         loginAndNavigateTo("/members");
-        driver.findElement(By.xpath("//button[contains(text(), 'Dodaj członka')]")).click();
+        driver.findElement(By.xpath("//button[contains(., 'Dodaj członka')]")).click();
         wait.until(ExpectedConditions.presenceOfElementLocated(By.cssSelector("#member-form")));
         fill("firstName", first);
         fill("lastName", last);
@@ -106,7 +106,7 @@ class EventInviteModalUiTest extends UiTestBase {
 
     private void checkMember(String fullName) {
         WebElement li = driver.findElement(
-                By.xpath("//li[.//label[contains(text(), '" + fullName + "')]]"));
+                By.xpath("//li[.//label[contains(., '" + fullName + "')]]"));
         WebElement cb = li.findElement(By.cssSelector("input.invite-checkbox"));
         cb.click();
     }

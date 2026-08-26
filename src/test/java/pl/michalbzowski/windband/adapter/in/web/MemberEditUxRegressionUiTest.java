@@ -50,7 +50,7 @@ class MemberEditUxRegressionUiTest extends UiTestBase {
         try {
             // === STEP 1: Create a member ===
             loginAndNavigateTo("/members");
-            driver.findElement(By.xpath("//button[contains(text(), 'Dodaj członka')]")).click();
+            driver.findElement(By.xpath("//button[contains(., 'Dodaj członka')]")).click();
             wait.until(ExpectedConditions.presenceOfElementLocated(By.cssSelector("#member-form")));
 
             fillField("firstName", firstName);
@@ -197,14 +197,14 @@ class MemberEditUxRegressionUiTest extends UiTestBase {
 
     private void clickEditForMember(WebDriverWait wait, String fullName) {
         String xpath = String.format(
-                "//tr[td[contains(., '%s')]]//button[contains(text(), 'Edytuj')]", fullName);
+                "//tr[td[contains(., '%s')]]//button[contains(., 'Edytuj')]", fullName);
         WebElement btn = wait.until(ExpectedConditions.presenceOfElementLocated(By.xpath(xpath)));
         ((JavascriptExecutor) driver).executeScript("arguments[0].click();", btn);
     }
 
     private Long readMemberIdFromEditButton(WebDriverWait wait, String fullName) {
         String xpath = String.format(
-                "//tr[td[contains(., '%s')]]//button[contains(text(), 'Edytuj')]", fullName);
+                "//tr[td[contains(., '%s')]]//button[contains(., 'Edytuj')]", fullName);
         WebElement btn = wait.until(ExpectedConditions.presenceOfElementLocated(By.xpath(xpath)));
         String hxGet = btn.getAttribute("hx-get");
         if (hxGet == null) {

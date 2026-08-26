@@ -2023,6 +2023,38 @@ body.dashboard-page main.container {
     outline: none;
 }
 
+/* PR B — secondary inline action (list pages carrying two actions in the header,
+   e.g. "Aktualizuj grupy dynamiczne" beside "+ Dodaj grupę"). Mirrors the primary
+   geometry but a neutral tone so it never competes for attention with the main CTA. */
+.ph-secondary-action {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.45rem;
+    height: 40px;
+    padding: 0 0.8rem;
+    border-radius: 10px;
+    margin: 0;
+    font-family: inherit;
+    font-size: 0.92rem;
+    font-weight: 500;
+    color: var(--pico-color, inherit);
+    background: transparent;
+    text-decoration: none;
+    border: 1px solid var(--pico-muted-border-color, #d0d5dd);
+    cursor: pointer;
+    white-space: nowrap;
+    flex: none;
+    transition: background 120ms ease, color 120ms ease, border-color 120ms ease;
+}
+.ph-secondary-action > svg { width: 18px; height: 18px; fill: none; stroke: currentColor; flex: none; }
+.ph-secondary-action:hover,
+.ph-secondary-action:focus-visible {
+    background: var(--pico-hover, #f2f4f7);
+    border-color: var(--pico-primary, #007bff);
+    color: var(--pico-primary, #007bff);
+    outline: none;
+}
+
 /* Narrow viewports: give the title a chance to breathe but never clip the
    icons. At ≤ 320 px the back icon, title, and two actions still fit
    (verified by DetailHeaderUnifiedUiTest at 375 px viewport). */

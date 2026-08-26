@@ -36,7 +36,7 @@ class RehearsalInviteModalUiTest extends UiTestBase {
 
         loginAndNavigateTo("/rehearsals");
         wait.until(ExpectedConditions.presenceOfElementLocated(By.id("rehearsals-content")));
-        driver.findElement(By.xpath("//button[contains(text(), 'Zaplanuj spotkanie')]")).click();
+        driver.findElement(By.xpath("//button[contains(., 'Zaplanuj spotkanie')]")).click();
         wait.until(ExpectedConditions.presenceOfElementLocated(By.cssSelector("#rehearsal-form")));
 
         LocalDate date = LocalDate.now().plusDays(5);
@@ -58,7 +58,7 @@ class RehearsalInviteModalUiTest extends UiTestBase {
                 "return document.getElementById('invite-members-modal').open === true;"));
 
         WebElement checkbox = driver.findElement(By.xpath(
-                "//*[@id='invite-members-modal']//label[contains(text(), '" + fullName + "')]/preceding-sibling::input[@type='checkbox']"));
+                "//*[@id='invite-members-modal']//label[contains(., '" + fullName + "')]/preceding-sibling::input[@type='checkbox']"));
         checkbox.click();
 
         jsClick(driver.findElement(By.id("invite-selected-btn")));
@@ -66,16 +66,16 @@ class RehearsalInviteModalUiTest extends UiTestBase {
         wait.until(ExpectedConditions.presenceOfElementLocated(By.xpath(
                 "//*[@id='rehearsals-content']//select[@data-member-id and .//option[@value='NO_RESPONSE']]")));
         wait.until(ExpectedConditions.presenceOfElementLocated(By.xpath(
-                "//*[@id='rehearsals-content']//tr[.//td[contains(text(), '" + fullName + "')]]")));
+                "//*[@id='rehearsals-content']//tr[.//td[contains(., '" + fullName + "')]]")));
 
         assertThat(driver.findElements(By.xpath(
-                "//*[@id='rehearsals-content']//tr[.//td[contains(text(), '" + fullName + "')]]")))
+                "//*[@id='rehearsals-content']//tr[.//td[contains(., '" + fullName + "')]]")))
                 .isNotEmpty();
     }
 
     private void createMember(String firstName, String lastName, WebDriverWait wait) {
         loginAndNavigateTo("/members");
-        driver.findElement(By.xpath("//button[contains(text(), 'Dodaj członka')]")).click();
+        driver.findElement(By.xpath("//button[contains(., 'Dodaj członka')]")).click();
         wait.until(ExpectedConditions.presenceOfElementLocated(By.cssSelector("#member-form")));
         fill("firstName", firstName);
         fill("lastName", lastName);

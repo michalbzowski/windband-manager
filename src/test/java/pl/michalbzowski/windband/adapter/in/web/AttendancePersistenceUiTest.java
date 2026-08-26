@@ -44,7 +44,7 @@ class AttendancePersistenceUiTest extends UiTestBase {
 
         // --- Create a member via UI ---
         loginAndNavigateTo("/members");
-        driver.findElement(By.xpath("//button[contains(text(), 'Dodaj członka')]")).click();
+        driver.findElement(By.xpath("//button[contains(., 'Dodaj członka')]")).click();
         wait.until(ExpectedConditions.presenceOfElementLocated(By.cssSelector("#member-form")));
         fillField("firstName", firstName);
         fillField("lastName", lastName);
@@ -62,7 +62,7 @@ class AttendancePersistenceUiTest extends UiTestBase {
 
         // --- Create a rehearsal via UI ---
         loginAndNavigateTo("/rehearsals");
-        driver.findElement(By.xpath("//button[contains(text(), 'Zaplanuj spotkanie')]")).click();
+        driver.findElement(By.xpath("//button[contains(., 'Zaplanuj spotkanie')]")).click();
         wait.until(ExpectedConditions.presenceOfElementLocated(By.cssSelector("#rehearsal-form")));
         String today = LocalDate.now().toString();
         ((JavascriptExecutor) driver).executeScript(
@@ -166,7 +166,7 @@ class AttendancePersistenceUiTest extends UiTestBase {
 
         // --- Create a member via UI ---
         loginAndNavigateTo("/members");
-        driver.findElement(By.xpath("//button[contains(text(), 'Dodaj członka')]")).click();
+        driver.findElement(By.xpath("//button[contains(., 'Dodaj członka')]")).click();
         wait.until(ExpectedConditions.presenceOfElementLocated(By.cssSelector("#member-form")));
         fillField("firstName", firstName);
         fillField("lastName", lastName);
@@ -201,7 +201,7 @@ class AttendancePersistenceUiTest extends UiTestBase {
         // Open event detail via list (HTMX fragment)
         driver.get(baseUrl() + "/events");
         wait.until(ExpectedConditions.presenceOfElementLocated(By.id("events-list-container")));
-        var detailBtns = driver.findElements(By.xpath("//a[contains(text(), 'Szczegóły')]"));
+        var detailBtns = driver.findElements(By.xpath("//a[contains(., 'Szczegóły')]"));
         System.out.println("[TEST] eventResponse: URL=" + driver.getCurrentUrl()
                 + " detailBtns=" + detailBtns.size()
                 + " containerChildren=" + driver.findElements(By.cssSelector("#events-list-container *")).size()
@@ -254,7 +254,7 @@ class AttendancePersistenceUiTest extends UiTestBase {
         // --- Reload event detail (via list, HTMX swap) and ASSERT 2: persisted as CONFIRMED ---
         driver.get(baseUrl() + "/events");
         wait.until(ExpectedConditions.presenceOfElementLocated(By.id("events-list-container")));
-        var reloadBtns = driver.findElements(By.xpath("//a[contains(text(), 'Szczegóły')]"));
+        var reloadBtns = driver.findElements(By.xpath("//a[contains(., 'Szczegóły')]"));
         assertThat(reloadBtns).isNotEmpty();
         reloadBtns.get(0).click();
         wait.until(ExpectedConditions.presenceOfElementLocated(

@@ -33,7 +33,7 @@ class MemberEditScrollToTopUiTest extends UiTestBase {
         // Step 2: click "Edytuj"
         ((JavascriptExecutor) driver).executeScript("arguments[0].scrollIntoView({block:'center'});", targetRow);
         WebElement editBtn = wait.until(ExpectedConditions.elementToBeClickable(
-                targetRow.findElement(By.xpath(".//button[contains(text(), 'Edytuj')]"))));
+                targetRow.findElement(By.xpath(".//button[contains(., 'Edytuj')]"))));
 
         // Click via JS to avoid ElementClickInterceptedError from sticky nav/overlay
         ((JavascriptExecutor) driver).executeScript("arguments[0].click();", editBtn);

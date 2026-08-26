@@ -9,10 +9,15 @@
         <header th:replace="~{fragments/layout :: dashboard-header}"></header>
 
     <div id="orders-content">
-        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem;">
-            <h2>📋 Zamówienia</h2>
-            <button class="primary small" onclick="showOrderForm()">+ Nowe zamówienie</button>
-        </div>
+        <nav th:replace="~{fragments/page-header :: page-header-b(
+                            null, 'Zamówienia',
+                            null, null, null, null, null,
+                            null, null, null, null)}"></nav>
+        <button type="button" class="ph-secondary-action" id="new-order-btn"
+                onclick="if(typeof showOrderForm === 'function'){ showOrderForm(); }">
+            <th:block th:insert="~{fragments/icons :: plus}"></th:block>
+            Nowe zamówienie
+        </button>
 
         <!-- New order form (hidden by default) -->
         <div id="order-form" style="display:none; margin-bottom:1rem;">
@@ -66,10 +71,9 @@
                     <td th:text="${order.requesterName} ?: '-'">Jan Kowalski</td>
                     <td th:text="${order.orderType}">UNIFORM</td>
                     <td>
-                        <span class="badge" th:text="${{order.status}}"
-                              th:classappend="${order.status.name() == 'DELIVERED'} ? 'success'
-                                           : ${order.status.name() == 'CANCELLED'} ? 'danger'
-                                           : 'info'">SUBMITTED</span>
+                        <span class="badge" th:text="${order.status}"
+                              th:with="status=${order.status}, badgeClass=${(status == 'SUBMITTED') ? 'info' : ((status == 'DELIVERED') ? 'success' : ((status == 'CANCELLED') ? 'danger' : 'info'))}"
+                              th:classappend="${badgeClass}">SUBMITTED</span>
                     </td>
                     <td th:text="${order.createdAt}">2025-01-01</td>
                     <td>

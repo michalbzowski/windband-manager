@@ -452,7 +452,7 @@ class AttributeFlowUiTest extends UiTestBase {
         wait.until(ExpectedConditions.presenceOfElementLocated(By.cssSelector("#members-content h2")));
         // Use Selenium click (not JS) — same approach as MemberUiTest
         WebElement addMemberBtn = driver.findElement(
-                By.xpath("//button[contains(text(), 'Dodaj członka')]"));
+                By.xpath("//button[contains(., 'Dodaj członka')]"));
         addMemberBtn.click();
         wait.until(ExpectedConditions.presenceOfElementLocated(By.cssSelector("#member-form")));
 
@@ -502,7 +502,7 @@ class AttributeFlowUiTest extends UiTestBase {
 
         // Re-open the new member form to verify the attribute is still in it
         WebElement addMemberBtn2 = driver.findElement(
-                By.xpath("//button[contains(text(), 'Dodaj członka')]"));
+                By.xpath("//button[contains(., 'Dodaj członka')]"));
         addMemberBtn2.click();
         wait.until(ExpectedConditions.presenceOfElementLocated(By.cssSelector("#member-form")));
         // Pattern H: text wait in helper handles the attribute label render inside the form

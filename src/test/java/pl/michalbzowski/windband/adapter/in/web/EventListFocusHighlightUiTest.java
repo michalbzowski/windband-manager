@@ -31,7 +31,7 @@ class EventListFocusHighlightUiTest extends UiTestBase {
         String name = "FocusEvent" + uid;
 
         loginAndNavigateTo("/events");
-        driver.findElement(By.xpath("//button[contains(text(), 'Dodaj wydarzenie')]")).click();
+        driver.findElement(By.xpath("//button[contains(., 'Dodaj wydarzenie')]")).click();
         wait.until(ExpectedConditions.presenceOfElementLocated(By.cssSelector("#event-form")));
         fill("name", name);
         String today = java.time.LocalDate.now().toString();

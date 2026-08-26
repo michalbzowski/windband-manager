@@ -41,7 +41,7 @@ class RehearsalDetailFilterUiTest extends UiTestBase {
 
         // --- Create a rehearsal via UI ---
         loginAndNavigateTo("/rehearsals");
-        driver.findElement(By.xpath("//button[contains(text(), 'Zaplanuj spotkanie')]")).click();
+        driver.findElement(By.xpath("//button[contains(., 'Zaplanuj spotkanie')]")).click();
         wait.until(ExpectedConditions.presenceOfElementLocated(By.cssSelector("#rehearsal-form")));
 
         String today = LocalDate.now().toString();
@@ -116,7 +116,7 @@ class RehearsalDetailFilterUiTest extends UiTestBase {
 
         // --- Create a rehearsal via UI ---
         loginAndNavigateTo("/rehearsals");
-        driver.findElement(By.xpath("//button[contains(text(), 'Zaplanuj spotkanie')]")).click();
+        driver.findElement(By.xpath("//button[contains(., 'Zaplanuj spotkanie')]")).click();
         wait.until(ExpectedConditions.presenceOfElementLocated(By.cssSelector("#rehearsal-form")));
 
         String today = LocalDate.now().toString();
@@ -192,7 +192,7 @@ class RehearsalDetailFilterUiTest extends UiTestBase {
 
         // --- Create a rehearsal via UI ---
         loginAndNavigateTo("/rehearsals");
-        driver.findElement(By.xpath("//button[contains(text(), 'Zaplanuj spotkanie')]")).click();
+        driver.findElement(By.xpath("//button[contains(., 'Zaplanuj spotkanie')]")).click();
         wait.until(ExpectedConditions.presenceOfElementLocated(By.cssSelector("#rehearsal-form")));
 
         String today = LocalDate.now().toString();
@@ -288,7 +288,7 @@ class RehearsalDetailFilterUiTest extends UiTestBase {
 
         // --- Create a rehearsal via UI ---
         loginAndNavigateTo("/rehearsals");
-        driver.findElement(By.xpath("//button[contains(text(), 'Zaplanuj spotkanie')]")).click();
+        driver.findElement(By.xpath("//button[contains(., 'Zaplanuj spotkanie')]")).click();
         wait.until(ExpectedConditions.presenceOfElementLocated(By.cssSelector("#rehearsal-form")));
 
         String today = LocalDate.now().toString();
@@ -377,7 +377,7 @@ class RehearsalDetailFilterUiTest extends UiTestBase {
 
         // --- Create a rehearsal via UI ---
         loginAndNavigateTo("/rehearsals");
-        driver.findElement(By.xpath("//button[contains(text(), 'Zaplanuj spotkanie')]")).click();
+        driver.findElement(By.xpath("//button[contains(., 'Zaplanuj spotkanie')]")).click();
         wait.until(ExpectedConditions.presenceOfElementLocated(By.cssSelector("#rehearsal-form")));
 
         String today = LocalDate.now().toString();
@@ -482,7 +482,7 @@ class RehearsalDetailFilterUiTest extends UiTestBase {
 
         // --- Create a rehearsal via UI ---
         loginAndNavigateTo("/rehearsals");
-        driver.findElement(By.xpath("//button[contains(text(), 'Zaplanuj spotkanie')]")).click();
+        driver.findElement(By.xpath("//button[contains(., 'Zaplanuj spotkanie')]")).click();
         wait.until(ExpectedConditions.presenceOfElementLocated(By.cssSelector("#rehearsal-form")));
 
         String today = LocalDate.now().toString();
@@ -564,7 +564,7 @@ class RehearsalDetailFilterUiTest extends UiTestBase {
 
     private void createMember(String firstName, String lastName, WebDriverWait wait) throws Exception {
         loginAndNavigateTo("/members");
-        driver.findElement(By.xpath("//button[contains(text(), 'Dodaj członka')]")).click();
+        driver.findElement(By.xpath("//button[contains(., 'Dodaj członka')]")).click();
         wait.until(ExpectedConditions.presenceOfElementLocated(By.cssSelector("#member-form")));
         fill("firstName", firstName);
         fill("lastName", lastName);

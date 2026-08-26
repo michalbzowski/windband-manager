@@ -21,11 +21,7 @@ class UserInfoDisplayRegressionTest extends UiTestBase {
     @Disabled("Flaky in CI - needs investigation")
     void shouldDisplayUserInfoAfterLogin() {
         // Login
-        driver.get(baseUrl() + "/login");
-        driver.findElement(By.name("username")).sendKeys("admin");
-        driver.findElement(By.name("password")).sendKeys("admin");
-        driver.findElement(By.cssSelector("button[type='submit']")).click();
-
+        loginViaUi();
         WebDriverWait wait = new WebDriverWait(driver, Duration.ofSeconds(10));
         wait.until(ExpectedConditions.not(ExpectedConditions.urlContains("/login")));
 

@@ -226,7 +226,7 @@ class ToastUiTest extends UiTestBase {
         WebDriverWait wait = new WebDriverWait(driver, Duration.ofSeconds(10));
 
         // Open the new-member form
-        driver.findElement(By.xpath("//button[contains(text(), 'Dodaj członka')]")).click();
+        driver.findElement(By.xpath("//button[contains(., 'Dodaj członka')]")).click();
         wait.until(ExpectedConditions.presenceOfElementLocated(By.cssSelector("#member-form")));
 
         // Fill required fields with a unique identity
@@ -275,7 +275,7 @@ class ToastUiTest extends UiTestBase {
             wait.until(ExpectedConditions.textToBePresentInElementLocated(
                     By.cssSelector("#members-content"), firstName + " " + lastName));
             WebElement editBtn = wait.until(ExpectedConditions.presenceOfElementLocated(
-                    By.xpath("//tr[td[contains(., '" + firstName + " " + lastName + "')]]//button[contains(text(), 'Edytuj')]")));
+                    By.xpath("//tr[td[contains(., '" + firstName + " " + lastName + "')]]//button[contains(., 'Edytuj')]")));
             String hxGet = editBtn.getAttribute("hx-get");
             String[] parts = hxGet.split("/");
             Long id = Long.parseLong(parts[2]);

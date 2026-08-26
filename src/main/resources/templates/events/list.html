@@ -9,11 +9,10 @@
         <header th:replace="~{fragments/layout :: dashboard-header}"></header>
 
     <div id="events-list-container" th:attr="data-focus-id=${focusEventId},data-focus-prefix='event'">
-        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem;">
-            <h2>🎪 Wydarzenia</h2>
-            <button hx-get="/events/new" hx-target="#events-list-container"
-                    hx-swap="innerHTML transition:true" class="primary">+ Dodaj wydarzenie</button>
-        </div>
+        <nav th:replace="~{fragments/page-header :: page-header-b(
+                            null, 'Wydarzenia', 'Dodaj wydarzenie', @{/events/new},
+                            'plus', 'add-event-btn', '#events-list-container',
+                            null, null, null, null)}"></nav>
 
             <div th:if="${#lists.isEmpty(upcomingEvents) and #lists.isEmpty(pastEvents)}">
                 <article>
@@ -42,10 +41,10 @@
                             <td data-label="Miejsce" th:text="${e.location}">Rynek</td>
                             <td data-label="Typ" th:text="${e.eventType}">CONCERT</td>
                             <td data-label="Potwierdzenia">
-                                <span th:text="${e.confirmedCount} + ' ✅ / ' + ${e.declinedCount} + ' ❌ / ' + ${e.noResponseCount} + ' ?'">5 ✅ / 2 ❌ / 8 ?</span>
+                                <span th:text="${e.confirmedCount} + ' potwierdzonych / ' + ${e.declinedCount} + ' odmownych / ' + ${e.noResponseCount} + ' bez odpowiedzi'">5 potwierdzonych / 2 odmownych / 8 bez odpowiedzi</span>
                             </td>
                             <td data-label="Akcje">
-                                <a th:href="@{/events/{id}(id=${e.id})}" class="outline small" style="text-decoration:none; display:inline-block;">📋 Szczegóły</a>
+                                <a th:href="@{/events/{id}(id=${e.id})}" class="outline small" style="text-decoration:none; display:inline-block;">Szczegóły</a>
                             </td>
                         </tr>
                     </tbody>
@@ -54,7 +53,7 @@
 
             <!-- ===================== PAST ===================== -->
             <div th:if="${not #lists.isEmpty(pastEvents)}">
-                <h3 class="section-heading">📅 Przeszłe wydarzenia</h3>
+                <h3 class="section-heading">Przeszłe wydarzenia</h3>
                 <table role="grid">
                     <thead>
                         <tr>
@@ -76,10 +75,10 @@
                             <td data-label="Miejsce" th:text="${e.location}">Rynek</td>
                             <td data-label="Typ" th:text="${e.eventType}">CONCERT</td>
                             <td data-label="Potwierdzenia">
-                                <span th:text="${e.confirmedCount} + ' ✅ / ' + ${e.declinedCount} + ' ❌ / ' + ${e.noResponseCount} + ' ?'">5 ✅ / 2 ❌ / 8 ?</span>
+                                <span th:text="${e.confirmedCount} + ' potwierdzonych / ' + ${e.declinedCount} + ' odmownych / ' + ${e.noResponseCount} + ' bez odpowiedzi'">5 potwierdzonych / 2 odmownych / 8 bez odpowiedzi</span>
                             </td>
                             <td data-label="Akcje">
-                                <a th:href="@{/events/{id}(id=${e.id})}" class="outline small" style="text-decoration:none; display:inline-block;">📋 Szczegóły</a>
+                                <a th:href="@{/events/{id}(id=${e.id})}" class="outline small" style="text-decoration:none; display:inline-block;">Szczegóły</a>
                             </td>
                         </tr>
                     </tbody>

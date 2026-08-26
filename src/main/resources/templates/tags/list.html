@@ -9,11 +9,10 @@
         <header th:replace="~{fragments/layout :: dashboard-header}"></header>
 
     <div id="tags-content">
-        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem;">
-            <h2>🏷️ Tagi</h2>
-            <button hx-get="/tags/new" hx-target="#tags-content" hx-swap="innerHTML transition:true"
-                    class="primary">+ Dodaj tag</button>
-        </div>
+        <nav th:replace="~{fragments/page-header :: page-header-b(
+                            null, 'Tagi', 'Dodaj tag', @{/tags/new},
+                            'plus', 'add-tag-btn', '#tags-content',
+                            null, null, null, null)}"></nav>
 
         <div th:if="${#lists.isEmpty(instruments)}">
             <article>

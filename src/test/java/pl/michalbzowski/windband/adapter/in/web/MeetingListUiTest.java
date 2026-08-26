@@ -46,13 +46,13 @@ public class MeetingListUiTest extends UiTestBase {
 
         // When clicking "Dodaj spotkanie"
         WebElement newBtn = wait.until(elementToBeClickable(
-                By.xpath("//button[contains(text(), 'Dodaj spotkanie')]")));
+                By.xpath("//button[contains(., 'Dodaj spotkanie')]")));
         ((JavascriptExecutor) driver).executeScript("arguments[0].click();", newBtn);
 
         // Then new meeting form loads
         wait.until(presenceOfElementLocated(By.id("meetings-content")));
         WebElement title = wait.until(presenceOfElementLocated(
-                By.xpath("//h2[contains(text(), 'Nowe spotkanie')]")));
+                By.xpath("//h2[contains(., 'Nowe spotkanie')]")));
         assertThat(title.isDisplayed()).isTrue();
 
         // And the four options are present
@@ -72,7 +72,7 @@ public class MeetingListUiTest extends UiTestBase {
 
         // Click "Dodaj spotkanie" to load the form
         WebElement newBtn = wait.until(elementToBeClickable(
-                By.xpath("//button[contains(text(), 'Dodaj spotkanie')]")));
+                By.xpath("//button[contains(., 'Dodaj spotkanie')]")));
         ((JavascriptExecutor) driver).executeScript("arguments[0].click();", newBtn);
 
         // Wait for form to load
@@ -80,7 +80,7 @@ public class MeetingListUiTest extends UiTestBase {
 
         // When clicking "Próba ad-hoc — TERAZ"
         WebElement adhocBtn = wait.until(elementToBeClickable(
-                By.xpath("//button[contains(text(), 'TERAZ i id')]")));
+                By.xpath("//button[contains(., 'TERAZ i id')]")));
         ((JavascriptExecutor) driver).executeScript("arguments[0].click();", adhocBtn);
 
         // Then redirected to rehearsal detail (wait for detail page)
@@ -94,7 +94,7 @@ public class MeetingListUiTest extends UiTestBase {
 
         // And we see the attendance section
         WebElement attendanceHeader = wait.until(presenceOfElementLocated(
-                By.xpath("//h3[contains(text(), 'Lista obecności')]")));
+                By.xpath("//h3[contains(., 'Lista obecności')]")));
         assertThat(attendanceHeader.isDisplayed()).isTrue();
     }
 
@@ -108,7 +108,7 @@ public class MeetingListUiTest extends UiTestBase {
 
         // Find the Szczegóły link for an upcoming meeting/event (first one on page)
         WebElement szczegolyLink = wait.until(elementToBeClickable(
-                By.xpath("//a[contains(text(), '📋 Szczegóły')]")));
+                By.xpath("//a[contains(., '📋 Szczegóły')]")));
 
         assertThat(szczegolyLink.isDisplayed()).isTrue();
 
@@ -123,7 +123,7 @@ public class MeetingListUiTest extends UiTestBase {
 
         // Check for event or rehearsal specific content
         WebElement title = wait.until(presenceOfElementLocated(
-                By.xpath("//h2[contains(text(), 'Szczegóły')]")));
+                By.xpath("//h2[contains(., 'Szczegóły')]")));
         assertThat(title.isDisplayed()).isTrue();
     }
 
@@ -136,14 +136,14 @@ public class MeetingListUiTest extends UiTestBase {
         wait.until(presenceOfElementLocated(By.id("meetings-content")));
 
         // Check if there's a "Przeszłe spotkania" section with Szczegóły links
-        WebElement pastSection = driver.findElement(By.xpath("//h3[contains(text(), 'Przeszłe')]"));
+        WebElement pastSection = driver.findElement(By.xpath("//h3[contains(., 'Przeszłe')]"));
 
         // Scroll into view on mobile might be needed - use JS to scroll
         ((JavascriptExecutor) driver).executeScript("arguments[0].scrollIntoView(true);", pastSection);
 
         // Find Szczegóły links in the past events section (look for table row with class 'past-item')
         WebElement pastDetailsLink = wait.until(elementToBeClickable(
-                By.xpath("//tr[@class='past-item']//a[contains(text(), '📋 Szczegóły')]")));
+                By.xpath("//tr[@class='past-item']//a[contains(., '📋 Szczegóły')]")));
 
         assertThat(pastDetailsLink.isDisplayed()).isTrue();
 
@@ -158,7 +158,7 @@ public class MeetingListUiTest extends UiTestBase {
 
         // Verify detail page loads with proper content
         WebElement title = wait.until(presenceOfElementLocated(
-                By.xpath("//h2[contains(@class, 'app-modal-header-text') or contains(text(), 'Szczegóły')]")));
+                By.xpath("//h2[contains(@class, 'app-modal-header-text') or contains(., 'Szczegóły')]")));
         assertThat(title.isDisplayed()).isTrue();
     }
 }

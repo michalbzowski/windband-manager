@@ -32,7 +32,7 @@ class MemberListFocusHighlightUiTest extends UiTestBase {
         String lastName = "Member" + uid;
 
         loginAndNavigateTo("/members");
-        driver.findElement(By.xpath("//button[contains(text(), 'Dodaj członka')]")).click();
+        driver.findElement(By.xpath("//button[contains(., 'Dodaj członka')]")).click();
         wait.until(ExpectedConditions.presenceOfElementLocated(By.cssSelector("#member-form")));
         fill("firstName", firstName);
         fill("lastName", lastName);

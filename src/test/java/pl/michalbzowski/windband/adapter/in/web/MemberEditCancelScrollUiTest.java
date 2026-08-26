@@ -42,7 +42,7 @@ class MemberEditCancelScrollUiTest extends UiTestBase {
         // === STEP 2: open edit for that member (full page navigation) ===
         ((JavascriptExecutor) driver).executeScript("arguments[0].scrollIntoView({block:'center'});", targetRow);
         WebElement editBtn = wait.until(ExpectedConditions.elementToBeClickable(
-                targetRow.findElement(By.xpath(".//button[contains(text(), 'Edytuj')]"))));
+                targetRow.findElement(By.xpath(".//button[contains(., 'Edytuj')]"))));
         String originalUrl = driver.getCurrentUrl();
         ((JavascriptExecutor) driver).executeScript("arguments[0].click();", editBtn);
 
@@ -50,7 +50,7 @@ class MemberEditCancelScrollUiTest extends UiTestBase {
         wait.until(ExpectedConditions.presenceOfElementLocated(By.cssSelector("#member-form")));
 
         // === STEP 3: click Anuluj (anchor link triggers full page navigation) ===
-        WebElement anulujLink = driver.findElement(By.xpath("//a[contains(text(), 'Anuluj')]"));
+        WebElement anulujLink = driver.findElement(By.xpath("//a[contains(., 'Anuluj')]"));
         anulujLink.click();
 
         // Wait for the members list to load (full page navigation)
