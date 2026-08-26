@@ -2055,6 +2055,23 @@ body.dashboard-page main.container {
     outline: none;
 }
 
+/* PR C — form variant: icon that reflects create ("plus") or edit ("edit") mode.
+   Sits between the back link and the title so the eye reads "←  ✎  Edytuj X"
+   as a single unit (verb + object). Geometry mirrors .icon-btn but read-only:
+   no hover/focus, not a tap target — it is purely decorative. */
+.ph-form-mode-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex: none;
+    width: 28px;
+    height: 28px;
+    color: var(--pico-muted-color);
+    pointer-events: none;
+}
+.ph-form-mode-icon > svg,
+.ph-form-mode-icon span > svg { width: 18px; height: 18px; fill: none; stroke: currentColor; }
+
 /* Narrow viewports: give the title a chance to breathe but never clip the
    icons. At ≤ 320 px the back icon, title, and two actions still fit
    (verified by DetailHeaderUnifiedUiTest at 375 px viewport). */

@@ -9,7 +9,7 @@
         <header th:replace="~{fragments/layout :: dashboard-header}"></header>
 
     <div id="events-list-container">
-        <h2>🎪 Dodaj wydarzenie</h2>
+        <nav th:replace="~{fragments/page-header :: page-header-c(@{/events}, 'Dodaj wydarzenie', null, null)}"></nav>
 
     <form id="event-form" onsubmit="return handleCreateFormSubmit(event)">
 

@@ -152,5 +152,52 @@
 
 </nav>
 
+<!-- ════════════════════════════════════════════════════
+     PR C — form variant (4 params: back + title + optional cancel action)
+     Used by create/edit forms where the "action" is really a secondary
+     exit button ("Anuluj", "Wróć do listy"). No HTMX here — the host's
+     existing submit/cancel handlers stay in place; we only swap the
+     heading bar for the unified one.
+     ════════════════════════════════════════════════════ -->
+<nav class="detail-actions-bar page-header"
+     role="navigation"
+     aria-label="Nagłówek widoku"
+     th:fragment="page-header-c(backUrl, title, cancelLabel, cancelUrl)"
+     data-page-header="v1"
+     data-form-bar="true">
+
+    <!-- back (same geometry as PR A/B) -->
+    <a class="detail-back-link"
+       th:if="${backUrl != null}"
+       th:href="${backUrl}"
+       title="Powrót" aria-label="Powrót"
+       data-detail-action="back">
+        <th:block th:insert="~{fragments/icons :: back}"></th:block>
+    </a>
+
+    <!-- icon reflecting create/edit mode: plus for "Nowy …", pencil for "Edytuj …".
+         Class goes on the <svg> itself (not the wrapper) because Thymeleaf strips
+         extra attributes from <span th:insert>. CSS targets `.ph-form-mode-icon`
+         directly — no wrapper needed. -->
+    <th:block th:if="${title != null and title.startsWith('Nowy')}">
+        <th:block th:insert="~{fragments/icons :: plus}"></th:block>
+    </th:block>
+    <th:block th:if="${title != null and !title.startsWith('Nowy') and title.startsWith('Edytuj')}">
+        <th:block th:insert="~{fragments/icons :: edit}"></th:block>
+    </th:block>
+
+    <!-- title -->
+    <h2 class="detail-title" th:text="${title}" th:title="${title}">Tytuł</h2>
+
+    <!-- optional cancel action (secondary, full nav back to list) -->
+    <a class="ph-secondary-action"
+       th:if="${cancelLabel != null and cancelUrl != null}"
+       th:href="${cancelUrl}"
+       data-detail-action="cancel">
+        <span th:text="${cancelLabel}">Anuluj</span>
+    </a>
+
+</nav>
+
 </body>
 </html>
