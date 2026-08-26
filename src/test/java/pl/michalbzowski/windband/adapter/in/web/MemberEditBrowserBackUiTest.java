@@ -57,7 +57,7 @@ class MemberEditBrowserBackUiTest extends UiTestBase {
             loginAndNavigateTo("/members");
             assertThat(driver.getCurrentUrl()).as("Should be on /members before").contains("/members");
 
-            WebElement addButton = driver.findElement(By.cssSelector("button.primary[hx-get='/members/new']"));
+            WebElement addButton = driver.findElement(By.cssSelector("#add-member-btn"));
             ((JavascriptExecutor) driver).executeScript("arguments[0].click();", addButton);
             wait.until(ExpectedConditions.presenceOfElementLocated(By.cssSelector("#member-form")));
 
