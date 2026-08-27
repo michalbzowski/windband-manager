@@ -256,146 +256,217 @@
             }
         }
 
-        // --- Attendance filter for rehearsals detail ---
-        // Refactored as an IDEMPOTENT binder (guard on data-attr) so it can be
-        // safely re-invoked every time #rehearsals-content is swapped by HTMX:
-        //   - after a swap the input is a fresh node → guard empty → gets bound;
-        //   - same node re-invoked → guard set → no-op (no double-listener).
-        function bindRehearsalTextFilter() {
-            var filterInput = document.getElementById('attendance-filter');
-            if (!filterInput || filterInput.dataset.textBound === 'yes') return;
+        // ---------------------------------------------------------------------------
+        // Attendance filter for rehearsals detail — with state persistence across
+        // HTMX outerHTML swaps of #rehearsals-content.
+        //
+        // Root cause (t_cc648529): saving a member's attendance status triggers an
+        // HTMX outerHTML swap of #rehearsals-content, which replaces the filter input,
+        // the status buttons AND the table with fresh copies. That kills two things:
+        //   1. LISTENERS one-time-bound at initial load (they die with old nodes);
+        //   2. STATE — the typed filter text + active status set — because Thymeleaf
+        //      re-renders value="" on every fresh input, no matter what we typed.
+        // Re-binding ALONE is not enough (a MutationObserver that only re-binds
+        // listeners still ends up filtering an empty search term); the state itself
+        // must survive the swap too.
+        //
+        // Fix — single source of truth that outlives every swap:
+        //   * filterState {text, active[]} lives on window scope (never destroyed);
+        //   * sessionStorage persists it per rehearsal id, so even a fresh navigation or
+        //     a blank re-render can rehydrate exactly what the user had typed;
+        //   * bindRehearsalDetailFilters() is idempotent (dataset guards per node) and is
+        //      re-run by windband-utils.js's htmx:afterSwap / htmx:afterSettle hook via
+        //      window.rebindRehearsalDetailFilters — so fresh swapped nodes always get
+        //      working listeners;
+        //   * a belt-and-suspenders MutationObserver on #rehearsals-content's PARENT catches
+        //      the outerHTML swap even when the HTMX event guard misses it, plus a
+        //      250 ms follow-up refresh() handles late-inserted rows from the swap;
+        //   * every read (rows, hidden input, buttons) happens AT EVENT TIME via
+        //      getElementById/querySelectorAll — no stale-closure node snapshots ever.
+        // Legitimate behaviour preserved: a full page navigation starts unfiltered
+        // (sessionStorage is only re-applied while this page stays mounted), and
+        // clearing the input clears the filter as before.
+        // ---------------------------------------------------------------------------
+        (function() {
+            'use strict';
+            var win = window;
 
-            filterInput.addEventListener('input', function() {
-                var tInput = document.getElementById('attendance-filter');
-                var searchTerm = (tInput ? tInput.value : this.value).toLowerCase().trim();
-                // Re-query table each call so swapped rows are included.
-                var table = document.querySelector('#rehearsals-content table[role="grid"], table[role="grid"]');
+            function storageKey() {
+                var c = document.getElementById('rehearsals-content');
+                return 'windband.rehearsalDetailFilter.' + (c ? (c.dataset.rehearsalId || '') : '');
+            }
+
+            // -------- single source of truth (survives any number of swaps) ----
+            var filterState = { text: '', active: [] };
+
+            function saveToStorage() {
+                try { win.sessionStorage.setItem(storageKey(), JSON.stringify(filterState)); } catch (e) {}
+            }
+
+            function restoreFromStorage() {
+                try {
+                    var raw = win.sessionStorage.getItem(storageKey());
+                    if (!raw) return;
+                    var data = JSON.parse(raw);
+                    if (data && typeof data === 'object') {
+                        filterState.text = typeof data.text === 'string' ? data.text : '';
+                        filterState.active = Array.isArray(data.active) ? data.active.slice() : [];
+                    }
+                } catch (e) {}
+            }
+
+            // -------- DOM helpers (always re-queried: no stale node refs) -------
+            function inputEl()    { return document.getElementById('attendance-filter'); }
+            function hiddenEl()   { return document.getElementById('active-attendance-response-filters'); }
+            function containerEl(){ return document.getElementById('attendance-response-filter-container'); }
+            function tableEl()    {
+                return document.querySelector('#rehearsals-content table[role="grid"], table[role="grid"]');
+            }
+            function buttons() {
+                var c = containerEl();
+                return c ? Array.prototype.slice.call(c.querySelectorAll('.response-filter-btn')) : [];
+            }
+
+            // -------- apply current state to the live DOM ----------------------
+            function applyFilters() {
+                var table = tableEl();
                 if (!table) return;
+                var input = inputEl();
+                var searchTerm = (input ? input.value : filterState.text).toLowerCase().trim();
 
-                // Shared accent-aware fold (installed by windband-utils.js).
-                var fold = (typeof window.windbandAccentFold === 'function')
-                    ? window.windbandAccentFold
-                    : function(s) { return String(s == null ? '' : s).toLowerCase(); };
-                var term = fold(searchTerm);
+                // Sync in-memory + DOM + storage from the live nodes.
+                if (input) filterState.text = input.value;
+                var hidden = hiddenEl();
+                var active;
+                if (hidden) {
+                    active = hidden.value ? hidden.value.split(',').filter(function(s){ return s && s.length > 0; }) : [];
+                    filterState.active = active;
+                } else {
+                    active = filterState.active.slice();
+                }
 
-                table.querySelectorAll('tbody tr').forEach(function(row) {
+                var btns = buttons();
+                var noneOrAll = active.length === 0 || active.length === btns.length;
+
+                Array.prototype.forEach.call(table.querySelectorAll('tbody tr'), function(row) {
                     var nameCell = row.querySelector('td:first-child');
                     // FIX (t_ebd04e70): tag match against the Instrument column —
                     // this template renders ${m.primaryInstrument} directly in the
                     // second <td> of each row with no class to target.
                     var tagCell = row.querySelectorAll('td')[1];
+                    var statusCell = row.querySelector('select.status-select');
                     var memberName = nameCell ? nameCell.textContent.toLowerCase() : '';
                     var tagText = tagCell ? tagCell.textContent : '';
-
-                    // Honor any active status filter if one is set.
-                    var statusFilterInput = document.getElementById('active-attendance-response-filters');
-                    var active = (statusFilterInput && statusFilterInput.value)
-                        ? statusFilterInput.value.split(',').filter(Boolean)
-                        : null;
-                    var statusCell = row.querySelector('select.status-select');
-                    var status = statusCell ? statusCell.value : '';
-                    var noneOrAll = function() { return active.length === 0 || active.length === 4; };
-                    var responseMatches = (!active) || noneOrAll() || active.indexOf(status) !== -1;
-
-                    // Accent-aware: "trabka" matches a row tagged "Trąbka", and
-                    // name matching keeps working with or without diacritics.
-                    var nameFolded = fold(memberName);
-                    var tagFolded = fold(tagText);
-                    var textMatches = !term || nameFolded.indexOf(term) !== -1 || tagFolded.indexOf(term) !== -1;
-
-                    row.style.display = (textMatches && responseMatches) ? '' : 'none';
-                });
-            });
-            filterInput.dataset.textBound = 'yes';
-        }
-
-        function bindRehearsalStatusFilter() {
-            var container = document.getElementById('attendance-response-filter-container');
-            if (!container || container.dataset.statusBound === 'yes') return;
-
-            // Lazy-query the hidden input + table on each event (survives swaps).
-            function getTable() {
-                return document.querySelector('#rehearsals-content table[role="grid"], table[role="grid"]');
-            }
-            function readActive() {
-                var inp = document.getElementById('active-attendance-response-filters');
-                return (inp && inp.value) ? inp.value.split(',').filter(Boolean) : [];
-            }
-            function updateBtnStates() {
-                var active = readActive();
-                container.querySelectorAll('.response-filter-btn').forEach(function(btn) {
-                    var v = btn.getAttribute('data-response-filter');
-                    if (active.indexOf(v) !== -1) { btn.classList.add('active'); }
-                    else { btn.classList.remove('active'); }
-                });
-            }
-            function applyFilters() {
-                var table = getTable();
-                if (!table) return;
-                var tInput = document.getElementById('attendance-filter');
-                var searchTerm = (tInput ? tInput.value : '').toLowerCase().trim();
-                var active = readActive();
-                var btns = container.querySelectorAll('.response-filter-btn');
-
-                // Shared accent-aware fold (installed by windband-utils.js).
-                var fold = (typeof window.windbandAccentFold === 'function')
-                    ? window.windbandAccentFold
-                    : function(s) { return String(s == null ? '' : s).toLowerCase(); };
-                var term = fold(searchTerm);
-
-                table.querySelectorAll('tbody tr').forEach(function(row) {
-                    var nameCell = row.querySelector('td:first-child');
-                    // FIX (t_ebd04e70): tag match against the Instrument column —
-                    var tagCell = row.querySelectorAll('td')[1];
-                    var statusCell = row.querySelector('select.status-select');
-                    var memberName = nameCell ? nameCell.textContent.toLowerCase() : '';
-                    var tagText = tagCell ? tagCell.textContent.toLowerCase() : '';
                     var status = statusCell ? statusCell.value : '';
 
-                    // Accent-aware predicate: name OR instrument/tag.
+                    // Accent-aware substring match (Polish diacritics) in BOTH
+                    // directions — the user may type "Trabka" and the tag is
+                    // "Trąbka"; or the user types the diacritic form.
+                    var fold = (typeof window.windbandAccentFold === 'function') ? window.windbandAccentFold : function(s){ return String(s == null ? '' : s).toLowerCase(); };
+                    var term = fold(searchTerm);
                     var nameFolded = fold(memberName);
                     var tagFolded = fold(tagText);
-                    var textMatches = !term || nameFolded.indexOf(term) !== -1 || tagFolded.indexOf(term) !== -1;
-                    var noneOrAll = active.length === 0 || active.length === btns.length;
+
+                    var textMatches = !term ||
+                        nameFolded.indexOf(term) !== -1 ||
+                        tagFolded.indexOf(term) !== -1;
                     var responseMatches = noneOrAll || active.indexOf(status) !== -1;
 
                     row.style.display = (textMatches && responseMatches) ? '' : 'none';
                 });
+
+                btns.forEach(function(btn) {
+                    var v = btn.getAttribute('data-response-filter');
+                    if (active.indexOf(v) !== -1) btn.classList.add('active');
+                    else btn.classList.remove('active');
+                });
+
+                saveToStorage();
             }
 
-            // Each swapped-in button is a fresh node; bind exactly once per copy.
-            container.querySelectorAll('.response-filter-btn').forEach(function(btn) {
-                btn.style.cursor = 'pointer';
-                if (btn.dataset.clickBound === 'yes') return;
-                btn.addEventListener('click', function() {
-                    var inp = document.getElementById('active-attendance-response-filters');
-                    if (!inp) return;
-                    var v = this.getAttribute('data-response-filter');
-                    var active = inp.value ? inp.value.split(',').filter(Boolean) : [];
-                    var idx = active.indexOf(v);
-                    if (idx > -1) { active.splice(idx, 1); } else { active.push(v); }
-                    inp.value = active.join(',');
-                    updateBtnStates();
-                    applyFilters();
+            // -------- idempotent binder (safe to call on same node repeatedly) ---
+            function bindRehearsalDetailFilters() {
+                var input = inputEl();
+                if (!input || !tableEl()) return;
+
+                if (input.dataset.filterBound !== 'yes') {
+                    input.addEventListener('input', function() {
+                        filterState.text = input.value;  // source of truth updates first
+                        applyFilters();                   // then persist + re-apply
+                    });
+                    input.dataset.filterBound = 'yes';
+                }
+
+                var container = containerEl();
+                if (!container) return;
+                Array.prototype.forEach.call(container.querySelectorAll('.response-filter-btn'), function(btn) {
+                    if (btn.dataset.filterBound === 'yes') return;
+                    btn.style.cursor = 'pointer';
+                    btn.addEventListener('click', function() {
+                        // Re-read the LIVE hidden input each click — never a captured one.
+                        var active = filterState.active.slice();
+                        var v = this.getAttribute('data-response-filter');
+                        var idx = active.indexOf(v);
+                        if (idx > -1) active.splice(idx, 1); else active.push(v);
+                        var hidden = hiddenEl();
+                        if (hidden) hidden.value = active.join(',');
+                        applyFilters();   // syncs filterState.active + buttons + storage
+                    });
+                    btn.dataset.filterBound = 'yes';
                 });
-                btn.dataset.clickBound = 'yes';
+            }
+
+            // After a swap: restore state onto the fresh nodes, then re-apply.
+            function refresh() {
+                var input = inputEl();
+                if (!input) return;
+                if (filterState.text !== input.value) input.value = filterState.text;
+                var hidden = hiddenEl();
+                if (hidden) hidden.value = filterState.active.join(',');
+                applyFilters();
+            }
+            // Exposed for windband-utils.js htmx:afterSwap/afterSettle hook.
+            win.rebindRehearsalDetailFilters = function() {
+                try {
+                    restoreFromStorage();
+                    bindRehearsalDetailFilters();
+                    refresh();
+                    setTimeout(function() { restoreFromStorage(); refresh(); }, 250);
+                } catch (e) {
+                    if (win.console) win.console.error('[windband:rehearsal-detail-filter]', e);
+                }
+            };
+            document.addEventListener('DOMContentLoaded', function() {
+                restoreFromStorage();
+                bindRehearsalDetailFilters();
+                refresh();
             });
 
-            updateBtnStates();
-            container.dataset.statusBound = 'yes';
-        }
+            // Belt-and-suspenders: our own rebind trigger that does NOT depend on
+            // windband-utils.js' target-id guard (which can miss the outerHTML swap).
+            // A MutationObserver on the content's PARENT detects #rehearsals-content being
+            // replaced (outerHTML swap) and re-runs the rebinder shortly after.
+            function schedule() {
+                if (schedule._t) clearTimeout(schedule._t);
+                schedule._t = setTimeout(function() { win.rebindRehearsalDetailFilters(); }, 60);
+            }
+            var initialContent = document.getElementById('rehearsals-content');
+            var watchRoot = (initialContent && initialContent.parentNode) || document.body;
+            if ('MutationObserver' in window) {
+                var mo = new MutationObserver(function(mutations) {
+                    // Re-run when the container subtree changes materially (rows added/
+                    // removed, or a fresh attendance-filter appears) — i.e. after a swap.
+                        for (var i = 0; i < mutations.length; i++) {
+                        var m = mutations[i];
+                        if (m.type === 'childList' && m.addedNodes.length) { schedule(); return; }
+                    }
+                });
+                mo.observe(watchRoot, { childList: true, subtree: true });
+            }
 
-        // Bind both on initial page-load.
-        bindRehearsalTextFilter();
-        bindRehearsalStatusFilter();
-
-        // Expose so windband-utils.js's global afterSwap/afterSettle hook can
-        // re-invoke these after every fragment swap of #rehearsals-content — the
-        // dataset guards above keep repeated calls a no-op.
-        window.rebindRehearsalDetailFilters = function() {
-            bindRehearsalTextFilter();
-            bindRehearsalStatusFilter();
-        };
+            // Fallback binder for DOM already settled (history navigation).
+            bindRehearsalDetailFilters();
+        })();
     });
 
     // === Quick attendance modal (existing) ===

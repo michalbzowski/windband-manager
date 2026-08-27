@@ -617,7 +617,7 @@ class RehearsalDetailFilterUiTest extends UiTestBase {
 
         // --- Type a new filter term (matches Beta only). Expected: filter still
         //     works after the reload and shows exactly Beta. Re-look-up AFTER settle.
-        WebElement freshInput = driver.findElement(By.id("attendance-filter"));
+        WebElement freshInput = wait.until(ExpectedConditions.elementToBeClickable(By.id("attendance-filter")));
         freshInput.clear();
         freshInput.sendKeys(firstNameB);
 
@@ -668,8 +668,17 @@ class RehearsalDetailFilterUiTest extends UiTestBase {
             Thread.yield();
         }
         assertThat(settled).as("HTMX swap did not settle within timeout").isTrue();
-    }
 
+        // Additional wait: ensure the filter input is present and interactable after swap
+        wait.until(ExpectedConditions.elementToBeClickable(By.id("attendance-filter")));
+
+        // Extra stabilization: wait a bit more for the DOM to fully settle after the element is clickable
+        try {
+            Thread.sleep(200);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+        }
+    }
     private void createMember(String firstName, String lastName, WebDriverWait wait) throws Exception {
         loginAndNavigateTo("/members");
         driver.findElement(By.xpath("//button[contains(., 'Dodaj członka')]")).click();
