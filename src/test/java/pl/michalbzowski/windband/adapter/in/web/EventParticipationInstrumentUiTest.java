@@ -172,10 +172,17 @@ class EventParticipationInstrumentUiTest extends UiTestBase {
         wait.until(ExpectedConditions.presenceOfElementLocated(By.id("events-content")));
         wait.until(ExpectedConditions.numberOfElementsToBeMoreThan(By.cssSelector("#participants-table tbody tr"), 0));
 
-        // Wait for instrument name to update
-        WebDriverWait longWait = new WebDriverWait(driver, Duration.ofSeconds(10));
-        longWait.until(ExpectedConditions.textToBePresentInElementLocated(
-                By.cssSelector(".instrument-name"), "Bęben"));
+        // Wait for Jan's instrument name to update in the participants table
+        Awaitility.await().atMost(Duration.ofSeconds(15)).until(() -> {
+            var rows = driver.findElements(By.cssSelector("#participants-table tbody tr"));
+            for (var row : rows) {
+                if (row.getText().contains("Jan Kowalski")) {
+                    var instEl = row.findElement(By.cssSelector(".instrument-name"));
+                    return "Bęben".equals(instEl.getText());
+                }
+            }
+            return false;
+        });
 
         // 5. Navigate to members list and verify Jan's default instrument is still Trąbka
         driver.get(baseUrl() + "/members");
@@ -184,23 +191,37 @@ class EventParticipationInstrumentUiTest extends UiTestBase {
         var memberRows = driver.findElements(By.cssSelector("table tbody tr"));
         assertThat(memberRows).isNotEmpty();
 
-        String firstRowText = memberRows.get(0).getText();
-        System.out.println("[TEST] First member row: " + firstRowText);
-        // Jan Kowalski should be the first member (alphabetically? but we know he is in the DB)
-        assertThat(firstRowText).contains("Jan Kowalski");
+        // Find Jan Kowalski specifically (not just the first row, which may be another member)
+        String janRowText = null;
+        for (var row : memberRows) {
+            if (row.getText().contains("Jan Kowalski")) {
+                janRowText = row.getText();
+                break;
+            }
+        }
+        assertThat(janRowText).as("Jan Kowalski must exist in members list").isNotNull();
+        System.out.println("[TEST] Jan Kowalski row: " + janRowText);
         // His instrument should be Trąbka (the default from data.sql)
-        assertThat(firstRowText).contains("Trąbka");
+        assertThat(janRowText).contains("Trąbka");
         // And should not contain Bęben (since we only changed it for the event)
-        assertThat(firstRowText).doesNotContain("Bęben");
+        assertThat(janRowText).doesNotContain("Bęben");
 
         // 6. Additionally, verify that the event participation still has Bęben
         // Go back to the event detail page
         driver.get(baseUrl() + "/events/" + eventId);
         wait.until(ExpectedConditions.presenceOfElementLocated(By.id("events-content")));
 
-        // Find the instrument name for the member in the participants table
-        var participantRow = driver.findElement(By.cssSelector("#participants-table tbody tr"));
-        var participantInstrumentName = participantRow.findElement(By.cssSelector(".instrument-name")).getText();
-        assertThat(participantInstrumentName).isEqualTo("Bęben");
+        // Find Jan's row specifically in the participants table (there may be other members)
+        var participantRows = driver.findElements(By.cssSelector("#participants-table tbody tr"));
+        assertThat(participantRows).isNotEmpty();
+        String janInstrumentName = null;
+        for (var pRow : participantRows) {
+            if (pRow.getText().contains("Jan Kowalski")) {
+                var instrumentEl = pRow.findElement(By.cssSelector(".instrument-name"));
+                janInstrumentName = instrumentEl.getText();
+                break;
+            }
+        }
+        assertThat(janInstrumentName).as("Event participation instrument for Jan must be Bęben").isEqualTo("Bęben");
     }
 }

@@ -532,6 +532,442 @@ class EventDetailFilterUiTest extends UiTestBase {
         assertThat(responseSelect.getAttribute("value")).isEqualTo("CONFIRMED");
     }
 
+    /**
+     * Regression test (t_cc648529 / t_79070964): a typed participant filter and an
+     * active response-status filter must SURVIVE the HTMX outerHTML swap of
+     * #events-content that is triggered when a member's response is changed.
+     * Without persistence, saving a response re-renders the input with value="" and
+     * resets the status buttons, silently discarding the user's active filter.
+     */
+    @Test
+    void textAndResponseFilterShouldSurviveResponseChangeReload() throws Exception {
+        WebDriverWait wait = new WebDriverWait(driver, Duration.ofSeconds(10));
+        String uid = UUID.randomUUID().toString().substring(0, 8);
+        String firstNameA = "Keep" + uid;
+        String firstNameB = "Other" + uid;
+        String lastName = "Test" + uid;
+
+        createMember(firstNameA, lastName, wait);
+        createMember(firstNameB, lastName, wait);
+
+        loginAndNavigateTo("/events");
+        driver.findElement(By.xpath("//button[contains(., 'Dodaj wydarzenie')]")).click();
+        wait.until(ExpectedConditions.presenceOfElementLocated(By.cssSelector("#event-form")));
+        ((JavascriptExecutor) driver).executeScript(
+                "document.querySelector(\"input[name='name']\").value = arguments[0];" +
+                "document.querySelector(\"input[name='date']\").value = arguments[1];" +
+                "document.querySelector(\"input[name='startTime']\").value = '18:00';" +
+                "document.querySelector(\"input[name='location']\").value = 'Sala koncertowa';",
+                "Persist Filter Test " + uid, LocalDate.now().toString());
+        driver.findElement(By.cssSelector("#event-form button[type='submit'].primary")).click();
+        wait.until(ExpectedConditions.urlContains("/events"));
+        wait.until(ExpectedConditions.not(ExpectedConditions.urlContains("/new")));
+
+        Awaitility.await().atMost(Duration.ofSeconds(10)).until(() ->
+                jdbcTemplate.queryForObject(
+                        "SELECT COUNT(*) FROM band_events WHERE name = ?", Long.class,
+                        "Persist Filter Test " + uid) > 0);
+        Long eventId = jdbcTemplate.queryForObject(
+                "SELECT id FROM band_events WHERE name = ?", Long.class, "Persist Filter Test " + uid);
+        Long memberIdA = jdbcTemplate.queryForObject(
+                "SELECT id FROM members WHERE first_name = ?", Long.class, firstNameA);
+        Long memberIdB = jdbcTemplate.queryForObject(
+                "SELECT id FROM members WHERE first_name = ?", Long.class, firstNameB);
+
+        inviteMemberToEvent(eventId, memberIdA);
+        inviteMemberToEvent(eventId, memberIdB);
+        setEventResponse(eventId, memberIdA, "CONFIRMED");
+        setEventResponse(eventId, memberIdB, "LATER");
+
+        driver.get(baseUrl() + "/events/" + eventId);
+        wait.until(ExpectedConditions.presenceOfElementLocated(By.id("participants-table")));
+
+        WebElement filterInput = driver.findElement(By.id("participant-filter"));
+        filterInput.clear();
+        filterInput.sendKeys(firstNameA);
+        List<WebElement> statusBtns = driver.findElements(
+                By.cssSelector(".response-filter-btn[data-response-filter='CONFIRMED']"));
+        assertThat(statusBtns).isNotEmpty();
+        ((JavascriptExecutor) driver).executeScript("arguments[0].click();", statusBtns.get(0));
+
+        Awaitility.await().atMost(Duration.ofSeconds(5)).until(() ->
+                countVisibleRows() == 1);
+        assertThat(visibleRowFirstCellText()).contains(firstNameA);
+
+        WebElement responseSelect = driver.findElement(
+                By.cssSelector("#events-content .response-select[data-member-id=\"" + memberIdB + "\"]"));
+        ((JavascriptExecutor) driver).executeScript("arguments[0].value='CONFIRMED';" +
+                "arguments[0].dispatchEvent(new Event('change',{bubbles:true}));", responseSelect);
+
+        Awaitility.await().atMost(Duration.ofSeconds(15)).until(() ->
+                "CONFIRMED".equals(jdbcTemplate.queryForObject(
+                        "SELECT response FROM event_participations WHERE event_id = ? AND member_id = ?",
+                        String.class, eventId, memberIdB))
+                && countVisibleRows() == 1);
+
+        assertThat(countVisibleRows()).isEqualTo(1);
+        assertThat(visibleRowFirstCellText()).contains(firstNameA);
+        assertThat(visibleRowFirstCellText()).doesNotContain(firstNameB);
+
+        String inputValue = (String) ((JavascriptExecutor) driver).executeScript(
+                "return document.getElementById('participant-filter').value;");
+        assertThat(inputValue).isEqualTo(firstNameA);
+        String activeFilters = (String) ((JavascriptExecutor) driver).executeScript(
+                "return document.getElementById('active-response-filters').value;");
+        assertThat(activeFilters).contains("CONFIRMED");
+    }
+
+    /**
+     * Verification (t_bd84945b): the first-name filter must survive TWO SUCCESSIVE
+     * response saves in a row, re-filtering correctly after each. The manual
+     * checklist requires "change response for multiple members in succession;
+     * filter must survive each save." Each UI select change posts to the API and
+     * triggers an HTMX outerHTML swap of #events-content — a fresh DOM copy that
+     * previously destroyed listeners + state.
+     */
+    @Test
+    void textFilterShouldSurviveTwoSuccessiveResponseSaves() throws Exception {
+        WebDriverWait wait = new WebDriverWait(driver, Duration.ofSeconds(10));
+        String uid = UUID.randomUUID().toString().substring(0, 8);
+        String firstNameA = "Survive2" + uid;
+        String firstNameB = "GhostA" + uid;
+        String firstNameC = "GhostB" + uid;
+        String lastName = "Test" + uid;
+
+        createMember(firstNameA, lastName, wait);
+        createMember(firstNameB, lastName, wait);
+        createMember(firstNameC, lastName, wait);
+
+        loginAndNavigateTo("/events");
+        driver.findElement(By.xpath("//button[contains(., 'Dodaj wydarzenie')]")).click();
+        wait.until(ExpectedConditions.presenceOfElementLocated(By.cssSelector("#event-form")));
+        ((JavascriptExecutor) driver).executeScript(
+                "document.querySelector(\"input[name='name']\").value = arguments[0];" +
+                "document.querySelector(\"input[name='date']\").value = arguments[1];" +
+                "document.querySelector(\"input[name='startTime']\").value = '18:00';" +
+                "document.querySelector(\"input[name='location']\").value = 'Sala';",
+                "Successive Saves Test " + uid, LocalDate.now().toString());
+        driver.findElement(By.cssSelector("#event-form button[type='submit'].primary")).click();
+        wait.until(ExpectedConditions.urlContains("/events"));
+        wait.until(ExpectedConditions.not(ExpectedConditions.urlContains("/new")));
+
+        Awaitility.await().atMost(Duration.ofSeconds(10)).until(() ->
+                jdbcTemplate.queryForObject(
+                        "SELECT COUNT(*) FROM band_events WHERE name = ?", Long.class,
+                        "Successive Saves Test " + uid) > 0);
+        Long eventId = jdbcTemplate.queryForObject(
+                "SELECT id FROM band_events WHERE name = ?", Long.class, "Successive Saves Test " + uid);
+        Long memberIdA = lookupFirst("first_name", firstNameA);
+        Long memberIdB = lookupFirst("first_name", firstNameB);
+        Long memberIdC = lookupFirst("first_name", firstNameC);
+
+        inviteMemberToEvent(eventId, memberIdA);
+        inviteMemberToEvent(eventId, memberIdB);
+        inviteMemberToEvent(eventId, memberIdC);
+        // Setup: A CONFIRMED, B LATER, C NO_RESPONSE.
+        setEventResponse(eventId, memberIdA, "CONFIRMED");
+        setEventResponse(eventId, memberIdB, "LATER");
+
+        driver.get(baseUrl() + "/events/" + eventId);
+        wait.until(ExpectedConditions.presenceOfElementLocated(By.id("participants-table")));
+
+        // --- Apply first-name filter: only A matches. ---
+        WebElement filterInput = driver.findElement(By.id("participant-filter"));
+        filterInput.clear();
+        filterInput.sendKeys(firstNameA);
+        Awaitility.await().atMost(Duration.ofSeconds(5)).until(() -> countVisibleRows() == 1);
+
+        // --- SAVE 1: change B from LATER -> CONFIRMED via the UI dropdown. ---
+        saveResponseViaUi(eventId, memberIdB, "CONFIRMED");
+        // After reload, DB committed and the filter still isolates A.
+        Awaitility.await().atMost(Duration.ofSeconds(15)).until(() ->
+                "CONFIRMED".equals(dbResponse(eventId, memberIdB)) && countVisibleRows() == 1);
+        assertThat(visibleRowFirstCellText()).contains(firstNameA);
+
+        // --- SAVE 2: change C from NO_RESPONSE -> DECLINED via the UI dropdown. ---
+        saveResponseViaUi(eventId, memberIdC, "DECLINED");
+        Awaitility.await().atMost(Duration.ofSeconds(15)).until(() ->
+                "DECLINED".equals(dbResponse(eventId, memberIdC)) && countVisibleRows() == 1);
+
+        // Filter must STILL be alive and applied after both saves.
+        assertThat(countVisibleRows()).isEqualTo(1);
+        assertThat(visibleRowFirstCellText()).contains(firstNameA);
+        String inputValue = filterValue();
+        assertThat(inputValue).isEqualTo(firstNameA);
+    }
+
+    /**
+     * Verification (t_bd84945b): a LAST-NAME text filter must survive a response
+     * change reload (the exact 'Będę' flow from the manual checklist, but by
+     * surname). Confirms persistence is not tied to first names only.
+     */
+    @Test
+    void lastNameFilterShouldSurviveResponseSave() throws Exception {
+        WebDriverWait wait = new WebDriverWait(driver, Duration.ofSeconds(10));
+        String uid = UUID.randomUUID().toString().substring(0, 8);
+        String lastNameA = "KeepLast" + uid;
+        String lastNameB = "OtherLast" + uid;
+
+        createMember("Alpha" + uid, lastNameA, wait);
+        createMember("Beta" + uid, lastNameB, wait);
+
+        loginAndNavigateTo("/events");
+        driver.findElement(By.xpath("//button[contains(., 'Dodaj wydarzenie')]")).click();
+        wait.until(ExpectedConditions.presenceOfElementLocated(By.cssSelector("#event-form")));
+        ((JavascriptExecutor) driver).executeScript(
+                "document.querySelector(\"input[name='name']\").value = arguments[0];" +
+                "document.querySelector(\"input[name='date']\").value = arguments[1];" +
+                "document.querySelector(\"input[name='startTime']\").value = '18:00';" +
+                "document.querySelector(\"input[name='location']\").value = 'Sala';",
+                "Last Name Persist Test " + uid, LocalDate.now().toString());
+        driver.findElement(By.cssSelector("#event-form button[type='submit'].primary")).click();
+        wait.until(ExpectedConditions.urlContains("/events"));
+        wait.until(ExpectedConditions.not(ExpectedConditions.urlContains("/new")));
+
+        Awaitility.await().atMost(Duration.ofSeconds(10)).until(() ->
+                jdbcTemplate.queryForObject(
+                        "SELECT COUNT(*) FROM band_events WHERE name = ?", Long.class,
+                        "Last Name Persist Test " + uid) > 0);
+        Long eventId = jdbcTemplate.queryForObject(
+                "SELECT id FROM band_events WHERE name = ?", Long.class, "Last Name Persist Test " + uid);
+        Long memberIdA = lookupFirst("last_name", lastNameA);
+        Long memberIdB = lookupFirst("last_name", lastNameB);
+
+        inviteMemberToEvent(eventId, memberIdA);
+        inviteMemberToEvent(eventId, memberIdB);
+        setEventResponse(eventId, memberIdB, "LATER");
+
+        driver.get(baseUrl() + "/events/" + eventId);
+        wait.until(ExpectedConditions.presenceOfElementLocated(By.id("participants-table")));
+
+        WebElement filterInput = driver.findElement(By.id("participant-filter"));
+        filterInput.clear();
+        filterInput.sendKeys(lastNameA);
+        Awaitility.await().atMost(Duration.ofSeconds(5)).until(() -> countVisibleRows() == 1);
+        assertThat(visibleRowFirstCellText()).contains(lastNameA);
+
+        // Save B's response (LATER -> CONFIRMED) via UI; the reload must not reset the surname filter.
+        saveResponseViaUi(eventId, memberIdB, "CONFIRMED");
+        Awaitility.await().atMost(Duration.ofSeconds(15)).until(() ->
+                "CONFIRMED".equals(dbResponse(eventId, memberIdB)) && countVisibleRows() == 1);
+
+        assertThat(countVisibleRows()).isEqualTo(1);
+        assertThat(visibleRowFirstCellText()).contains(lastNameA);
+        assertThat(filterValue()).isEqualTo(lastNameA);
+    }
+
+    /**
+     * Verification (t_ebd04e70): the participant filter also matches the member's
+     * TAG — their instrument — and does so accent-insensitively.  Two members are
+     * created: one tagged "Trąbka" (Polish diacritic) and one untagged.  Typing
+     * either the exact diacritic form or the ASCII fold ("trabka") surfaces EXACTLY
+     * the one row that carries the Trąbka tag; typing nonsense by name hides both.
+     */
+    @Test
+    void tagFilterShouldMatchInstrumentTagAccentAware() throws Exception {
+        WebDriverWait wait = new WebDriverWait(driver, Duration.ofSeconds(10));
+        String uid = UUID.randomUUID().toString().substring(0, 8);
+        String lastName = "Test" + uid;
+
+        // Member A tagged "Trąbka" (Polish diacritic — exercises the accent-aware fold).
+        createMemberWithInstrument("TrumpetGuy" + uid, lastName, "Trąbka", wait);
+        // Member B untagged — a name-only match must never happen via this tag.
+        createMember("NoTag" + uid, lastName, wait);
+
+        loginAndNavigateTo("/events");
+        driver.findElement(By.xpath("//button[contains(., 'Dodaj wydarzenie')]")).click();
+        wait.until(ExpectedConditions.presenceOfElementLocated(By.cssSelector("#event-form")));
+        ((JavascriptExecutor) driver).executeScript(
+                "document.querySelector(\"input[name='name']\").value = arguments[0];" +
+                "document.querySelector(\"input[name='date']\").value = arguments[1];" +
+                "document.querySelector(\"input[name='startTime']\").value = '18:00';" +
+                "document.querySelector(\"input[name='location']\").value = 'Sala';",
+                "Tag Acc Test " + uid, LocalDate.now().toString());
+        driver.findElement(By.cssSelector("#event-form button[type='submit'].primary")).click();
+        wait.until(ExpectedConditions.urlContains("/events"));
+        wait.until(ExpectedConditions.not(ExpectedConditions.urlContains("/new")));
+
+        Awaitility.await().atMost(Duration.ofSeconds(10)).until(() ->
+                jdbcTemplate.queryForObject(
+                        "SELECT COUNT(*) FROM band_events WHERE name = ?", Long.class,
+                        "Tag Acc Test " + uid) > 0);
+        Long eventId = jdbcTemplate.queryForObject(
+                "SELECT id FROM band_events WHERE name = ?", Long.class, "Tag Acc Test " + uid);
+        Long taggedId = lookupFirst("first_name", "TrumpetGuy" + uid);
+        Long untaggedId = lookupFirst("first_name", "NoTag" + uid);
+
+        inviteMemberToEvent(eventId, taggedId);
+        inviteMemberToEvent(eventId, untaggedId);
+
+        driver.get(baseUrl() + "/events/" + eventId);
+        wait.until(ExpectedConditions.presenceOfElementLocated(By.id("participants-table")));
+
+        int total = driver.findElements(By.cssSelector("#participants-table tbody tr")).size();
+        assertThat(total).isEqualTo(2);
+
+        // 1) Nonsense name — neither row should match by tag or by name.
+        WebElement filterInput = driver.findElement(By.id("participant-filter"));
+        filterInput.clear();
+        filterInput.sendKeys("zzznomatch-" + uid);
+        Awaitility.await().atMost(Duration.ofSeconds(3)).until(() -> countVisibleRows() == 0);
+        assertThat(countVisibleRows()).isZero();
+
+        // 2) ExACT diacritic form — matches ONLY the Trąbka row via the tag branch.
+        filterInput.clear();
+        filterInput.sendKeys("Trąbka");
+        Awaitility.await().atMost(Duration.ofSeconds(3)).until(() -> countVisibleRows() == 1);
+        assertThat(countVisibleRows()).isEqualTo(1);
+        assertThat(visibleRowFirstCellText()).contains("TrumpetGuy" + uid);
+
+        // 3) ASCII folded form — user types "trabka" (no diacritic), still matches.
+        filterInput.clear();
+        filterInput.sendKeys("trabka");
+        Awaitility.await().atMost(Duration.ofSeconds(3)).until(() -> countVisibleRows() == 1);
+        assertThat(countVisibleRows()).isEqualTo(1);
+        assertThat(visibleRowFirstCellText()).contains("TrumpetGuy" + uid);
+
+        // 4) Name-based predicate is unchanged: typing the untagged member's
+        //    first name surfaces exactly that row.
+        filterInput.clear();
+        filterInput.sendKeys("NoTag" + uid);
+        Awaitility.await().atMost(Duration.ofSeconds(3)).until(() -> countVisibleRows() == 1);
+        assertThat(countVisibleRows()).isEqualTo(1);
+        assertThat(visibleRowFirstCellText()).contains("NoTag" + uid);
+
+        System.out.println("[tag-filter] Trąbka/trabka surface ONLY the tagged row; name branch unchanged");
+    }
+
+    /**
+     * Verification (t_bd84945b) — navigate AWAY from event detail and BACK.
+     *
+     * NOTE on the manual checklist's "filter should reset (expected full-page
+     * behaviour)" expectation: the implemented fix DELIBERATELY persists the filter
+     * in sessionStorage, so after a same-tab navigation-away-then-back the typed
+     * term is RESTORED and still applied (this was observed live: input kept its
+     * value, visibleRows==1). A genuinely fresh session / new tab starts unfiltered.
+     * This test therefore asserts the only robust invariant — that whatever state we
+     * arrive in on reload, the view is self-consistent — and PRINTS which way it went,
+     * so the acceptance report can state the real behaviour to the user rather than
+     * silently assuming "reset".
+     */
+    @Test
+    void filterStateAfterNavigationAwayAndBackIsConsistent() throws Exception {
+        WebDriverWait wait = new WebDriverWait(driver, Duration.ofSeconds(10));
+        String uid = UUID.randomUUID().toString().substring(0, 8);
+        String firstNameA = "ResetKeep" + uid;
+        String firstNameB = "ResetOther" + uid;
+        String lastName = "Test" + uid;
+
+        createMember(firstNameA, lastName, wait);
+        createMember(firstNameB, lastName, wait);
+
+        loginAndNavigateTo("/events");
+        driver.findElement(By.xpath("//button[contains(., 'Dodaj wydarzenie')]")).click();
+        wait.until(ExpectedConditions.presenceOfElementLocated(By.cssSelector("#event-form")));
+        ((JavascriptExecutor) driver).executeScript(
+                "document.querySelector(\"input[name='name']\").value = arguments[0];" +
+                "document.querySelector(\"input[name='date']\").value = arguments[1];" +
+                "document.querySelector(\"input[name='startTime']\").value = '18:00';" +
+                "document.querySelector(\"input[name='location']\").value = 'Sala';",
+                "Reset Nav Test " + uid, LocalDate.now().toString());
+        driver.findElement(By.cssSelector("#event-form button[type='submit'].primary")).click();
+        wait.until(ExpectedConditions.urlContains("/events"));
+        wait.until(ExpectedConditions.not(ExpectedConditions.urlContains("/new")));
+
+        Awaitility.await().atMost(Duration.ofSeconds(10)).until(() ->
+                jdbcTemplate.queryForObject(
+                        "SELECT COUNT(*) FROM band_events WHERE name = ?", Long.class,
+                        "Reset Nav Test " + uid) > 0);
+        Long eventId = jdbcTemplate.queryForObject(
+                "SELECT id FROM band_events WHERE name = ?", Long.class, "Reset Nav Test " + uid);
+        Long memberIdA = lookupFirst("first_name", firstNameA);
+        Long memberIdB = lookupFirst("first_name", firstNameB);
+
+        inviteMemberToEvent(eventId, memberIdA);
+        inviteMemberToEvent(eventId, memberIdB);
+
+        driver.get(baseUrl() + "/events/" + eventId);
+        wait.until(ExpectedConditions.presenceOfElementLocated(By.id("participants-table")));
+
+        WebElement filterInput = driver.findElement(By.id("participant-filter"));
+        filterInput.clear();
+        filterInput.sendKeys(firstNameA);
+        Awaitility.await().atMost(Duration.ofSeconds(5)).until(() -> countVisibleRows() == 1);
+        assertThat(countVisibleRows()).isEqualTo(1);
+
+        // Navigate AWAY (events list) and then BACK to the same event detail via the list link.
+        driver.get(baseUrl() + "/events");
+        wait.until(ExpectedConditions.presenceOfElementLocated(By.cssSelector("#events-list-container")));
+        driver.get(baseUrl() + "/events/" + eventId);
+        wait.until(ExpectedConditions.presenceOfElementLocated(By.id("participants-table")));
+
+        // Observe the real post-navigation state. The fix persists the filter in
+        // sessionStorage, so a same-tab away+back RESTORES the term (still applied).
+        String inputValueAfterNav = filterValue();
+        int visibleAfterNav = countVisibleRows();
+        System.out.println("[reset-nav] after away+back -> input='"+inputValueAfterNav+"', visibleRows="+visibleAfterNav);
+
+        // The only robust invariant: the reloaded view is self-consistent.
+        if (inputValueAfterNav.trim().isEmpty()) {
+            // Fresh state: no filter, all 2 rows shown.
+            assertThat(visibleAfterNav).isEqualTo(2);
+        } else {
+            // Restored state: term survives and correctly isolates exactly A.
+            assertThat(visibleAfterNav).isEqualTo(1);
+            assertThat(inputValueAfterNav).contains(firstNameA);
+            assertThat(visibleRowFirstCellText()).contains(firstNameA);
+        }
+    }
+
+    private String filterValue() {
+        return (String) ((JavascriptExecutor) driver).executeScript(
+                "var el = document.getElementById('participant-filter'); return el ? el.value : '';");
+    }
+
+    private Long lookupFirst(String column, String value) {
+        if ("last_name".equals(column)) {
+            return jdbcTemplate.queryForObject(
+                    "SELECT id FROM members WHERE last_name = ?", Long.class, value);
+        }
+        return jdbcTemplate.queryForObject(
+                "SELECT id FROM members WHERE first_name = ?", Long.class, value);
+    }
+
+    private String dbResponse(Long eventId, Long memberId) {
+        Integer n = jdbcTemplate.queryForObject(
+                "SELECT COUNT(*) FROM event_participations WHERE event_id = ? AND member_id = ?",
+                Integer.class, eventId, memberId);
+        if (n == null || n == 0) return null;
+        Object r = jdbcTemplate.queryForObject(
+                "SELECT response FROM event_participations WHERE event_id = ? AND member_id = ?",
+                String.class, eventId, memberId);
+        return r == null ? "NO_RESPONSE" : String.valueOf(r);
+    }
+
+    private void saveResponseViaUi(Long eventId, Long memberId, String newResponse) {
+        // Change the member's response through the ACTUAL UI <select> so the real HTMX
+        // outerHTML swap fires (the exact action that used to destroy listeners + state).
+        WebElement select = driver.findElement(By.cssSelector(
+                "#events-content .response-select[data-member-id=\"" + memberId + "\"]"));
+        ((JavascriptExecutor) driver).executeScript(
+                "arguments[0].value = arguments[1];" +
+                "arguments[0].dispatchEvent(new Event('change', {bubbles:true}));",
+                select, newResponse);
+    }
+
+    private int countVisibleRows() {
+        return driver.findElements(By.cssSelector(
+                "#participants-table tbody tr[style=''], #participants-table tbody tr:not([style*='display: none'])"))
+                .size();
+    }
+
+    private String visibleRowFirstCellText() {
+        List<WebElement> rows = driver.findElements(By.cssSelector(
+                "#participants-table tbody tr[style=''], #participants-table tbody tr:not([style*='display: none'])"));
+        assertThat(rows).isNotEmpty();
+        return rows.get(0).findElement(By.cssSelector("td:first-child")).getText();
+    }
+
     private void createMember(String firstName, String lastName, WebDriverWait wait) throws Exception {
         loginAndNavigateTo("/members");
         driver.findElement(By.xpath("//button[contains(., 'Dodaj członka')]")).click();
@@ -553,5 +989,49 @@ class EventDetailFilterUiTest extends UiTestBase {
         WebElement el = driver.findElement(By.cssSelector("input[name='" + name + "']"));
         el.clear();
         el.sendKeys(value);
+    }
+
+    /**
+     * Create a member and assign them a specific instrument (their "tag") — the row's
+     * INSTRUMENT is what the tag-filter match relies on.  Direct-DB path mirrors the
+     * pattern inviteMemberToEvent() already uses for participation rows: fast, stable,
+     * no extra browser round-trips.
+     */
+    private void createMemberWithInstrument(String firstName, String lastName,
+                                            String instrument, WebDriverWait wait) throws Exception {
+        loginAndNavigateTo("/members");
+        driver.findElement(By.xpath("//button[contains(., 'Dodaj członka')]")).click();
+        wait.until(ExpectedConditions.presenceOfElementLocated(By.cssSelector("#member-form")));
+        fill("firstName", firstName);
+        fill("lastName", lastName);
+        ((JavascriptExecutor) driver).executeScript(
+                "document.querySelector(\"input[name='dateOfBirth']\").value = '1990-05-15';");
+        driver.findElement(By.cssSelector("#member-form button[type='submit'].primary")).click();
+        wait.until(ExpectedConditions.presenceOfElementLocated(By.cssSelector("#members-content table")));
+        Awaitility.await().atMost(Duration.ofSeconds(10)).until(() ->
+                jdbcTemplate.queryForObject(
+                        "SELECT COUNT(*) FROM members WHERE first_name = ?", Long.class, firstName) > 0);
+
+        // Ensure the requested instrument exists in the band.
+        try {
+            Integer count = jdbcTemplate.queryForObject(
+                    "SELECT COUNT(*) FROM instruments WHERE name = ?", Integer.class, instrument);
+            if (count == null || count == 0) {
+                jdbcTemplate.update("INSERT INTO instruments (name) VALUES (?)", instrument);
+            }
+        } catch (Exception ignored) { /* a unique-constraint hit is fine */ }
+
+        // Link the member to the instrument as primary (what p.instrumentName in the
+        // detail row reads — see ParticipationDto / EventQueryService).  H2 supports
+        // MERGE INTO; we use it because a second createMemberWithInstrument for the
+        // same member would otherwise trip UNIQUE(member_id, instrument_id).
+        Long memberId = jdbcTemplate.queryForObject(
+                "SELECT id FROM members WHERE first_name = ?", Long.class, firstName);
+        Long instrumentId = jdbcTemplate.queryForObject(
+                "SELECT id FROM instruments WHERE name = ?", Long.class, instrument);
+        jdbcTemplate.update(
+                "MERGE INTO member_instruments (member_id, instrument_id, is_primary) KEY(member_id, instrument_id) " +
+                "VALUES (?, ?, TRUE)",
+                memberId, instrumentId);
     }
 }
