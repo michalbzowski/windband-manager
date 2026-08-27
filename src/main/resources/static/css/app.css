@@ -593,6 +593,69 @@ html, body {
     }
 }
 
+/* QA-STATUS FIX 2026-08-27 — quick-attendance buttons on the rehearsal detail page.
+   The template gives each button `.qa-status` and (for two of them) Pico's `.primary` /
+   `.secondary` classes. In light theme the Pico classes alone were not providing a
+   visible background + text combination — the user reported "white letters, invisible"
+   on a white card background. Give .qa-status its own solid, theme-aware color so it is
+   visible in BOTH themes:
+     * light → blue background with white text (matches the .ph-primary-action pattern)
+     * dark  → slightly lighter blue with near-white text */
+.qa-status {
+    margin: 0.25rem 0;
+    padding: 0.45rem 0.85rem;
+    border: 0;
+    border-radius: 8px;
+    font-family: inherit;
+    font-size: 0.9rem;
+    font-weight: 600;
+    cursor: pointer;
+    background: var(--pico-primary);
+    color: #fff;
+    transition: background-color 120ms ease, color 120ms ease, opacity 120ms ease;
+}
+.qa-status:hover,
+.qa-status:focus-visible {
+    background: var(--pico-primary-hover, var(--pico-primary));
+    outline: none;
+}
+.qa-status[disabled] {
+    opacity: 0.55;
+    cursor: not-allowed;
+}
+/* The two status buttons that lack Pico's .primary/.secondary still need to look
+   active — .qa-status alone must be enough, so the base colour above covers them.
+   For .secondary (gray) override the background to a neutral so it reads as "No response". */
+.qa-status.secondary {
+    background: var(--pico-secondary-color, #868e96);
+    color: #fff;
+}
+.qa-status.secondary:hover,
+.qa-status.secondary:focus-visible {
+    background: var(--pico-secondary-hover, #6c757d);
+}
+/* On dark theme: lighten the blue so it doesn't clash with the dark card bg. */
+[data-theme="dark"] .qa-status,
+[data-theme="dark"] .qa-status.secondary {
+    color: #fff;
+}
+
+/* Modal TITLE (h3 "Szybka obecność") and MEMBER NAME — these must be readable on the
+   card background in BOTH themes. Pico should handle this via --pico-color, but we saw
+   white-on-white reports in light mode; pin them explicitly. */
+.app-modal-header-text h3 {
+    color: var(--pico-color);
+}
+[data-theme="dark"] .app-modal-header-text h3 {
+    color: #e6e6e6;
+}
+#qa-member-name {
+    color: var(--pico-color);
+}
+[data-theme="dark"] #qa-member-name {
+    color: #e6e6e6;
+}
+
 .app-modal-body {
     flex: 1;
     overflow-y: auto;

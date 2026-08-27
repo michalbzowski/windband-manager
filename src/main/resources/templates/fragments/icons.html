@@ -59,9 +59,15 @@
     <svg viewBox="0 0 24 24" width="22" height="22"
          fill="none" stroke="currentColor" stroke-width="1.8"
          stroke-linecap="round" aria-hidden="true">
-        <circle cx="12" cy="5"  r="1.6"/>
-        <circle cx="12" cy="12" r="1.6"/>
-        <circle cx="12" cy="19" r="1.6"/>
+        <!-- DOTS FIX 2026-08-27: explicit fill="currentColor" per circle so the dots
+             are SOLID (not just outlined rings) in both themes. Before this fix the
+             parent svg's fill="none" cascade + <button> cascade left the circles as thin
+             transparent rings, visually indistinguishable from the button background in
+             the light theme — invisible to the user. Solid dots keep the same currentColor
+             in BOTH themes (light: dark dots on white; dark: light dots on dark bg). -->
+        <circle cx="12" cy="5"  r="1.6" fill="currentColor"/>
+        <circle cx="12" cy="12" r="1.6" fill="currentColor"/>
+        <circle cx="12" cy="19" r="1.6" fill="currentColor"/>
     </svg>
 </th:block>
 

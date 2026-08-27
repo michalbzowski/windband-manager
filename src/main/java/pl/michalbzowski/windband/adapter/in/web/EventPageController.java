@@ -156,6 +156,12 @@ public class EventPageController {
                                 jakarta.servlet.http.HttpServletRequest request) {
 
         model.addAttribute("event", eventQueryService.getEventDetailById(id, activeTeamId));
+        // BACK-URL FIX 2026-08-27: the back arrow on the edit page must return to
+        // the event DETAIL (/events/{id}) — not to the list. Pre-resolved here in
+        // Java (not in the Thymeleaf fragment) because a fragment's th:href sees
+        // only variables from its OWN scope, so @{/events/{eventId}} would render
+        // as the literal "/events/{eventId}" string.
+        model.addAttribute("editBackUrl", "/events/" + id);
 
         if ("true".equals(request.getHeader("HX-Request"))) {
             return "events/edit :: #events-list-container";
