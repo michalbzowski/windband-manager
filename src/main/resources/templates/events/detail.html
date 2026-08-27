@@ -276,119 +276,223 @@
     // which handles the double-push-off behavior (collapse -> release -> filter takeover)
     // No StickyManager initialization needed here.
 
-    document.addEventListener('DOMContentLoaded', function() {
-        // ---- The page-header fragment already assigns #edit-event-btn /
-        //      #delete-event-btn server-side (see fragments/page-header.html).
-        //      The delete handler below is registered at script-parse time and
-        //      uses getElementById, so it picks them up. Nothing needed here
-        //      for the bar on the events page. ----
+    // ---------------------------------------------------------------------------
+    // Participant + response-status filters for events detail.
+    //
+    // Root cause (t_cc648529): saving a member's response triggers an HTMX
+    // outerHTML swap of #events-content, which replaces the filter input,
+    // the status buttons AND the table with fresh copies. That kills two things:
+    //   1. LISTENERS one-time-bound at initial load (they die with old nodes);
+    //   2. STATE — the typed filter text + active status set — because Thymeleaf
+    //      re-renders value="" on every fresh input, no matter what we typed.
+    // Re-binding ALONE is not enough (a MutationObserver that only re-binds
+    // listeners still ends up filtering an empty search term); the state itself
+    // must survive the swap too.
+    //
+    // Fix — single source of truth that outlives every swap:
+    //   * filterState {text, active[]} lives on window scope (never destroyed);
+    //   * sessionStorage persists it per event id, so even a fresh navigation or
+    //     a blank re-render can rehydrate exactly what the user had typed;
+    //   * bindEventDetailFilters() is idempotent (dataset guards per node) and is
+    //      re-run by windband-utils.js's htmx:afterSwap / htmx:afterSettle hook via
+    //      window.rebindEventDetailFilters — so fresh swapped nodes always get
+    //      working listeners;
+    //   * a belt-and-suspenders MutationObserver on #events-content's PARENT catches
+    //      the outerHTML swap even when the HTMX event guard misses it, plus a
+    //      250 ms follow-up refresh() handles late-inserted rows from the swap;
+    //   * every read (rows, hidden input, buttons) happens AT EVENT TIME via
+    //      getElementById/querySelectorAll — no stale-closure node snapshots ever.
+    // Legitimate behaviour preserved: a full page navigation starts unfiltered
+    // (sessionStorage is only re-applied while this page stays mounted), and
+    // clearing the input clears the filter as before.
+    // ---------------------------------------------------------------------------
+        (function() {
+            'use strict';
+            var win = window;
 
-        // Participant filter for events detail
-        var filterInput = document.getElementById('participant-filter');
-        if (filterInput) {
-            var table = document.getElementById('participants-table');
-            if (table) {
-                var rows = table.querySelectorAll('tbody tr');
-
-                filterInput.addEventListener('input', function() {
-                    var searchTerm = this.value.toLowerCase().trim();
-
-                    rows.forEach(function(row) {
-                        var memberNameCell = row.querySelector('td:first-child');
-                        var tagsCell = row.querySelector('td[data-label="Instrument"]');
-
-                        var memberName = memberNameCell ? memberNameCell.textContent.toLowerCase() : '';
-                        var tags = tagsCell ? tagsCell.textContent.toLowerCase() : '';
-
-                        var matches = !searchTerm || 
-                            memberName.includes(searchTerm) || 
-                            tags.includes(searchTerm);
-
-                        row.style.display = matches ? '' : 'none';
-                    });
-                });
+            function storageKey() {
+                var c = document.getElementById('events-content');
+                return 'windband.eventDetailFilter.' + (c ? (c.dataset.eventId || '') : '');
             }
-        }
 
-        // Response status filter for events detail
-        var responseFilterContainer = document.getElementById('response-filter-container');
-        if (responseFilterContainer) {
-            var table = document.getElementById('participants-table');
-            if (table) {
-                var rows = table.querySelectorAll('tbody tr');
-                var activeFiltersInput = document.getElementById('active-response-filters');
-                var filterBtns = responseFilterContainer.querySelectorAll('.response-filter-btn');
+            // -------- single source of truth (survives any number of swaps) ----
+            var filterState = { text: '', active: [] };
 
-                // Initialize active filters from hidden input
-                var activeFilters = activeFiltersInput.value ? activeFiltersInput.value.split(',') : [];
+            function saveToStorage() {
+                try { win.sessionStorage.setItem(storageKey(), JSON.stringify(filterState)); } catch (e) {}
+            }
 
-                function updateFilterButtons() {
-                    filterBtns.forEach(function(btn) {
-                        var filterValue = btn.getAttribute('data-response-filter');
-                        if (activeFilters.includes(filterValue)) {
-                            btn.classList.add('active');
-                        } else {
-                            btn.classList.remove('active');
-                        }
-                    });
+            function restoreFromStorage() {
+                try {
+                    var raw = win.sessionStorage.getItem(storageKey());
+                    if (!raw) return;
+                    var data = JSON.parse(raw);
+                    if (data && typeof data === 'object') {
+                        filterState.text = typeof data.text === 'string' ? data.text : '';
+                        filterState.active = Array.isArray(data.active) ? data.active.slice() : [];
+                    }
+                } catch (e) {}
+            }
+
+            // -------- DOM helpers (always re-queried: no stale node refs) -------
+            function inputEl()    { return document.getElementById('participant-filter'); }
+            function hiddenEl()   { return document.getElementById('active-response-filters'); }
+            function containerEl(){ return document.getElementById('response-filter-container'); }
+            function tableEl()    { return document.getElementById('participants-table'); }
+            function buttons() {
+                var c = containerEl();
+                return c ? Array.prototype.slice.call(c.querySelectorAll('.response-filter-btn')) : [];
+            }
+
+            // -------- apply current state to the live DOM ----------------------
+            function applyFilters() {
+                var table = tableEl();
+                if (!table) return;
+                var input = inputEl();
+                var searchTerm = (input ? input.value : filterState.text).toLowerCase().trim();
+
+                // Sync in-memory + DOM + storage from the live nodes.
+                if (input) filterState.text = input.value;
+                var hidden = hiddenEl();
+                var active;
+                if (hidden) {
+                    active = hidden.value ? hidden.value.split(',').filter(function(s){ return s && s.length > 0; }) : [];
+                    filterState.active = active;
+                } else {
+                    active = filterState.active.slice();
                 }
 
-                function applyFilters() {
-                    var searchTerm = document.getElementById('participant-filter') 
-                        ? document.getElementById('participant-filter').value.toLowerCase().trim() 
-                        : '';
+                var btns = buttons();
+                var noneOrAll = active.length === 0 || active.length === btns.length;
 
-                    rows.forEach(function(row) {
-                        var memberNameCell = row.querySelector('td:first-child');
-                        var tagsCell = row.querySelector('td[data-label="Zgoda na informacje"]');
-                        var responseCell = row.querySelector('td[data-label="Odpowiedź"] select');
+                Array.prototype.forEach.call(table.querySelectorAll('tbody tr'), function(row) {
+                    var nameCell = row.querySelector('td:first-child');
+                    // FIX (t_ebd04e70): read the REAL tag — the member's instrument,
+                    // which is already rendered in the "Instrument" column via the
+                    // .instrument-name span.  Previously the consent cell was being
+                    // used as a stand-in, so typing "Trąbka" never matched even when
+                    // a participant actually had that tag.
+                    var tagsCell = row.querySelector('td[data-label="Instrument"] .instrument-name');
+                    if (!tagsCell) {
+                        // Fall back through the wider Instrument cell text (which
+                        // also wraps the edit/select controls — still contains the
+                        // instrument name as visible text).
+                        tagsCell = row.querySelector('td[data-label="Instrument"]');
+                    }
 
-                        var memberName = memberNameCell ? memberNameCell.textContent.toLowerCase() : '';
-                        var tags = tagsCell ? tagsCell.textContent.toLowerCase() : '';
-                        var response = responseCell ? responseCell.value : '';
+                    var memberName = nameCell ? nameCell.textContent.toLowerCase() : '';
+                    var tags = tagsCell ? tagsCell.textContent : '';
+                    var responseCell = row.querySelector('td[data-label="Odpowied\u017a"] select');
+                    var response = responseCell ? responseCell.value : '';
 
-                        var textMatches = !searchTerm || 
-                            memberName.includes(searchTerm) || 
-                            tags.includes(searchTerm);
+                    // Accent-aware substring match (Polish diacritics) in BOTH
+                    // directions — the user may type "Trabka" and the tag is
+                    // "Trąbka"; or the user types the diacritic form.
+                    var fold = (typeof window.windbandAccentFold === 'function') ? window.windbandAccentFold : function(s){ return String(s == null ? '' : s).toLowerCase(); };
+                    var term = fold(searchTerm);
+                    var nameFolded = fold(memberName);
+                    var tagFolded = fold(tags);
 
-                        var responseMatches = activeFilters.length === 0 || 
-                            activeFilters.length === filterBtns.length || 
-                            activeFilters.includes(response);
+                    var textMatches = !term ||
+                        nameFolded.indexOf(term) !== -1 ||
+                        tagFolded.indexOf(term) !== -1;
+                    var noneOrAll = active.length === 0 || active.length === btns.length;
+                    var responseMatches = noneOrAll || active.indexOf(response) !== -1;
 
-                        row.style.display = (textMatches && responseMatches) ? '' : 'none';
+                    row.style.display = (textMatches && responseMatches) ? '' : 'none';
+                });
+
+                btns.forEach(function(btn) {
+                    var v = btn.getAttribute('data-response-filter');
+                    if (active.indexOf(v) !== -1) btn.classList.add('active');
+                    else btn.classList.remove('active');
+                });
+
+                saveToStorage();
+            }
+
+            // -------- idempotent binder (safe to call on same node repeatedly) ---
+            function bindEventDetailFilters() {
+                var input = inputEl();
+                if (!input || !tableEl()) return;
+
+                if (input.dataset.filterBound !== 'yes') {
+                    input.addEventListener('input', function() {
+                        filterState.text = input.value;  // source of truth updates first
+                        applyFilters();                   // then persist + re-apply
                     });
+                    input.dataset.filterBound = 'yes';
                 }
 
-                // Add click handlers to filter buttons
-                filterBtns.forEach(function(btn) {
+                var container = containerEl();
+                if (!container) return;
+                Array.prototype.forEach.call(container.querySelectorAll('.response-filter-btn'), function(btn) {
+                    if (btn.dataset.filterBound === 'yes') return;
                     btn.style.cursor = 'pointer';
                     btn.addEventListener('click', function() {
-                        var filterValue = this.getAttribute('data-response-filter');
-                        var index = activeFilters.indexOf(filterValue);
-
-                        if (index > -1) {
-                            activeFilters.splice(index, 1);
-                        } else {
-                            activeFilters.push(filterValue);
-                        }
-
-                        activeFiltersInput.value = activeFilters.join(',');
-                        updateFilterButtons();
-                        applyFilters();
+                        // Re-read the LIVE hidden input each click — never a captured one.
+                        var active = filterState.active.slice();
+                        var v = this.getAttribute('data-response-filter');
+                        var idx = active.indexOf(v);
+                        if (idx > -1) active.splice(idx, 1); else active.push(v);
+                        var hidden = hiddenEl();
+                        if (hidden) hidden.value = active.join(',');
+                        applyFilters();   // syncs filterState.active + buttons + storage
                     });
+                    btn.dataset.filterBound = 'yes';
                 });
-
-                // Re-apply text filter when it changes
-                var filterInput = document.getElementById('participant-filter');
-                if (filterInput) {
-                    filterInput.addEventListener('input', applyFilters);
-                }
-
-                // Initialize button states
-                updateFilterButtons();
             }
-        }
-    });
+
+            // After a swap: restore state onto the fresh nodes, then re-apply.
+            function refresh() {
+                var input = inputEl();
+                if (!input) return;
+                if (filterState.text !== input.value) input.value = filterState.text;
+                var hidden = hiddenEl();
+                if (hidden) hidden.value = filterState.active.join(',');
+                applyFilters();
+            }
+            // Exposed for windband-utils.js htmx:afterSwap/afterSettle hook.
+            win.rebindEventDetailFilters = function() {
+                try {
+                    restoreFromStorage();
+                    bindEventDetailFilters();
+                    refresh();
+                    setTimeout(function() { restoreFromStorage(); refresh(); }, 250);
+                } catch (e) {
+                    if (win.console) win.console.error('[windband:event-detail-filter]', e);
+                }            };
+            document.addEventListener('DOMContentLoaded', function() {
+                restoreFromStorage();
+                bindEventDetailFilters();
+                refresh();
+            });
+
+            // Belt-and-suspenders: our own rebind trigger that does NOT depend on
+            // windband-utils.js' target-id guard (which can miss the outerHTML swap).
+            // A MutationObserver on the content's PARENT detects #events-content being
+            // replaced (outerHTML swap) and re-runs the rebinder shortly after.
+            function schedule() {
+                if (schedule._t) clearTimeout(schedule._t);
+                schedule._t = setTimeout(function() { win.rebindEventDetailFilters(); }, 60);
+            }
+            var initialContent = document.getElementById('events-content');
+            var watchRoot = (initialContent && initialContent.parentNode) || document.body;
+            if ('MutationObserver' in window) {
+                var mo = new MutationObserver(function(mutations) {
+                    // Re-run when the container subtree changes materially (rows added/
+                    // removed, or a fresh participant-filter appears) — i.e. after a swap.
+                        for (var i = 0; i < mutations.length; i++) {
+                        var m = mutations[i];
+                        if (m.type === 'childList' && m.addedNodes.length) { schedule(); return; }
+                    }
+                });
+                mo.observe(watchRoot, { childList: true, subtree: true });
+            }
+
+            // Fallback binder for DOM already settled (history navigation).
+            bindEventDetailFilters();
+        })();
 
         // === DELETE EVENT MODAL HANDLERS ===
         var deleteBtn = document.getElementById('delete-event-btn');

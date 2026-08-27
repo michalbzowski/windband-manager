@@ -256,102 +256,146 @@
             }
         }
 
-        // Attendance filter for rehearsals detail
-        var filterInput = document.getElementById('attendance-filter');
-        if (filterInput) {
-            var table = document.querySelector('table[role="grid"]');
-            if (table) {
-                var rows = table.querySelectorAll('tbody tr');
+        // --- Attendance filter for rehearsals detail ---
+        // Refactored as an IDEMPOTENT binder (guard on data-attr) so it can be
+        // safely re-invoked every time #rehearsals-content is swapped by HTMX:
+        //   - after a swap the input is a fresh node → guard empty → gets bound;
+        //   - same node re-invoked → guard set → no-op (no double-listener).
+        function bindRehearsalTextFilter() {
+            var filterInput = document.getElementById('attendance-filter');
+            if (!filterInput || filterInput.dataset.textBound === 'yes') return;
 
-                filterInput.addEventListener('input', function() {
-                    var searchTerm = this.value.toLowerCase().trim();
+            filterInput.addEventListener('input', function() {
+                var tInput = document.getElementById('attendance-filter');
+                var searchTerm = (tInput ? tInput.value : this.value).toLowerCase().trim();
+                // Re-query table each call so swapped rows are included.
+                var table = document.querySelector('#rehearsals-content table[role="grid"], table[role="grid"]');
+                if (!table) return;
 
-                    rows.forEach(function(row) {
-                        var memberNameCell = row.querySelector('td:first-child');
-                        var memberName = memberNameCell ? memberNameCell.textContent.toLowerCase() : '';
+                // Shared accent-aware fold (installed by windband-utils.js).
+                var fold = (typeof window.windbandAccentFold === 'function')
+                    ? window.windbandAccentFold
+                    : function(s) { return String(s == null ? '' : s).toLowerCase(); };
+                var term = fold(searchTerm);
 
-                        var matches = !searchTerm || memberName.includes(searchTerm);
+                table.querySelectorAll('tbody tr').forEach(function(row) {
+                    var nameCell = row.querySelector('td:first-child');
+                    // FIX (t_ebd04e70): tag match against the Instrument column —
+                    // this template renders ${m.primaryInstrument} directly in the
+                    // second <td> of each row with no class to target.
+                    var tagCell = row.querySelectorAll('td')[1];
+                    var memberName = nameCell ? nameCell.textContent.toLowerCase() : '';
+                    var tagText = tagCell ? tagCell.textContent : '';
 
-                        row.style.display = matches ? '' : 'none';
-                    });
+                    // Honor any active status filter if one is set.
+                    var statusFilterInput = document.getElementById('active-attendance-response-filters');
+                    var active = (statusFilterInput && statusFilterInput.value)
+                        ? statusFilterInput.value.split(',').filter(Boolean)
+                        : null;
+                    var statusCell = row.querySelector('select.status-select');
+                    var status = statusCell ? statusCell.value : '';
+                    var noneOrAll = function() { return active.length === 0 || active.length === 4; };
+                    var responseMatches = (!active) || noneOrAll() || active.indexOf(status) !== -1;
+
+                    // Accent-aware: "trabka" matches a row tagged "Trąbka", and
+                    // name matching keeps working with or without diacritics.
+                    var nameFolded = fold(memberName);
+                    var tagFolded = fold(tagText);
+                    var textMatches = !term || nameFolded.indexOf(term) !== -1 || tagFolded.indexOf(term) !== -1;
+
+                    row.style.display = (textMatches && responseMatches) ? '' : 'none';
                 });
-            }
+            });
+            filterInput.dataset.textBound = 'yes';
         }
 
-        // Attendance response status filter for rehearsals detail
-        var responseFilterContainer = document.getElementById('attendance-response-filter-container');
-        if (responseFilterContainer) {
-            var table = document.querySelector('table[role="grid"]');
-            if (table) {
-                var rows = table.querySelectorAll('tbody tr');
-                var activeFiltersInput = document.getElementById('active-attendance-response-filters');
-                var filterBtns = responseFilterContainer.querySelectorAll('.response-filter-btn');
+        function bindRehearsalStatusFilter() {
+            var container = document.getElementById('attendance-response-filter-container');
+            if (!container || container.dataset.statusBound === 'yes') return;
 
-                // Initialize active filters from hidden input
-                var activeFilters = activeFiltersInput.value ? activeFiltersInput.value.split(',') : [];
-
-                function updateFilterButtons() {
-                    filterBtns.forEach(function(btn) {
-                        var filterValue = btn.getAttribute('data-response-filter');
-                        if (activeFilters.includes(filterValue)) {
-                            btn.classList.add('active');
-                        } else {
-                            btn.classList.remove('active');
-                        }
-                    });
-                }
-
-                function applyFilters() {
-                    var searchTerm = document.getElementById('attendance-filter') 
-                        ? document.getElementById('attendance-filter').value.toLowerCase().trim() 
-                        : '';
-
-                    rows.forEach(function(row) {
-                        var memberNameCell = row.querySelector('td:first-child');
-                        var statusSelect = row.querySelector('select.status-select');
-
-                        var memberName = memberNameCell ? memberNameCell.textContent.toLowerCase() : '';
-                        var status = statusSelect ? statusSelect.value : '';
-
-                        var textMatches = !searchTerm || memberName.includes(searchTerm);
-
-                        var responseMatches = activeFilters.length === 0 || 
-                            activeFilters.length === filterBtns.length || 
-                            activeFilters.includes(status);
-
-                        row.style.display = (textMatches && responseMatches) ? '' : 'none';
-                    });
-                }
-
-                // Add click handlers to filter buttons
-                filterBtns.forEach(function(btn) {
-                    btn.style.cursor = 'pointer';
-                    btn.addEventListener('click', function() {
-                        var filterValue = this.getAttribute('data-response-filter');
-                        var index = activeFilters.indexOf(filterValue);
-
-                        if (index > -1) {
-                            activeFilters.splice(index, 1);
-                        } else {
-                            activeFilters.push(filterValue);
-                        }
-
-                        activeFiltersInput.value = activeFilters.join(',');
-                        updateFilterButtons();
-                        applyFilters();
-                    });
-                });
-
-                // Re-apply text filter when it changes
-                var filterInput = document.getElementById('attendance-filter');
-                if (filterInput) {
-                    filterInput.addEventListener('input', applyFilters);
-                }
-
-                // Initialize button states
-                updateFilterButtons();
+            // Lazy-query the hidden input + table on each event (survives swaps).
+            function getTable() {
+                return document.querySelector('#rehearsals-content table[role="grid"], table[role="grid"]');
             }
+            function readActive() {
+                var inp = document.getElementById('active-attendance-response-filters');
+                return (inp && inp.value) ? inp.value.split(',').filter(Boolean) : [];
+            }
+            function updateBtnStates() {
+                var active = readActive();
+                container.querySelectorAll('.response-filter-btn').forEach(function(btn) {
+                    var v = btn.getAttribute('data-response-filter');
+                    if (active.indexOf(v) !== -1) { btn.classList.add('active'); }
+                    else { btn.classList.remove('active'); }
+                });
+            }
+            function applyFilters() {
+                var table = getTable();
+                if (!table) return;
+                var tInput = document.getElementById('attendance-filter');
+                var searchTerm = (tInput ? tInput.value : '').toLowerCase().trim();
+                var active = readActive();
+                var btns = container.querySelectorAll('.response-filter-btn');
+
+                // Shared accent-aware fold (installed by windband-utils.js).
+                var fold = (typeof window.windbandAccentFold === 'function')
+                    ? window.windbandAccentFold
+                    : function(s) { return String(s == null ? '' : s).toLowerCase(); };
+                var term = fold(searchTerm);
+
+                table.querySelectorAll('tbody tr').forEach(function(row) {
+                    var nameCell = row.querySelector('td:first-child');
+                    // FIX (t_ebd04e70): tag match against the Instrument column —
+                    var tagCell = row.querySelectorAll('td')[1];
+                    var statusCell = row.querySelector('select.status-select');
+                    var memberName = nameCell ? nameCell.textContent.toLowerCase() : '';
+                    var tagText = tagCell ? tagCell.textContent.toLowerCase() : '';
+                    var status = statusCell ? statusCell.value : '';
+
+                    // Accent-aware predicate: name OR instrument/tag.
+                    var nameFolded = fold(memberName);
+                    var tagFolded = fold(tagText);
+                    var textMatches = !term || nameFolded.indexOf(term) !== -1 || tagFolded.indexOf(term) !== -1;
+                    var noneOrAll = active.length === 0 || active.length === btns.length;
+                    var responseMatches = noneOrAll || active.indexOf(status) !== -1;
+
+                    row.style.display = (textMatches && responseMatches) ? '' : 'none';
+                });
+            }
+
+            // Each swapped-in button is a fresh node; bind exactly once per copy.
+            container.querySelectorAll('.response-filter-btn').forEach(function(btn) {
+                btn.style.cursor = 'pointer';
+                if (btn.dataset.clickBound === 'yes') return;
+                btn.addEventListener('click', function() {
+                    var inp = document.getElementById('active-attendance-response-filters');
+                    if (!inp) return;
+                    var v = this.getAttribute('data-response-filter');
+                    var active = inp.value ? inp.value.split(',').filter(Boolean) : [];
+                    var idx = active.indexOf(v);
+                    if (idx > -1) { active.splice(idx, 1); } else { active.push(v); }
+                    inp.value = active.join(',');
+                    updateBtnStates();
+                    applyFilters();
+                });
+                btn.dataset.clickBound = 'yes';
+            });
+
+            updateBtnStates();
+            container.dataset.statusBound = 'yes';
         }
+
+        // Bind both on initial page-load.
+        bindRehearsalTextFilter();
+        bindRehearsalStatusFilter();
+
+        // Expose so windband-utils.js's global afterSwap/afterSettle hook can
+        // re-invoke these after every fragment swap of #rehearsals-content — the
+        // dataset guards above keep repeated calls a no-op.
+        window.rebindRehearsalDetailFilters = function() {
+            bindRehearsalTextFilter();
+            bindRehearsalStatusFilter();
+        };
     });
 
     // === Quick attendance modal (existing) ===

@@ -19,6 +19,7 @@ import org.springframework.test.context.ActiveProfiles;
 import java.io.BufferedReader;
 import java.io.InputStreamReader;
 import java.time.Duration;
+import java.time.LocalDate;
 
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 @ActiveProfiles("test")
@@ -412,6 +413,28 @@ public abstract class UiTestBase {
                 "if (csrf) xhr.setRequestHeader('X-XSRF-TOKEN', csrf.split('=')[1]);" +
                 "xhr.send(JSON.stringify({rehearsalId: arguments[0], memberId: arguments[1]}));" +
                 "return xhr.status;", rehearsalId, memberId);
+    }
+
+    /**
+     * Helper: create a future-dated rehearsal via API (synchronous XHR) and
+     * return its generated id. Used by UI tests that need a deterministic,
+     * unique rehearsal instance without driving the whole form flow.
+     */
+    protected Long createRehearsalViaApi(String nameHint, LocalDate date) {
+        org.openqa.selenium.JavascriptExecutor js = (org.openqa.selenium.JavascriptExecutor) driver;
+        Object idObj = js.executeScript(
+                "var xhr = new XMLHttpRequest();" +
+                "xhr.open('POST', '/api/rehearsals', false);" +
+                "xhr.setRequestHeader('Content-Type', 'application/json');" +
+                "var csrf = document.cookie.split('; ').find(function (c) { return c.startsWith('XSRF-TOKEN='); });" +
+                "if (csrf) xhr.setRequestHeader('X-XSRF-TOKEN', csrf.split('=')[1]);" +
+                "xhr.send(JSON.stringify({date: arguments[0], startTime: '18:00', endTime: '20:00', location: arguments[1]}));" +
+                "var parsed = JSON.parse(xhr.responseText); return parsed && parsed.id !== undefined ? String(parsed.id) : null;",
+                date.toString(), nameHint == null ? "" : nameHint);
+        if (idObj == null) return null;
+        // Selenium returns a Long (for JSON number ids) or a String — normalise.
+        String id = (idObj instanceof Number n) ? String.valueOf(n) : String.valueOf(idObj);
+        return id.isEmpty() ? null : Long.valueOf(id);
     }
 
     /**

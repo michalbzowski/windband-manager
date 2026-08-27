@@ -176,10 +176,50 @@
      * htmx:afterSwap so handlers survive HTMX navigation to event details
      * and the in-page reloads the detail page triggers after each action.
      */
-function bindEventDetailHandlers() {
-    // Initialize from DOM attributes (works after HTMX swap)
-    var container = document.querySelector('#events-content[data-event-id]');
-    if (!container) return;
+    /**
+     * Refresh the derived state (select values + counts) on the event-detail
+     * page without re-attaching listeners. Used when bindEventDetailHandlers
+     * is called again on an already-bound node: we don't want to double-bind,
+     * but we DO want the current DOM's select values / confirmed count to be
+     * kept in sync (e.g. after the user changes a response and the page
+     * re-renders the same container).
+     */
+    function refreshEventDetailDerivedState() {
+        // Re-set .instrument-select selected options from data-current-instrument.
+        document.querySelectorAll('.instrument-select').forEach(function(select) {
+            var currentInstrument = select.getAttribute('data-current-instrument');
+            if (currentInstrument) {
+                var option = select.querySelector('option[value="' + currentInstrument + '"]');
+                if (option && document.activeElement !== select) option.selected = true;
+            }
+        });
+        // Re-set .response-select values from data-response.
+        document.querySelectorAll('.response-select').forEach(function(select) {
+            var currentResponse = select.getAttribute('data-response');
+            if (currentResponse && document.activeElement !== select) {
+                select.value = currentResponse;
+            }
+        });
+    }
+
+     function bindEventDetailHandlers() {
+         // Idempotent per-DOM-copy: the guard lives on the container element,
+         // which is REPLACED by an HTMX outerHTML swap (fresh copy → binding
+         // proceeds). A re-invocation on the SAME node (e.g. afterSwap AND
+         // afterSettle both fire) becomes a no-op — no double listeners.
+         var containerEvt = document.querySelector('#events-content[data-event-id]');
+         if (!containerEvt) return;
+         if (containerEvt.dataset.detailBound === 'yes') {
+             // Still refresh the response-select values + confirmed count from
+             // the current DOM so re-applied data is accurate.
+             refreshEventDetailDerivedState();
+             return;
+         }
+         containerEvt.dataset.detailBound = 'yes';
+
+     // Initialize from DOM attributes (works after HTMX swap)
+     var container = document.querySelector('#events-content[data-event-id]');
+     if (!container) return;
 
     // Set selected options for instrument selects based on data-name attribute
     document.querySelectorAll('.instrument-select').forEach(function(select) {
@@ -1166,4 +1206,49 @@ function bindEventDetailHandlers() {
                 if (window.Toast) Toast.error('Błąd zapisu obecności');
             });
         });
-})(window);
+
+        /**
+         * Re-bind detail-page handlers after HTMX fragment swaps.
+         *
+         * After changing a member's response/status, the page reloads just
+         * the content fragment (#events-content or #rehearsals-content) via
+         * htmx.ajax(..., {swap: 'outerHTML'}). That new DOM is a FRESH copy:
+         * any inline per-row listeners on <select class="response-select"> /
+         * <select class="status-select"> are attached to the old (removed)
+         * elements and do NOT carry over. This global afterSwap hook re-runs
+         * the bind*Handlers functions which querySelector the newly swapped
+         * DOM and attach listeners only to FRESH nodes (guarded by
+         * data-binders-attached flags so we never double-bind on the same node).
+         */
+        function scheduleRebindAfterSwap(evt) {
+            if (!evt || !evt.detail || !evt.detail.target) return;
+            var id = evt.detail.target.id || '';
+            if (id === 'rehearsals-content') {
+                setTimeout(function() {
+                    bindRehearsalDetailHandlers();
+                    // Re-run the idempotent inline filter binders on the fresh nodes.
+                    if (window.rebindRehearsalDetailFilters) {
+                        window.rebindRehearsalDetailFilters();
+                    }
+                }, 0);
+            } else if (id === 'events-content') {
+                // Re-bind event detail handlers on the freshly swapped DOM.
+                setTimeout(function() {
+                    bindEventDetailHandlers();
+                    // Also re-bind the inline filter handlers defined in this page.
+                    // They are not exposed globally by windband-utils.js — call
+                    // window-level wrappers we install below if present, else
+                    // let DOMContentLoaded-time binding of the fresh node handle it.
+                    if (window.rebindEventDetailFilters) {
+                        window.rebindEventDetailFilters();
+                    }
+                }, 0);
+            }
+        }
+        // Belt-and-suspenders: re-bind on BOTH afterSwap AND afterSettle so we
+        // catch the swap whichever event fires first. HTMX dispatches both.
+        document.body.addEventListener('htmx:afterSettle', scheduleRebindAfterSwap, true);
+        document.body.addEventListener('htmx:afterSwap', scheduleRebindAfterSwap, true);
+
+    })(window);
+

@@ -18,6 +18,7 @@ import java.util.List;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.junit.Assert.assertNotNull;
 
 /**
  * UI tests for filtering participants on the rehearsal detail page.
@@ -562,6 +563,113 @@ class RehearsalDetailFilterUiTest extends UiTestBase {
         assertThat(statusSelect.getAttribute("value")).isEqualTo("PRESENT");
     }
 
+    /**
+     * Regression: the attendance text filter must survive the in-page HTMX
+     * reload that happens after changing a member's status (Lista obecności).
+     * Before the fix, the swap replaced #rehearsals-content (the filter input
+     * and all rows), losing the listeners and the filter state, so re-typing a
+     * name had no effect.
+     */
+    @Test
+    void textFilterShouldSurviveAttendanceChangeReload() throws Exception {
+        WebDriverWait wait = new WebDriverWait(driver, Duration.ofSeconds(10));
+        String uid = UUID.randomUUID().toString().substring(0, 8);
+        String firstNameA = "Alpha" + uid;
+        String firstNameB = "Beta" + uid;
+        String lastName = "Test" + uid;
+
+        createMember(firstNameA, lastName, wait);
+        createMember(firstNameB, lastName, wait);
+
+        // --- Create a future-dated rehearsal via API (deterministic id) ---
+        LocalDate date = LocalDate.now().plusDays(7);
+        Long rehearsalId = createRehearsalViaApi(uid, date);
+        assertNotNull(rehearsalId);
+
+        Long memberIdA = jdbcTemplate.queryForObject(
+                "SELECT id FROM members WHERE first_name = ?", Long.class, firstNameA);
+        Long memberIdB = jdbcTemplate.queryForObject(
+                "SELECT id FROM members WHERE first_name = ?", Long.class, firstNameB);
+
+        inviteMemberToRehearsal(rehearsalId, memberIdA);
+        inviteMemberToRehearsal(rehearsalId, memberIdB);
+
+        // Give A a PRESENT status via API (setup), B stays NO_RESPONSE.
+        setRehearsalAttendance(rehearsalId, memberIdA, "PRESENT");
+
+        // --- Navigate to rehearsal detail ---
+        driver.get(baseUrl() + "/rehearsals/" + rehearsalId);
+        wait.until(ExpectedConditions.presenceOfElementLocated(
+                By.cssSelector("table[role='grid'] tbody tr")));
+
+        // --- Apply text filter (matches Alpha only) ---
+        WebElement filterInput = wait.until(ExpectedConditions.presenceOfElementLocated(
+                By.id("attendance-filter")));
+        filterInput.clear();
+        filterInput.sendKeys(firstNameA);
+
+        Awaitility.await().atMost(Duration.ofSeconds(5)).until(() ->
+                countVisibleAttendanceRows() == 1);
+        assertThat(visibleAttendanceRowName()).contains(firstNameA);
+
+        // --- Change B's status via the UI dropdown (the user action) ---
+        setStatusViaUi(memberIdB, "PRESENT", wait);
+
+        // --- Type a new filter term (matches Beta only). Expected: filter still
+        //     works after the reload and shows exactly Beta. Re-look-up AFTER settle.
+        WebElement freshInput = driver.findElement(By.id("attendance-filter"));
+        freshInput.clear();
+        freshInput.sendKeys(firstNameB);
+
+        Awaitility.await().atMost(Duration.ofSeconds(5)).until(() ->
+                countVisibleAttendanceRows() == 1);
+        assertThat(visibleAttendanceRowName()).contains(firstNameB);
+        assertThat(visibleAttendanceRowName()).doesNotContain(firstNameA);
+    }
+
+    private int countVisibleAttendanceRows() {
+        return driver.findElements(By.cssSelector(
+                "table[role='grid'] tbody tr[style=''], table[role='grid'] tbody tr:not([style*='display: none'])"))
+                .size();
+    }
+
+    private String visibleAttendanceRowName() {
+        List<WebElement> rows = driver.findElements(By.cssSelector(
+                "table[role='grid'] tbody tr[style=''], table[role='grid'] tbody tr:not([style*='display: none'])"));
+        assertThat(rows).isNotEmpty();
+        return rows.get(0).findElement(By.cssSelector("td:first-child")).getText();
+    }
+
+    /** Change a member's attendance status via the page dropdown (fires the real flow). */
+    private void setStatusViaUi(Long memberId, String status, WebDriverWait wait) {
+        WebElement select = wait.until(ExpectedConditions.presenceOfElementLocated(
+                By.cssSelector("table[role='grid'] select.status-select[data-member-id='" + memberId + "']")));
+        ((JavascriptExecutor) driver).executeScript(
+                "arguments[0].value = arguments[1];" +
+                "arguments[0].dispatchEvent(new Event('change', {bubbles: true}));",
+                select, status);
+
+        // Wait for the HTMX swap to fully settle (see EventDetailFilterUiTest).
+        final String snap = "(function(){var t=document.querySelector('table[role=\"grid\"]');"
+                + "if(!t)return 'no-table';"
+                + "var rows=t.querySelectorAll('tbody tr').length;"
+                + "var inp=document.getElementById('attendance-filter');"
+                + "return rows+':'+(inp?inp.value.length:'-');})()";
+        long deadline = System.currentTimeMillis() + 10_000L;
+        String last = null;
+        boolean settled = false;
+        while (!settled && System.currentTimeMillis() < deadline) {
+            String cur = String.valueOf(((JavascriptExecutor) driver).executeScript(snap));
+            if (cur.equals(last)) {
+                settled = true;
+            } else {
+                last = cur;
+            }
+            Thread.yield();
+        }
+        assertThat(settled).as("HTMX swap did not settle within timeout").isTrue();
+    }
+
     private void createMember(String firstName, String lastName, WebDriverWait wait) throws Exception {
         loginAndNavigateTo("/members");
         driver.findElement(By.xpath("//button[contains(., 'Dodaj członka')]")).click();
@@ -583,5 +691,98 @@ class RehearsalDetailFilterUiTest extends UiTestBase {
         WebElement el = driver.findElement(By.cssSelector("input[name='" + name + "']"));
         el.clear();
         el.sendKeys(value);
+    }
+
+    /**
+     * Verification (t_ebd04e70): the rehearsal attendance filter matches a
+     * participant's TAG (primary instrument) accent-insensitively, WHILE the
+     * name-based predicate keeps working unchanged.  A and B are created; A is
+     * tagged "Trąbka" (Polish diacritic), B has no tag.
+     *   - Typing nonsense by name hides both (no accidental tag match).
+     *   - Typing the EXACT "Trąbka" surface ONLY A  (tag branch, diacritic form).
+     *   - Typing the ASCII fold "trabka" also surfaces ONLY A  (accent-aware).
+     *   - Typing B's FIRST NAME still surfaces exactly B (name branch unchanged).
+     */
+    @Test
+    void tagFilterShouldMatchPrimaryInstrumentAccentAware() throws Exception {
+        WebDriverWait wait = new WebDriverWait(driver, Duration.ofSeconds(10));
+        String uid = UUID.randomUUID().toString().substring(0, 8);
+        String lastName = "Test" + uid;
+
+        // Create A tagged "Trąbka", B untagged.
+        createAndTagMember("TrumpetGuy" + uid, lastName, "Trąbka", wait);
+        createMember("NoTag" + uid, lastName, wait);
+
+        LocalDate date = LocalDate.now().plusDays(7);
+        Long rehearsalId = createRehearsalViaApi(uid, date);
+        assertNotNull(rehearsalId);
+
+        Long taggedId = jdbcTemplate.queryForObject(
+                "SELECT id FROM members WHERE first_name = ?", Long.class, "TrumpetGuy" + uid);
+        Long untaggedId = jdbcTemplate.queryForObject(
+                "SELECT id FROM members WHERE first_name = ?", Long.class, "NoTag" + uid);
+
+        inviteMemberToRehearsal(rehearsalId, taggedId);
+        inviteMemberToRehearsal(rehearsalId, untaggedId);
+
+        driver.get(baseUrl() + "/rehearsals/" + rehearsalId);
+        wait.until(ExpectedConditions.presenceOfElementLocated(
+                By.cssSelector("table[role='grid'] tbody tr")));
+
+        // --- 1) Nonsense by name — both rows hidden. ---
+        WebElement filterInput = wait.until(ExpectedConditions.presenceOfElementLocated(
+                By.id("attendance-filter")));
+        filterInput.clear();
+        filterInput.sendKeys("zzznomatch-" + uid);
+        Awaitility.await().atMost(Duration.ofSeconds(3)).until(() -> countVisibleAttendanceRows() == 0);
+        assertThat(countVisibleAttendanceRows()).isZero();
+
+        // --- 2) EXACT "Trąbka" — ONLY the Trąbka row via tag branch. ---
+        filterInput.clear();
+        filterInput.sendKeys("Trąbka");
+        Awaitility.await().atMost(Duration.ofSeconds(3)).until(() -> countVisibleAttendanceRows() == 1);
+        assertThat(countVisibleAttendanceRows()).isEqualTo(1);
+        assertThat(visibleAttendanceRowName()).contains("TrumpetGuy" + uid);
+
+        // --- 3) ASCII fold "trabka" — still ONLY the Trąbka row. ---
+        filterInput.clear();
+        filterInput.sendKeys("trabka");
+        Awaitility.await().atMost(Duration.ofSeconds(3)).until(() -> countVisibleAttendanceRows() == 1);
+        assertThat(countVisibleAttendanceRows()).isEqualTo(1);
+        assertThat(visibleAttendanceRowName()).contains("TrumpetGuy" + uid);
+
+        // --- 4) Name-based predicate is UNCHANGED: B's first name surfaces B. ---
+        filterInput.clear();
+        filterInput.sendKeys("NoTag" + uid);
+        Awaitility.await().atMost(Duration.ofSeconds(3)).until(() -> countVisibleAttendanceRows() == 1);
+        assertThat(countVisibleAttendanceRows()).isEqualTo(1);
+        assertThat(visibleAttendanceRowName()).contains("NoTag" + uid);
+
+        System.out.println("[rehearsal-tag-filter] Trąbka/trabka surface ONLY the tagged row via instrument; name branch OK");
+    }
+
+    /**
+     * Create a member and attach "instrument" as their PRIMARY — directly in the
+     * join table, which is what the rehearsal detail template reads as
+     * ${m.primaryInstrument}.  Mirrors the event-side createMemberWithInstrument().
+     */
+    private void createAndTagMember(String firstName, String lastName,
+                                    String instrument, WebDriverWait wait) throws Exception {
+        createMember(firstName, lastName, wait);
+        try {
+            Integer count = jdbcTemplate.queryForObject(
+                    "SELECT COUNT(*) FROM instruments WHERE name = ?", Integer.class, instrument);
+            if (count == null || count == 0) {
+                jdbcTemplate.update("INSERT INTO instruments (name) VALUES (?)", instrument);
+            }
+        } catch (Exception ignored) { /* duplicate row or race on name lookup — instrument is created once */ }
+        Long memberId = jdbcTemplate.queryForObject(
+                "SELECT id FROM members WHERE first_name = ?", Long.class, firstName);
+        Long instrumentId = jdbcTemplate.queryForObject(
+                "SELECT id FROM instruments WHERE name = ?", Long.class, instrument);
+        jdbcTemplate.update(
+                "MERGE INTO member_instruments (member_id, instrument_id, is_primary) KEY(member_id, instrument_id) " +
+                "VALUES (?, ?, TRUE)",
+                memberId, instrumentId);
     }
 }
