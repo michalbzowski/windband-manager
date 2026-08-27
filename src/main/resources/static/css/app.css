@@ -2186,3 +2186,47 @@ svg, path { flex: none; }
 .stat-grid .ph-stat-title,
 .quick-grid .ph-quick-title { gap: 0.35rem; }
 
+/* =============================================================================
+   ISSUE #119 — "Lista obecności" sticky-release state machine (Phase A: CSS).
+   The JS in fragments/layout.html (dashboard-header-morph) adds these classes
+   so that the header and the filter-block swap which one owns the sticky slot.
+
+   State model (driven by .detail-page-root on <body>, see fragments/layout):
+     (default / no class):    header sticky at top:0,
+                              #uber-filter-container sticky at var(--sticky-filter-top).
+     body.rehearsals-detail-released   (header OFF screen, filter takes the slot)
+                                header: position:static;  → falls in normal flow,
+                                       so it scrolls OUT of the viewport with content.
+                                #uber-filter-container: top:0 → sticks to viewport top.
+   The transition is one-way per scroll direction (see Phase B JS).
+
+   IMPORTANT: keep the default rules exactly as they are today — this block only
+   overrides when a RELEASE class is present, so existing pages without a detail
+   body class are UNCHANGED (no regressions on dashboards, list pages, forms).
+   ============================================================================= */
+body.detail-released .dashboard-header {
+    position: static;                       /* stop being sticky — this IS the "release" */
+    top: auto;
+}
+
+body.detail-released #uber-filter-container {
+    top: 0;                                 /* take over the viewport-top slot */
+    z-index: 950;                           /* above content, below header (900) & modal (1000+) —
+                                               same as today's default, but explicit for clarity */
+}
+
+/* Per spec #119: after release, "Filtruj uczestników (imię, nazwisko, tagi)" must be the
+   FIRST element visible at the top of the viewport. The inner container traditionally
+   carries 0.5rem padding-top pushing that label ~8 px below the sticky pin point. Kill
+   that padding in released state only — keeps existing pages unaffected. */
+body.detail-released .attendance-filter-container,
+body.detail-released .participant-filter-container {
+    padding-top: 0;
+}
+
+body.detail-released .response-filter-container {
+    top: /* text-filter height varies; keep sticky right below it, not at a fixed global offset */
+         calc(var(--sticky-filter-h, 0px) + 0.5rem);
+}
+
+
