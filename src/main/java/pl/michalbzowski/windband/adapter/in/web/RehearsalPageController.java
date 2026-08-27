@@ -146,6 +146,10 @@ public class RehearsalPageController {
     public String editRehearsalForm(@PathVariable Long id, Model model, HttpServletRequest request) {
         var rehearsal = rehearsalQueryService.getRehearsalById(id);
         model.addAttribute("rehearsal", rehearsal);
+        // BACK-URL FIX 2026-08-27: same as EventPageController — pre-resolve the
+        // detail URL in Java rather than relying on @{/rehearsals/{rehearsalId}}
+        // inside the Thymeleaf fragment (which would render as a literal).
+        model.addAttribute("editBackUrl", "/rehearsals/" + id);
         if ("true".equals(request.getHeader("HX-Request"))) {
             return "rehearsals/edit :: #rehearsals-content";
         }

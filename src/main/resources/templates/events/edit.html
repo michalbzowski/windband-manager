@@ -9,7 +9,7 @@
         <header th:replace="~{fragments/layout :: dashboard-header}"></header>
 
     <div id="events-list-container">
-        <nav th:replace="~{fragments/page-header :: page-header-c(@{/events}, 'Edytuj wydarzenie', null, null)}"></nav>
+        <nav th:replace="~{fragments/page-header :: page-header-c(${editBackUrl}, 'Edytuj wydarzenie', null, null)}"></nav>
 
     <form id="event-edit-form" onsubmit="return handleEditFormSubmit(event)">
 
