@@ -152,6 +152,12 @@
 
             document.documentElement.style.setProperty('--sticky-filter-top', offset + 'px');
 
+            // Also report the text-filter portion's height so the status-row can stick directly under it.
+            const textField = filterContainer.querySelector('.attendance-filter-container, .participant-filter-container');
+            if (textField) {
+                document.documentElement.style.setProperty('--sticky-filter-h', Math.round(textField.getBoundingClientRect().height) + 'px');
+            }
+
             // Also push header up when filter touches it (so filter can eventually reach viewport top)
             // This allows the "released" state to trigger
             if (!header.classList.contains('released') && filterRect.top <= headerRect.bottom && filterRect.top > 0) {
@@ -193,6 +199,34 @@
             if (isReleased && filterRect.top > 100) {
                 isReleased = false;
                 header.classList.remove('released');
+            }
+
+            /* ── ISSUE #119 — "Lista obecności" release (Phase B) ─────────────────────
+               Release: the moment the FILTER BLOCK's top edge reaches/touches the BOTTOM
+               of the menu header during ANY scroll direction, the menu must STOP being
+               sticky (per the spec).
+
+               Restore: because in the released state the filter is STUCK to the viewport
+               top (`#uber-filter-container { top: 0 }`), we can't use filter's viewport
+               position as a signal for "scrolled back up". Instead we use window.scrollY —
+               once we're scrolled up enough that the filter block (which sits just after
+               "Lista obecności" in normal flow) would again be below the menu's natural
+               bottom area, RESTORE. The safest & most robust trigger is `scrollY <= 0`,
+               i.e. we've returned to the very top of the page (where everything was
+               initially in its pre-release layout). ──────────────────────────────────────*/
+            const releasedNow = document.body.classList.contains('detail-released');
+            if (!releasedNow) {
+                // If NOT released — check the "touch" trigger (per spec).
+                const epsilon = 4; // tolerate sub-pixel rounding
+                if (filterRect.top <= headerRect.bottom + epsilon) {
+                    document.body.classList.add('detail-released');
+                }
+            } else {
+                // Released. Restore when the user has scrolled back UP to the top of page
+                // (which puts everything back in its original, un-released layout).
+                if (scrollY <= 5) {
+                    document.body.classList.remove('detail-released');
+                }
             }
 
             if (isScrolled && !isReleased && filterRect.top > headerRect.bottom + 20) {
