@@ -284,15 +284,9 @@
                 </a>
             </li>
             <li>
-                <a th:href="@{/meetings}" hx-target="#content" hx-swap="innerHTML transition:true" aria-label="Występy i spotkania">
-                    <span class="nav-icon" aria-hidden="true">🎵</span>
-                    <span class="nav-label">Występy i spotkania</span>
-                </a>
-            </li>
-            <li th:if="${false}">
-                <a th:href="@{/events}" hx-target="#content" hx-swap="innerHTML transition:true" aria-label="Wydarzenia">
-                    <span class="nav-icon" aria-hidden="true">🎪</span>
-                    <span class="nav-label">Wydarzenia</span>
+                <a th:href="@{/meetings}" hx-target="#content" hx-swap="innerHTML transition:true" aria-label="Spotkania i wydarzenia">
+                    <span class="nav-icon" aria-hidden="true">📅</span>
+                    <span class="nav-label">Kalendarz</span>
                 </a>
             </li>
         </ul>
@@ -341,8 +335,7 @@
                 <p class="app-modal-section">Najczęściej używane</p>
                 <ul>
                     <li><a th:href="@{/}" hx-target="#content" hx-swap="innerHTML transition:true" data-close>🏠 Podsumowanie</a></li>
-                    <li><a th:href="@{/meetings}" hx-target="#content" hx-swap="innerHTML transition:true" data-close>🎵 Występy i spotkania</a></li>
-                    <li th:if="${false}"><a th:href="@{/events}" hx-target="#content" hx-swap="innerHTML transition:true" data-close>🎭 Wydarzenia</a></li>
+                    <li><a th:href="@{/meetings}" hx-target="#content" hx-swap="innerHTML transition:true" data-close>📅 Kalendarz</a></li>
                 </ul>
 
                 <p class="app-modal-section">Zarządzanie zespołem</p>
