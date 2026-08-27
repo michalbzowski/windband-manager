@@ -2187,53 +2187,99 @@ svg, path { flex: none; }
 .quick-grid .ph-quick-title { gap: 0.35rem; }
 
 /* =============================================================================
-   ISSUE #119 — "Lista obecności" sticky-release state machine (Phase A: CSS).
-   The JS in fragments/layout.html (dashboard-header-morph) adds these classes
-   so that the header and the filter-block swap which one owns the sticky slot.
+   ISSUE #119 — "Lista obecności" sticky-release state machine (CSS side).
+   The JS in fragments/layout.html (dashboard-header-morph) drives TWO body-level
+   classes in a strict two-step sequence, corresponding to the two layout-affecting
+   moments:
 
-   State model (driven by body.detail-released, set by JS in fragments/layout.html):
-     default / no class:    header sticky at top:0,
-                            #uber-filter-container sticky at var(--sticky-filter-top).
-     body.detail-released   (header OFF screen, filter takes the slot)
-                            header: position:static;  → falls in normal flow,
-                                   so it scrolls OUT of the viewport with content.
-                            #uber-filter-container: top:0 → sticks to viewport top.
-   Release/restore is one-way per scroll direction (see Phase B JS).
+     STEP 1  body.detail-released     — STATE SENTINEL, set on the touch frame (filter
+                                        top reaches header bottom while scrolling down).
+                                        CSS uses this class ONLY to make BOTH elements
+                                        non-sticky (natural flow) so they continue
+                                        traveling together as the user scrolls. No other
+                                        visual effect of STEP 1 — the "gwałtowny" snap
+                                        from the prior PR came from layout rules firing
+                                        one frame too early.
+
+     STEP 2  body.filter-pinned       — applied on the EXACT frame where the filter, in
+                                        natural flow (no sticky offset), reaches the very
+                                        TOP of the viewport. CSS uses this class ONLY to
+                                        flip #uber-filter-container back to sticky at
+                                        top:0 — which is exactly "the filter becomes
+                                        sticky" per the spec.
+
+   Because STEP 2's layout swap fires AFTER the filter has already visibly reached the
+   viewport top, the user sees one continuous motion (header + filter both scrolling up)
+   followed by ONE instantaneous "now it's pinned" moment — matching their expectation
+   exactly and eliminating the two-jump feel of 71ccce1.
 
    IMPORTANT: keep the default rules exactly as they are today — this block only
-   overrides when a RELEASE class is present, so existing pages without a detail
-   body class are UNCHANGED (no regressions on dashboards, list pages, forms).
+   overrides when a RELEASE / PINNED class is present, so existing pages without these
+   body classes are UNCHANGED (no regressions on dashboards, list pages, forms).
    ============================================================================= */
+
+/* STEP 1 — PHASE B: both elements fall back to natural flow and continue moving with
+   scroll. `position:static` on the header removes it from its sticky slot (it no longer
+   pins at top:0, so it travels in the document's normal flow, off-screen as content
+   above it scrolls away). `position:static` on the filter removes its own sticky pin at
+   `--sticky-filter-top` too — now it, too, rides the same natural flow and keeps moving
+   upward exactly as the user continues to scroll down. This is the literal
+   "rozpoczyna swoją podróż wraz ze scrollem" moment from the spec. */
 body.detail-released .dashboard-header {
-    position: static;                       /* stop being sticky — this IS the "release" */
+    position: static;                       /* stop being sticky — leaves its slot in one pass */
+    top: auto;
+}
+body.detail-released #uber-filter-container {
+    position: static;                       /* also natural flow now, so the touch-line crossing isn't a jump */
     top: auto;
 }
 
-body.detail-released #uber-filter-container {
-    top: 0;                                 /* take over the viewport-top slot */
-    z-index: 950;                           /* above content, below header (900) & modal (1000+) —
-                                               same as today's default, but explicit for clarity */
+/* STEP 2 — PHASE C: single layout swap that completes the takeover. The moment the user
+   has finished naturally scrolling both elements upward together and the filter has
+   actually reached the top of the browser window, the filter takes over the sticky slot
+   permanently (it now stays at top:0 even as content below it keeps scrolling). */
+body.filter-pinned .dashboard-header {
+    position: static;                       /* stays out of the slot — already off-screen by this point */
+    top: auto;
+}
+body.filter-pinned #uber-filter-container {
+    position: sticky;                       /* THE takeaway moment: filter becomes STICKY */
+    top: 0;                                 /* pinned at the very top of the viewport */
+    z-index: 950;                           /* above content, below header (900) & modal (1000+) — same as today's default */
 }
 
-/* Per spec #119: after release, "Filtruj uczestników (imię, nazwisko, tagi)" must be the
-   FIRST element visible at the top of the viewport. The inner container traditionally
-   carries 0.5rem padding-top pushing that label ~8 px below the sticky pin point. Kill
-   that padding in released state only — keeps existing pages unaffected. */
+/* Padding-kill rules apply in both Phases B and C so the inner filter block reads cleanly
+   against whichever sticky pin (or natural-flow position) it currently has. Keeping these
+   independent of the two phase classes above means we don't have to duplicate them for
+   each body state — a single rule per padding element, matched on either released OR pinned. */
 body.detail-released .attendance-filter-container,
-body.detail-released .participant-filter-container {
+body.detail-released .participant-filter-container,
+body.filter-pinned .attendance-filter-container,
+body.filter-pinned .participant-filter-container {
     padding-top: 0;
 }
 
-/* Response/status filter row must stay STUCK directly under the text-filter (spec phase 4).
-   The baseline CSS (.response-filter-container) declared position:sticky, but in this codebase
-   neither the rehearsal (#attendance-response-filter-container) nor the event
-   (#response-filter-container) container carries that class — so they were never sticky.
-   Now we declare it explicitly for BOTH ids, independent of class inheritance. */
+/* RESPONSE / STATUS FILTER ROW — sits INSIDE #uber-filter-container (verified in both
+   events/detail.html and rehearsals/detail.html). Its visibility/positioning should match
+   exactly what its parent does, so we mirror the two-phase layout rules:
+     PHASE B (body.detail-released, no pin yet)  → also in natural flow, moving with parent.
+     PHASE C (body.filter-pinned)                → sticks right under the pinned parent,
+                                                    `--sticky-filter-h + 0.5rem` below top.
+
+   The baseline CSS (.response-filter-container class declared position:sticky) is NOT
+   used by either concrete container: #attendance-response-filter-container and
+   #response-filter-container do not carry that class — so nothing in natural flow would
+   keep them sticky on their own. We therefore OWN the responsive rule completely here,
+   avoiding any hidden dependency on a shared class we don't control. */
 body.detail-released [id="attendance-response-filter-container"],
 body.detail-released [id="response-filter-container"] {
-    position: sticky;
-    top: /* text-filter height varies; keep stuck right below it, not at a fixed global offset */
-         calc(var(--sticky-filter-h, 0px) + 0.5rem);
+    position: static;                        /* in flow with its parent — no independent sticky pin during Phase B */
+    top: auto;
+}
+body.filter-pinned [id="attendance-response-filter-container"],
+body.filter-pinned [id="response-filter-container"] {
+    position: sticky;                        /* sticks right under the pinned text filter at top of viewport */
+    top: calc(var(--sticky-filter-h, 0px) + 0.5rem);
 }
 
 
