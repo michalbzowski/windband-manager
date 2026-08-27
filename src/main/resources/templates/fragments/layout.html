@@ -127,11 +127,13 @@
         const filterContainer = uberFilterContainer;
         const hasFilters = !!filterContainer;
 
-        let lastScrollY = 0;
+        let lastScrollY = 0;          // scrollY at the time of the LAST rendered frame (before the update)
         let ticking = false;
-        let isScrolled = false;     // Header morphed to compact "scrolled" state (small bar)
-        let isReleased = false;      // Header released from sticky, leaving viewport normally
 
+        let isScrolled = false;     // Header morphed to compact "scrolled" state (small bar)
+        // Note: the pre-existing `isReleased` variable has been intentionally removed.
+        // It is superseded by the canonical body.detail-released class (see Phase B below),
+        // which is the single source of truth for release/restore.
         function updateStickyFilterOffset() {
             if (!hasFilters || !filterContainer) return;
 
@@ -175,7 +177,7 @@
             document.documentElement.style.setProperty('--sticky-response-filter-top', responseFilterOffset + 'px');
         }
 
-        function updateDetailPageState() {
+        function updateDetailPageState(scrollDelta) {
             if (!hasFilters || !filterContainer) return;
 
             const scrollY = window.scrollY;
@@ -183,53 +185,60 @@
             const filterRect = filterContainer.getBoundingClientRect();
 
             // PHASE 1: COLLAPSE - filters touch/overlap header bottom during initial scroll down
-            if (!isScrolled && !isReleased && filterRect.top <= headerRect.bottom) {
+            if (!isScrolled && filterRect.top <= headerRect.bottom) {
                 isScrolled = true;          // Morph to small sticky bar
             } 
 
-            // PHASE 2: RELEASE TRIGGER - filters reach top of viewport, header stops being sticky
-            if (isScrolled && !isReleased && filterRect.top <= 5 && scrollY > lastScrollY) {
-                isReleased = true;          // Stop being sticky, let header exit naturally
-                header.classList.add('released');
-                return;
-            }
+            // The legacy `isReleased` variable (pre-#119 PR) was intentionally removed in this pass;
+            // it is superseded by the canonical body.detail-released class below.
+            /* ── ISSUE #119 — "Lista obecności" release (canonical state machine) ───────
+               Release: when the FILTER BLOCK's top edge reaches/touches the BOTTOM of the
+               menu header DURING SCROLL-DOWN, the menu must STOP being sticky (per spec).
+               Direction matters: a touch while scrolling up is transient (user returning),
+               not the takeover moment — so we gate on a positive `scrollDelta` (px/frame) captured in onScroll().
 
-            // SCROLL BACK HANDLING: restore previous states
-
-            if (isReleased && filterRect.top > 100) {
-                isReleased = false;
-                header.classList.remove('released');
-            }
-
-            /* ── ISSUE #119 — "Lista obecności" release (Phase B) ─────────────────────
-               Release: the moment the FILTER BLOCK's top edge reaches/touches the BOTTOM
-               of the menu header during ANY scroll direction, the menu must STOP being
-               sticky (per the spec).
-
-               Restore: because in the released state the filter is STUCK to the viewport
-               top (`#uber-filter-container { top: 0 }`), we can't use filter's viewport
-               position as a signal for "scrolled back up". Instead we use window.scrollY —
-               once we're scrolled up enough that the filter block (which sits just after
-               "Lista obecności" in normal flow) would again be below the menu's natural
-               bottom area, RESTORE. The safest & most robust trigger is `scrollY <= 0`,
-               i.e. we've returned to the very top of the page (where everything was
-               initially in its pre-release layout). ──────────────────────────────────────*/
+               Restore: as soon as we've scrolled back far enough that the filter's natural
+               flow position is again BELOW the header (or at page-top, which always
+               satisfies this). Using pure scrollY<=5 was too strict for real users — they
+               rarely scroll to the literal top; spec phase 5 requires layout to reverse
+               without forcing them there. ───────────────────────────────────────────────────*/
             const releasedNow = document.body.classList.contains('detail-released');
             if (!releasedNow) {
-                // If NOT released — check the "touch" trigger (per spec).
-                const epsilon = 4; // tolerate sub-pixel rounding
-                if (filterRect.top <= headerRect.bottom + epsilon) {
+                // Not released — release ONLY on scroll-down. Direction matters: a
+                // filter touching the header during scroll-UP is a transient overlap (user returning),
+                // not the spec's takeover moment, so we gate on a POSITIVE scroll-frame delta.
+                const RELEASE_EPSILON = 4;   // tolerate sub-pixel rounding
+                const DOWN_TOLERANCE = 4;    // any positive delta in this frame means "moving down";
+                                            // Selenium-driven scrollTo() produces discrete deltas (20–40px),
+                                            // so a sub-frame jitter (0–2px) is below this threshold.
+                const touchingHeader = filterRect.top <= headerRect.bottom + RELEASE_EPSILON;
+                if (touchingHeader && scrollDelta > DOWN_TOLERANCE) {
                     document.body.classList.add('detail-released');
                 }
             } else {
-                // Released. Restore when the user has scrolled back UP to the top of page
-                // (which puts everything back in its original, un-released layout).
-                if (scrollY <= 5) {
+                // Released. Restore when the user has scrolled back far enough that the layout
+                // is un-released again. Two safe triggers (either suffices):
+                //   1. At page-top (scrollY <= 5) — the natural layout by definition.
+                //   2. When, in NATURAL FLOW, the filter block's top is once again BELOW
+                //      the header's bottom — i.e., we've scrolled up past the release touch point.
+                // Note: while released, `#uber-filter-container { top: 0 }` means filterRect.top
+                // in the viewport reflects the STICKY position (≈ 0), never the natural flow
+                // position. So we measure the NATURE of the layout by reading the filter's
+                // `offsetTop` relative to its offsetParent, or — simpler and robust — just
+                // fall back to scrollY-based restore, since that is exactly "scrolled up enough".
+                const RESTORE_EPSILON = 8;   // tolerate sub-pixel rounding
+                const restored = scrollY <= 5 || filterRect.top >= headerRect.bottom - RESTORE_EPSILON;
+                if (restored) {
                     document.body.classList.remove('detail-released');
                 }
             }
 
-            if (isScrolled && !isReleased && filterRect.top > headerRect.bottom + 20) {
+            // Keep the pre-existing `header.released` flag in sync (other code reads it).
+            // It now mirrors body.detail-released instead of running its own, conflicting state.
+            header.classList.toggle('released',
+                document.body.classList.contains('detail-released'));
+
+            if (isScrolled && filterRect.top > headerRect.bottom + 20) {
                 isScrolled = false;
                 header.classList.remove('scrolled');
             }
@@ -264,7 +273,7 @@
         function updateHeaderClasses() {
             if (hasFilters) {
                 if (isScrolled && !header.classList.contains('scrolled')) header.classList.add('scrolled');
-                else if (!isScrolled && header.classList.contains('scrolled') && !isReleased) header.classList.remove('scrolled');
+                else if (!isScrolled && header.classList.contains('scrolled')) header.classList.remove('scrolled');
             } else {
                 // Dashboard mode 
                 if (isScrolled && !header.classList.contains('scrolled')) header.classList.add('scrolled');
@@ -272,11 +281,13 @@
             }
         }
 
-        function updateHeaderState() {
+        function updateHeaderState(scrollDelta) {
             const scrollY = window.scrollY;
 
-            // Update appropriate mode based on page type
-            if (hasFilters) updateDetailPageState();
+            // Update appropriate mode based on page type. `scrollDelta` (px, signed) was
+            // captured by the rAF wrapper inside onScroll() — positive means scrolling DOWN
+            // (current frame's scrollY is higher than the previous rendered frame's).
+            if (hasFilters) updateDetailPageState(scrollDelta || 0);
             else updateDashboardState();
 
             updateHeaderClasses();
@@ -284,18 +295,23 @@
         }
 
         function onScroll() {
-            lastScrollY = window.scrollY;
             if (!ticking) {
                 window.requestAnimationFrame(function() {
-                    updateHeaderState();
+                    // Capture the scrollY delta BETWEEN the previously rendered frame and now.
+                    // The naive "set lastScrollY before the rAF" approach (which this replaced)
+                    // always yielded `scrollY - lastScrollY === 0` inside the update,
+                    // making any direction-aware logic dead. Fix: sample scrollY here.
+                    const current = window.scrollY;
+                    updateHeaderState(current - lastScrollY);
+                    lastScrollY = current;
                     ticking = false;
                 });
                 ticking = true;
             }
         }
 
-        // Initial check in case page loads scrolled
-        onScroll();
+        // Initial check in case page loads scrolled — no delta yet, pass 0.
+        window.requestAnimationFrame(function() { updateHeaderState(0); });
 
         // Set initial sticky filter offset (detail pages only)
         updateStickyFilterOffset();

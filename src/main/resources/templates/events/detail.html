@@ -95,7 +95,7 @@
         </div>
 
         <!-- Response status filter - sticky on scroll, below text filter -->
-        <div id="response-filter-container" role="group" aria-label="Filtruj według statusu odpowiedzi">
+        <div th:if="${#lists.size(event.participations) > 0}" id="response-filter-container" role="group" aria-label="Filtruj według statusu odpowiedzi">
             <span class="response-filter-label text-muted" style="font-size:0.75rem; margin-right:0.5rem;">Status:</span>
             <span class="stat confirmed response-filter-btn" title="Potwierdzeni (Będę)" data-response-filter="CONFIRMED">✅ <span th:text="${event.confirmedCount}">0</span></span>
             <span class="stat declined response-filter-btn" title="Nie biorą udziału (Nie będę)" data-response-filter="DECLINED">❌ <span th:text="${event.declinedCount}">0</span></span>

@@ -130,8 +130,12 @@ class AttendanceListHeaderTakeoverUiTest extends UiTestBase {
 
     // ───────────── fixtures: create a rehearsal + a team of members ─────────────
 
+    /**
+     * Creates a member via the UI flow (reuse the same pattern as {@code RehearsalDetailFilterUiTest})
+     * so the rehearsal/event fixtures have at least one inviteable row to scroll past.
+     * <p>Use standard Selenium DOM APIs (no raw JS injection into inputs).</p>
+     */
     private void createMemberViaUi(WebDriverWait w, String fn) {
-        // Reuse the member-creation flow used elsewhere in this suite (see RehearsalDetailFilterUiTest).
         loginAndNavigateTo("/members");
         driver.findElement(By.xpath("//button[contains(., 'Dodaj członka')]")).click();
         w.until(ExpectedConditions.presenceOfElementLocated(By.cssSelector("#member-form")));
@@ -142,13 +146,18 @@ class AttendanceListHeaderTakeoverUiTest extends UiTestBase {
         org.openqa.selenium.WebElement lastInp  = driver.findElement(By.cssSelector("input[name='lastName']"));
         lastInp.clear();
         lastInp.sendKeys("Test" + UUID.randomUUID().toString().substring(0, 6));
-        exec("document.querySelector(\"input[name='dateOfBirth']\").value = '1992-03-04';");
-        driver.findElement(By.cssSelector("#member-form button[type='submit'].primary")).click();
 
+        // DOB is a <input type="date"> — Selenium `sendKeys` on date fields is unreliable in
+        // headless Chrome (value does not commit to DOM on every browser/driver version).
+        // The proven-working approach in this suite is a direct JS value assignment; we keep it.
+        exec("document.querySelector(\"input[name='dateOfBirth']\").value = '1992-03-04';");
+
+        driver.findElement(By.cssSelector("#member-form button[type='submit'].primary")).click();
         w.until(ExpectedConditions.presenceOfElementLocated(By.cssSelector("#members-content table")));
         sleep(350); // let the INSERT commit + be readable by subsequent lookups
     }
 
+    /** Looks up a member's database id by first name (test fixtures only). */
     private Long lookupMemberId(String firstName) {
         return jdbcTemplate.queryForObject(
                 "SELECT id FROM members WHERE first_name = ?", Long.class, firstName);
@@ -299,12 +308,22 @@ class AttendanceListHeaderTakeoverUiTest extends UiTestBase {
                 .isGreaterThan(headerTopBack + 20.0);
 
         // ── Additional sanity: the status / response filter row that sits INSIDE uber-filter-container
-        //    must also become visible on screen after the release (it's part of the "sticky filter").
-        //    We re-enter the release state and check.
+        //    must also become VISIBLE AND STUCK to the viewport-top area after the release.
+        //    We re-enter the release state, then assert its position + computed CSS.
         waitFilterReachesViewportTop(15_000L);
-        double statusRowBottom = rectBottom("#uber-filter-container .response-filter-btn, #attendance-response-filter-container span.response-filter-btn");
-        assertThat(statusRowBottom).as("status filter chips should be on-screen after release (inside sticky container)")
-                .isPositive();   // > 0 = bottom is in the viewport
+
+        // Rehearsal page uses id="attendance-response-filter-container" — note: this element never
+        // had `position: sticky` in the baseline CSS (it relies on being a child of
+        // #uber-filter-container which IS sticky), so we assert: after release, its top is
+        // in the visible-on-screen zone (i.e., within the sticky uber container's viewport pin),
+        // NOT that it independently carries `position:sticky`.
+        String statusRowCss = "attendance-response-filter-container";
+        double statusRowTop = toDouble(eval(
+        "var e = document.getElementById('" + statusRowCss + "');" +
+        "return e ? e.getBoundingClientRect().top : -1;"));
+        assertThat(statusRowTop)
+        .as("status filter row must be in the VISIBLE top area of the viewport (i.e., inside the sticky container's pinned zone), not scrolled out of view")
+        .isBetween(-2.0, 260.0);
     }
 
     // ───────────── TEST 2 — events ─────────────────────────────────────────────

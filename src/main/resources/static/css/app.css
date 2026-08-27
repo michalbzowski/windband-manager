@@ -2191,14 +2191,14 @@ svg, path { flex: none; }
    The JS in fragments/layout.html (dashboard-header-morph) adds these classes
    so that the header and the filter-block swap which one owns the sticky slot.
 
-   State model (driven by .detail-page-root on <body>, see fragments/layout):
-     (default / no class):    header sticky at top:0,
-                              #uber-filter-container sticky at var(--sticky-filter-top).
-     body.rehearsals-detail-released   (header OFF screen, filter takes the slot)
-                                header: position:static;  → falls in normal flow,
-                                       so it scrolls OUT of the viewport with content.
-                                #uber-filter-container: top:0 → sticks to viewport top.
-   The transition is one-way per scroll direction (see Phase B JS).
+   State model (driven by body.detail-released, set by JS in fragments/layout.html):
+     default / no class:    header sticky at top:0,
+                            #uber-filter-container sticky at var(--sticky-filter-top).
+     body.detail-released   (header OFF screen, filter takes the slot)
+                            header: position:static;  → falls in normal flow,
+                                   so it scrolls OUT of the viewport with content.
+                            #uber-filter-container: top:0 → sticks to viewport top.
+   Release/restore is one-way per scroll direction (see Phase B JS).
 
    IMPORTANT: keep the default rules exactly as they are today — this block only
    overrides when a RELEASE class is present, so existing pages without a detail
@@ -2224,8 +2224,15 @@ body.detail-released .participant-filter-container {
     padding-top: 0;
 }
 
-body.detail-released .response-filter-container {
-    top: /* text-filter height varies; keep sticky right below it, not at a fixed global offset */
+/* Response/status filter row must stay STUCK directly under the text-filter (spec phase 4).
+   The baseline CSS (.response-filter-container) declared position:sticky, but in this codebase
+   neither the rehearsal (#attendance-response-filter-container) nor the event
+   (#response-filter-container) container carries that class — so they were never sticky.
+   Now we declare it explicitly for BOTH ids, independent of class inheritance. */
+body.detail-released [id="attendance-response-filter-container"],
+body.detail-released [id="response-filter-container"] {
+    position: sticky;
+    top: /* text-filter height varies; keep stuck right below it, not at a fixed global offset */
          calc(var(--sticky-filter-h, 0px) + 0.5rem);
 }
 
