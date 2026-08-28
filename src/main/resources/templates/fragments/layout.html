@@ -116,79 +116,31 @@
         const header = document.getElementById('dashboardHeader');
         if (!header) return;
 
-        /* ============================================================================
-         * ISSUE #119 — "Lista obecności" takeover (sticky release / sticky filter)
+        /* ==============================================================================
+         * ISSUE #119 — "header / filter scroll morph" (per user clarification 2026-08-28)
          *
-         * DESIRED BEHAVIOR (per user clarification 2026-08-27, verbatim):
-         *   "while the dashboard-header is sticky and we scroll down such that the
-         *    participant-filter-container touches the dashboard-header, the header must
-         *    STOP being sticky and START its own journey together with the scroll — it is
-         *    to be pushed off (wypchnięty) by the filter. When the filter touches the top
-         *    edge of the browser window, the filter becomes sticky."
+         * TARGET BEHAVIOUR (user's own words, paraphrased):
+         *   1. At scroll-top: the dashboard-header is **not sticky** — sits in normal flow above the content and leaves the viewport naturally as we scroll down.
+         *   2. As soon as we scroll DOWN past a small threshold (~30 px), the header flips to **position:sticky; top:0** — content below keeps scrolling under it
+         *      while the header stays pinned at the viewport top.
+         *   3. When #uber-filter-container's TOP edge reaches the header BOTTOM edge, the header gains the class `scrolled`, which flips it back to **position:static**.
+         *      It leaves the sticky slot and re-enters natural flow above the filter — so further scroll-down causes the header to EXIT through the TOP edge of the
+         *      viewport (the "wypchnięcie" / push-out). During this phase the filter is still in natural flow too; motion is fully continuous.
+         *   4. When the filter's own TOP edge reaches the **top of the viewport**, we add `body.filter-pinned` and #uber-filter-container flips to position:sticky; top:0
+         *      — taking over the sticky slot from that point on. The `.scrolled` header rule still applies (position:static), so the menu remains off-screen (its
+         *      in-flow position is above viewport-top by this point).
          *
-         * SCROLL-DOWN SEQUENCE (three visible phases, driven by real geometry):
+         * STATE MODEL (classes set per frame):
+         *   body.header-stuck          : armed at scrollY > 30; disarmed at scrollY <= 20.        CSS: .dashboard-header { position:sticky; top:0 }
+         *   #dashboardHeader.scrolled  : armed at the frame filter.top crosses header.bottom while in Phase 2;
+         *                                disarmed when we re-scroll up past BACK_ZONE(40).         CSS: .dashboard-header.scrolled { position:static }
+         *   body.filter-pinned         : armed when Phase 3 active AND scrollY >= releaseScrollY + PIN_EPSILON(20);
+         *                                disarmed whenever we re-scroll up past HYS(50).           CSS: #uber-filter-container { position:sticky; top:0; z-index:950 }
+         *   body.detail-released       : NOT SET by this pass — a historical no-op for old CSS rules.
          *
-         *   PHASE A — "below touch"  : no body classes; both elements in their baseline
-         *                              layout (header sticky at top:0; #uber-filter
-         *                              sticky at `top: var(--sticky-filter-top)` which
-         *                              JS keeps at headerBottom).
-         *
-         *   PHASE B — "push-out zone": the FRAME where the filter's natural-flow top edge
-         *                              first reaches/crosses the header's bottom edge
-         *                              (during scroll DOWN, positive delta → one-shot).
-         *                              JS adds `body.detail-released` (SENTINEL only).
-         *                              CSS makes:
-         *                                  .dashboard-header          → position: static
-         *                                  #uber-filter-container     → position: static
-         *                              i.e. both fall back to natural flow, and because
-         *                              the user is still scrolling DOWN, they both move
-         *                              UP together as the content above them scrolls away.
-         *                              During this phase, nothing is pinned, everything
-         *                              moves continuously with scroll — exactly the
-         *                              "rozpoczyna swoją podróż wraz ze scrollem" feel.
-         *
-         *   PHASE C — "pinned at top": the FRAME where #uber-filter-container's TOP edge
-         *                              (now measuring its natural-flow position, since no
-         *                              sticky offset applies in phase B) first reaches the
-         *                              VIEWPORT TOP (top <= ~1 px, i.e. it has been fully
-         *                              pushed up through the area under the header). JS
-         *                              adds a SECOND class: `body.filter-pinned`. CSS
-         *                              then flips ONE rule to complete the handoff:
-         *                                  body.filter-pinned #uber-filter-container
-         *                                      → position: sticky; top: 0
-         *                              From this moment, everything below the filter keeps
-         *                              scrolling but the filter itself stays at the very
-         *                              top of the viewport — which is exactly "sticky".
-         *
-         * SCROLL-UP SEQUENCE (reverses in reverse order):
-         *   PHASE C → B  : we remove `filter-pinned` when (and only when) we have scrolled
-         *                  back up enough that the filter's natural-flow position (as if it
-         *                  were NOT pinned) is again BELOW the viewport top. Robust way to
-         *                  measure this: capture `scrollY` on the frame Phase C fired and
-         *                  compare — when current `scrollY < releaseScrollY - 40`, we're past
-         *                  the handoff moment going up; remove pin, enter Phase B again.
-         *   PHASE B → A  : when scrollY <= 5 (canonical starting layout), remove both body
-         *                  classes entirely → baseline layout restored in one pass. This is
-         *                  direction-agnostic and cannot flicker because at that point all
-         *                  three elements (header, filter, response row) are back in their
-         *                  natural flow positions regardless of scroll direction.
-         *
-         * IMPLEMENTATION NOTES (why 71ccce1 felt "gwałtowny" / abrupt):
-         *   - 71ccce1 fired the ENTIRE layout swap (header→static, filter→top:0 sticky)
-         *     simultaneously on the very frame where `filterRect.top` was geometrically
-         *     below or at `headerRect.bottom`. Visually, the user's eye followed what
-         *     they had expected = "filter continues moving up while header scrolls out",
-         *     but the swap replaced a continuous motion with two instantaneous position
-         *     changes one after another (jump #1: filter pinned at top 0 while user still
-         *     sees it ~8px below; jump #2: header gone from flow). So even though the CSS
-         *     was technically "correct," the handoff fired a full frame BEFORE what the
-         *     user's mental model expected — hence "gwałtowny."
-         *   - THIS implementation keeps Phase B in natural flow (both elements continue
-         *     moving with scroll, exactly matching expectations), and defers the single
-         *     layout swap (`filter-pinned`) until the filter has ALREADY visually reached
-         *     the viewport top. Net effect: one continuous journey → one handoff at the
-         *     moment of least surprise.
-         * ============================================================================ */
+         * SCROLL-DOWN SEQUENCE: 1→2 (stuck) → 3 (released/scrolled) → 4 (filter pinned; menu off-screen).
+         * SCROLL-UP RESTORATION: reverse of the above, each with its own hysteresis band.
+         * ============================================================================== */
 
         const uberFilterContainer = document.getElementById('uber-filter-container');
         const hasFilters          = !!uberFilterContainer;
@@ -233,90 +185,55 @@
         function updateDetailPageState(scrollDelta) {
             if (!hasFilters || !uberFilterContainer) return;
 
-            const scrollY    = window.scrollY;
-            const headerRect = header.getBoundingClientRect();
-            const filterRect = uberFilterContainer.getBoundingClientRect();
+            const scrollY     = window.scrollY;
+            const headerRect  = header.getBoundingClientRect();
+            const filterRect  = uberFilterContainer.getBoundingClientRect();
 
-            /* ── COMPACT STATE (`.scrolled`) — unchanged from before this pass ─── */
-            if (!isScrolled && filterRect.top <= headerRect.bottom) {
-                isScrolled = true;
+            const inStuck    = document.body.classList.contains('header-stuck');
+            const isScrolledL= header.classList.contains('scrolled');   // Phase 3 marker (on this header only; detail-mode owns it).
+            const isPinned   = document.body.classList.contains('filter-pinned'); // Phase 4 marker.
+
+            /* PHASE 2 ARM — make the header sticky once we've scrolled a small distance down. */
+            if (scrollY > 30 && !inStuck) {
+                document.body.classList.add('header-stuck');
+            }
+            /* PHASE 2 DISARM — we've scrolled back up close to the top; give back the sticky slot. */
+            if (inStuck && scrollY <= 20) {
+                document.body.classList.remove('header-stuck');
+                header.classList.remove('scrolled');
+                document.body.classList.remove('filter-pinned');
+                releaseScrollY = null;
             }
 
-            const inRegime  = document.body.classList.contains('detail-released');    // Phase B or C marker
-            const isPinned  = document.body.classList.contains('filter-pinned');      // Phase C only
-
-            /* ── PHASE A → B: RELEASE (one-shot on the first frame filter's NATURAL-FLOW TOP
-               comes within a small "touch zone" of header BOTTOM while scrolling DOWN) ─────
-               RELEASE_EPSILON is deliberately LARGER (~20 px, not 4) because this is the
-               key fix for the reported issue #1: with the OLD tight (4px) threshold, the
-               JS only armed Phase B AFTER the pin (top: --sticky-filter-top = header-bottom)
-               had ALREADY snapped the filter into a stuck-below-header position — i.e.
-               "filter staje sticki i stoi pod menu". By firing ~20px before the touch line,
-               we arm Phase B during normal scroll motion, BEFORE the sticky pin becomes
-               visible. The `position: static` strip in Phase B then takes effect while the
-               filter is still moving freely upward through scroll, producing a continuous
-               push-out motion — no stuck-below state at all.
-
-               Direction gate (scrollDelta > 1) avoids arming on frames where the user is
-               scrolling UP past this line (in that case the Phase B→A clear at scrollY ≤ 5
-               simply would not happen in time, so gating by positive delta is critical to
-               prevent flicker / spurious state). */
-            if (!inRegime) {
-                const RELEASE_EPSILON   = 20;  // generous "just about to touch" zone (was 4px too tight, allowed the sticky-stuck state to form first)
-                const DIRECTION_EPSILON = 2;   // require a tiny, clearly-downward delta — tolerant of Selenium's ~20-40 px discrete jumps without firing on up-scroll frames
-                if (filterRect.top <= headerRect.bottom + RELEASE_EPSILON && scrollDelta > DIRECTION_EPSILON) {
-                    document.body.classList.add('detail-released');
-                    /* Capture the pin-math baseline ONCE, at the A→B frame. Both captures
-                       are viewport-relative in the STATIC-geometry regime (we've just been
-                       flipped to `position:static` and the browser has already re-laid out
-                       both elements in this same rAF tick), so they describe a genuine flow
-                       position — not a sticky-slot offset. From here on the B→C pin moment
-                       is arithmetic-only: `filterNaturalTopAtBase - (scrollY - releaseScrollY)`,
-                       independent of any CSS slot state for either element */
-                    releaseScrollY         = scrollY;            // A→B moment; also C→B hysteresis band baseline
-                    filterNaturalTopAtBase = headerRect.bottom;  // filter's natural-flow top ≈ header bottom at touch
+            /* PHASE 3 ARM — filter's natural-flow top edge has reached the header BOTTOM edge (we're scrolling down). */
+            if (inStuck && !isScrolledL) {
+                const TOUCH_ZONE = 4;   // sub-pixel "touch" tolerance.
+                if (filterRect.top <= headerRect.bottom + TOUCH_ZONE) {
+                    header.classList.add('scrolled');
+                    releaseScrollY = scrollY;   // consumed by the 3→2 / 4→3 hysteresis bands below.
                 }
             }
 
-            /* ── PHASE B → C: PIN (one-shot on the frame filter's NATURAL-FLOW top reaches
-               viewport top). `filter-pinned` flips #uber-filter-container back to sticky top:0.
-               This is a single layout swap (one element, position+top) at the exact instant
-               the filter has already visually arrived — no visible jump either direction. */
-            if (inRegime && !isPinned) {
-                const naturalTopNow = filterNaturalTopAtBase - (scrollY - releaseScrollY);
-                if (naturalTopNow <= 1) {
+            /* PHASE 4 ARM — filter has reached (approx.) the top of the viewport while Phase 3 is active. */
+            if (inStuck && isScrolledL && !isPinned) {
+                const PIN_EPSILON = 20;   // generous "clearly past the line" margin — user: filter dotyka górę widoku.
+                if (releaseScrollY !== null && scrollY >= releaseScrollY + PIN_EPSILON) {
                     document.body.classList.add('filter-pinned');
-                    /* `releaseScrollY` already holds the A→B scroll value — exactly what the
-                       C→B hysteresis band below needs to avoid un-pin flicker at the boundary. */
                 }
             }
 
-            /* ── RESTORE on SCROLL UP — reverse of the above, in reverse order ─────
-               C → B : drop `filter-pinned` when scrollY has fallen below (A→B moment) − 40 px.
-                       This is the FULL Phase-B journey re-travelled upward, with hysteresis
-                       to prevent flicker at the exact boundary. Works correctly even after a
-                       Selenium scrollTo() teleport into "past-the-pin" territory: un-pin as
-                       soon as the user scrolls back up past A→B − 40 px.
-               B → A : drop BOTH body classes when scrollY ≤ 5 (canonical page-top layout),
-                       one-pass, direction-agnostic reset. */
-            if (isPinned) {
-                if (releaseScrollY !== null && scrollY < releaseScrollY - 40) {
+            /* SCROLL-UP RESTORATION — reverse order, with hysteresis bands to avoid flicker at the boundary. */
+            if (inStuck && isScrolledL && isPinned) {
+                const HYS = 50;   // generous band so we don't micro-flicker near the Phase-3/4 boundary on up-scroll.
+                if (releaseScrollY !== null && scrollY <= releaseScrollY - HYS) {
                     document.body.classList.remove('filter-pinned');
-                    /* `releaseScrollY` survives: it's still the A→B sentinel for any re-arm. */
-                }
-            } else if (inRegime) {
-                if (scrollY <= 5) {
-                    document.body.classList.remove('detail-released');
-                    document.body.classList.remove('filter-pinned');
-                    releaseScrollY         = null;   // reset A→B sentinel — next touch re-arms
-                    filterNaturalTopAtBase = null;   // reset pin bookkeeping too
-                    isScrolled = false;               // clear the compact marker, to be tidy
                 }
             }
-
-/* ── Keep `.scrolled` cleared once we are clearly past the touch line again ─ */
-            if (isScrolled && !inRegime && filterRect.top > headerRect.bottom + 20) {
-                isScrolled = false;
+            if (inStuck && isScrolledL) {
+                const BACK_ZONE = 40; // generous band: re-travelled upward past the previous sticky-pin point by a meaningful margin.
+                if (releaseScrollY !== null && scrollY <= releaseScrollY - BACK_ZONE) {
+                    header.classList.remove('scrolled');
+                }
             }
         }
 
@@ -343,9 +260,12 @@
         }
 
         function updateHeaderClasses() {
-            // Sync `scrolled` class to the computed state (single source of truth = `isScrolled`).
-            if (isScrolled && !header.classList.contains('scrolled')) header.classList.add('scrolled');
-            else if (!isScrolled && header.classList.contains('scrolled')) header.classList.remove('scrolled');
+            // Dashboard mode only — syncs the `scrolled` class to its own local `isScrolled`.
+            // Detail pages manage their own .scrolled state directly inside updateDetailPageState (see above).
+            if (!hasFilters) {
+                if (isScrolled && !header.classList.contains('scrolled')) header.classList.add('scrolled');
+                else if (!isScrolled && header.classList.contains('scrolled')) header.classList.remove('scrolled');
+            }
         }
 
         function updateHeaderState(scrollDelta) {
