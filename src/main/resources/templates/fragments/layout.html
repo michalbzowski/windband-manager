@@ -205,32 +205,37 @@
                 releaseScrollY = null;
             }
 
-            /* PHASE 3 ARM — filter's natural-flow top edge has reached the header BOTTOM edge (we're scrolling down). */
+            /* PHASE 3 ARM — filter's natural-flow top edge has come near the header BOTTOM edge (we're scrolling down).
+               TOUCH_ZONE is generous (~80 px) so that the moment we arm "scrolled", the header still has a
+               visible in-flow position within the viewport (at least partially), producing a smooth "slide up and off"
+               rather than an abrupt disappearance. (Per user 2026-08-28 round-4 feedback on image #2.) */
             if (inStuck && !isScrolledL) {
-                const TOUCH_ZONE = 4;   // sub-pixel "touch" tolerance.
+                const TOUCH_ZONE = 80;   // generous zone: arm PHASE 3 BEFORE the raw 1px touch.
                 if (filterRect.top <= headerRect.bottom + TOUCH_ZONE) {
                     header.classList.add('scrolled');
-                    releaseScrollY = scrollY;   // consumed by the 3→2 / 4→3 hysteresis bands below.
+                    releaseScrollY = scrollY;
                 }
             }
 
-            /* PHASE 4 ARM — filter has reached (approx.) the top of the viewport while Phase 3 is active. */
+            /* PHASE 4 ARM — filter has reached (approx.) the top of the viewport while Phase 3 is active.
+               PIN_EPSILON = header_height + a buffer, since we armed PHASE 3 ~80px early (TOUCH_ZONE),
+               so we need to scroll an extra ~200 px before the filter has visually "reached" the viewport top. */
             if (inStuck && isScrolledL && !isPinned) {
-                const PIN_EPSILON = 20;   // generous "clearly past the line" margin — user: filter dotyka górę widoku.
+                const PIN_EPSILON = 200;  // generous: arm PHASE 4 well AFTER PHASE 3 fired; filter clearly at viewport-top.
                 if (releaseScrollY !== null && scrollY >= releaseScrollY + PIN_EPSILON) {
                     document.body.classList.add('filter-pinned');
                 }
             }
 
-            /* SCROLL-UP RESTORATION — reverse order, with hysteresis bands to avoid flicker at the boundary. */
+            /* SCROLL-UP RESTORATION — reverse order, with hysteresis bands to avoid flicker at boundaries. */
             if (inStuck && isScrolledL && isPinned) {
-                const HYS = 50;   // generous band so we don't micro-flicker near the Phase-3/4 boundary on up-scroll.
+                const HYS = 200;   // mirrors PIN_EPSILON: must re-scroll up well past the Phase-3/4 arming point before we un-pin.
                 if (releaseScrollY !== null && scrollY <= releaseScrollY - HYS) {
                     document.body.classList.remove('filter-pinned');
                 }
             }
             if (inStuck && isScrolledL) {
-                const BACK_ZONE = 40; // generous band: re-travelled upward past the previous sticky-pin point by a meaningful margin.
+                const BACK_ZONE = 120; // generous band: re-travelled upward past the arming point by a meaningful margin (> TOUCH_ZONE).
                 if (releaseScrollY !== null && scrollY <= releaseScrollY - BACK_ZONE) {
                     header.classList.remove('scrolled');
                 }
