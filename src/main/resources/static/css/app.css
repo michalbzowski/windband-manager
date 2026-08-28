@@ -2205,37 +2205,42 @@ svg, path { flex: none; }
        .dashboard-header         → position:sticky; top:0     (we add this below)
        #uber-filter-container    → position:static; top:auto  (unchanged from PHASE 1)
 
-     PHASE 3 (.dashboard-header.scrolled — armed the moment #uber-filter-container's
-             TOP edge reaches the header's BOTTOM edge, while in PHASE 2)
+     PHASE 3 (.dashboard-header.scrolled — armed while in PHASE 2, when #uber-filter-container's
+             TOP edge comes within TOUCH_ZONE(80 px) of the header's BOTTOM edge — generous zone so the
+             "slide-off" is visible rather than abrupt; see user image #2 feedback on 2026-08-28)
        .dashboard-header         → position:static; top:auto  (reverts to natural flow — this is the
-                       "wypchniećie" / push-out: the filter leads, the menu exits through the top edge)
+                       "wypchnięcie" / push-out: filter leads, menu exits through the top edge OF THE VIEWPORT)
        #uber-filter-container    → position:static; top:auto  (unchanged from PHASE 2)
 
-     PHASE 4 (body.filter-pinned — armed when scrollY >= releaseScrollY + PIN_EPSILON(20),
-             i.e. clearly past the touch line and the filter has reached the viewport top)
+     PHASE 4 (body.filter-pinned — armed while in PHASE 3 when scrollY >= releaseScrollY + PIN_EPSILON(200),
+             i.e. filter has truly reached the viewport top)
        .dashboard-header         → position:static; top:auto  (unchanged from PHASE 3 — physically
                        OFF-SCREEN by this point, since its in-flow position is above the viewport
                        top and we've already passed it during scroll)
-       #uber-filter-container    → position:sticky; top:0     (we add this below)
+       #uber-filter-container    → position:sticky; top:0     (we add this below; z-index 950 to ride on top)
 
    User requirements mapping (from the 2026-08-28 verification):
      ① "At scroll-top header is NON-sticky, content scrolls under it"
-         → Baseline .dashboard-header { position:static } + no body.header-stuck.
-     ② "Scrolling down makes the header sticky"
+         → Baseline .dashboard-header { position:static } + no body.header-stuck at scrollY ≤ 30.
+     ② "Scrolling down makes the header sticky (content enters under it)"
          → body.header-stuck .dashboard-header { position:sticky; top:0 }.
-     ③ "When filter touches header bottom, header gains .scrolled and becomes non-sticky again"
-         → .dashboard-header.scrolled { position:static } (overrides PHASE 2 rule by source order).
+     ③ "Filter touches header bottom → header gains .scrolled and becomes non-sticky again,
+         sliding off through the TOP of the viewport (partially visible during the transition)"
+         → .dashboard-header.scrolled { position:static !important } (fires early via TOUCH_ZONE=80 so the
+           transition is visible over ~80 px of continued scroll, per user image #2).
      ④ "Filter reaches top of viewport → filter becomes sticky (persistent takeover)"
-         → body.filter-pinned #uber-filter-container { position:sticky; top:0 }.
+         → body.filter-pinned #uber-filter-container { position:sticky; top:0; z-index:950 }.
 
-   Why this beats the v2 (2026-08-27 two-body-class) model:
+   Why this beats the v2 (2026-08-27 two-body-class) model and v1 (TOUCH_ZONE=4):
      – One class per "state of being in a sticky slot", no competing rules.
      – All transitions are single-element CSS swaps that trigger LAYOUT ONLY when the rule's position
          value actually changes (sticky↔static is a layout change; adding a second class that does NOT
          touch position has zero cost to the layout engine).
      – No `transform`, no `z-index` dance (the original 71ccce1 two-frame snap is gone because we never
-         have more than one element in the "takes the sticky slot" role at any instant: header in Phases 1-3, filter in Phase 4).
-     – Hysteresis bands (HYS=50, BACK_ZONE=40) on JS restore prevent flicker at boundaries.
+         have more than one element in the "takes the sticky slot" role at any instant: header in Phases 1-3,
+         filter in Phase 4).
+     – Generous hysteresis bands (TOUCH_ZONE=80, PIN_EPSILON=200, HYS=200, BACK_ZONE=120) prevent flicker
+         at boundaries AND keep each transition over ~80-200 px of travel so the user sees a smooth "slide-off".
 
    ============================================================ */
 
