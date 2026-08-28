@@ -119,123 +119,166 @@
         /* ==============================================================================
          * ISSUE #119 — "header / filter scroll morph" (per user clarification 2026-08-28)
          *
-         * TARGET BEHAVIOUR (user's own words, paraphrased):
-         *   1. At scroll-top: the dashboard-header is **not sticky** — sits in normal flow above the content and leaves the viewport naturally as we scroll down.
-         *   2. As soon as we scroll DOWN past a small threshold (~30 px), the header flips to **position:sticky; top:0** — content below keeps scrolling under it
-         *      while the header stays pinned at the viewport top.
-         *   3. When #uber-filter-container's TOP edge reaches the header BOTTOM edge, the header gains the class `scrolled`, which flips it back to **position:static**.
-         *      It leaves the sticky slot and re-enters natural flow above the filter — so further scroll-down causes the header to EXIT through the TOP edge of the
-         *      viewport (the "wypchnięcie" / push-out). During this phase the filter is still in natural flow too; motion is fully continuous.
-         *   4. When the filter's own TOP edge reaches the **top of the viewport**, we add `body.filter-pinned` and #uber-filter-container flips to position:sticky; top:0
-         *      — taking over the sticky slot from that point on. The `.scrolled` header rule still applies (position:static), so the menu remains off-screen (its
-         *      in-flow position is above viewport-top by this point).
+         * TARGET BEHAVIOUR (user's own words, VERBATIM, from the 7th clarification message):
+         *   "Chodzi mi o płynne wyjście nagłówka z widocznego obszaru, gdy filtr go dotknie.
+         *    Oblicz wysokość elementu nagłówka. Jeśli filtr dotknie nagłówka, czyli jego górna
+         *    krawędź będzie na wysokości dolnej krawędzi nagłówka, to nagłówek ma zacząć się
+         *    skrollować [scrollować] jak normalny element HTML."  (PHASE B — handoff)
+         *   "Gdy filtr już dojedzie do górnej krawędzi i stanie się sticky, to niewidoczny już
+         *    nagłówek ma czekać nad filtrem już niewidoczny."      (PHASE C — pinned)
+         *   "Gdy zacznę dodać scroll [do góry], i filtr przestanie być sticky i zacznie jechać
+         *    w dół (scroll bar w górę) to ma pociągnąć za sobą nagłówek."  (C→B reversal)
+         *   "Gdy filtr od góry oddali się o wysokość nagłówka, to nagłówek w pełni widoczny ma
+         *    się przykleić do góry widoku a filtr jechać dalej."      (B→A reversal)
          *
-         * STATE MODEL (classes set per frame):
-         *   body.header-stuck          : armed at scrollY > 30; disarmed at scrollY <= 20.        CSS: .dashboard-header { position:sticky; top:0 }
-         *   #dashboardHeader.scrolled  : armed at the frame filter.top crosses header.bottom while in Phase 2;
-         *                                disarmed when we re-scroll up past BACK_ZONE(40).         CSS: .dashboard-header.scrolled { position:static }
-         *   body.filter-pinned         : armed when Phase 3 active AND scrollY >= releaseScrollY + PIN_EPSILON(20);
-         *                                disarmed whenever we re-scroll up past HYS(50).           CSS: #uber-filter-container { position:sticky; top:0; z-index:950 }
-         *   body.detail-released       : NOT SET by this pass — a historical no-op for old CSS rules.
+         * PHYSICAL MODEL (v4 — geometry as state machine, no hysteresis constants):
+         *   H = height of .dashboard-header (measured every frame; see measureHeaderHeight()).
+         *   fY = top edge of #uber-filter-container (viewport-relative). While in natural flow,
+         *        this IS its physical position. While sticky-pinned (PHASE C), it clamps to 0.
          *
-         * SCROLL-DOWN SEQUENCE: 1→2 (stuck) → 3 (released/scrolled) → 4 (filter pinned; menu off-screen).
-         * SCROLL-UP RESTORATION: reverse of the above, each with its own hysteresis band.
-         * ============================================================================== */
+         *   PHASE A  (fY > H):  header STICKY top:0; filter NATURAL FLUSH (in-flow).
+         *   PHASE B  (fY ≤ H): header STATIC (re-enters in-flow above the filter; climbs out of
+         *                       viewport over the next H px of scroll); filter NATURAL (climbing).
+         *                      Classes: header.scrolled, body.header-stuck (baseline sticky preserved)
+         *   PHASE C  (fY ≤ 0): filter STICKY top:0 (z-index 950 — rides on top); header STATIC and
+         *                       OFF-SCREEN above it in natural flow.
+         *                      Classes: header.scrolled, body.header-stuck, body.filter-pinned
+         *
+         *   Transitions are pure crossings of H and 0 by fY (1px subpixel tolerance). Scroll-up
+         *   reverses C→B→A symmetrically; no hysteresis bands required because each rule only
+         *   fires when ITS OWN boundary is crossed — a frame in which both could fire lands on
+         *   the more specific PHASE C (checked first) and stays there until we cross B's line back.
+         * ============================================================================= */
 
         const uberFilterContainer = document.getElementById('uber-filter-container');
         const hasFilters          = !!uberFilterContainer;
         let lastScrollY           = 0;    // scrollY at the time of the LAST rendered frame (before this update)
         let ticking               = false;
         let isScrolled            = false; // Header morphed to compact "scrolled" state (small bar)
-        let releaseScrollY        = null;  // scrollY @ A→B frame (pin check + C→B hysteresis band baseline)
-        let filterNaturalTopAtBase= null  // viewport-rel natural-flow top of filter @ A→B frame
+
+        /* ── ISSUE #119 v4 — physical handoff model (user spec 2026-08-28, verbatim):
+
+             H = height of .dashboard-header (measured once at load + on resize).
+             filterY_natural(t) = the CURRENT "natural-flow" top edge position of #uber-filter-container (px,
+               viewport-relative) that WOULD HAVE BEEN its position if it were in-flow right now. When we are
+               scrolled deep enough, getBoundingClientRect().top reflects its STICKY position — but while
+               it's in natural flow (Phases A/B in v4), getBoundingClientRect().top IS filterY_natural(t).
+
+             PHASE A  (scrollY_low; filter.y > H):
+                header → `position:sticky; top:0`   (baseline: always sticky)
+                filter → natural flow                 (top edge at its own in-flow position, below the header)
+
+             PHASE B  (filter.y crosses below H going DOWN):
+                The moment the filter's top edge equals the header's bottom edge (=H), the user calls this
+                "filtr dotyka nagłówka". From that instant:
+                header → `position:static`           (UN-stick; it re-enters natural flow, moves UP with scroll)
+                filter → still natural flow          (top edge climbing from H toward 0 as scrollY increases)
+                This is the VISIBLE "płynne wyjście nagłówka" — over the next H pixels of scroll, the header
+                exits through the TOP edge of the viewport while the filter climbs up through it.
+
+             PHASE C  (scrollY_high; filter.y <= 0):
+                The moment the filter's top edge hits 0 (= top of viewport), we add `body.filter-pinned` and:
+                header → still static                (its in-flow position is well above the viewport → fully invisible,
+                                                      per user: "niewidoczny już nagłówek ma czekać nad filtrem")
+                filter → `position:sticky; top:0`    (takes the sticky slot; content scrolls under)
+
+             SCROLL-UP REVERSAL (symmetric):
+                 C→B at filter.y > 0 (filter leaves the sticky slot, slides down in natural flow above the header's
+                 in-flow position). B→A at filter.y >= H (header regains its sticky slot; it "jumps up" to top:0 and is
+                 fully visible again; filter continues down as user scrolls up farther).
+
+             There are NO hysteresis bands, NO `releaseScrollY`, NO `TOUCH_ZONE`, NO `PIN_EPSILON` constants — the
+             geometry IS the state machine. Hysteresis was a workaround for firing on sub-1px noise in v1; v4 fires
+             on the exact physical crossing (within 0.5px rounding), and CSS transition on `.dashboard-header { top }`
+             smooths any residual jump at the A↔B boundary by ~300ms.
+         */
+        let headerH = 0;          // .dashboard-header height in px; 0 = not yet measured (or hidden).
+        function measureHeaderHeight() {
+            if (!header) return;
+            const h = Math.round(header.getBoundingClientRect().height);
+            if (h > 0) headerH = h;
+        }
 
         /* ── Per-frame geometry-driven CSS vars (runs every frame while filter exists) ──
            These are pure style values; they do not affect layout or trigger reflow.
-           Under the current "wypchnięcie" model only `--sticky-filter-top` is still
-           consumed (by the PHASE A baseline rule); the vars for the response row have
-           their own baseline + phase-override rules that use them below. */
+           Under the v4 handoff model, `--sticky-filter-top` is the H-baseline used by the PHASE A
+           rule so that if any page is still in PHASE A, the filter's sticky slot sits exactly at the
+           BOTTOM edge of the (sticky) header — no gap, no overlap. */
         function updateStickyFilterOffset() {
             if (!hasFilters || !uberFilterContainer) return;
 
-            const headerRect = header.getBoundingClientRect();
             const textField  = uberFilterContainer.querySelector(
                 '.attendance-filter-container, .participant-filter-container');
             const textH      = textField ? Math.round(textField.getBoundingClientRect().height) : 0;
 
-            /* --sticky-filter-top: used only by the PHASE A baseline (top of filter when
-               sticky = bottom edge of header). Under Phases B + C this is IGNORED —
-               those rules pin at top:0 and that's an independent rule. */
-            document.documentElement.style.setProperty('--sticky-filter-top', Math.max(0, headerRect.bottom) + 'px');
+            /* --sticky-filter-top: the H-baseline value (measured header height). Used by the PHASE A rule. */
+            document.documentElement.style.setProperty('--sticky-filter-top', headerH + 'px');
 
             /* --sticky-filter-h: reported text-block height so the response row can sit exactly
                under it — consumed by .response-filter-container top: calc() in Phase C. */
             document.documentElement.style.setProperty('--sticky-filter-h', textH + 'px');
 
-            /* --sticky-response-filter-top: Phase A baseline for response-row sticky (header-bottom + text height). */
+            /* --sticky-response-filter-top: PHASE A baseline for response-row sticky (header-bottom + text height). */
             const pinned = document.body.classList.contains('filter-pinned') ||
                            document.body.classList.contains('detail-released');
-            const baseTop = pinned ? 0 : headerRect.bottom;
+            const baseTop = pinned ? 0 : headerH;
             document.documentElement.style.setProperty(
                 '--sticky-response-filter-top', Math.max(0, baseTop + textH) + 'px');
         }
 
-        /* ── Core state machine — called once per rendered frame by the onScroll rAF wrapper.
-           scrollDelta: positive px = scrolling DOWN, negative = UP, 0 = no direction signal. */
-        function updateDetailPageState(scrollDelta) {
+        /* ── Core state machine (v4 handoff) — called once per rendered frame by the onScroll rAF wrapper.
+           scrollDelta: kept for caller compatibility; v4 ignores it (direction-agnostic). */
+        function updateDetailPageState(/* unused scrollDelta */) {
             if (!hasFilters || !uberFilterContainer) return;
 
-            const scrollY     = window.scrollY;
-            const headerRect  = header.getBoundingClientRect();
+            /* Measure header height every frame so that CSS-var updates stay accurate across
+               font-load, viewport resize, or any layout shift — cheap (one getBoundingClientRect). */
+            measureHeaderHeight();
+
             const filterRect  = uberFilterContainer.getBoundingClientRect();
+            const inHandoff   = header.classList.contains('scrolled');       // PHASE B/C: .scrolled marker on the header.
+            const isPinned    = document.body.classList.contains('filter-pinned'); // PHASE C: body.filter-pinned marker.
+            const H           = headerH || 0;   // guard against not-yet-measured (skip state changes in that case).
 
-            const inStuck    = document.body.classList.contains('header-stuck');
-            const isScrolledL= header.classList.contains('scrolled');   // Phase 3 marker (on this header only; detail-mode owns it).
-            const isPinned   = document.body.classList.contains('filter-pinned'); // Phase 4 marker.
+            if (H === 0) return;
 
-            /* PHASE 2 ARM — make the header sticky once we've scrolled a small distance down. */
-            if (scrollY > 30 && !inStuck) {
-                document.body.classList.add('header-stuck');
+            /* ── PHASE A → B transition — the filter's top edge crosses INTO the header band:
+                   from "below" (filter.y > H — natural flow, visible under the sticky header)
+                 to   "inside/above" (filter.y <= H — climbing toward the viewport top).
+               The crossing fires the moment they meet (filter.y == H), which is exactly the user's
+               "filtr dotyka nagłówka od dołu". We use a 1px tolerance against sub-pixel rounding. */
+            if (!inHandoff && filterRect.top <= H + 1) {
+                // Ensure we are in PHASE A (sticky header) when we cross → this is the handoff moment.
+                document.body.classList.add('header-stuck');     // belt-and-braces: ensures header was sticky.
+                header.classList.add('scrolled');                // flip the header back to natural (UN-stick).
+                return;
             }
-            /* PHASE 2 DISARM — we've scrolled back up close to the top; give back the sticky slot. */
-            if (inStuck && scrollY <= 20) {
-                document.body.classList.remove('header-stuck');
-                header.classList.remove('scrolled');
+
+            /* ── PHASE B → C transition — the filter's top edge reaches the TOP of the viewport (<= 0).
+               From then on, the filter is pinned at top:0 and the (static) header is fully above it. */
+            if (inHandoff && !isPinned && filterRect.top <= 1) {
+                document.body.classList.add('filter-pinned');
+                return;
+            }
+
+            /* ── SCROLL-UP restoration C → B — the filter leaves its sticky slot and starts sliding down
+               in natural flow (its viewport-relative top edge > 0 again). The .scrolled class stays on
+               the header until we reach PHASE A. */
+            if (inHandoff && isPinned && filterRect.top > 1) {
                 document.body.classList.remove('filter-pinned');
-                releaseScrollY = null;
             }
 
-            /* PHASE 3 ARM — filter's natural-flow top edge has reached the header BOTTOM edge (we're scrolling down). */
-            if (inStuck && !isScrolledL) {
-                const TOUCH_ZONE = 4;   // sub-pixel "touch" tolerance.
-                if (filterRect.top <= headerRect.bottom + TOUCH_ZONE) {
-                    header.classList.add('scrolled');
-                    releaseScrollY = scrollY;   // consumed by the 3→2 / 4→3 hysteresis bands below.
-                }
-            }
-
-            /* PHASE 4 ARM — filter has reached (approx.) the top of the viewport while Phase 3 is active. */
-            if (inStuck && isScrolledL && !isPinned) {
-                const PIN_EPSILON = 20;   // generous "clearly past the line" margin — user: filter dotyka górę widoku.
-                if (releaseScrollY !== null && scrollY >= releaseScrollY + PIN_EPSILON) {
-                    document.body.classList.add('filter-pinned');
-                }
-            }
-
-            /* SCROLL-UP RESTORATION — reverse order, with hysteresis bands to avoid flicker at the boundary. */
-            if (inStuck && isScrolledL && isPinned) {
-                const HYS = 50;   // generous band so we don't micro-flicker near the Phase-3/4 boundary on up-scroll.
-                if (releaseScrollY !== null && scrollY <= releaseScrollY - HYS) {
-                    document.body.classList.remove('filter-pinned');
-                }
-            }
-            if (inStuck && isScrolledL) {
-                const BACK_ZONE = 40; // generous band: re-travelled upward past the previous sticky-pin point by a meaningful margin.
-                if (releaseScrollY !== null && scrollY <= releaseScrollY - BACK_ZONE) {
-                    header.classList.remove('scrolled');
-                }
+            /* ── SCROLL-UP restoration B → A — the filter's top edge climbs back DOWN to a position
+               >= H below viewport-top (i.e. it's no longer "in" the header band). At that instant,
+               hand the sticky slot BACK to the header so it's visible on top again; the user then
+               keeps scrolling up and the filter naturally slides down out of the way (PHASE A state). */
+            if (inHandoff && !isPinned && filterRect.top >= H + 1) {
+                header.classList.remove('scrolled');
+                // Keep body.header-stuck? It's harmless either way (baseline is sticky in PHASE A). We
+                // leave it alone to minimize layout shifts at this boundary.
             }
         }
+
 
         /* Dashboard mode — unchanged from before this pass (no #uber-filter-container on page). */
         function updateDashboardState() {
