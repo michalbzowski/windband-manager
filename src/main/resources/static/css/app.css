@@ -2186,68 +2186,71 @@ svg, path { flex: none; }
 .stat-grid .ph-stat-title,
 .quick-grid .ph-quick-title { gap: 0.35rem; }
 
-/* =============================================================================
-   ISSUE #119 — "Lista obecności" sticky-release state machine (CSS side).
-   The JS in fragments/layout.html (dashboard-header-morph) drives TWO body-level
-   classes in a strict two-step sequence, corresponding to the two layout-affecting
-   moments:
+/* ============================================================
+   ISSUE #119 v2 — refined "wypchnięcie" behaviour (three explicit user requirements):
+   
+   PHASE A  (default, no body class)
+     - dashboard-header : position:sticky; top:0; z-index:900          (pinned at viewport top)
+     - uber-filter      : position:sticky; top:--sticky-filter-top (= header-bottom); z-index:100
+   
+   PHASE B  (body.detail-released — armed the instant filter's natural-flow TOP crosses header bottom while scrolling DOWN)
+     - dashboard-header : position:static; top:auto                     (leaves sticky slot → returns to natural flow, so it can leave through the top edge)
+     - uber-filter      : position:static; top:auto                     (also leaves its sticky pin → now both are in natural flow and move UP TOGETHER through scroll; header ABOVE filter in stack order)
+     Net: continuous "filter leads, header follows" motion — the requested "wypchnięcie".
+     No z-index war: neither element needs to paint over the other because in this regime they DON'T overlap (header is directly above filter in document flow at all times — it's `position:static` and so is the filter, so they remain in their natural flow positions). 
 
-     STEP 1  body.detail-released     — STATE SENTINEL, set on the touch frame (filter
-                                        top reaches header bottom while scrolling down).
-                                        CSS uses this class ONLY to make BOTH elements
-                                        non-sticky (natural flow) so they continue
-                                        traveling together as the user scrolls. No other
-                                        visual effect of STEP 1 — the "gwałtowny" snap
-                                        from the prior PR came from layout rules firing
-                                        one frame too early.
+   PHASE C  (body.filter-pinned — armed when the filter's NATURAL-FLOW top has reached the TOP of the viewport)
+     - dashboard-header : position:static; top:auto                     (unchanged from B — remains in flow above the now-sticky filter, physically OFF-SCREEN because its in-flow position is above the pin line the filter is now sitting on)
+     - uber-filter      : position:sticky; top:0; z-index:950          (single layout swap in ONE frame; this is the "filter takes over sticky slot" moment — no visible jump because header was already static, so the sticky region below is not a reflow of anything above)
+   
+   User requirements mapping:
+   1. "menu stops being sticky when filter touches it"      → PHASE B (header becomes position:static; no longer pinned in sticky slot)
+   2. "filter pushes menu out — continuous, not vanishing"   → PHASE B both elements in natural flow, BOTH scroll up with content as user scrolls — literal "wypchnięcie" feel; no hard layout jump is introduced because `position:static` IS the original state; the change is only that it's no longer overridden by a sticky pin.
+   3. "menu relative to filter, leaves through top edge"     → PHASE B, because header's in-flow position is ABOVE the filter's in-flow position (they are consecutive in document) — as user scrolls both move up together, header exits the viewport first through its TOP edge as the natural consequence
+   4. "filter becomes sticky when it reaches viewport top"    → PHASE C (position:sticky top:0; the ONLY frame that takes a new layout state, and only for ONE element)
+   
+   Why this works without the two-frame snap from 71ccce1:
+     - The momentary `position:static` on header + `top:auto` on filter only REMOVES existing sticky pins. Removing a pin is a LAYOUT CHANGE (the pin was overriding natural position when triggered, but only while in effect — once removed the element returns to its natural flow slot, which it has always been sitting at). There is no reflow of other elements because their natural positions are unchanged; this was the "natural motion" regime the user wanted.
+   ============================================================ */
 
-     STEP 2  body.filter-pinned       — applied on the EXACT frame where the filter, in
-                                        natural flow (no sticky offset), reaches the very
-                                        TOP of the viewport. CSS uses this class ONLY to
-                                        flip #uber-filter-container back to sticky at
-                                        top:0 — which is exactly "the filter becomes
-                                        sticky" per the spec.
+/* --------------------------- PHASE B — "released" state --------------------- */
+/* The instant the JS arms `body.detail-released` (filter top touches header bottom
+   while scrolling DOWN), we strip BOTH sticky pins in one frame — this is a REMOVAL of
+   an override, not an addition. Neither element jumps: they simply revert to their
+   natural-flow positions (which are identical at this instant because that's exactly
+   where the user has scrolled them to). From here on they move up together through
+   further scrolling — the requested "wypchnięcie" (filter leads, header follows above it),
+   exiting through the TOP edge of the viewport. */
 
-   Because STEP 2's layout swap fires AFTER the filter has already visibly reached the
-   viewport top, the user sees one continuous motion (header + filter both scrolling up)
-   followed by ONE instantaneous "now it's pinned" moment — matching their expectation
-   exactly and eliminating the two-jump feel of 71ccce1.
-
-   IMPORTANT: keep the default rules exactly as they are today — this block only
-   overrides when a RELEASE / PINNED class is present, so existing pages without these
-   body classes are UNCHANGED (no regressions on dashboards, list pages, forms).
-   ============================================================================= */
-
-/* STEP 1 — PHASE B: both elements fall back to natural flow and continue moving with
-   scroll. `position:static` on the header removes it from its sticky slot (it no longer
-   pins at top:0, so it travels in the document's normal flow, off-screen as content
-   above it scrolls away). `position:static` on the filter removes its own sticky pin at
-   `--sticky-filter-top` too — now it, too, rides the same natural flow and keeps moving
-   upward exactly as the user continues to scroll down. This is the literal
-   "rozpoczyna swoją podróż wraz ze scrollem" moment from the spec. */
 body.detail-released .dashboard-header {
-    position: static;                       /* stop being sticky — leaves its slot in one pass */
-    top: auto;
+    position: static;                        /* leaves its sticky slot at top:0 entirely — no longer a pinned box */
+    top: auto;                               /* natural flow position restored */
 }
 body.detail-released #uber-filter-container {
-    position: static;                       /* also natural flow now, so the touch-line crossing isn't a jump */
+    position: static;                        /* removes its sticky pin at --sticky-filter-top too — now in-flow, moving with the user's scroll */
     top: auto;
 }
 
-/* STEP 2 — PHASE C: single layout swap that completes the takeover. The moment the user
-   has finished naturally scrolling both elements upward together and the filter has
-   actually reached the top of the browser window, the filter takes over the sticky slot
-   permanently (it now stays at top:0 even as content below it keeps scrolling). */
+/* --------------------------- PHASE C — "pinned" state ----------------------- */
+/* When the filter's NATURAL-FLOW top (i.e. after Phase B has removed both pins) reaches
+   the very top of the viewport, `body.filter-pinned` arms. This is the ONLY layout swap
+   in the whole sequence: filter flips back to sticky top:0. The header is ALREADY static
+   (from Phase B), so this swap does not reflow anything above the filter — nothing can
+   reflow because there IS nothing sticky above it at this point. Net visible effect:
+   filter "takes over" the sticky slot exactly at the moment of least surprise, and the
+   single instant layout change is felt as a continuous extension of the push-out (not
+   a hard snap) because the header was already out of that slot during the entire Phase B
+   journey. */
+
 body.filter-pinned .dashboard-header {
-    position: static;                       /* stays out of the slot — already off-screen by this point */
+    position: static;                        /* unchanged from B — remains in flow above the now-sticky filter, physically OFF-SCREEN because the user has scrolled past it by this point */
     top: auto;
 }
 body.filter-pinned #uber-filter-container {
-    position: sticky;                       /* THE takeaway moment: filter becomes STICKY */
-    top: 0;                                 /* pinned at the very top of the viewport */
-    z-index: 950;                           /* above content, below header (900) & modal (1000+) — same as today's default */
+    position: sticky;                        /* TAKE OVER the sticky slot here — ONE frame of layout swap only */
+    top: 0;                                  /* pinned at the very top of the viewport */
+    z-index: 950;                            /* above content; header is off-screen (static flow) so no stacking conflict */
 }
-
 /* Padding-kill rules apply in both Phases B and C so the inner filter block reads cleanly
    against whichever sticky pin (or natural-flow position) it currently has. Keeping these
    independent of the two phase classes above means we don't have to duplicate them for
