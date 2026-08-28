@@ -195,10 +195,14 @@
         let lastScrollY           = 0;    // scrollY at the time of the LAST rendered frame (before this update)
         let ticking               = false;
         let isScrolled            = false; // Header morphed to compact "scrolled" state (small bar)
-        let releaseScrollY        = null;  // scrollY at the exact moment Phase C fired (used for Phase C→B on scroll up)
+        let releaseScrollY        = null;  // scrollY @ A→B frame (pin check + C→B hysteresis band baseline)
+        let filterNaturalTopAtBase= null  // viewport-rel natural-flow top of filter @ A→B frame
 
         /* ── Per-frame geometry-driven CSS vars (runs every frame while filter exists) ──
-           These are pure style values; they do not affect layout or trigger reflow. */
+           These are pure style values; they do not affect layout or trigger reflow.
+           Under the current "wypchnięcie" model only `--sticky-filter-top` is still
+           consumed (by the PHASE A baseline rule); the vars for the response row have
+           their own baseline + phase-override rules that use them below. */
         function updateStickyFilterOffset() {
             if (!hasFilters || !uberFilterContainer) return;
 
@@ -207,16 +211,16 @@
                 '.attendance-filter-container, .participant-filter-container');
             const textH      = textField ? Math.round(textField.getBoundingClientRect().height) : 0;
 
-            /* --sticky-filter-top: used by the BASELINE sticky rule on #uber-filter
-               (Phase A only; Phases B/C override it with `position:static` / `top:0`). */
+            /* --sticky-filter-top: used only by the PHASE A baseline (top of filter when
+               sticky = bottom edge of header). Under Phases B + C this is IGNORED —
+               those rules pin at top:0 and that's an independent rule. */
             document.documentElement.style.setProperty('--sticky-filter-top', Math.max(0, headerRect.bottom) + 'px');
 
-            /* --sticky-filter-h: reported text-block height so the response row can stick
-               directly under it (consumed by .response-filter-container top: calc()). */
+            /* --sticky-filter-h: reported text-block height so the response row can sit exactly
+               under it — consumed by .response-filter-container top: calc() in Phase C. */
             document.documentElement.style.setProperty('--sticky-filter-h', textH + 'px');
 
-            /* --sticky-response-filter-top: response row's sticky pin while we're in Phase A;
-               overridden to 0+textH once pinned in Phases B/C. */
+            /* --sticky-response-filter-top: Phase A baseline for response-row sticky (header-bottom + text height). */
             const pinned = document.body.classList.contains('filter-pinned') ||
                            document.body.classList.contains('detail-released');
             const baseTop = pinned ? 0 : headerRect.bottom;
@@ -241,62 +245,76 @@
             const inRegime  = document.body.classList.contains('detail-released');    // Phase B or C marker
             const isPinned  = document.body.classList.contains('filter-pinned');      // Phase C only
 
-            /* ── PHASE A → B: RELEASE (one-shot on the touch frame) ─────────────
-               Entry condition: filter's TOP edge reaches header BOTTOM while scrolling DOWN.
-               This is literally "participant-filter-container dotyka dashboard-header".
-               After this frame, BOTH header and filter switch to natural flow (CSS driven by
-               `body.detail-released`), so both scroll upward continuously with the user. */
+            /* ── PHASE A → B: RELEASE (one-shot on the first frame filter's NATURAL-FLOW TOP
+               comes within a small "touch zone" of header BOTTOM while scrolling DOWN) ─────
+               RELEASE_EPSILON is deliberately LARGER (~20 px, not 4) because this is the
+               key fix for the reported issue #1: with the OLD tight (4px) threshold, the
+               JS only armed Phase B AFTER the pin (top: --sticky-filter-top = header-bottom)
+               had ALREADY snapped the filter into a stuck-below-header position — i.e.
+               "filter staje sticki i stoi pod menu". By firing ~20px before the touch line,
+               we arm Phase B during normal scroll motion, BEFORE the sticky pin becomes
+               visible. The `position: static` strip in Phase B then takes effect while the
+               filter is still moving freely upward through scroll, producing a continuous
+               push-out motion — no stuck-below state at all.
+
+               Direction gate (scrollDelta > 1) avoids arming on frames where the user is
+               scrolling UP past this line (in that case the Phase B→A clear at scrollY ≤ 5
+               simply would not happen in time, so gating by positive delta is critical to
+               prevent flicker / spurious state). */
             if (!inRegime) {
-                const RELEASE_EPSILON   = 4;  // tolerate sub-pixel rounding between rAF frames
-                const DIRECTION_EPSILON = 2;  // require a clearly-positive frame delta; Selenium's
-                                              // scrollTo() produces 20-40px discrete jumps so a tiny
-                                              // threshold (≥2) is safely below their granularity but
-                                              // well above inter-frame jitter (~0).
+                const RELEASE_EPSILON   = 20;  // generous "just about to touch" zone (was 4px too tight, allowed the sticky-stuck state to form first)
+                const DIRECTION_EPSILON = 2;   // require a tiny, clearly-downward delta — tolerant of Selenium's ~20-40 px discrete jumps without firing on up-scroll frames
                 if (filterRect.top <= headerRect.bottom + RELEASE_EPSILON && scrollDelta > DIRECTION_EPSILON) {
                     document.body.classList.add('detail-released');
+                    /* Capture the pin-math baseline ONCE, at the A→B frame. Both captures
+                       are viewport-relative in the STATIC-geometry regime (we've just been
+                       flipped to `position:static` and the browser has already re-laid out
+                       both elements in this same rAF tick), so they describe a genuine flow
+                       position — not a sticky-slot offset. From here on the B→C pin moment
+                       is arithmetic-only: `filterNaturalTopAtBase - (scrollY - releaseScrollY)`,
+                       independent of any CSS slot state for either element */
+                    releaseScrollY         = scrollY;            // A→B moment; also C→B hysteresis band baseline
+                    filterNaturalTopAtBase = headerRect.bottom;  // filter's natural-flow top ≈ header bottom at touch
                 }
             }
 
-            /* ── PHASE B → C: PIN (one-shot on the frame filter's top reaches viewport top) ─
-               By now, body.detail-released has flipped BOTH elements to `position:static`,
-               so `filterRect.top` measures its NATURAL-FLOW position — exactly what we want
-               to test. When it crosses ≤ 1px (effectively touching the very top of the
-               browser window), flip on the pin class so Phase C's sticky rule kicks in. */
+            /* ── PHASE B → C: PIN (one-shot on the frame filter's NATURAL-FLOW top reaches
+               viewport top). `filter-pinned` flips #uber-filter-container back to sticky top:0.
+               This is a single layout swap (one element, position+top) at the exact instant
+               the filter has already visually arrived — no visible jump either direction. */
             if (inRegime && !isPinned) {
-                if (filterRect.top <= 1) {
+                const naturalTopNow = filterNaturalTopAtBase - (scrollY - releaseScrollY);
+                if (naturalTopNow <= 1) {
                     document.body.classList.add('filter-pinned');
-                    releaseScrollY = scrollY;   // capture for the restore-on-scroll-up below
+                    /* `releaseScrollY` already holds the A→B scroll value — exactly what the
+                       C→B hysteresis band below needs to avoid un-pin flicker at the boundary. */
                 }
             }
 
-            /* ── RESTORE on SCROLL UP — reverse of the above, in reverse order ───── */
+            /* ── RESTORE on SCROLL UP — reverse of the above, in reverse order ─────
+               C → B : drop `filter-pinned` when scrollY has fallen below (A→B moment) − 40 px.
+                       This is the FULL Phase-B journey re-travelled upward, with hysteresis
+                       to prevent flicker at the exact boundary. Works correctly even after a
+                       Selenium scrollTo() teleport into "past-the-pin" territory: un-pin as
+                       soon as the user scrolls back up past A→B − 40 px.
+               B → A : drop BOTH body classes when scrollY ≤ 5 (canonical page-top layout),
+                       one-pass, direction-agnostic reset. */
             if (isPinned) {
-                /* Phase C → B : un-pin once we have scrolled back up past the handoff frame.
-                                   Use a 40px hysteresis band so we don't flicker at the exact
-                                   boundary: only un-pin when scrollY is clearly below where
-                                   we pinned (reachedTop), i.e. the user has genuinely moved
-                                   back down the page by a meaningful amount of re-scrolling
-                                   upward. */
                 if (releaseScrollY !== null && scrollY < releaseScrollY - 40) {
                     document.body.classList.remove('filter-pinned');
-                    releaseScrollY = null;
+                    /* `releaseScrollY` survives: it's still the A→B sentinel for any re-arm. */
                 }
             } else if (inRegime) {
-                /* Phase B → A : once we have returned to the canonical starting layout
-                                    (scrollY ≈ page top), drop everything in ONE pass. This is
-                                    direction-agnostic and cannot flicker: at that point the
-                                    filter's natural-flow position is far below the header,
-                                    so Phase A's steady-state geometry condition (filter.top >
-                                    header.bottom + RELEASE_EPSILON) is trivially met. */
                 if (scrollY <= 5) {
                     document.body.classList.remove('detail-released');
                     document.body.classList.remove('filter-pinned');
-                    releaseScrollY = null;
-                    isScrolled = false;         // clear the compact marker too, to be tidy
+                    releaseScrollY         = null;   // reset A→B sentinel — next touch re-arms
+                    filterNaturalTopAtBase = null;   // reset pin bookkeeping too
+                    isScrolled = false;               // clear the compact marker, to be tidy
                 }
             }
 
-            /* ── Keep `.scrolled` cleared once we are clearly past the touch line again ─ */
+/* ── Keep `.scrolled` cleared once we are clearly past the touch line again ─ */
             if (isScrolled && !inRegime && filterRect.top > headerRect.bottom + 20) {
                 isScrolled = false;
             }
