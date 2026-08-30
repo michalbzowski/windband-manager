@@ -2265,3 +2265,48 @@ body.filter-pinned #uber-filter-container {
     top: 0;
     z-index: 950;
 }
+
+/* ============================================================
+   Opcja B — "Glass tint" visual treatment (ACTIVE TOOL state, PHASE C only)
+   ------------------------------------------------------------
+   Applied ONLY when the filter is pinned to the viewport top
+   (i.e. body.filter-pinned is on). Signals "this container is an
+   active tool, not content" while keeping the palette inside the
+   existing brand (teal ≈ action-button accent already in use).
+
+   • background  : white→soft-teal gradient → soft pane look that reads
+                   as "separate from the card list below".
+   • backdrop    : blur(6px) saturate(1.1) → clean separation without
+                   a heavy solid background; content scrolling under it
+                   stays just legible enough to confirm the pinned state.
+   • borders     : hairline teal lines on top+bottom — clear pin edge.
+   • shadows     : soft downward elevation + inset white line at bottom
+                   for a "lifted card" feel (no boxy outline look).
+   • focus ring  : teal focus-ring while pinned → consistent affordance
+                   (matches brand, no color-scheme violation).
+
+   Colors intentionally reuse the existing accent palette — no new
+   tokens introduced; the glass tint shifts "role", not "color".
+   ============================================================ */
+body.filter-pinned #uber-filter-container {
+    background: linear-gradient(180deg, rgba(255, 255, 255, 0.94), rgba(240, 253, 252, 0.86));
+    backdrop-filter: blur(6px) saturate(1.1);
+    -webkit-backdrop-filter: blur(6px) saturate(1.1);   /* Safari */
+    border-top: 1px solid rgba(13, 148, 136, 0.35);
+    border-bottom: 1px solid rgba(13, 148, 136, 0.25);
+    box-shadow: 0 10px 26px rgba(13, 148, 136, 0.14),
+                inset 0 -1px 0 rgba(255, 255, 255, 0.60);
+}
+
+body.filter-pinned #uber-filter-container input,
+body.filter-pinned #uber-filter-container select {
+    background: #ffffff;
+    border-color: rgba(13, 148, 136, 0.45);
+}
+
+body.filter-pinned #uber-filter-container input:focus,
+body.filter-pinned #uber-filter-container select:focus {
+    outline: none;
+    box-shadow: 0 0 0 3px rgba(13, 148, 136, 0.18);
+    border-color: var(--pico-primary-color, #0d9488);
+}
