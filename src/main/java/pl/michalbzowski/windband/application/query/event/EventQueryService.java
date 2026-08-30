@@ -108,14 +108,23 @@ public class EventQueryService {
                 .map(g -> new GroupSummaryDto(g.id(), g.name(), g.description(), g.memberCount(), g.dynamic()))
                 .toList();
 
-        // Calculate instrument summary from confirmed participants
+        // Calculate instrument summary from confirmed participants.
+        // Order follows the instrument's sort priority (the order maintained on the /tags
+        // view), with untagged instruments falling to the end, and a deterministic
+        // name-based tiebreak so equal priorities stay stable. Counts are unchanged —
+        // only the ordering differs from the previous player-count-descending sort.
         List<InstrumentCountDto> instrumentSummary = participationDtos.stream()
                 .filter(p -> "CONFIRMED".equals(p.response()))
                 .filter(p -> p.instrumentName() != null)  // Filter out null instruments BEFORE grouping
                 .collect(Collectors.groupingBy(ParticipationDto::instrumentName, Collectors.counting()))
                 .entrySet().stream()
                 .map(e -> new InstrumentCountDto(e.getKey(), e.getValue()))
-                .sorted(Comparator.comparing(InstrumentCountDto::count).reversed())
+                .sorted(Comparator
+                        .<InstrumentCountDto>comparingInt(ic -> {
+                            Integer priority = instrumentPriorities.get(ic.instrumentName());
+                            return priority != null ? priority : Integer.MAX_VALUE;
+                        })
+                        .thenComparing(InstrumentCountDto::instrumentName))
                 .toList();
 
         return new EventDetailDto(
