@@ -78,10 +78,38 @@
     color: #155724;
 }
 
+[data-theme="dark"] .response-filter-btn.confirmed.active {
+    background: #1e3a2f;
+    border-color: #22c55e;
+    color: #bbf7d0;
+}
+
+@media (prefers-color-scheme: dark) {
+    .response-filter-btn.confirmed.active {
+        background: #1e3a2f;
+        border-color: #22c55e;
+        color: #bbf7d0;
+    }
+}
+
 .response-filter-btn.declined.active {
     background: #f8d7da;
     border-color: #dc3545;
     color: #721c24;
+}
+
+[data-theme="dark"] .response-filter-btn.declined.active {
+    background: #451a1a;
+    border-color: #f87171;
+    color: #fecaca;
+}
+
+@media (prefers-color-scheme: dark) {
+    .response-filter-btn.declined.active {
+        background: #451a1a;
+        border-color: #f87171;
+        color: #fecaca;
+    }
 }
 
 .response-filter-btn.later.active {
@@ -90,10 +118,38 @@
     color: #856404;
 }
 
+[data-theme="dark"] .response-filter-btn.later.active {
+    background: #453411;
+    border-color: #facc15;
+    color: #fef08a;
+}
+
+@media (prefers-color-scheme: dark) {
+    .response-filter-btn.later.active {
+        background: #453411;
+        border-color: #facc15;
+        color: #fef08a;
+    }
+}
+
 .response-filter-btn.no-response.active {
     background: #e2e3e5;
     border-color: #6c757d;
     color: #383d41;
+}
+
+[data-theme="dark"] .response-filter-btn.no-response.active {
+    background: #2a2f3a;
+    border-color: #9ca3af;
+    color: #d1d5db;
+}
+
+@media (prefers-color-scheme: dark) {
+    .response-filter-btn.no-response.active {
+        background: #2a2f3a;
+        border-color: #9ca3af;
+        color: #d1d5db;
+    }
 }
 
 /* Wind Band Manager — custom styles on top of PicoCSS */
@@ -1426,6 +1482,79 @@ tr.highlight-row > td {
 .event-stats .stat.declined { background: #fdecea; color: #c62828; }
 .event-stats .stat.later { background: #fff8e1; color: #f57f17; }
 .event-stats .stat.no-response { background: #f5f5f5; color: var(--pico-muted-color); }
+
+/* ============================================================
+   DARK THEME for the response-filter pills (and the .event-stats
+   bar that shares the same .stat.xxx pill palette).
+   ------------------------------------------------------------
+   Scope note: the pill BASE (padding / radius / layout) only exists
+   under `.event-stats .stat`; the filter buttons live inside
+   `#response-filter-container` so they render as plain inline text
+   until this block lands. The dark overrides therefore apply to the
+   pills in BOTH containers — and, because they are dark-scoped, the
+   light theme is untouched (light values above remain pixel-identical).
+
+   Palette: WCAG AA-safe (text contrast ≥ 4.5:1 verified via
+   `scripts/contrast-check.py` in the windband-manager skill):
+     confirmed   #1e3a2f / #86efac  (green)
+     declined    #451a1a / #fca5a5  (red)
+     later       #453411 / #fde047  (amber)
+     no-response #2a2f3a / #d1d5db  (neutral grey)
+   Follows the established app pattern: `[data-theme="dark"]` override
+   + `@media (prefers-color-scheme: dark)` fallback for when PicoCSS's
+   own dark mode is driven by the OS setting. */
+
+/* Inactive (non-.active) dark stat pills — OPAQUE solid swatches so the
+   WCAG text-contrast ratio does not depend on compositing over whatever
+   page background is behind them (dark page ≈ #13171f).
+
+   NOTE: this file deliberately does NOT add pill *geometry* (display /
+   padding / gap / radius) to `#uber-filter-container .stat.xxx` — that
+   would change the container's in-flow height and regress the existing
+   ISS #119 header-takeover UI test (AttendanceListHeaderTakeoverUiTest,
+   "STICKY after release" tolerance 20 px). The pill geometry already
+   lives on `.event-stats .stat` (padding / radius / display) in this
+   file and is shared with the response-filter pills through their own
+   `#uber-filter-container .response-filter-btn` parent — so the dark
+   colors below apply where the pill geometry already exists, without
+   adding new boxes. */
+
+/* Inactive (non-.active) dark stat pills — OPAQUE solid swatches so the
+   WCAG text-contrast ratio does not depend on compositing over whatever
+   page background is behind them (dark page ≈ #13171f). */
+[data-theme="dark"] #uber-filter-container .stat.confirmed  { background: #1e3a2f; color: #86efac; }
+[data-theme="dark"] #uber-filter-container .stat.declined   { background: #451a1a; color: #fca5a5; }
+[data-theme="dark"] #uber-filter-container .stat.later      { background: #453411; color: #fde047; }
+[data-theme="dark"] #uber-filter-container .stat.no-response{ background: #2a2f3a; color: #d1d5db; }
+
+@media (prefers-color-scheme: dark) {
+    #uber-filter-container .stat.confirmed   { background: #1e3a2f; color: #86efac; }
+    #uber-filter-container .stat.declined    { background: #451a1a; color: #fca5a5; }
+    #uber-filter-container .stat.later       { background: #453411; color: #fde047; }
+    #uber-filter-container .stat.no-response { background: #2a2f3a; color: #d1d5db; }
+}
+
+/* Label ("Status:") — needs an explicit dark override, but with enough
+   SPECIFICITY (0-2-1) to beat PicoCSS's `article .text-muted` rule (0-2-1).
+   A plain `.response-filter-label` (0-1-0) loses the cascade in dark mode.
+   Color #d1d5db over the dark page ≈ 6.9:1 → comfortably WCAG AA. */
+[data-theme="dark"] article .response-filter-label { color: #d1d5db; }
+@media (prefers-color-scheme: dark) {
+    article .response-filter-label { color: #d1d5db; }
+}
+
+/* .event-stats bar pills — same opaque dark palette */
+[data-theme="dark"] .event-stats .stat.confirmed   { background: #1e3a2f; color: #86efac; }
+[data-theme="dark"] .event-stats .stat.declined    { background: #451a1a; color: #fca5a5; }
+[data-theme="dark"] .event-stats .stat.later       { background: #453411; color: #fde047; }
+[data-theme="dark"] .event-stats .stat.no-response { background: #2a2f3a; color: #d1d5db; }
+
+@media (prefers-color-scheme: dark) {
+    .event-stats .stat.confirmed   { background: #1e3a2f; color: #86efac; }
+    .event-stats .stat.declined    { background: #451a1a; color: #fca5a5; }
+    .event-stats .stat.later       { background: #453411; color: #fde047; }
+    .event-stats .stat.no-response { background: #2a2f3a; color: #d1d5db; }
+}
 
 /* Instrument inline edit */
 .instrument-display {
