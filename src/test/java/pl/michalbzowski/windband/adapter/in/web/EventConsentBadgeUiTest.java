@@ -3,12 +3,19 @@ package pl.michalbzowski.windband.adapter.in.web;
 import org.junit.jupiter.api.Test;
 import org.openqa.selenium.By;
 import org.openqa.selenium.JavascriptExecutor;
+import org.openqa.selenium.WebDriver;
 import org.openqa.selenium.WebElement;
 import org.openqa.selenium.support.ui.ExpectedConditions;
 import org.openqa.selenium.support.ui.WebDriverWait;
-import org.testcontainers.shaded.org.awaitility.Awaitility;
+import org.springframework.beans.factory.annotation.Autowired;
 import pl.michalbzowski.windband.UiTestBase;
+import pl.michalbzowski.windband.domain.band.Band;
+import pl.michalbzowski.windband.domain.band.BandRepository;
+import pl.michalbzowski.windband.domain.member.Consent;
+import pl.michalbzowski.windband.domain.member.ConsentRepository;
 import pl.michalbzowski.windband.domain.member.ConsentType;
+import pl.michalbzowski.windband.domain.member.Member;
+import pl.michalbzowski.windband.domain.member.MemberRepository;
 
 import java.time.Duration;
 import java.time.LocalDate;
@@ -16,102 +23,132 @@ import java.time.LocalDate;
 import static org.assertj.core.api.Assertions.assertThat;
 
 /**
- * UI regression for the "Zgoda na informacje" column on
- * {@code events/detail.html}. Two seed members ({@code Jan Kowalski} and
- * {@code Anna Nowak}) are invited to a fresh event; the test grants EVENTS
- * consent for Jan and leaves Anna without consent, then asserts the
- * rendered badges match the persisted state.
+ * UI regression for the merged {@code Powiadomienie} column on the Event
+ * Details view ({@code events/detail.html}). The old "Status wysyłki" and
+ * "Zgoda na informacje" columns are replaced by a single cell driven by this
+ * priority order:
  *
- * <p>Companion tests:
- * <ul>
- *   <li>{@code NotificationSenderConsentTest} — unit-level, isolated.</li>
- *   <li>{@code EventConsentIntegrationTest} — full Spring context, real DB,
- *       real NotificationSender, fake Channel.</li>
- * </ul>
+ * <ol>
+ *   <li>No consent for notification         → ❌ Brak zgody</li>
+ *   <li>Consent given + send attempt FAILED → ⚠️ Błąd wysyłki (warning triangle)</li>
+ *   <li>Consent given + the send SUCCEEDED  → ✅ Wysłano</li>
+ *   <li>Consent given + no send attempt yet → 📭 Nie wysłano</li>
+ * </ol>
+ *
+ * <p>This drives all four states deterministically WITHOUT a real email channel
+ * (no SendGrid in CI): consent is set via {@code member_consents} rows and the
+ * four notification outcomes are produced by inserting controlled rows into
+ * {@code event_invitations} (status NOT_SENT / SENT / FAILED).
  */
 class EventConsentBadgeUiTest extends UiTestBase {
 
+    @Autowired private MemberRepository memberRepository;
+    @Autowired private ConsentRepository consentRepository;
+    @Autowired private BandRepository bandRepository;
+
     @Test
-    void shouldRenderConsentBadgePerParticipantOnEventDetail() {
+    void shouldRenderMergedPowiadomienieColumnPerState() {
         WebDriverWait wait = new WebDriverWait(driver, Duration.ofSeconds(15));
 
         // 0. Log in (UI test must be authenticated before any /api call).
         loginAndNavigateTo("/events");
         wait.until(ExpectedConditions.presenceOfElementLocated(By.id("events-list-container")));
 
-        // 1. Grant EVENTS consent for Jan (member_id=1) and explicitly deny for
-        //    Anna (member_id=2). member_consents is TRUNCATEd by cleanDatabase(),
-        //    so these rows are the only consent state for the test — but we
-        //    verify PER member, not globally, because earlier UI tests in the
-        //    suite may have left behind unrelated consent rows (MemberWelcomeService
-        //    inserts 3 default-deny rows per new member; cleanDatabase then runs
-        //    in @BeforeEach, but it is not a guarantee we can assert on).
+        // 1. Consent setup:
+        //    - Jan   (member_id=1, seeded) : consent GRANTED  → covers consent-given paths (NOT_SENT, FAILED)
+        //    - Anna  (member_id=2, seeded) : consent DENIED   → covers "no consent" path
+        //    - two fresh members: consent GRANTED             → covers SENT and (re-assert) FAILED
         jdbcTemplate.update(
-                "INSERT INTO member_consents (member_id, consent_type, granted, granted_at) "
-                        + "VALUES (?, ?, ?, ?)",
+                "INSERT INTO member_consents (member_id, consent_type, granted, granted_at) VALUES (?, ?, ?, ?)",
                 1L, ConsentType.EVENTS.name(), true, java.time.Instant.now());
-        jdbcTemplate.update(
-                "INSERT INTO member_consents (member_id, consent_type, granted, granted_at) "
-                        + "VALUES (?, ?, ?, ?)",
-                2L, ConsentType.EVENTS.name(), false, null);
-        // sanity — check the per-member state we just wrote, not a global count
-        Boolean janEventsGranted = jdbcTemplate.queryForObject(
-                "SELECT granted FROM member_consents WHERE member_id = ? AND consent_type = ?",
-                Boolean.class, 1L, ConsentType.EVENTS.name());
-        Boolean annaEventsGranted = jdbcTemplate.queryForObject(
-                "SELECT granted FROM member_consents WHERE member_id = ? AND consent_type = ?",
-                Boolean.class, 2L, ConsentType.EVENTS.name());
-        assertThat(janEventsGranted).as("Jan's EVENTS consent must be true").isTrue();
-        assertThat(annaEventsGranted).as("Anna's EVENTS consent must be false").isFalse();
+        // Grant consent to the two freshly created members below.
+        Band band = bandRepository.findById(1L).orElseThrow();
+        Member sentMember  = createConsentingMember("Wyslany",  band);   // will be SENT
+        Member failedExtra = createConsentingMember("Bledny",    band); // extra FAILED (belt & suspenders)
 
-        // 2. Create a fresh event via the API (faster and more deterministic
-        //    than driving the create form).
-        String eventName = "Koncert z consentem " + System.currentTimeMillis();
+        // 2. Create a fresh event via the API (deterministic, faster than the form).
+        String eventName = "Powiadomienie merge " + System.currentTimeMillis();
         Long eventId = createEventViaApi(eventName);
 
-        // 3. Invite both members via the API (same pattern as
-        //    EventParticipationInstrumentUiTest — avoids HTMX click race).
-        inviteMemberViaApi(eventId, 1L);
-        inviteMemberViaApi(eventId, 2L);
+        // 3. Invite every subject member via the API (creates an event_invitations
+        //    row with status NOT_SENT). This gives us a NOT_SENT row for Jan,
+        //    Anna, sentMember (no consent yet set on Anna) and failedExtra.
+        for (long mid : new long[] {1L, 2L, sentMember.getId(), failedExtra.getId()}) {
+            inviteMemberViaApi(eventId, mid);
+        }
 
-        Awaitility.await().atMost(Duration.ofSeconds(10)).untilAsserted(() -> {
-            Integer rows = jdbcTemplate.queryForObject(
-                    "SELECT COUNT(*) FROM event_participations WHERE event_id = ?",
-                    Integer.class, eventId);
-            assertThat(rows).as("Both members should be event participants").isEqualTo(2);
-        });
+        // 4. Deterministically steer each member into one of the four branches:
+        //     - Jan         : keep NOT_SENT + consent=true  → "Nie wysłano" (📭)
+        //     - Anna        : consent=false                 → "Brak zgody"  (❌)
+        //     - sentMember  : force SENT                    → "Wysłano"     (✅)
+        //     - failedExtra : force FAILED                  → "Błąd wysyłki"(⚠️)
+        jdbcTemplate.update("UPDATE event_invitations SET status = 'SENT',   sent_at = CURRENT_TIMESTAMP WHERE event_id = ? AND member_id = ?", eventId, sentMember.getId());
+        jdbcTemplate.update("UPDATE event_invitations SET status = 'FAILED'                                 WHERE event_id = ? AND member_id = ?", eventId, failedExtra.getId());
 
-        // 4. Navigate to the event detail page directly (no list-row click).
+        // 5. Navigate to the event detail page directly (no list-row click).
         driver.get(baseUrl() + "/events/" + eventId);
         wait.until(ExpectedConditions.presenceOfElementLocated(By.id("events-content")));
-        wait.until(ExpectedConditions.numberOfElementsToBeMoreThan(
-                By.cssSelector("#participants-table tbody tr"), 1));
+        wait.until(ExpectedConditions.numberOfElementsToBe(
+                By.cssSelector("#participants-table tbody tr"), 4));
 
-        // 5. Assert the rendered "Zgoda na informacje" cells. The template
-        //    renders th:data-consent-given on .consent-cell, which we use
-        //    as the contract — never match the raw emoji or polish text.
-        WebElement janConsentCell = wait.until(ExpectedConditions.presenceOfElementLocated(
-                By.cssSelector(".consent-cell[data-member-id='1']")));
-        WebElement annaConsentCell = wait.until(ExpectedConditions.presenceOfElementLocated(
-                By.cssSelector(".consent-cell[data-member-id='2']")));
+        // 6. Assert each merged "Powiadomienie" cell by member id — all four states:
+        verifyCell(driver, 1L,                 "Nie wysłano");   // NOT_SENT  + consent → 📭
+        verifyCell(driver, sentMember.getId(), "Wysłano");       // SENT      + consent → ✅
+        verifyCell(driver, failedExtra.getId(), "Błąd wysyłki"); // FAILED    + consent → ⚠️
+        verifyCell(driver, 2L,                 "Brak zgody");     // no consent         → ❌
 
-        assertThat(janConsentCell.getAttribute("data-consent-given"))
-                .as("Jan's badge must reflect granted=true")
-                .isEqualTo("true");
-        assertThat(janConsentCell.getText())
-                .as("Jan's badge text must read 'Wyraził zgodę'")
-                .contains("Wyraził zgodę");
+        // Extra: explicitly assert the failure uses a WARNING TRIANGLE (⚠), never a red cross.
+        WebElement failedCell = wait.until(ExpectedConditions.presenceOfElementLocated(
+                By.cssSelector(String.format(".powiadomienie-cell[data-member-id='%d']", failedExtra.getId()))));
+        assertThat(failedCell.getText())
+                .as("Failure cell must contain the warning-triangle glyph")
+                .contains("⚠");
+        assertThat(failedCell.getText())
+                .as("Failure cell must NOT use the red 'Brak zgody' label")
+                .doesNotContain("Brak zgody");
 
-        assertThat(annaConsentCell.getAttribute("data-consent-given"))
-                .as("Anna's badge must reflect granted=false")
-                .isEqualTo("false");
-        assertThat(annaConsentCell.getText())
-                .as("Anna's badge text must read 'Brak zgody'")
-                .contains("Brak zgody");
+        // 7. The header row advertises exactly one "Powiadomienie" column — the old
+        //    "Status wysyłki" + "Zgoda na informacje" pair is gone.
+        assertThat(driver.findElements(By.xpath("//th[normalize-space(text()) = 'Powiadomienie']")).size())
+                .as("Exactly one 'Powiadomienie' header must exist")
+                .isEqualTo(1);
+        assertThat(driver.findElements(By.xpath("//th[normalize-space(text()) = 'Status wysyłki']")).size())
+                .as("'Status wysyłki' header must be removed")
+                .isZero();
+        assertThat(driver.findElements(By.xpath("//th[normalize-space(text()) = 'Zgoda na informacje']")).size())
+                .as("'Zgoda na informacje' header must be removed")
+                .isZero();
+    }
+
+    // -----------------------------------------------------------------------
+    // Helpers
+    // -----------------------------------------------------------------------
+
+    private Member createConsentingMember(String name, Band band) {
+        Member m = Member.create("Test", name + " " + System.nanoTime(), LocalDate.of(1990, 1, 1), band);
+        m.updateContact(name.toLowerCase().replace(" ", ".") + "@test.com", "500000000", false);
+        Member saved = memberRepository.save(m);
+        Consent consent = Consent.create(saved, ConsentType.EVENTS);
+        consent.grant();
+        consentRepository.save(consent);
+        return saved;
+    }
+
+    private void verifyCell(WebDriver driver, long memberId, String expectedText) {
+        WebDriverWait wait = new WebDriverWait(driver, Duration.ofSeconds(10));
+        WebElement cell = wait.until(ExpectedConditions.presenceOfElementLocated(
+                By.cssSelector(String.format(".powiadomienie-cell[data-member-id='%d']", memberId))));
+        assertThat(cell)
+                .as("Merged Powiadomienie cell for member %d must exist", memberId)
+                .isNotNull();
+        String text = cell.getText().trim();
+        assertThat(text)
+                .as("Member %d must render '%s' (got: '%s') in the merged Powiadomienie cell",
+                        memberId, expectedText, text)
+                .contains(expectedText);
     }
 
     private Long createEventViaApi(String name) {
-        // Return just the status + id — keep parsing in Java trivial.
         Object result = ((JavascriptExecutor) driver).executeScript(
                 "var xhr = new XMLHttpRequest();" +
                 "xhr.open('POST', '/api/events', false);" +
@@ -133,7 +170,7 @@ class EventConsentBadgeUiTest extends UiTestBase {
         return Long.valueOf(parts[1]);
     }
 
-    private void inviteMemberViaApi(Long eventId, Long memberId) {
+    private void inviteMemberViaApi(Long eventId, long memberId) {
         Object result = ((JavascriptExecutor) driver).executeScript(
                 "var xhr = new XMLHttpRequest();" +
                 "xhr.open('POST', '/api/events/' + arguments[0] + '/invite', false);" +
