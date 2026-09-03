@@ -304,11 +304,14 @@
                         Local development: Set to "2C" or higher for faster feedback (CPU=cores; 2C=doubled cores).
                         GitHub Actions: Keep at 1 to avoid OOM on limited runners with @SpringBootTest + ChromeDriver.
                     -->
-                    <forkCount>1</forkCount>
-                    
+                    <forkCount>2C</forkCount>
+
                     <!-- Reuse forks between test classes to reduce JVM startup overhead -->
                     <reuseForks>true</reuseForks>
-                    
+
+                    <!-- Memory safety for parallel forks with @SpringBootTest + ChromeDriver -->
+                    <argLine>-Xmx1g -Dwebdriver.chrome.whitelistedIps=""</argLine>
+
                     <!-- JasperReports 7.x: Exclude compilation test in CI -->
                 </configuration>
             </plugin>
