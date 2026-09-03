@@ -153,6 +153,104 @@ console.log('\nCase 2: toggle state + "Wybierzono: N" footer');
     eq(zeroInst.confirm(), false, 'confirm() at count == 0 returns false');
     eq(zeroCalls, 0, 'onConfirm NOT called when count == 0');
 
+// ── Case 5 — delegated DOM click on the "Potwierdź" confirm button.
+// This is the real UI path that Selenium exercises (it clicks <button class="invitation-confirm">),
+// which the parent component (t_f03a9819) did NOT wire up until this task.
+console.log('\nCase 5: DOM delegated click on .invitation-confirm invokes onConfirm');
+{
+    const realDom = typeof document !== 'undefined'
+        ? document
+        : (function() {
+            // Minimal Document shim sufficient for _bindEvents(host) to bind and to dispatch .click().
+            const elTree = new Map();
+            function makeEl(tag, attrs, children) {
+                const e = {
+                    tagName: (tag||'div').toUpperCase(),
+                    attrs: attrs || {},
+                    children: [],
+                    parentNode: null,
+                    listeners: {},
+                    style: {},
+                    id: '',
+                    dataset: {},
+                    addEventListener(t, fn) { (this.listeners[t] ||= []).push(fn); },
+                    removeEventListener() {},
+                    dispatchEvent(evt) {
+                        const list = this.listeners[evt.type] || [];
+                        for (const fn of list) fn(evt);
+                    },
+                    querySelectorAll() { return [].concat.apply([], this.children.map(c => c.querySelectorAll ? c.querySelectorAll('*') : [])); },
+                    querySelector()  { return null; },
+                    closest(selector) {
+                        // Walk self → parents looking for an element with the given class in its attrs.classList.
+                        let cur = this;
+                        while (cur) {
+                            const cls = (this.attrs && this.attrs['class']) || cur.attrs && cur.attrs['class'] || '';
+                            if (cls.split(' ').includes(selector.slice(1))) return cur;
+                            cur = cur.parentNode;
+                        }
+                        return null;
+                    },
+                    getAttribute(name) { return this.attrs[name] ?? null; }
+                };
+                (children || []).forEach(c => { c.parentNode = e; e.children.push(c); });
+                elTree.set(e, true);
+                return e;
+            }
+            const bodyEl = makeEl('body', {}, []);
+            return {
+                body: bodyEl,
+                createElement(tag) { return makeEl(tag || 'div'); },
+                activeElement: null
+            };
+        })();
+
+    // Build a minimal host with the confirm button and one selectable row.
+    const host = realDom.createElement('div');
+    const groupRow = realDom.createElement('button');
+    groupRow.attrs['class'] = 'invitation-row';
+    groupRow.attrs['data-kind'] = 'group';
+    groupRow.attrs['data-id'] = 'g1';
+    const confirmBtn = realDom.createElement('button');
+    confirmBtn.attrs['class'] = 'primary invitation-confirm';
+    host.parentNode = null;
+    for (const c of [groupRow, confirmBtn]) { c.parentNode = host; host.children.push(c); }
+
+    let calls = 0, capturedIds = null;
+    const inst = api.create({ groups: GROUPS, members: MEMBERS });
+    inst.opts.onConfirm = ids => { calls++; capturedIds = Array.from(ids).map(String); };
+    inst.toggleGroup('g1'); // pre-select the group so confirm has ids to send.
+
+    // Bind delegated handlers by mounting the component onto our minimal host.
+    try { inst.mount(host); } catch (e) { console.warn('(mount failed, falling back)', e && e.message); }
+    if (!host.listeners || !(host.listeners.click || []).length) {
+        const binder = typeof inst._bindEvents === 'function' ? inst._bindEvents : null;
+        if (binder) { try { binder.call(inst, host); } catch (_) {} }
+    }
+
+    // Simulate a delegated click: the host's "click" listener is what runs; it should
+    // check target.closest('.invitation-confirm') and invoke this.confirm().
+    const handlers = (host.listeners || {}).click || [];
+    ok('confirm button: host has at least one delegated click handler', handlers.length >= 1);
+
+    // Fire a synthetic click event where target = the confirm button itself.
+    handlers.forEach(fn => {
+        fn({ type: 'click', target: confirmBtn, preventDefault(){} , stopPropagation(){}});
+    });
+    eq(calls, 1, 'dom delegated .invitation-confirm click invokes opts.onConfirm exactly once');
+    eq((capturedIds || []).sort().join(','), ['10','20','30'].join(','),
+        'resolved ids passed to onConfirm = the selected group member ids');
+
+    // Regression check: a ROW click must NOT trigger onConfirm. The delegated
+    // row handler is a sibling of the confirm delegate; this asserts neither
+    // cross-fires (i.e. that my confirm-delegate isn't too broad).
+    calls = 0; capturedIds = null;
+    handlers.forEach(fn => {
+        fn({ type: 'click', target: groupRow, preventDefault(){}, stopPropagation(){}});
+    });
+    eq(calls, 0, 'row click does NOT invoke onConfirm (delegates are disjoint)');
+}
+
     // cancel() must not touch the data state.
     const cancelInst = api.create({ groups: GROUPS });
     cancelInst.toggleGroup('g1');

@@ -312,6 +312,16 @@
             try { closers = Array.from(host.querySelectorAll('button[data-close]')) || []; } catch (_) {}
             for (const c of closers) bind(c, 'click', () => this.cancel());
 
+            // Confirm button — delegated on host so re-renders never orphan the handler.
+            bind(host, 'click', (evt) => {
+                const target = evt && evt.target;
+                if (!target || typeof target.closest !== 'function') return;
+                if (target.closest('.invitation-confirm')) {
+                    this.confirm();
+                    return;
+                }
+            });
+
             // Row clicks — delegated on the host so we survive every re-render.
             bind(host, 'click', (evt) => {
                 const target = evt && evt.target;

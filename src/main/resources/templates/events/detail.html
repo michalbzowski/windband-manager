@@ -58,9 +58,10 @@
 
     <h3>Zaproś na wydarzenie</h3>
 
+    <!-- Unified invite (t_c9b13437): one button opens the shared InvitationModal
+         with groups + members fetched from GET /api/events/{id}/invite-options. -->
     <div style="display:flex; gap:0.5rem; margin-bottom:1rem;">
-        <button type="button" class="outline" id="open-invite-modal-btn">➕ Zaproś uczestników</button>
-        <button type="button" class="outline" id="open-invite-group-modal-btn">👥 Zaproś grupę</button>
+        <button type="button" class="outline" id="open-invite-btn">➕ Zaproś</button>
     </div>
 
     <div th:if="${!eventAlreadyOccurred}">
@@ -196,53 +197,9 @@
 
 <!-- (moved up: #event-edit-url now lives next to the bar, above #events-content) -->
 
-<dialog id="invite-members-modal" class="app-modal">
-    <div class="app-modal-content">
-        <header class="app-modal-header">
-            <div class="app-modal-header-text">
-                <h3>Zaproś uczestników</h3>
-            </div>
-            <button type="button" class="app-modal-close" aria-label="Zamknij" data-close>×</button>
-        </header>
-        <div class="app-modal-body">
-            <p th:if="${#lists.isEmpty(members)}" class="text-muted" style="margin:0 0 0.5rem;">Wszyscy członkowie zostali już zaproszeni.</p>
-            <ul class="modal-people-list">
-                <li th:each="m : ${members}">
-                    <input type="checkbox" class="invite-checkbox" th:value="${m.id}" th:id="'invite-cb-' + ${m.id}">
-                    <label th:for="'invite-cb-' + ${m.id}" th:text="${m.firstName} + ' ' + ${m.lastName}" style="margin:0; flex:1; cursor:pointer;">Jan Kowalski</label>
-                </li>
-            </ul>
-        </div>
-        <footer class="app-modal-footer">
-            <button type="button" class="outline" data-close>Anuluj</button>
-            <button type="button" class="primary" id="invite-selected-btn">Zaproś zaznaczone osoby</button>
-        </footer>
-    </div>
-</dialog>
-
-<dialog id="invite-group-modal" class="app-modal">
-    <div class="app-modal-content">
-        <header class="app-modal-header">
-            <div class="app-modal-header-text">
-                <h3>Zaproś grupę</h3>
-            </div>
-            <button type="button" class="app-modal-close" aria-label="Zamknij" data-close>×</button>
-        </header>
-        <div class="app-modal-body">
-            <p th:if="${#lists.isEmpty(event.allGroups)}" class="text-muted" style="margin:0 0 0.5rem;">Brak dostępnych grup.</p>
-            <ul class="modal-people-list">
-                <li th:each="g : ${event.allGroups}">
-                    <input type="checkbox" class="invite-group-checkbox" th:value="${g.id}" th:id="'invite-group-cb-' + ${g.id}">
-                    <label th:for="'invite-group-cb-' + ${g.id}" th:text="${g.name} + ' (' + ${g.memberCount} + ' członków)'" style="margin:0; flex:1; cursor:pointer;">Sekcja dęta (5 członków)</label>
-                </li>
-            </ul>
-        </div>
-        <footer class="app-modal-footer">
-            <button type="button" class="outline" data-close>Anuluj</button>
-            <button type="button" class="primary" id="invite-group-selected-btn">Zaproś zaznaczone grupy</button>
-        </footer>
-    </div>
-</dialog>
+<!-- Unified invite modal (t_c9b13437): rendered on demand by invitation-modal.js
+     into a host div appended to <body>. The old server-rendered member/group
+     checkbox dialogs were removed with this change. -->
 
 <dialog id="delete-event-modal" class="app-modal">
     <div class="app-modal-content">
@@ -543,6 +500,178 @@
                 var editUrl = document.getElementById('event-edit-url').value;
                 window.location.href = editUrl;
             });
+        }
+
+        // === UNIFIED INVITE (t_c9b13437) =====================================
+        // One "Zaproś" button opens the shared InvitationModal (t_f03a9819).
+        // The modal is mounted as a CONTROLLED component into a host div appended
+        // to <body> — the pattern the component API documents. mount(host) sets
+        // innerHTML INSIDE the persistent host, so re-renders never orphan the
+        // dialog element under our delegated listeners (the pre-try approach of
+        // calling showModal() before open() raced with mount()'s innerHTML reset
+        // and left the rows orphaned — Selenium proved it: 3 UI tests timed out
+        // finding .invitation-row). We also re-close the <dialog> on confirm so a
+        // stale open modal never lingers under the HTMX swap.
+        // On confirm we POST the same per-member payload shape the old modal used
+        // ({eventId, memberId} to /api/events/{id}/invite), then refresh
+        // #events-content via HTMX and highlight the newly invited rows.
+
+        const UNIFIED_INVITE_HOST_ID = 'unified-invite-host';
+        function unifiedInviteHost() {
+            let host = document.getElementById(UNIFIED_INVITE_HOST_ID);
+            if (!host) {
+                host = document.createElement('div');
+                host.id = UNIFIED_INVITE_HOST_ID;
+                // Keep the modal out of any sticky bar and the page scroll context.
+                if (document.body && document.body.appendChild) {
+                    host.style.position = 'fixed';
+                    host.style.inset = '0';
+                    host.style.zIndex = '2000';
+                    document.body.appendChild(host);
+                }
+            }
+            return host;
+        }
+
+        // (No host-lookup helpers needed — we always go through the host div by id.)
+
+        function inviteEventHighlightNew(ids) {
+            const handler = function(evt) {
+                if (evt.detail && evt.detail.target && evt.detail.target.id === 'events-content') {
+                    setTimeout(function() {
+                        ids.forEach(function(mid) {
+                            var row = document.querySelector('#participants-table tbody tr[data-member-id="' + mid + '"]');
+                            if (row) {
+                                row.classList.add('highlight-row');
+                                setTimeout(function() { row.classList.remove('highlight-row'); }, 3000);
+                                row.scrollIntoView({behavior: 'smooth', block: 'center'});
+                            }
+                        });
+                    }, 50);
+                    document.body.removeEventListener('htmx:afterSettle', handler);
+                }
+            };
+            document.body.addEventListener('htmx:afterSettle', handler);
+        }
+
+        function inviteEventSelected(eventId, ids) {
+            const promises = ids.map(function(mid) {
+                return fetchWithToast('/api/events/' + eventId + '/invite', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({eventId: parseInt(eventId), memberId: mid})
+                });
+            });
+            Promise.all(promises).then(function() {
+                if (window.Toast) Toast.success('Zaproszono ' + ids.length + (ids.length === 1 ? ' osobę' : ' osób'));
+                htmx.ajax('GET', '/events/' + eventId, {target: '#events-content[data-event-id]', swap: 'outerHTML transition:true'});
+                inviteEventHighlightNew(ids);
+            }).catch(function(err) {
+                console.error('Invite selected error:', err);
+                if (window.Toast) Toast.error('Błąd podczas zapraszania');
+            });
+        }
+
+        function openUnifiedEventInvite(eventId) {
+            if (!window.InvitationModal || !InvitationModal.create) {
+                if (window.Toast) Toast.error('Nie można otworzyć okna zaproszeń — biblioteka niedostępna');
+                return;
+            }
+            fetch('/api/events/' + eventId + '/invite-options', {credentials: 'include'})
+                .then(function(res) {
+                    if (!res.ok) throw new Error('invite-options status ' + res.status);
+                    return res.json();
+                })
+                .then(function(opts) {
+                    const groups = ((opts && opts.groups) || []).map(g => ({id: g.id, name: g.name, memberIds: (g.memberIds || [])}));
+                    const members = ((opts && opts.members) || []).map(m => ({id: m.id, name: m.name}));
+
+                    // Mount a controlled instance into our host div. This is the
+                    // component's documented usage: `create(...)` returns an API
+                    // object and `api.mount(host)` renders it inside `host`.
+                    const host = unifiedInviteHost();
+                    let api;
+                    try {
+                        api = window.InvitationModal.create({
+                            groups, members,
+                            onConfirm: function(ids) {
+                                // Confirm → fire invite POSTs (invocation order is
+                                // handled inside inviteEventSelected). Close the
+                                // open dialog AFTER the callback so the modal UI
+                                // clears without racing the confirm handler.
+                                ids = Array.isArray(ids) ? ids.map(Number).filter(n => Number.isFinite(n)) : [];
+                                try {
+                                    const h = document.getElementById(UNIFIED_INVITE_HOST_ID);
+                                    if (h && typeof h.querySelector === 'function') {
+                                        const d = h.querySelector('dialog[open]');
+                                        if (d && typeof d.close === 'function') d.close();
+                                    }
+                                } catch (_) {}
+                                inviteEventSelected(eventId, ids);
+                            },
+                            onCancel: function() {
+                                try {
+                                    const h = document.getElementById(UNIFIED_INVITE_HOST_ID);
+                                    if (h && typeof h.querySelector === 'function') {
+                                        const d = h.querySelector('dialog[open]');
+                                        if (d && typeof d.close === 'function') d.close();
+                                    }
+                                } catch (_) {}
+                            }
+                        });
+                        api.mount(host);
+                    } catch (e) {
+                        console.error('Failed to mount unified invite modal:', e);
+                        if (window.Toast) Toast.error('Nie udało się otworzyć okna zaproszeń');
+                        return;
+                    }
+
+                    // Open the <dialog> AFTER the host is mounted — this avoids
+                    // the orphaned-dialog race where showModal() opened an element
+                    // before mount() reset its innerHTML.
+                    try {
+                        const dlg = document.getElementById('invitation-unified-modal');
+                        if (dlg && typeof dlg.showModal === 'function') dlg.showModal();
+                    } catch (_) {}
+                })
+                .catch(function(err) {
+                    console.error('Failed to load invite options:', err);
+                    if (window.Toast) Toast.error('Nie udało się wczytać listy zaproszeń');
+                });
+        }
+
+        // Idempotent: re-bind after every HTMX swap of #events-content where the
+        // button element is recreated. The dataset guard on the button itself
+        // makes re-binding a no-op for the same node.
+        function bindUnifiedEventInvite() {
+            const btn = document.getElementById('open-invite-btn');
+            if (!btn) return;
+            if (btn.dataset.unifiedInviteBound === 'yes') return;
+            const container = document.querySelector('#events-content[data-event-id]');
+            if (!container) return;
+            btn.addEventListener('click', function() {
+                openUnifiedEventInvite(container.getAttribute('data-event-id'));
+            });
+            btn.dataset.unifiedInviteBound = 'yes';
+        }
+        bindUnifiedEventInvite();
+
+        document.addEventListener('DOMContentLoaded', function() {
+            bindUnifiedEventInvite();
+        });
+
+        if ('MutationObserver' in window) {
+            const unifiedWatchRoot = (document.getElementById('events-content') &&
+                                    document.getElementById('events-content').parentNode) || document.body;
+            const unifiedMo = new MutationObserver(function(mutations) {
+                for (const m of mutations) {
+                    if (m.type === 'childList' && m.addedNodes.length) {
+                        setTimeout(bindUnifiedEventInvite, 60);
+                        return;
+                    }
+                }
+            });
+            unifiedMo.observe(unifiedWatchRoot, { childList: true, subtree: true });
         }
 </script>
 

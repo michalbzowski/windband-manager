@@ -2,7 +2,9 @@ package pl.michalbzowski.windband.adapter.in.web;
 
 import org.junit.jupiter.api.Test;
 import org.openqa.selenium.By;
+import org.openqa.selenium.JavascriptExecutor;
 import org.openqa.selenium.WebDriver;
+import org.openqa.selenium.WebElement;
 import org.openqa.selenium.support.ui.ExpectedConditions;
 import org.openqa.selenium.support.ui.WebDriverWait;
 import org.testcontainers.shaded.org.awaitility.Awaitility;
@@ -13,11 +15,17 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import pl.michalbzowski.windband.UiTestBase;
 
+/**
+ * t_c9b13437: the unified invite modal replaced the old "Zaproś grupę" +
+ * "Zaproś uczestników" two-dialog flow. This test now selects a group row in
+ * the shared {@code window.InvitationModal} (t_f03a9819) and confirms via
+ * "Potwierdź", verifying both group members become event participants through
+ * the existing per-member invite endpoint.
+ */
 class EventInviteGroupUiTest extends UiTestBase {
 
     @Test
     void inviteGroupAddsAllGroupMembersToEvent() throws Exception {
-        WebDriver driver = getDriver();
         WebDriverWait wait = new WebDriverWait(driver, Duration.ofSeconds(10));
 
         loginAsAdmin(driver, wait);
@@ -34,12 +42,11 @@ class EventInviteGroupUiTest extends UiTestBase {
         System.out.println("[TEST] alphaId=" + alphaId + " betaId=" + betaId);
 
         // Create a manual group via API and add both members
-        // Selenium: synchroniczny XHR zwraca ID dopiero po zakończeniu zapisu grupy.
-        String groupIdStr = (String) ((org.openqa.selenium.JavascriptExecutor) driver).executeScript(
+        String groupIdStr = (String) ((JavascriptExecutor) driver).executeScript(
                 "var xhr = new XMLHttpRequest();" +
                 "xhr.open('POST', '/api/groups', false);" +
                 "xhr.setRequestHeader('Content-Type', 'application/json');" +
-                "xhr.send(JSON.stringify({name: 'GrupaTest" + uid + "', description: 'test'}));" +
+                "xhr.send(JSON.stringify({name: '" + groupName + "', description: 'test'}));" +
                 "return JSON.parse(xhr.responseText).id.toString();");
         Long groupId = groupIdStr != null ? Long.valueOf(groupIdStr) : null;
         System.out.println("[TEST] groupId=" + groupId);
@@ -49,8 +56,7 @@ class EventInviteGroupUiTest extends UiTestBase {
         addMemberToGroupViaApi(driver, groupId, betaId);
 
         // Create an event via API
-        // Selenium: synchroniczny XHR zwraca ID dopiero po zakończeniu zapisu wydarzenia.
-        String eventIdStr = (String) ((org.openqa.selenium.JavascriptExecutor) driver).executeScript(
+        String eventIdStr = (String) ((JavascriptExecutor) driver).executeScript(
                 "var xhr = new XMLHttpRequest();" +
                 "xhr.open('POST', '/api/events', false);" +
                 "xhr.setRequestHeader('Content-Type', 'application/json');" +
@@ -64,21 +70,33 @@ class EventInviteGroupUiTest extends UiTestBase {
         // Open event detail
         driver.get(baseUrl() + "/events/" + eventId);
         wait.until(ExpectedConditions.presenceOfElementLocated(By.id("events-content")));
-        wait.until(ExpectedConditions.presenceOfElementLocated(By.id("open-invite-group-modal-btn")));
+        wait.until(ExpectedConditions.presenceOfElementLocated(By.id("open-invite-btn")));
 
-        // Click the open-invite-group-modal-btn to open modal (JS click: button sits under sticky nav)
-        jsClick(driver.findElement(By.id("open-invite-group-modal-btn")));
-        wait.until(ExpectedConditions.presenceOfElementLocated(By.id("invite-group-modal")));
-        wait.until(d -> (Boolean) ((org.openqa.selenium.JavascriptExecutor) d).executeScript(
-                "return document.getElementById('invite-group-modal').open === true;"));
+        // Click the single "Zaproś" button to open the unified modal (JS click: under sticky nav)
+        jsClick(driver.findElement(By.id("open-invite-btn")));
+        // The modal renders rows on demand; wait for at least one selection row.
+        wait.until(ExpectedConditions.presenceOfElementLocated(By.cssSelector(".invitation-row")));
 
-// Check the group in the modal and click checkbox
-        driver.findElement(By.xpath(
-                "//*[@id='invite-group-modal']//label[contains(., '" + groupName + "')]/preceding-sibling::input[@type='checkbox']"))
-                .click();
+        // Resolve the group row's data-id once; we click it later by re-resolving
+        // at click time so a stale Selenium handle (the component re-renders on
+        // every selection change) can't break the second interaction.
+        String groupIdAttr = wait.until(d -> d.findElements(By.cssSelector(".invitation-row[data-kind='group']")).stream()
+                .filter(r -> r.getText().contains(groupName))
+                .map(r -> r.getAttribute("data-id"))
+                .filter(s -> s != null && !s.isEmpty())
+                .findFirst().orElse(null));
+        assertThat(groupIdAttr).as("group row exists in modal for '%s'", groupName).isNotNull();
 
-        // Click invite selected
-        jsClick(driver.findElement(By.id("invite-group-selected-btn")));
+        // Click the group row via CSS selector (always fresh, never stale).
+        ((JavascriptExecutor) driver).executeScript(
+                "document.querySelector(\".invitation-row[data-kind='group'][data-id='" + groupIdAttr + "']\").click();");
+
+        // Click "Potwierdź" — the confirm button in the unified modal footer
+        // (resolved at click time, same stable-click rationale as above).
+        wait.until(d -> d.findElements(By.cssSelector(".invitation-confirm")).stream()
+                .filter(WebElement::isEnabled).findFirst().orElse(null) != null);
+        ((JavascriptExecutor) driver).executeScript(
+                "document.querySelector(\".invitation-confirm\").click();");
 
         // Wait for participants table to contain both members
         Awaitility.await().atMost(Duration.ofSeconds(15)).untilAsserted(() -> {
@@ -102,14 +120,14 @@ class EventInviteGroupUiTest extends UiTestBase {
         wait.until(ExpectedConditions.presenceOfElementLocated(By.id("member-form")));
         fillField("firstName", first);
         fillField("lastName", last);
-        ((org.openqa.selenium.JavascriptExecutor) driver).executeScript(
+        ((JavascriptExecutor) driver).executeScript(
                 "document.querySelector(\"input[name='dateOfBirth']\").value = '1990-05-15';");
         driver.findElement(By.cssSelector("#member-form button[type='submit'].primary")).click();
         wait.until(ExpectedConditions.presenceOfElementLocated(By.cssSelector("#members-content table")));
     }
 
     private void addMemberToGroupViaApi(WebDriver driver, Long groupId, Long memberId) {
-        ((org.openqa.selenium.JavascriptExecutor) driver).executeScript(
+        ((JavascriptExecutor) driver).executeScript(
                 "return fetch('/api/groups/' + arguments[0] + '/members/' + arguments[1], {" +
                 "  method: 'POST'" +
                 "});", groupId, String.valueOf(memberId));
@@ -124,17 +142,17 @@ class EventInviteGroupUiTest extends UiTestBase {
         driver.findElement(org.openqa.selenium.By.name("username")).sendKeys("admin");
         driver.findElement(org.openqa.selenium.By.name("password")).sendKeys("admin");
         driver.findElement(org.openqa.selenium.By.cssSelector("button[type='submit']")).click();
-        wait.until(org.openqa.selenium.support.ui.ExpectedConditions.not(
-                org.openqa.selenium.support.ui.ExpectedConditions.urlContains("/login")));
+        wait.until(ExpectedConditions.not(
+                ExpectedConditions.urlContains("/login")));
     }
 
     private void fillField(String name, String value) {
-        org.openqa.selenium.WebElement el = driver.findElement(org.openqa.selenium.By.name(name));
+        WebElement el = driver.findElement(By.name(name));
         el.clear();
         el.sendKeys(value);
     }
 
-    private void jsClick(org.openqa.selenium.WebElement el) {
-        ((org.openqa.selenium.JavascriptExecutor) driver).executeScript("arguments[0].click();", el);
+    private void jsClick(WebElement el) {
+        ((JavascriptExecutor) driver).executeScript("arguments[0].click();", el);
     }
 }
