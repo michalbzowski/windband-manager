@@ -42,6 +42,10 @@ import static org.assertj.core.api.Assertions.assertThat;
  */
 class EventConsentBadgeUiTest extends UiTestBase {
 
+    /** The four mutually exclusive labels the merged cell may render. */
+    private static final String[] STATE_LABELS =
+            {"Brak zgody", "Błąd wysyłki", "Wysłano", "Nie wysłano"};
+
     @Autowired private MemberRepository memberRepository;
     @Autowired private ConsentRepository consentRepository;
     @Autowired private BandRepository bandRepository;
@@ -134,6 +138,11 @@ class EventConsentBadgeUiTest extends UiTestBase {
         return saved;
     }
 
+    /**
+     * Asserts the merged cell renders EXACTLY ONE state label: it must contain the
+     * expected label and NONE of the other three. Guards against the regression where
+     * a stray parallel {@code th:if} rendered several labels in the same row.
+     */
     private void verifyCell(WebDriver driver, long memberId, String expectedText) {
         WebDriverWait wait = new WebDriverWait(driver, Duration.ofSeconds(10));
         WebElement cell = wait.until(ExpectedConditions.presenceOfElementLocated(
@@ -146,6 +155,14 @@ class EventConsentBadgeUiTest extends UiTestBase {
                 .as("Member %d must render '%s' (got: '%s') in the merged Powiadomienie cell",
                         memberId, expectedText, text)
                 .contains(expectedText);
+        for (String other : STATE_LABELS) {
+            if (!other.equals(expectedText)) {
+                assertThat(text)
+                        .as("Member %d must show exactly '%s' — no parallel state '%s' in the same cell",
+                                memberId, expectedText, other)
+                        .doesNotContain(other);
+            }
+        }
     }
 
     private Long createEventViaApi(String name) {
