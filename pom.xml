@@ -25,6 +25,8 @@
         <docker-java.version>3.5.3</docker-java.version>
         <springdoc.version>2.6.0</springdoc.version>
         <jasperreports.version>7.0.5</jasperreports.version>
+        <!-- Surefire parallelism: 2C locally, 1 on CI (override with -Dsurefire.forkCount=1) -->
+        <surefire.forkCount>2C</surefire.forkCount>
     </properties>
 
     <dependencies>
@@ -304,7 +306,7 @@
                         Local development: Set to "2C" or higher for faster feedback (CPU=cores; 2C=doubled cores).
                         GitHub Actions: Keep at 1 to avoid OOM on limited runners with @SpringBootTest + ChromeDriver.
                     -->
-                    <forkCount>2C</forkCount>
+                    <forkCount>${surefire.forkCount}</forkCount>
 
                     <!-- Reuse forks between test classes to reduce JVM startup overhead -->
                     <reuseForks>true</reuseForks>
