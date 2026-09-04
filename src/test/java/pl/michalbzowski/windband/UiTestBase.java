@@ -1,8 +1,10 @@
 package pl.michalbzowski.windband;
 
 import io.github.bonigarcia.wdm.WebDriverManager;
-import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.AfterAll;
+import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.TestInstance;
 import org.openqa.selenium.By;
 import org.openqa.selenium.WebDriver;
 import org.openqa.selenium.WebElement;
@@ -23,6 +25,7 @@ import java.time.LocalDate;
 
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 @ActiveProfiles("test")
+@TestInstance(TestInstance.Lifecycle.PER_CLASS)
 public abstract class UiTestBase {
 
     @LocalServerPort
@@ -40,7 +43,17 @@ public abstract class UiTestBase {
         // ordering/assertions. TRUNCATE ... CASCADE removes child rows
         // (consent tokens, attendances, participations) without FK violations.
         cleanDatabase();
+    }
 
+    /**
+     * Launches ONE browser session per test class (instead of one per test method),
+     * sharing the chromedriver+Chromium process across every {@code @Test} in
+     * the subclass. Test isolation is preserved by the {@code @BeforeEach}
+     * database reset — the shared driver only carries the login/CSRF state,
+     * which {@code doLogin()} re-establishes on each test as needed.
+     */
+    @BeforeAll
+    void launchBrowser() {
         String browserPath = detectChromeBinary();
         String browserVersion = getMajorVersion(browserPath);
         System.out.println("[UiTestBase] Browser: " + browserPath + " version: " + browserVersion);
@@ -179,10 +192,11 @@ public abstract class UiTestBase {
         return null;
     }
 
-    @AfterEach
-    void tearDown() {
+    @AfterAll
+    void tearDownClass() {
         if (driver != null) {
             driver.quit();
+            driver = null;
         }
     }
 
