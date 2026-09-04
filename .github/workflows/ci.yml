@@ -40,7 +40,7 @@ jobs:
         run: chmod +x mvnw
 
       - name: Verify (unit + integration)
-        run: ./mvnw -B verify '-Dtest=!pl.michalbzowski.windband.application.report.ReportCompilationTest'
+        run: ./mvnw -B verify '-Dtest=!pl.michalbzowski.windband.application.report.ReportCompilationTest' -Dsurefire.forkCount=1
 
       - name: Upload Surefire reports
         if: always()
