@@ -32,7 +32,8 @@ public class TestcontainersInitializer
     private static final PostgreSQLContainer<?> POSTGRES = new PostgreSQLContainer<>("postgres:16-alpine")
             .withDatabaseName("windband_test")
             .withUsername("test")
-            .withPassword("test");
+            .withPassword("test")
+            .withReuse(true);
 
     private static final boolean DOCKER_AVAILABLE;
 

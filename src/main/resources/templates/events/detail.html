@@ -113,8 +113,7 @@
                 <th>Członek</th>
                 <th>Instrument</th>
                 <th>Odpowiedź</th>
-                <th>Status wysyłki</th>
-                <th>Zgoda na informacje</th>
+                <th>Powiadomienie</th>
                 <th>Akcja</th>
                 <th th:if="${event.paymentType == 'PAID_SPLIT'}">Wypłata</th>
                 <th th:if="${event.paymentType == 'PAID_SPLIT'}">Status wpłaty</th>
@@ -150,19 +149,28 @@
                         <option value="NO_RESPONSE" th:selected="${p.response == null or p.response == 'NO_RESPONSE'}">❓ Brak odpowiedzi</option>
                     </select>
                 </td>
-                <td data-label="Status wysyłki">
-                    <span class="invitation-status" th:data-member-id="${p.memberId}" th:data-status="${p.invitationStatus}">
-                        <span th:if="${p.invitationStatus == 'NOT_SENT'}" style="color:var(--pico-muted-color);">📭 Nie wysłano</span>
-                        <span th:if="${p.invitationStatus == 'QUEUED'}" style="color:var(--pico-primary);">⏳ W kolejce</span>
-                        <span th:if="${p.invitationStatus == 'SENT'}" style="color:#2fb344;">✅ Wysłano</span>
-                        <span th:if="${p.invitationStatus == 'FAILED'}" style="color:#dc3545;">❌ Błąd wysyłki</span>
+                <td data-label="Powiadomienie">
+                    <!-- Merged 'Powiadomienie' column (t_aa65fa64): consolidates the
+                         old 'Status wysyłki' + 'Zgoda na informacje' columns into one.
+                         Sequential th:if/th:elif chain — NOT parallel th:ifs, because
+                         Thymeleaf evaluates every branch's condition against the model
+                         (no short-circuit) and a parallel `!emailConsentGiven and
+                         FAILED` would render "Błąd wysyłki" for a non-consenting member
+                         whose no-email status was auto-promoted to FAILED by
+                         EventQueryService. The chain guarantees rule order:
+                             1. Not consented          → ❌ Brak zgody
+                             2. Consented + send failed → ⚠️ Błąd wysyłki (warning triangle)
+                             3. Consented + sent OK     → ✅ Wysłano
+                             4. Consented, no send yet  → 📭 Nie wysłano -->
+                    <span class="powiadomienie-cell"
+                          th:data-member-id="${p.memberId}"
+                          th:data-consent-given="${p.emailConsentGiven}"
+                          th:data-status="${p.invitationStatus}">
+                        <span th:if="${!p.emailConsentGiven}" style="color:#dc3545;">❌ Brak zgody</span>
+                        <span th:elif="${p.invitationStatus == 'FAILED'}" style="color:#856404;">⚠️ Błąd wysyłki</span>
+                        <span th:elif="${p.invitationStatus == 'SENT'}" style="color:#2fb344;">✅ Wysłano</span>
+                        <span th:if="${p.emailConsentGiven and !(p.invitationStatus == 'FAILED') and !(p.invitationStatus == 'SENT')}" style="color:var(--pico-muted-color);">📭 Nie wysłano</span>
                     </span>
-                </td>
-                <td data-label="Zgoda na informacje" class="consent-cell"
-                    th:data-member-id="${p.memberId}"
-                    th:data-consent-given="${p.emailConsentGiven}">
-                    <span th:if="${p.emailConsentGiven}" style="color:#2fb344;">✅ Wyraził zgodę</span>
-                    <span th:unless="${p.emailConsentGiven}" style="color:#dc3545;">❌ Brak zgody</span>
                 </td>
                 <td data-label="Akcja">
                     <button class="outline send-btn"
