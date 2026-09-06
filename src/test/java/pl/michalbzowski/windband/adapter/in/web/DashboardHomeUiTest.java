@@ -23,7 +23,7 @@ class DashboardHomeUiTest extends UiTestBase {
     @Autowired
     private JdbcTemplate jdbcTemplate;
 
-    @Disabled("Flaky on GitHub runners — .progress-fill wait times out under CI load")
+    @Disabled("See GitHub issue: test security context returns plain User instead of WindbandOidcUser on CI")
     @Test
     void shouldShowUpcomingListAsFirstContent() {
         // .progress-fill is only rendered for a rehearsal that has at least one attendance
