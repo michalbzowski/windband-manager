@@ -44,7 +44,12 @@ class DashboardHomeUiTest extends UiTestBase {
                 ExpectedConditions.presenceOfElementLocated(By.cssSelector("section.dashboard-upcoming .upcoming-table"))
         ));
 
-        // Progress bars in cards/table for rehearsals
+        // Progress bars in cards/table for rehearsals — .progress-fill is only rendered
+        // when the server-side DTO has attendancePercentage != null. Wait until at least
+        // one exists rather than failing fast on a transient render (avoids flaky CI when
+        // the dashboard fragment swaps in after our .upcoming-list is already present).
+        wait.until(() -> !driver.findElements(By.cssSelector("section.dashboard-upcoming .progress-fill")).isEmpty());
+
         var progressBars = driver.findElements(By.cssSelector("section.dashboard-upcoming .progress-fill"));
         assertThat(progressBars).isNotEmpty();
 
