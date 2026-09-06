@@ -2,7 +2,6 @@ package pl.michalbzowski.windband.adapter.in.web;
 
 import org.junit.jupiter.api.Test;
 import org.openqa.selenium.By;
-import org.openqa.selenium.support.ui.ExpectedConditions;
 import org.openqa.selenium.support.ui.WebDriverWait;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -37,18 +36,12 @@ class DashboardHomeUiTest extends UiTestBase {
 
         assertThat(driver.getTitle()).contains("Podsumowanie");
 
-        WebDriverWait wait = new WebDriverWait(driver, Duration.ofSeconds(10));
-        // On desktop the table is shown, on mobile the card list - wait for either
-        wait.until(ExpectedConditions.or(
-                ExpectedConditions.presenceOfElementLocated(By.cssSelector("section.dashboard-upcoming .upcoming-list")),
-                ExpectedConditions.presenceOfElementLocated(By.cssSelector("section.dashboard-upcoming .upcoming-table"))
-        ));
-
-        // Progress bars in cards/table for rehearsals — .progress-fill is only rendered
-        // when the server-side DTO has attendancePercentage != null. Wait until at least
-        // one exists rather than failing fast on a transient render (avoids flaky CI when
-        // the dashboard fragment swaps in after our .upcoming-list is already present).
-        wait.until(webDriver -> !webDriver.findElements(By.cssSelector("section.dashboard-upcoming .progress-fill")).isEmpty());
+        // .progress-fill is only rendered when the server-side DTO has attendancePercentage
+        // != null; that in turn requires a rehearsal row AND at least one attendance row.
+        // We seeded both (see seedRehearsalWithAttendance above), so the dashboard should
+        // show a progress bar for our seeded rehearsal within 30s on any runner.
+        WebDriverWait progressWait = new WebDriverWait(driver, Duration.ofSeconds(30));
+        progressWait.until(webDriver -> !webDriver.findElements(By.cssSelector("section.dashboard-upcoming .progress-fill")).isEmpty());
 
         var progressBars = driver.findElements(By.cssSelector("section.dashboard-upcoming .progress-fill"));
         assertThat(progressBars).isNotEmpty();
