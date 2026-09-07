@@ -14,11 +14,12 @@ import java.util.UUID;
 import static org.assertj.core.api.Assertions.assertThat;
 
 /**
- * Verifies the multi-member invite modal on the event detail page:
+ * Verifies the unified invite flow on the event detail page (t_c9b13437):
  * <ol>
- *   <li>Clicking "Zaproś uczestników" opens the modal with a checkbox per member.</li>
- *   <li>Checking several members and clicking "Zaproś zaznaczone osoby" adds them
- *       all to the event's participants table.</li>
+ *   <li>The single "Zaproś" button opens the shared {@code window.InvitationModal}
+ *       showing a selectable row per available member.</li>
+ *   <li>Selecting several members and clicking "Potwierdź" adds them all to the
+ *       event's participants table (via the existing per-member invite endpoint).</li>
  *   <li>The newly invited rows are highlighted (green pulse) via the shared mechanism.</li>
  * </ol>
  */
@@ -33,11 +34,10 @@ class EventInviteModalUiTest extends UiTestBase {
         String bFirst = "InvB" + uid;
         String bLast = "Test" + uid;
 
-        // --- Create two members via UI ---
         createMember(aFirst, aLast);
         createMember(bFirst, bLast);
 
-        // --- Create an event (band_events are truncated per test, so list starts empty) ---
+        // Create an event (band_events are truncated per test, so list starts empty).
         loginAndNavigateTo("/events");
         driver.findElement(By.xpath("//button[contains(., 'Dodaj wydarzenie')]")).click();
         wait.until(ExpectedConditions.presenceOfElementLocated(By.cssSelector("#event-form")));
@@ -47,39 +47,41 @@ class EventInviteModalUiTest extends UiTestBase {
         ((JavascriptExecutor) driver).executeScript(
                 "document.querySelector(\"input[name='date']\").value = '" + today + "';");
         driver.findElement(By.cssSelector("#event-form button[type='submit'].primary")).click();
-        // The form does a full navigation to /events?focus=<id>; wait for the list to
-        // reload with the new event (the Szczegóły button only exists on the list view).
         wait.until(ExpectedConditions.presenceOfElementLocated(
                 By.xpath("//a[contains(., 'Szczegóły')]")));
 
-        // --- Open event detail (JS click: avoid overlay/scroll interception in full suite) ---
+        // Open event detail (JS click: avoid overlay/scroll interception in full suite).
         jsClick(driver.findElement(By.xpath("//a[contains(., 'Szczegóły')]")));
-        wait.until(ExpectedConditions.presenceOfElementLocated(By.id("open-invite-modal-btn")));
+        wait.until(ExpectedConditions.presenceOfElementLocated(By.id("open-invite-btn")));
 
-        // --- Open the invite modal (JS click: the button sits under the sticky top nav) ---
-        jsClick(driver.findElement(By.id("open-invite-modal-btn")));
-        wait.until(ExpectedConditions.presenceOfElementLocated(By.id("invite-members-modal")));
-        wait.until(d -> (Boolean) ((JavascriptExecutor) d).executeScript(
-                "return document.getElementById('invite-members-modal').open === true;"));
+        // Open the unified modal: single "Zaproś" button opens the shared
+        // InvitationModal — mounted into #unified-invite-host on <body>. Rows are
+        // <button class="invitation-row" data-id="N" ...> elements.
+        jsClick(driver.findElement(By.id("open-invite-btn")));
 
-        // --- Check the two created members in the modal ---
-        checkMember(aFirst + " " + aLast);
-        checkMember(bFirst + " " + bLast);
+        // Resolve the two member IDs from their visible labels (first pass over
+        // rows; we use `data-id` for stable clicks later because row elements are
+        // re-created each time the modal re-renders on selection change and
+        // Selenium element handles go stale).
+        String idForA = wait.until(d -> findRowIdByLabel(d, aFirst + " " + aLast));
+        String idForB = wait.until(d -> findRowIdByLabel(d, bFirst + " " + bLast));
 
         int before = driver.findElements(
                 By.cssSelector("#participants-table tbody tr")).size();
         System.out.println("[TEST] participants before invite: " + before);
 
-        // --- Invite selected ---
-        jsClick(driver.findElement(By.id("invite-selected-btn")));
+        // Select both members then confirm via the enabled ".invitation-confirm".
+        clickRowById("member", idForA);
+        clickRowById("member", idForB);
+        clickConfirmEnabled(wait);
 
-        // Participants table should now contain both invited members
+        // Participants table should now contain both invited members.
         wait.until(ExpectedConditions.presenceOfElementLocated(By.xpath(
                 "//*[@id='participants-table']//tr[.//td[contains(., '" + aFirst + "')]]")));
         wait.until(ExpectedConditions.presenceOfElementLocated(By.xpath(
                 "//*[@id='participants-table']//tr[.//td[contains(., '" + bFirst + "')]]")));
 
-        // At least one newly invited row should be highlighted (green pulse)
+        // At least one newly invited row should be highlighted (green pulse).
         wait.until(ExpectedConditions.presenceOfElementLocated(
                 By.cssSelector("#participants-table tbody tr.highlight-row")));
 
@@ -99,16 +101,49 @@ class EventInviteModalUiTest extends UiTestBase {
         ((JavascriptExecutor) driver).executeScript(
                 "document.querySelector(\"input[name='dateOfBirth']\").value = '1990-05-15';");
         driver.findElement(By.cssSelector("#member-form button[type='submit'].primary")).click();
-        // Wait for the create form to close (post-submit settle — the modal is the indicator
-        // the request has been processed and the page is ready for the next member)
+        // Modal closes on success — the create form's visibility flip is the settle signal.
         wait.until(ExpectedConditions.invisibilityOfElementLocated(By.cssSelector("#member-form")));
     }
 
-    private void checkMember(String fullName) {
-        WebElement li = driver.findElement(
-                By.xpath("//li[.//label[contains(., '" + fullName + "')]]"));
-        WebElement cb = li.findElement(By.cssSelector("input.invite-checkbox"));
-        cb.click();
+    /**
+     * Finds the data-id attribute of an invitation modal row whose visible
+     * label text matches. Returns null if no matching row exists yet (caller
+     * should wait.until for non-null — a modal that hasn't rendered its rows yet
+     * returns empty list). Resolving to `data-id` once lets the test re-resolve
+     * the element at click time without holding a stale Selenium handle.
+     */
+    private String findRowIdByLabel(org.openqa.selenium.WebDriver d, String label) {
+        return d.findElements(By.cssSelector(".invitation-row")).stream()
+                .filter(r -> r.getText().contains(label))
+                .map(r -> r.getAttribute("data-id"))
+                .filter(s -> s != null && !s.isEmpty())
+                .findFirst().orElse(null);
+    }
+
+    /**
+     * Clicks an invitation-row by data-kind + data-id, resolving the element at
+     * click time — always fresh, never stale. Waits up to 5 s for the element
+     * to exist and be enabled.
+     */
+    private void clickRowById(String kind, String id) {
+        WebDriverWait wait = new WebDriverWait(driver, Duration.ofSeconds(5));
+        wait.until(d -> d.findElements(By.cssSelector(
+                ".invitation-row[data-kind='" + kind + "'][data-id='" + id + "']"))
+                .stream().findFirst().orElse(null) != null);
+        // Use JS click (not el.click()) to avoid Selenium's element-binding step.
+        ((JavascriptExecutor) driver).executeScript(
+                "document.querySelector(\".invitation-row[data-kind='" + kind
+                        + "'][data-id='" + id + "']\").click();");
+    }
+
+    private void clickConfirmEnabled(WebDriverWait wait) {
+        // The "Potwierdź" button carries the `disabled` HTML attribute while the
+        // selection count is 0; after selecting rows it becomes enabled. Wait for
+        // the enabled state (up to 10 s), then JS-click without holding a handle.
+        wait.until(d -> d.findElements(By.cssSelector(".invitation-confirm"))
+                .stream().filter(b -> ((WebElement) b).isEnabled()).findFirst().orElse(null) != null);
+        ((JavascriptExecutor) driver).executeScript(
+                "document.querySelector(\".invitation-confirm\").click();");
     }
 
     private void jsClick(WebElement el) {

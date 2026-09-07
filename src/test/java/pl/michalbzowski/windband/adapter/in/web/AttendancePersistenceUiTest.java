@@ -209,7 +209,7 @@ class AttendancePersistenceUiTest extends UiTestBase {
         assertThat(detailBtns).isNotEmpty();
         detailBtns.get(0).click();
         wait.until(ExpectedConditions.presenceOfElementLocated(By.id("events-content")));
-        wait.until(ExpectedConditions.presenceOfElementLocated(By.id("open-invite-modal-btn")));
+        wait.until(ExpectedConditions.presenceOfElementLocated(By.id("open-invite-btn")));
 
         // Invite the member via API (sync XHR so we get the request done before navigating)
         ((JavascriptExecutor) driver).executeScript(

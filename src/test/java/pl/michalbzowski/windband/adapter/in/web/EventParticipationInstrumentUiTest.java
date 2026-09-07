@@ -66,8 +66,10 @@ class EventParticipationInstrumentUiTest extends UiTestBase {
         wait.until(ExpectedConditions.presenceOfElementLocated(By.id("events-content")));
         // Ensure it is actually visible/clickable (not covered by a sticky bar or leftover toast)
         wait.until(ExpectedConditions.visibilityOfElementLocated(By.id("events-content")));
-        // Wait for invite section which is part of the detail
-        wait.until(ExpectedConditions.presenceOfElementLocated(By.id("open-invite-modal-btn")));
+        // Wait for the unified invite button which is part of the detail page
+        // (t_c9b13437 replaced the old "Zaproś uczestników" / "Zaproś grupę" buttons
+        // with a single #open-invite-btn that opens the shared InvitationModal).
+        wait.until(ExpectedConditions.presenceOfElementLocated(By.id("open-invite-btn")));
 
         // Get the event ID from the #events-content element's data-event-id attribute (now guaranteed to be the detail fragment)
         String eventIdStr = (String) ((JavascriptExecutor) driver).executeScript(

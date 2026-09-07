@@ -2310,3 +2310,130 @@ body.filter-pinned #uber-filter-container select:focus {
     box-shadow: 0 0 0 3px rgba(13, 148, 136, 0.18);
     border-color: var(--pico-primary-color, #0d9488);
 }
+
+/* ============================================================
+   INVITATION MO…al (t_f03a9819)
+   — Reusable "Zaproś" modal styles used by the invitation-modal
+     component. Layered on top of `.app-modal-*` classes that are
+     already set on <dialog>. These rules only target elements with
+     an `invitation-` prefix so they can never collide with other
+     modals on the page.
+   ============================================================ */
+
+/* Slightly wider than default app-modal (max-width of ~480px) to give the
+   two sections some room. The .app-modal element itself is sized by its
+   existing rules — these only apply to the component's own children. */
+
+.invitation-title {
+    font-size: 1.375rem;
+    font-weight: 600;
+    line-height: 1.2;
+    color: var(--pico-color);
+    margin: 0;
+}
+
+.invitation-subtitle {
+    font-size: 0.875rem;
+    color: var(--pico-muted-color);
+    margin: 0.35rem 0 0.25rem;
+    line-height: 1.4;
+}
+
+.invitation-section-header {
+    display: flex;
+    align-items: baseline;
+    gap: 0.6rem;
+    padding: 0.75rem 1rem 0.35rem;
+    font-size: 0.6875rem;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--pico-muted-color);
+    font-weight: 600;
+    border-bottom: 1px solid var(--pico-outline-color, rgba(0, 0, 0, 0.08));
+}
+
+.invitation-section-header .invitation-section-meta {
+    margin-left: auto;
+    font-size: 0.75rem;
+    text-transform: none;
+    letter-spacing: normal;
+    color: var(--pico-color);
+    font-weight: 400;
+}
+
+.invitation-group-row,
+.invitation-member-row {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    width: 100%;
+    text-align: left;
+    padding: 0.5rem 1rem;
+    background: transparent;
+    border: none;
+    border-bottom: 1px solid var(--pico-outline-color, rgba(0, 0, 0, 0.06));
+    color: var(--pico-color);
+    font-size: 0.9375rem;
+}
+
+.invitation-group-row:hover,
+.invitation-member-row:hover {
+    background: rgba(13, 148, 136, 0.06);
+}
+
+.invitation-row[aria-checked="true"] {
+    background: rgba(13, 148, 136, 0.10);
+}
+
+.invitation-group-row .invitation-group-label {
+    font-weight: 500;
+}
+
+.invitation-member-row {
+    padding-left: 2rem; /* indent members under the group row */
+    font-size: 0.875rem;
+}
+
+.invitation-meta {
+    margin-left: auto;
+    font-size: 0.8125rem;
+    color: var(--pico-muted-color);
+}
+
+/* Footer count text — right-aligned before the action buttons. */
+.invitation-count {
+    font-size: 0.9375rem;
+    color: var(--pico-color);
+    margin-right: 0.25rem;
+}
+
+.invitation-actions {
+    display: inline-flex;
+    gap: 0.6rem;
+    margin-left: auto;
+}
+
+/* Empty state (no groups or members available). */
+.invitation-empty {
+    padding: 1rem;
+    color: var(--pico-muted-color);
+    font-size: 0.9375rem;
+    text-align: center;
+}
+
+/* The confirm button takes the primary role — slightly bigger than default
+   outline so it reads as the call-to-action. Scoped to .invitation-actions
+   so we don't affect other modals' primary buttons elsewhere in the app. */
+.invitation-actions button.primary {
+    --pico-primary-background: var(--pico-primary);
+    --pico-primary-border: var(--pico-primary);
+    background-color: var(--pico-primary);
+    border-color: var(--pico-primary);
+    color: var(--pico-primary-inverse);
+}
+
+.invitation-actions button.primary:hover,
+.invitation-actions button.primary:focus-visible {
+    background-color: color-mix(in srgb, var(--pico-primary) 90%, black);
+    border-color: color-mix(in srgb, var(--pico-primary) 90%, black);
+}

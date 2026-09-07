@@ -5,7 +5,6 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
-import pl.michalbzowski.windband.application.query.member.GroupQueryService;
 import pl.michalbzowski.windband.application.query.member.MemberQueryService;
 import pl.michalbzowski.windband.application.query.rehearsal.RehearsalQueryService;
 import pl.michalbzowski.windband.domain.rehearsal.AttendanceStatus;
@@ -21,7 +20,6 @@ public class RehearsalPageController {
 
     private final RehearsalQueryService rehearsalQueryService;
     private final MemberQueryService memberQueryService;
-    private final GroupQueryService groupQueryService;
 
     @GetMapping
     public String listPage(@ModelAttribute("activeTeamId") Long activeTeamId, Model model,
@@ -60,12 +58,10 @@ public class RehearsalPageController {
      * Renders the rehearsal detail page. The view shows ONLY the members that
      * were explicitly invited (have an {@code Attendance} row) — a freshly
      * created rehearsal has no rows, just like a freshly created event. The
-     * template iterates over {@code invitedMembers} for the attendance table;
-     * the multi-member invite modal uses {@code inviteMembers} (the complement
-     * — every active member NOT yet invited). Both lists are pre-computed as
-     * {@code MemberDto} records in this method so the Thymeleaf renderer does
-     * not need to touch lazy associations on the {@code Member} entity outside
-     * the query-service transaction.
+     * template iterates over {@code invitedMembers} for the attendance table.
+     * Invite options (groups + uninvited members) are fetched client-side from
+     * the unified invite modal's {@code /api/rehearsals/{id}/invite-options}
+     * endpoint, so no server-side model attributes are needed for that.
      */
     @GetMapping("/{id}")
     public String rehearsalDetail(@PathVariable Long id, @ModelAttribute("activeTeamId") Long activeTeamId, Model model,
@@ -78,21 +74,13 @@ public class RehearsalPageController {
                 .map(a -> a.getMember().getId())
                 .collect(Collectors.toSet());
 
-        // Fetch every active member once; split it into the two views we need.
+        // Fetch every active member once; project the invited subset for the table.
         // This is a single DTO projection (no lazy member.instruments access from Thymeleaf).
         var allActiveMembers = memberQueryService.getAllActiveMembers(activeTeamId);
         var invitedMembers = allActiveMembers.stream()
                 .filter(m -> invitedMemberIds.contains(m.id()))
                 .collect(Collectors.toList());
-        var availableMembers = allActiveMembers.stream()
-                .filter(m -> !invitedMemberIds.contains(m.id()))
-                .collect(Collectors.toList());
         model.addAttribute("invitedMembers", invitedMembers);
-        model.addAttribute("inviteMembers", availableMembers);
-
-        // All groups of the current band (manual + dynamic). The detail template renders the
-        // membership count and the dynamic badge if applicable.
-        model.addAttribute("groups", groupQueryService.getAllGroups(activeTeamId));
 
         // Attendance map (memberId -> status) for the status <select> defaults.
         Map<Long, AttendanceStatus> attendanceMap = rehearsal.getAttendances().stream()
