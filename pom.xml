@@ -25,8 +25,10 @@
         <docker-java.version>3.5.3</docker-java.version>
         <springdoc.version>2.6.0</springdoc.version>
         <jasperreports.version>7.0.5</jasperreports.version>
-        <!-- Surefire parallelism: 2C locally, 1 on CI (override with -Dsurefire.forkCount=1) -->
-        <surefire.forkCount>2C</surefire.forkCount>
+        <!-- Surefire: UI-suite dominated build runs sequentially (each ChromeDriver is ~300MB;
+             true class-parallelism OOMs 16GB boxes). Override with -Dsurefire.forkCount=N if a
+             machine has the RAM to spare. -->
+        <surefire.forkCount>1</surefire.forkCount>
     </properties>
 
     <dependencies>
@@ -298,21 +300,20 @@
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-surefire-plugin</artifactId>
                 <configuration>
-                    <!-- OPTIMIZATION #1: Parallel test execution (classes in separate JVMs) -->
-                    <parallel>classes</parallel>
-                    
-                    <!-- 
-                        forkCount: Controls parallelism. Default = 1 means sequential class execution within one JVM per fork
-                        Local development: Set to "2C" or higher for faster feedback (CPU=cores; 2C=doubled cores).
-                        GitHub Actions: Keep at 1 to avoid OOM on limited runners with @SpringBootTest + ChromeDriver.
+                    <!--
+                        Sequential by design: the UI suite dominates the build and every test
+                        method needs a live ChromeDriver (~300MB). forkCount=1 + shared
+                        per-class WebDriver (UiTestBase) keeps peak RAM at one browser while
+                        still reusing a single JVM across all classes. Override with
+                        -Dsurefire.forkCount=N only on machines with RAM to spare.
                     -->
                     <forkCount>${surefire.forkCount}</forkCount>
 
-                    <!-- Reuse forks between test classes to reduce JVM startup overhead -->
+                    <!-- Reuse the fork across test classes to avoid JVM restart overhead -->
                     <reuseForks>true</reuseForks>
 
-                    <!-- Memory safety for parallel forks with @SpringBootTest + ChromeDriver -->
-                    <argLine>-Xmx1g -Dwebdriver.chrome.whitelistedIps=""</argLine>
+                    <!-- Memory safety for a single fork running @SpringBootTest + ChromeDriver -->
+                    <argLine>-Xmx2g -Dwebdriver.chrome.whitelistedIps=""</argLine>
 
                     <!-- JasperReports 7.x: Exclude compilation test in CI -->
                 </configuration>
