@@ -13,6 +13,7 @@ import pl.michalbzowski.windband.application.command.rehearsal.InviteMemberComma
 import pl.michalbzowski.windband.application.command.rehearsal.RecordAttendanceCommand;
 import pl.michalbzowski.windband.application.command.rehearsal.RehearsalCommandService;
 import pl.michalbzowski.windband.application.command.rehearsal.ScheduleRehearsalCommand;
+import pl.michalbzowski.windband.application.dto.InviteOptionsDto;
 import pl.michalbzowski.windband.application.query.rehearsal.RehearsalQueryService;
 import pl.michalbzowski.windband.application.query.team.TeamQueryService;
 import pl.michalbzowski.windband.domain.rehearsal.Rehearsal;
@@ -74,6 +75,21 @@ public class RehearsalController {
         cmd.setRehearsalId(id);
         commandService.inviteMember(cmd);
         return ResponseEntity.ok().build();
+    }
+
+    /**
+     * Data for the unified invite modal on the rehearsal detail page (t_7e21ac5b):
+     * groups with their member id lists + active members not yet invited. One
+     * read endpoint that replaces the two old server-rendered checkbox modals
+     * (member-invite and group-invite). Read-only; reuses the same query
+     * services as the page controller. Mirrors {@code EventController.getInviteOptions}.
+     */
+    @GetMapping("/{id}/invite-options")
+    public InviteOptionsDto getInviteOptions(@PathVariable Long id,
+                                             @AuthenticationPrincipal OidcUser oidcUser,
+                                             HttpSession session) {
+        Long activeTeamId = resolveActiveTeamId(oidcUser, session);
+        return queryService.getInviteOptions(id, activeTeamId);
     }
 
     /**

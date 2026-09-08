@@ -35,9 +35,12 @@
 
         <h3>Zaproś na spotkanie</h3>
 
+        <!-- Unified invite (t_7e21ac5b): one "Zaproś" button opens the shared InvitationModal
+             with groups + members fetched from GET /api/rehearsals/{id}/invite-options.
+             Mirrors events/detail.html (t_c9b13437). Replaces the old two-button,
+             two-modal "Zaproś uczestników" / "Zaproś grupę" UI. -->
         <div class="rehearsal-invite-actions">
-            <button type="button" class="outline" id="open-invite-modal-btn">➕ Zaproś uczestników</button>
-            <button type="button" class="outline" id="open-invite-group-modal-btn">👥 Zaproś grupę</button>
+            <button type="button" class="outline" id="open-invite-btn">➕ Zaproś</button>
         </div>
 
         <h3>Lista obecności</h3>
@@ -123,58 +126,9 @@
     </div>
 </dialog>
 
-<!-- Multi-member invite modal: only members NOT yet invited are shown -->
-<dialog id="invite-members-modal" class="app-modal">
-    <div class="app-modal-content">
-        <header class="app-modal-header">
-            <div class="app-modal-header-text">
-                <h3>Zaproś uczestników</h3>
-            </div>
-            <button type="button" class="app-modal-close" aria-label="Zamknij" data-close>×</button>
-        </header>
-        <div class="app-modal-body">
-            <p th:if="${#lists.isEmpty(inviteMembers)}" class="text-muted" style="margin:0 0 0.5rem;">Wszyscy członkowie zostali już zaproszeni.</p>
-            <ul class="modal-people-list">
-                <li th:each="m : ${inviteMembers}">
-                    <input type="checkbox" class="invite-checkbox" th:value="${m.id}" th:id="'invite-cb-' + ${m.id}">
-                    <label th:for="'invite-cb-' + ${m.id}" th:text="${m.firstName} + ' ' + ${m.lastName}" style="margin:0; flex:1;">Jan Kowalski</label>
-                </li>
-            </ul>
-        </div>
-        <footer class="app-modal-footer">
-            <button type="button" class="outline" data-close>Anuluj</button>
-            <button type="button" class="primary" id="invite-selected-btn">Zaproś zaznaczone osoby</button>
-        </footer>
-    </div>
-</dialog>
-
-<!-- Group invite modal: every group of the current band, dynamic groups marked -->
-<dialog id="invite-group-modal" class="app-modal">
-    <div class="app-modal-content">
-        <header class="app-modal-header">
-            <div class="app-modal-header-text">
-                <h3>Zaproś grupę</h3>
-            </div>
-            <button type="button" class="app-modal-close" aria-label="Zamknij" data-close>×</button>
-        </header>
-        <div class="app-modal-body">
-            <p th:if="${#lists.isEmpty(groups)}" class="text-muted" style="margin:0 0 0.5rem;">Brak dostępnych grup.</p>
-            <ul class="modal-people-list">
-                <li th:each="g : ${groups}">
-                    <input type="checkbox" class="invite-group-checkbox" th:value="${g.id}" th:id="'invite-group-cb-' + ${g.id}">
-                    <label th:for="'invite-group-cb-' + ${g.id}" style="margin:0; flex:1;">
-                        <span th:text="${g.name} + ' (' + ${g.memberCount} + ' członków)'">Sekcja dęta (5 członków)</span>
-                        <small th:if="${g.dynamic}" style="margin-left:0.4rem; color:var(--pico-muted-color);">(dynamiczna)</small>
-                    </label>
-                </li>
-            </ul>
-        </div>
-        <footer class="app-modal-footer">
-            <button type="button" class="outline" data-close>Anuluj</button>
-            <button type="button" class="primary" id="invite-group-selected-btn">Zaproś zaznaczone grupy</button>
-        </footer>
-    </div>
-</dialog>
+<!-- (t_7e21ac5b) The old server-rendered member-invite and group-invite <dialog> modals were
+     removed: the single #open-invite-btn opens the shared InvitationModal rendered at runtime by
+     invitation-modal.js into a host div appended to <body>, mirroring events/detail.html. -->
 
 <!-- Delete rehearsal modal -->
 <dialog id="delete-rehearsal-modal" class="app-modal">
@@ -618,34 +572,166 @@
 </script>
 
 <script>
-// Invite member/group handlers (existing functionality preserved)   
-document.addEventListener('DOMContentLoaded', function() { 
-    var inviteBtn = document.getElementById('open-invite-modal-btn');
-    if(inviteBtn){inviteBtn.onclick=function(){openAppModal('invite-members-modal')}};
-    
-    var inviteGroupBtn= document.getElementById('open-invite-group-modal-btn');
-    if(inviteGroupBtn){inviteGroupBtn.onclick=function(){openAppModal('invite-group-modal')}};
-    
-    document.getElementById('invite-selected-btn')?.addEventListener('click',function() { 
-        const selected = Array.from(document.querySelectorAll('.invite-checkbox:checked')).map(cb => parseInt(cb.value)); 
-        if (!selected.length) return window.showToast('Wybierz przynajmniej jedną osobę'); 
-        const rehearsalId = document.querySelector('#rehearsals-content').getAttribute('data-rehearsal-id'); 
-        const xhr=new XMLHttpRequest();
-        xhr.open("POST","/api/rehearsals/"+rehearsalId+"/invite",true);
-        xhr.setRequestHeader("Content-Type","application/json");
-        xhr.send(JSON.stringify({"rehearsalId":parseInt(rehearsalId),"memberIds":selected}));
-    });
-    
-    document.getElementById('invite-group-selected-btn')?.addEventListener('click', function() {
-        const selected = Array.from(document.querySelectorAll('.invite-group-checkbox:checked')).map(cb => parseInt(cb.value)); 
-        if(!selected.length) return window.showToast('Wybierz przynajmniej jedną grupę');
-        const rehearsalId = document.querySelector('#rehearsals-content').getAttribute('data-rehearsal-id'); 
-        const xhr=new XMLHttpRequest();
-        xhr.open("POST","/api/rehearsals/"+rehearsalId+"/invite-group",true);
-        xhr.setRequestHeader("Content-Type","application/json");
-        xhr.send(JSON.stringify({"rehearsalId":parseInt(rehearsalId),"groupId":selected[0]}));
-    });
-});</script>
+// === UNIFIED INVITE (t_7e21ac5b) ============================================
+// One "Zaproś" button (#open-invite-btn) opens the shared InvitationModal rendered
+// at runtime by invitation-modal.js into a host div appended to <body>. The modal
+// lists groups + individual members in one scroll area; on confirm it hands back a
+// deduplicated list of member ids, and we POST each to /api/rehearsals/{id}/invite —
+// exactly the events/detail.html flow (t_c9b13437). Group resolution happens
+// client-side via the dedup module using invite-options' group.memberIds list; the
+// server endpoint only ever receives concrete member ids.
+(function() {
+    'use strict';
+
+    var UNIFIED_INVITE_HOST_ID = 'unified-invite-host-rehearsal';
+
+    function rehearsalId() {
+        var c = document.getElementById('rehearsals-content');
+        return c ? c.getAttribute('data-rehearsal-id') : null;
+    }
+
+    function unifiedInviteHost() {
+        var host = document.getElementById(UNIFIED_INVITE_HOST_ID);
+        if (!host) {
+            host = document.createElement('div');
+            host.id = UNIFIED_INVITE_HOST_ID;
+            if (document.body && document.body.appendChild) {
+                host.style.position = 'fixed';
+                host.style.inset = '0';
+                host.style.zIndex = '2000';
+                document.body.appendChild(host);
+            }
+        }
+        return host;
+    }
+
+    function closeOpenDialog() {
+        try {
+            var h = document.getElementById(UNIFIED_INVITE_HOST_ID);
+            if (h && typeof h.querySelector === 'function') {
+                var d = h.querySelector('dialog[open]');
+                if (d && typeof d.close === 'function') d.close();
+            }
+        } catch (_) {}
+    }
+
+    function highlightNewlyInvited(ids) {
+        var handler = function(evt) {
+            if (!(evt.detail && evt.detail.target && evt.detail.target.id === 'rehearsals-content')) return;
+            setTimeout(function() {
+                ids.forEach(function(mid) {
+                    var row = document.querySelector('#rehearsals-content tbody tr[data-member-id="' + mid + '"]');
+                    if (row) {
+                        row.classList.add('highlight-row');
+                        setTimeout(function() { row.classList.remove('highlight-row'); }, 3000);
+                        row.scrollIntoView({behavior: 'smooth', block: 'center'});
+                    }
+                });
+            }, 50);
+            document.body.removeEventListener('htmx:afterSettle', handler);
+        };
+        document.body.addEventListener('htmx:afterSettle', handler);
+    }
+
+    function inviteRehearsalSelected(rehId, ids) {
+        var promises = ids.map(function(mid) {
+            return fetchWithToast('/api/rehearsals/' + rehId + '/invite', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({rehearsalId: parseInt(rehId), memberId: mid})
+            });
+        });
+        Promise.all(promises).then(function() {
+            if (window.Toast) Toast.success('Zaproszono ' + ids.length + (ids.length === 1 ? ' osobę' : ' osób'));
+            htmx.ajax('GET', '/rehearsals/' + rehId, {target: '#rehearsals-content', swap: 'innerHTML transition:true'});
+            highlightNewlyInvited(ids);
+        }).catch(function(err) {
+            console.error('Invite selected error:', err);
+            if (window.Toast) Toast.error('Błąd podczas zapraszania');
+        });
+    }
+
+    function openUnifiedRehearsalInvite(rehId) {
+        if (!window.InvitationModal || !InvitationModal.create) {
+            if (window.Toast) Toast.error('Nie można otworzyć okna zaproszeń — biblioteka niedostępna');
+            return;
+        }
+        fetch('/api/rehearsals/' + rehId + '/invite-options', {credentials: 'include'})
+            .then(function(res) {
+                if (!res.ok) throw new Error('invite-options status ' + res.status);
+                return res.json();
+            })
+            .then(function(opts) {
+                var groups = ((opts && opts.groups) || []).map(function(g) {
+                    return {id: g.id, name: g.name, memberIds: (g.memberIds || [])};
+                });
+                var members = ((opts && opts.members) || []).map(function(m) {
+                    return {id: m.id, name: m.name};
+                });
+
+                var host = unifiedInviteHost();
+                try {
+                    var api = window.InvitationModal.create({
+                        groups: groups,
+                        members: members,
+                        onConfirm: function(ids) {
+                            ids = Array.isArray(ids) ? ids.map(Number).filter(function(n) { return Number.isFinite(n); }) : [];
+                            closeOpenDialog();
+                            inviteRehearsalSelected(rehId, ids);
+                        },
+                        onCancel: closeOpenDialog
+                    });
+                    api.mount(host);
+                } catch (e) {
+                    console.error('Failed to mount unified invite modal:', e);
+                    if (window.Toast) Toast.error('Nie udało się otworzyć okna zaproszeń');
+                    return;
+                }
+
+                // Open <dialog> AFTER mount so showModal() never races innerHTML reset.
+                try {
+                    var dlg = document.getElementById('invitation-unified-modal');
+                    if (dlg && typeof dlg.showModal === 'function') dlg.showModal();
+                } catch (_) {}
+            })
+            .catch(function(err) {
+                console.error('Failed to load invite options:', err);
+                if (window.Toast) Toast.error('Nie udało się wczytać listy zaproszeń');
+            });
+    }
+
+    // Idempotent binder — dataset guard makes re-calls a no-op for the same node.
+    function bindUnifiedRehearsalInvite() {
+        var btn = document.getElementById('open-invite-btn');
+        if (!btn) return;
+        if (btn.dataset.unifiedInviteBound === 'yes') return;
+        var container = document.getElementById('rehearsals-content');
+        if (!container) return;
+        btn.addEventListener('click', function() {
+            openUnifiedRehearsalInvite(container.getAttribute('data-rehearsal-id'));
+        });
+        btn.dataset.unifiedInviteBound = 'yes';
+    }
+    bindUnifiedRehearsalInvite();
+
+    document.addEventListener('DOMContentLoaded', bindUnifiedRehearsalInvite);
+
+    // Re-bind after HTMX innerHTML swap of #rehearsals-content (the button node is
+    // recreated). Same belt-and-braces pattern as events/detail.html.
+    if ('MutationObserver' in window) {
+        var watchRoot = ((document.getElementById('rehearsals-content') &&
+                          document.getElementById('rehearsals-content').parentNode)) || document.body;
+        new MutationObserver(function(mutations) {
+            for (var i = 0; i < mutations.length; i++) {
+                if (mutations[i].type === 'childList' && mutations[i].addedNodes.length) {
+                    setTimeout(bindUnifiedRehearsalInvite, 60);
+                    return;
+                }
+            }
+        }).observe(watchRoot, { childList: true, subtree: true });
+    }
+})();
+</script>
 
     </div></section>
 </main>

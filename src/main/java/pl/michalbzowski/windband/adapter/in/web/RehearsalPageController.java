@@ -5,7 +5,6 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
-import pl.michalbzowski.windband.application.query.member.GroupQueryService;
 import pl.michalbzowski.windband.application.query.member.MemberQueryService;
 import pl.michalbzowski.windband.application.query.rehearsal.RehearsalQueryService;
 import pl.michalbzowski.windband.domain.rehearsal.AttendanceStatus;
@@ -21,7 +20,6 @@ public class RehearsalPageController {
 
     private final RehearsalQueryService rehearsalQueryService;
     private final MemberQueryService memberQueryService;
-    private final GroupQueryService groupQueryService;
 
     @GetMapping
     public String listPage(@ModelAttribute("activeTeamId") Long activeTeamId, Model model,
@@ -60,12 +58,11 @@ public class RehearsalPageController {
      * Renders the rehearsal detail page. The view shows ONLY the members that
      * were explicitly invited (have an {@code Attendance} row) — a freshly
      * created rehearsal has no rows, just like a freshly created event. The
-     * template iterates over {@code invitedMembers} for the attendance table;
-     * the multi-member invite modal uses {@code inviteMembers} (the complement
-     * — every active member NOT yet invited). Both lists are pre-computed as
-     * {@code MemberDto} records in this method so the Thymeleaf renderer does
-     * not need to touch lazy associations on the {@code Member} entity outside
-     * the query-service transaction.
+     * template iterates over {@code invitedMembers} and {@code attendanceMap};
+     * the unified "Zaproś" button (t_7e21ac5b) fetches its groups + member
+     * options client-side from GET /api/rehearsals/{id}/invite-options, so the
+     * old server-rendered invite-member/group lists and their two dialog modals
+     * are gone.
      */
     @GetMapping("/{id}")
     public String rehearsalDetail(@PathVariable Long id, @ModelAttribute("activeTeamId") Long activeTeamId, Model model,
@@ -73,26 +70,13 @@ public class RehearsalPageController {
         var rehearsal = rehearsalQueryService.getRehearsalById(id);
         model.addAttribute("rehearsal", rehearsal);
 
-        // IDs of members already invited to this rehearsal (have an attendance row)
-        var invitedMemberIds = rehearsal.getAttendances().stream()
-                .map(a -> a.getMember().getId())
-                .collect(Collectors.toSet());
-
-        // Fetch every active member once; split it into the two views we need.
-        // This is a single DTO projection (no lazy member.instruments access from Thymeleaf).
+        // Members already invited to this rehearsal (have an attendance row).
+        // Still needed server-side: the attendance table and its filter badges
+        // iterate over them.
         var allActiveMembers = memberQueryService.getAllActiveMembers(activeTeamId);
-        var invitedMembers = allActiveMembers.stream()
-                .filter(m -> invitedMemberIds.contains(m.id()))
-                .collect(Collectors.toList());
-        var availableMembers = allActiveMembers.stream()
-                .filter(m -> !invitedMemberIds.contains(m.id()))
-                .collect(Collectors.toList());
-        model.addAttribute("invitedMembers", invitedMembers);
-        model.addAttribute("inviteMembers", availableMembers);
-
-        // All groups of the current band (manual + dynamic). The detail template renders the
-        // membership count and the dynamic badge if applicable.
-        model.addAttribute("groups", groupQueryService.getAllGroups(activeTeamId));
+        model.addAttribute("invitedMembers", allActiveMembers.stream()
+                .filter(m -> rehearsal.getAttendances().stream().anyMatch(a -> a.getMember().getId().equals(m.id())))
+                .collect(Collectors.toList()));
 
         // Attendance map (memberId -> status) for the status <select> defaults.
         Map<Long, AttendanceStatus> attendanceMap = rehearsal.getAttendances().stream()
@@ -119,10 +103,6 @@ public class RehearsalPageController {
             try {
                 java.net.URL refUrl = new java.net.URL(referer);
                 String path = refUrl.getPath();
-                // Map referer paths to their respective list views:
-                // - "/" → root stays as root only for dashboard/home context
-                // - "/events" or "/events/..." → back to events list
-                // - "/rehearsals" or "/rehearsals/..." → back to rehearsals list
                 if (path.equals("/")) {
                     backUrl = path;  // root home page
                 } else if (path.startsWith("/events")) {
