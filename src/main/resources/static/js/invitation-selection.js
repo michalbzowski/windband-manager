@@ -83,21 +83,38 @@
          *   toggle groups after construction (acceptance criteria 4–5).
          */
         constructor(groups) {
-            this.selectedGroups = new Set();       // Set<number>
+            this.selectedGroups = new Set();       // Set<number|string> (caller-controlled; we treat as opaque)
             this.selectedMembers = new Set();      // Set<number>
             this.resolvedMemberIds = new Set();    // Set<number> — the deduped union
-            this._membershipMap = Object.create(null); // id -> Set<number>
+            // Canonical key is ALWAYS a string so that map lookups are type-stable:
+            // browser JS objects built from JSON have NUMBER ids, but callers who
+            // normalize (invitation-modal.js calls SelectionState.toggleGroup with
+            // normalizeId() = String(id)) will otherwise miss the numeric-key entry.
+            this._membershipMap = Object.create(null);
 
-            if (Array.isArray(groups)) {
-                for (const g of groups) {
-                    if (!g || g.id == null) continue;
-                    this._membershipMap[g.id] = createSet(asNumberArray(g.memberIds));
+            // Canonical key on BOTH sides is always a string so numeric ids from
+            // browser JSON (e.g. 458) and normalized ids from the modal (String(458))
+            // resolve to the same map entry.
+            if (groups != null) {
+                if (Array.isArray(groups)) {
+                    // Array of { id, memberIds } — the shape the Jest unit tests use.
+                    for (const g of groups) {
+                        if (!g || g.id == null) continue;
+                        this._membershipMap[String(g.id)] = createSet(asNumberArray(g.memberIds));
+                    }
+                } else {
+                    // Object map { id: [memberId, ...] } — the shape the browser
+                    // InvitationModal passes when it builds a pre-normalized membership
+                    // table before instantiating SelectionState.
+                    for (const k of Object.keys(groups)) {
+                        this._membershipMap[String(k)] = createSet(asNumberArray(groups[k]));
+                    }
                 }
             }
         }
 
         _membersOf(groupId) {
-            const m = this._membershipMap[groupId];
+            const m = this._membershipMap[String(groupId)];  // symmetric with constructor
             return m != null ? m : new Set();
         }
 

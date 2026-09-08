@@ -228,61 +228,6 @@ public abstract class UiTestBase {
     }
 
     /**
-     * Clicks a row-like interactive element (by CSS selector) and retries the
-     * click a bounded number of times until the given "ready" control becomes
-     * enabled — i.e. until the click's effect is actually observable in the DOM.
-     *
-     * <p>Root-cause context: the unified invite modal (invitation-modal.js) re-renders
-     * the entire body on every toggle via a full innerHTML swap, and its "Potwierdź"
-     * button (class {@code .invitation-confirm}) stays {@code disabled} until a row
-     * selection registers in the JS {@code InvitationSelection} state. Under CI load
-     * (parallel surefire forks sharing one embedded H2 + single Spring context), a
-     * click dispatched via CDP can race with that re-render — the toggle never
-     * lands within the original single short wait, and the enabled-state check then
-     * blocks for its full budget before timing out. The two invite UI tests
-     * (EventInviteGroupUiTest, EventInviteGroupSecondEventUiTest) both hit this exact
-     * race as their only CI failure mode; see the run-34276875297 surefire summary.</p>
-     *
-     * <p>This helper closes that race without weakening any assertion: it performs
-     * up to {@code maxAttempts} clicks, each followed by a short (3 s) wait for the
-     * ready control to be enabled. If the effect still hasn't landed after all
-     * attempts it throws {@link AssertionError} with a clear message so the test
-     * fails loudly rather than hanging. Deterministic in the happy path — first click,
-     * first check — so there is no behavioural change when CI is not loaded; the
-     * retries only ever fire on the genuine race the race-condition diagnosis above
-     * describes.</p>
-     */
-    protected void clickUntilEnabled(String rowCssSelector, String readyCssSelector, int maxAttempts) {
-        for (int attempt = 1; attempt <= maxAttempts; attempt++) {
-            // Click. If the element isn't there yet it becomes a no-op in JS — the retry loop below still covers it.
-            ((org.openqa.selenium.JavascriptExecutor) driver).executeScript(
-                    "var el=document.querySelector(arguments[0]); if(el){el.scrollIntoView({block:'center'}); el.click();}",
-                    rowCssSelector);
-            // Poll for up to 3s (manually — WebDriverWait.until THROWS on timeout, we want false instead).
-            boolean ready = false;
-            long deadline = System.currentTimeMillis() + 3000L;
-            while (System.currentTimeMillis() < deadline) {
-                java.util.List<org.openqa.selenium.WebElement> els = driver.findElements(By.cssSelector(readyCssSelector));
-                if (els.stream().anyMatch(org.openqa.selenium.WebElement::isEnabled)) {
-                    ready = true;
-                    break;
-                }
-                try { Thread.sleep(250L); } catch (InterruptedException ie) {
-                    Thread.currentThread().interrupt();
-                    throw new RuntimeException(ie);
-                }
-            }
-            if (ready) return;
-        }
-        throw new AssertionError("clickUntilEnabled: " + maxAttempts + " clicks on \"" + rowCssSelector
-                + "\" did not enable \"" + readyCssSelector + "\" within budget — under load the interaction is still racing");
-    }
-
-    protected void clickUntilEnabled(String rowCssSelector, String readyCssSelector) {
-        clickUntilEnabled(rowCssSelector, readyCssSelector, 3);
-    }
-
-    /**
      * Reset the shared H2 test database. Called from {@link BeforeEach} so every
      * UI test starts from a clean state. Uses TRUNCATE ... CASCADE (per table —
      * H2 does not support multi-table TRUNCATE) to drop child rows (consent
