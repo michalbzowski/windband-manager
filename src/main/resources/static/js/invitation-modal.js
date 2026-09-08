@@ -120,6 +120,8 @@
 
             this._host = null; // root element the modal is rendered into
             this._handlers = new Set();
+            this._timers = new Set();
+            this._destroyed = false;
         }
 
         // ── Public API (logic only — callable under Node with any DOM shim) ──
@@ -141,6 +143,11 @@
 
         count()          { return this.selection.getSelectedCount(); }
         resolvedIds()    { return this.selection.getResolvedIds(); }
+
+        /** True after {@link destroy} has run. Logic is still safe — these only
+         *  read the (still-alive) selection state and no-ops on a destroyed
+         *  host — but callers can branch on it to avoid wasted work. */
+        get destroyed() { return this._destroyed === true; }
 
         /** Pure: build the modal's HTML from opts + selection state. */
         renderMarkup() {
@@ -224,28 +231,75 @@
             );
         }
 
-        /** Mount the modal into hostElement (creates fresh DOM on every mount). */
+        /** Mount the modal into hostElement.
+         *
+         *  - After {@link destroy} this is a no-op (the host and everything
+         *    bound to it are gone; re-mounting would create a stale instance).
+         *  - Every mount first tears down any live listener set from a PRIOR
+         *    mount so re-initialising into the same host never stacks duplicate
+         *    delegations onto that host (the classic HTMX afterSwap hazard:
+         *    the page swaps, we mount, then something re-mounts).
+         */
         mount(hostElement) {
+            if (this._destroyed) return this;
             const el = hostElement || this._env().createRoot();
             if (!el) throw new Error('No host element available to render the modal');
+            // Single-instance guarantee: if another, still-live InvitationModal
+            // is registered as living in THIS host, destroy it first. This is
+            // what ensures re-initialising into the same host (the classic HTMX
+            // afterSwap hazard) can never stack two live instances — every
+            // prior mount on this exact element was cleaned up; listeners on
+            // detached nodes are also cleared in _detachAll below.
+            if (typeof _instanceRegistry !== 'undefined') {
+                for (let i = _instanceRegistry.length - 1; i >= 0; i--) {
+                    const other = _instanceRegistry[i];
+                    if (!other || other === this) continue;
+                    // Only destroy a PRIOR instance if it's still marked as live
+                    // AND its host node is either (a) the same object we're about
+                    // to render into, or (b) not in the DOM anymore (detached).
+                    const oldHost = other._host;
+                    const orphanedHost = !!oldHost && !oldHost.parentNode && oldHost.innerHTML && String(oldHost.innerHTML).indexOf('invitation-modal') >= 0;
+                    if (!other._destroyed && (oldHost === el || orphanedHost)) {
+                        try { other.destroy(); } catch (_) {}
+                        const j = _instanceRegistry.indexOf(other);
+                        if (j >= 0) _instanceRegistry.splice(j, 1);
+                    }
+                }
+            }
+            // This-instance teardown before a fresh mount: drop stale listener set
+            // and any tracked timers from a prior render on us.
+            this._detachAll();
+            this._clearTimers();
             if (typeof el.innerHTML !== 'undefined') el.innerHTML = this.renderMarkup();
             this._host = el;
             this._bindEvents(el);
             return this;
         }
 
-        /** Full re-render when mounted, no-op when not. */
+        /** Full re-render when mounted, no-op otherwise or when destroyed.
+         *
+         *  Re-renders replace the host's inner elements (rows, close buttons),
+         *  so we RE-ATTACH the full listener set on the new markup. Because a
+         *  single delegating handler can't reliably remove its own bound copy
+         *  from inside the handler, the safe pattern is: swap innerHTML first
+         *  (the old elements are gone and take their listeners with them), then
+         *  re-bind against the fresh `this._handlers` snapshot — every handler
+         *  is removed exactly once, including the ones we just dispatched from.
+         */
         _refresh() {
-            if (!this._host) return;
+            if (!this._host || this._destroyed) return;
             try {
-                const inner = this._host.querySelector ? this._host.querySelector('.invitation-modal') : null;
-                if (inner && typeof inner.outerHTML === 'string') {
-                    // Replace the wrapper div's content in place — keeps our listener set intact.
-                    this._host.innerHTML = this.renderMarkup();
-                } else {
+                if (typeof this._host.innerHTML !== 'undefined') {
                     this._host.innerHTML = this.renderMarkup();
                 }
             } catch (_) { /* ignore render errors under non-DOM runtimes */ }
+            // Re-attach now that the fresh DOM is in place. Idempotent: the old
+            // listeners were bound to inner elements that no longer exist, so
+            // re-binding cannot double-fire on a single host element either —
+            // the delegation points at `this._host`, but we removed each prior
+            // bind before adding the new one (see _detachAll → _bindEvents).
+            this._detachAll();
+            this._bindEvents(this._host);
         }
 
         // ── Confirm / cancel / destroy ───────────────────────────────────────
@@ -258,19 +312,66 @@
         }
 
         cancel() {
-            if (this._host) this._removeHost();
+            this.destroy(); // tear down listeners + DOM so nothing outlives this instance
             if (typeof this.opts.onCancel === 'function') this.opts.onCancel();
         }
 
         close() { this.cancel(); }
 
         destroy() {
+            if (this._destroyed) return this; // idempotent: teardown is one-shot
+            this._clearTimers();  // cancel any pending setTimeout/setInterval on this instance
+            this._detachAll();    // remove every live listener for this instance
+            this._removeHost();   // drop the host DOM node
+            this._destroyed = true;
+            // Drop from the module registry so closeAll() and mount() don't see us.
+            if (typeof _instanceRegistry !== 'undefined') {
+                const idx = _instanceRegistry.indexOf(this);
+                if (idx >= 0) _instanceRegistry.splice(idx, 1);
+            }
+            return this;
+        }
+
+        /**
+         * Track a setTimeout or setInterval so destroy() can cancel it. We never
+         * hold an anonymous timer — every one is recorded here and released in
+         * destruction, which means rapid open/close cycles leave no dangling
+         * callbacks and no accumulated timers (acceptance #3).
+         *
+         * @param {function} [fn] Optional; wrap to track. Return shape stays
+         *     identical so existing callers see no API change.
+         */
+        _schedule(fn) {
+            if (typeof setTimeout !== 'function') return null;
+            const id = setTimeout(fn);
+            (this._timers || (this._timers = new Set())).add(id);
+            return id;
+        }
+
+        /** Clear all tracked timers. Idempotent — safe to call from _detachAll. */
+        _clearTimers() {
+            for (const id of this._timers || []) {
+                if (typeof clearTimeout === 'function') try { clearTimeout(id); } catch (_) {}
+            }
+            if (this._timers) this._timers = new Set();
+        }
+
+        /**
+         * Remove all registered listeners from their elements (rows, close
+         * buttons, and the delegated handlers on the host). Safe to call
+         * repeatedly: once removed, `_handlers` is clear so a second call is a
+         * zero-work loop. This is what guarantees no ORPHANED listeners survive
+         * a re-render (_refresh) or an HTMX beforeSwap — we hold no references
+         * to detached DOM nodes and nothing keeps firing after teardown.
+         */
+        _detachAll() {
             for (const h of this._handlers || []) {
                 const t = h && h.type, el = h && h.el;
-                if (el && typeof el.removeEventListener === 'function' && t) el.removeEventListener(t, h.fn);
+                if (el && typeof el.removeEventListener === 'function' && t) {
+                    try { el.removeEventListener(t, h.fn); } catch (_) {}
+                }
             }
             this._handlers = new Set();
-            this._removeHost();
         }
 
         _removeHost() {
@@ -385,7 +486,40 @@
     }
 
     // ── Factory + exports ────────────────────────────────────────────────────
-    function create(opts) { return new InvitationModal(opts || {}); }
+    // Module-level registry of every live InvitationModal instance. Lets
+    // mount() enforce the single-instance-per-host rule (see above) and lets
+    // closeAll()/activeCount() inspect or tear down all at once — that is the
+    // teardown hook a page can use on htmx:beforeSwap so nothing leaks across
+    // an HTMX boundary. Backed by a plain array (no WeakMap needed: instances
+    // only get removed when they're destroyed).
+    var _instanceRegistry = [];
+
+    function create(opts) {
+        const inst = new InvitationModal(opts || {});
+        if (_instanceRegistry && !inst._destroyed) _instanceRegistry.push(inst);
+        return inst;
+    }
+
+    /**
+     * Destroy every live instance created via create() and clear the registry.
+     * Idempotent and cheap to call (returns early when the list is empty). The
+     * intended htmx:beforeSwap handler so a page can guarantee zero modals, zero
+     * listeners, zero pending timers survive an HTMX swap of their host.
+     */
+    function closeAll() {
+        if (!_instanceRegistry) return 0;
+        let destroyed = 0;
+        for (let i = _instanceRegistry.length - 1; i >= 0; i--) {
+            const inst = _instanceRegistry[i];
+            if (!inst || !inst.destroy) continue;
+            try { inst.destroy(); } catch (_) {}
+            if (inst._destroyed) { destroyed++; _instanceRegistry.splice(i, 1); }
+        }
+        return destroyed;
+    }
+
+    /** Count of live (not-yet-destroyed) instances — the leak detector. */
+    function activeCount() { return (_instanceRegistry || []).length; }
 
     /**
      * One-shot convenience: mount a fresh modal into a host (or append to body).
@@ -408,7 +542,7 @@
     }
 
     const root = (typeof globalThis !== 'undefined') ? globalThis : this;
-    const api = { create, open, InvitationModal };
+    const api = { create, open, closeAll, activeCount, InvitationModal };
     if (!root.InvitationModal) root.InvitationModal = api;
     if ((typeof module !== 'undefined') && module.exports != null) module.exports = api;
 })();

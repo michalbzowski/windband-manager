@@ -618,6 +618,37 @@ document.addEventListener('DOMContentLoaded', function() {
         return h;
     }
 
+    // ── t_ec75454f: HTMX swap boundary guard ─────────────────────────────────
+    // #rehearsals-content is BOTH the HTMX swap target AND the parent of our
+    // host div. On every beforeSwap/afterSwap targeting it, destroy any live
+    // InvitationModal so no listeners/DOM/timers leak across the boundary.
+    //
+    // Key point: `#rehearsals-content` itself gets REPLACED on each swap — a
+    // node-level listener on it is lost with the old node. Therefore we bind ONCE
+    // to document.body (always stable) and filter by evt.target id, making the
+    // binding exactly once per page load and immune to the swap lifecycle.
+    if (!document.body.__rehearsalHtmxInviteGuard || !document.body.__rehearsalHtmxInviteGuard.rehearsals) {
+        document.body.addEventListener('htmx:beforeSwap', function (evt) {
+            var t = evt && evt.target;
+            if (!t || t.id !== 'rehearsals-content') return;
+            if (window.InvitationModal && typeof window.InvitationModal.closeAll === 'function') {
+                try { window.InvitationModal.closeAll(); } catch (_) {}
+            }
+        });
+        document.body.addEventListener('htmx:afterSwap', function () {
+            // Safety net for swaps that bypass beforeSwap (manual innerHTML, etc).
+            if (!window.InvitationModal) return;
+            var c = document.getElementById('rehearsals-content');
+            if (!c) return;
+            if (c.querySelector && c.querySelector('.invitation-modal') &&
+                typeof window.InvitationModal.closeAll === 'function') {
+                try { window.InvitationModal.closeAll(); } catch (_) {}
+            }
+        });
+        if (!document.body.__rehearsalHtmxInviteGuard) document.body.__rehearsalHtmxInviteGuard = {};
+        document.body.__rehearsalHtmxInviteGuard.rehearsals = true;
+    }
+
     // Close the open <dialog> inside our host, if any. Safe no-op when it is
     // already closed; keeps a stuck-open modal from lingering after confirm.
     function closeDialog() {
