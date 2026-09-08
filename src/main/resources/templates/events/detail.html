@@ -168,9 +168,9 @@
                           th:data-consent-given="${p.emailConsentGiven}"
                           th:data-status="${p.invitationStatus}">
                         <span th:if="${!p.emailConsentGiven}" style="color:#dc3545;">❌ Brak zgody</span>
-                        <span th:elif="${p.invitationStatus == 'FAILED'}" style="color:#856404;">⚠️ Błąd wysyłki</span>
-                        <span th:elif="${p.invitationStatus == 'SENT'}" style="color:#2fb344;">✅ Wysłano</span>
-                        <span th:if="${p.emailConsentGiven and !(p.invitationStatus == 'FAILED') and !(p.invitationStatus == 'SENT')}" style="color:var(--pico-muted-color);">📭 Nie wysłano</span>
+                        <span th:if="${p.emailConsentGiven and p.invitationStatus == 'FAILED'}" style="color:#856404;">⚠️ Błąd wysyłki</span>
+                        <span th:if="${p.emailConsentGiven and p.invitationStatus == 'SENT'}" style="color:#2fb344;">✅ Wysłano</span>
+                        <span th:if="${p.emailConsentGiven and !(p.invitationStatus == 'FAILED') and !(p.invitationStatus == 'SENT')}">📭 Nie wysłano</span>
                     </span>
                 </td>
                 <td data-label="Akcja">
