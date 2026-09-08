@@ -142,14 +142,13 @@ class EventInviteGroupSecondEventUiTest extends UiTestBase {
 
     private void clickRowAndConfirm(String groupIdAttr) {
         WebDriverWait wait = new WebDriverWait(driver, Duration.ofSeconds(5));
-        // Click the group row via CSS selector (re-resolves at click time — never stale).
-        wait.until(d -> d.findElements(By.cssSelector(
-                        ".invitation-row[data-kind='group'][data-id='" + groupIdAttr + "']"))
-                .stream().findFirst().orElse(null) != null);
-        ((JavascriptExecutor) driver).executeScript(
-                "document.querySelector(\".invitation-row[data-kind='group'][data-id='" + groupIdAttr + "']\").click();");
+        // Click the row AND retry until selection registers (confirm enabled). See UiTestBase
+        // javadoc for root cause: under CI load the row's delegated click handler / _refresh()
+        // round-trip can race with the CDP click, leaving confirm disabled beyond a single wait.
+        String rowSel = ".invitation-row[data-kind='group'][data-id='" + groupIdAttr + "']";
+        clickUntilEnabled(rowSel, ".invitation-confirm");
 
-        // Wait for the confirm button to be enabled, then click via a fresh resolver.
+        // Now confirm is guaranteed enabled — click it via a fresh resolver.
         wait.until(d -> d.findElements(By.cssSelector(".invitation-confirm")).stream()
                 .filter(WebElement::isEnabled).findFirst().orElse(null) != null);
         ((JavascriptExecutor) driver).executeScript(

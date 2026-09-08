@@ -88,8 +88,11 @@ class EventInviteGroupUiTest extends UiTestBase {
         assertThat(groupIdAttr).as("group row exists in modal for '%s'", groupName).isNotNull();
 
         // Click the group row via CSS selector (always fresh, never stale).
-        ((JavascriptExecutor) driver).executeScript(
-                "document.querySelector(\".invitation-row[data-kind='group'][data-id='" + groupIdAttr + "']\").click();");
+        // Under CI load (parallel forks + shared H2/Spring) the toggle round-trip
+        // (click -> JS selection -> _refresh re-render that enables confirm) does
+        // not always land within a single short wait; re-click if still disabled.
+        String rowSel = ".invitation-row[data-kind='group'][data-id='" + groupIdAttr + "']";
+        clickUntilEnabled(rowSel, ".invitation-confirm");
 
         // Click "Potwierdź" — the confirm button in the unified modal footer
         // (resolved at click time, same stable-click rationale as above).
