@@ -10,6 +10,7 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.client.RestTemplate;
 import pl.michalbzowski.windband.adapter.in.security.WindbandOidcUser;
 import pl.michalbzowski.windband.application.command.event.*;
+import pl.michalbzowski.windband.application.dto.InviteOptionsDto;
 import pl.michalbzowski.windband.application.query.event.EventQueryService;
 import pl.michalbzowski.windband.application.query.team.TeamQueryService;
 import pl.michalbzowski.windband.domain.event.BandEvent;
@@ -54,6 +55,20 @@ public class EventController {
         cmd.setEventId(id);
         commandService.inviteMember(cmd);
         return ResponseEntity.ok().build();
+    }
+
+    /**
+     * Data for the unified invite modal on the event detail page (t_c9b13437):
+     * groups with their member id lists + active members not yet invited. One
+     * read endpoint instead of the old server-rendered modals. Read-only;
+     * reuses the same query services as the page controller.
+     */
+    @GetMapping("/{id}/invite-options")
+    public InviteOptionsDto getInviteOptions(@PathVariable Long id,
+                                             @AuthenticationPrincipal OidcUser oidcUser,
+                                             HttpSession session) {
+        Long activeTeamId = resolveActiveTeamId(oidcUser, session);
+        return queryService.getInviteOptions(id, activeTeamId);
     }
 
     @PostMapping("/{id}/invite-group")

@@ -7,12 +7,17 @@ import pl.michalbzowski.windband.application.dto.EventDetailDto;
 import pl.michalbzowski.windband.application.dto.EventDetailDto.InstrumentCountDto;
 import pl.michalbzowski.windband.application.dto.EventDetailDto.ParticipationDto;
 import pl.michalbzowski.windband.application.dto.GroupSummaryDto;
+import pl.michalbzowski.windband.application.dto.InviteOptionsDto;
+import pl.michalbzowski.windband.application.dto.MemberDto;
 import pl.michalbzowski.windband.application.query.member.GroupQueryService;
+import pl.michalbzowski.windband.application.query.member.MemberQueryService;
 import pl.michalbzowski.windband.application.service.ConsentService;
 import pl.michalbzowski.windband.domain.event.BandEvent;
 import pl.michalbzowski.windband.domain.event.EventInvitationRepository;
 import pl.michalbzowski.windband.domain.event.EventRepository;
 import pl.michalbzowski.windband.domain.member.ConsentType;
+import pl.michalbzowski.windband.domain.member.Group;
+import pl.michalbzowski.windband.domain.member.GroupRepository;
 import pl.michalbzowski.windband.domain.member.InstrumentRepository;
 
 import java.time.LocalDate;
@@ -29,21 +34,74 @@ public class EventQueryService {
     private final InstrumentRepository instrumentRepository;
     private final EventInvitationRepository invitationRepository;
     private final ConsentService consentService;
+    private final MemberQueryService memberQueryService;
+    private final GroupRepository groupRepository;
 
     public EventQueryService(EventRepository eventRepository, GroupQueryService groupQueryService,
                              InstrumentRepository instrumentRepository,
                              EventInvitationRepository invitationRepository,
-                             ConsentService consentService) {
+                             ConsentService consentService,
+                             MemberQueryService memberQueryService,
+                             GroupRepository groupRepository) {
         this.eventRepository = eventRepository;
         this.groupQueryService = groupQueryService;
         this.instrumentRepository = instrumentRepository;
         this.invitationRepository = invitationRepository;
         this.consentService = consentService;
+        this.memberQueryService = memberQueryService;
+        this.groupRepository = groupRepository;
     }
 
     public BandEvent getEventById(Long id) {
         return eventRepository.findById(id)
                 .orElseThrow(() -> new EventNotFoundException(id));
+    }
+
+    /**
+     * Groups + available members for the unified invite modal of the given event.
+     * Each group carries its member id list so the client-side dedup logic can
+     * resolve a group selection to concrete members before inviting. Members
+     * already participating in the event are excluded from the individual
+     * members list (same contract the old page controller used).
+     */
+    public InviteOptionsDto getInviteOptions(Long eventId, Long bandId) {
+        BandEvent event = eventRepository.findById(eventId)
+                .orElseThrow(() -> new EventNotFoundException(eventId));
+        long effectiveBandId = bandId != null ? bandId
+                : (event.getBand() != null ? event.getBand().getId() : 0L);
+
+        List<InviteOptionsDto.GroupOption> groupOptions = groupQueryService.getAllGroups(effectiveBandId).stream()
+                .map(summary -> new InviteOptionsDto.GroupOption(
+                        summary.id(), summary.name(), summary.memberCount(),
+                        resolveMemberIds(groupRepository.findById(summary.id()).orElse(null), effectiveBandId)))
+                .toList();
+
+        var invitedIds = event.getParticipations().stream()
+                .map(p -> p.getMember().getId())
+                .collect(Collectors.toSet());
+
+        List<InviteOptionsDto.MemberOption> memberOptions = memberQueryService.getAllActiveMembers(effectiveBandId).stream()
+                .filter(m -> !invitedIds.contains(m.id()))
+                .map(m -> new InviteOptionsDto.MemberOption(m.id(), m.firstName() + " " + m.lastName()))
+                .toList();
+
+        return new InviteOptionsDto(groupOptions, memberOptions);
+    }
+
+    /**
+     * Resolves a group's member ids. Dynamic (attribute-backed) groups have no
+     * explicit membership rows, so we fall back to the band's active members —
+     * the same fallback {@code EventCommandService.inviteGroup} applies at write time.
+     */
+    private List<Long> resolveMemberIds(Group group, long bandId) {
+        if (group != null && !group.getMembers().isEmpty()) {
+            return group.getMembers().stream()
+                    .map(gm -> gm.getMember().getId())
+                    .toList();
+        }
+        return memberQueryService.getAllActiveMembers(bandId).stream()
+                .map(MemberDto::id)
+                .toList();
     }
 
     public EventDetailDto getEventDetailById(Long id, Long bandId) {
