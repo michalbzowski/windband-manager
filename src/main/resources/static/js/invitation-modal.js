@@ -99,14 +99,25 @@
             toggleMember: (mid)    => (shared.toggleMember ? shared.toggleMember(mid)               : null),
             clearAll:     ()       => (shared.clear        ? shared.clear()
                                                           : (shared.clearAll ? shared.clearAll()   : undefined)),
-            getConfirmPayload: ()  => (typeof shared.getResolvedIds === 'function')
-                                              ? Array.from(shared.getResolvedIds())
-                                              : Array.from(shared.resolvedMemberIds),
-            isGroupSelected:  isGroupSel,
-            isMemberSelected: isMemberSel,
-            count:            ()   => (typeof shared.getSelectedCount === 'function')
-                                              ? shared.getSelectedCount()
-                                              : shared.resolvedMemberIds.size,
+            getConfirmPayload: () => {
+                const ids = (typeof shared.getResolvedIds === 'function')
+                        ? Array.from(shared.getResolvedIds())
+                        : Array.from(shared.resolvedMemberIds);
+                // Sort deterministically so both hook and legacy paths emit the SAME
+                // payload shape. Mixed string/number ids are possible (DOM data-id is
+                // always a string; DB-generated ids are numbers), so try numeric first and
+                // fall back to locale-aware string sort when values are not all finite
+                // numbers. This keeps diff-based unit tests stable regardless of which
+                // engine is active or how the caller stored its ids.
+                const numeric = (ids.length > 0 && ids.every((v) => Number.isFinite(Number(v))));
+                if (!numeric) return ids.slice().sort((a, b) => String(a).localeCompare(String(b)));
+                return ids.slice().sort((a, b) => Number(a) - Number(b));
+            },
+        isGroupSelected:  isGroupSel,
+        isMemberSelected: isMemberSel,
+        count:            ()   => (typeof shared.getSelectedCount === 'function')
+                                          ? shared.getSelectedCount()
+                                          : shared.resolvedMemberIds.size,
         };
     }
 
@@ -151,6 +162,7 @@
             //   3. A fallback adapter over the legacy class, in case the hook
             //      surface was not present at load time (defensive).
             const shared = opts && opts.selection;
+            this._optsOwnedSelection = Boolean(shared);
 
             if (shared) {
                 this._view = makeSharedView(shared, findMembersForGid);
@@ -193,10 +205,10 @@
 
         count()          { return this._view.count(); }
         resolvedIds()    {
-            // `resolvedMemberIds` is a LIVE view into the hook's Set. Return a
-            // copy so callers can iterate without the component mutating it.
+            // `resolvedMemberIds` is a LIVE view into the engine's Set. Return
+            // a copy so callers can iterate without the component mutating it.
             const v = this._view.resolvedMemberIds;
-            return Array.isArray(v) ? Array.from(v) : Array.from(v);
+            return Array.from(v);
         }
         getConfirmPayload() {
             const p = this._view.getConfirmPayload ? this._view.getConfirmPayload() : this.resolvedIds();
@@ -352,6 +364,16 @@
             }
             this._handlers = new Set();
             this._removeHost();
+            // Clear the shared selection state. When the modal was constructed
+            // with `opts.selection` (an EXISTING engine passed in by the caller),
+            // that engine survives beyond this instance — wiping it here would
+            // mutate a state object another consumer may still be using. The
+            // caller is responsible for calling clearAll() when it wants a clean
+            // slate on reopen; this only guarantees a fresh instance leaves no
+            // residue if the engine was constructed internally.
+            if (this._view && !this._optsOwnedSelection && typeof this._view.clearAll === 'function') {
+                this._view.clearAll();
+            }
         }
 
         _removeHost() {
