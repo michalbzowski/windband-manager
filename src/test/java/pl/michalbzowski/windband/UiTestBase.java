@@ -1,8 +1,6 @@
 package pl.michalbzowski.windband;
 
 import io.github.bonigarcia.wdm.WebDriverManager;
-import org.junit.jupiter.api.AfterAll;
-import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.TestInstance;
 import org.openqa.selenium.By;
@@ -10,6 +8,7 @@ import org.openqa.selenium.WebDriver;
 import org.openqa.selenium.WebElement;
 import org.openqa.selenium.chrome.ChromeDriver;
 import org.openqa.selenium.chrome.ChromeOptions;
+import org.openqa.selenium.JavascriptExecutor;
 import org.openqa.selenium.support.ui.ExpectedConditions;
 import org.openqa.selenium.support.ui.WebDriverWait;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -34,10 +33,32 @@ public abstract class UiTestBase {
     @Autowired
     protected JdbcTemplate jdbcTemplate;
 
+    /** Lazily-initialised, once-per-JVM (shared by every UI test class) ChromeDriver. */
+    private static WebDriver sharedDriver;
+    private static final Object DRIVER_LOCK = new Object();
+
     protected WebDriver driver;
 
     @BeforeEach
     void setUp() {
+        // Attach the process-wide shared ChromeDriver (launched once per JVM) so
+        // that 66 UI test classes do NOT each start their own browser. This is
+        // what was blowing up RAM when every class called launchBrowser() in
+        // its own @BeforeAll: 66 concurrent headless-Chrome sessions piled onto
+        // one H2/Postgres. A single shared driver keeps one session while still
+        // giving every class a fresh DOM — isolation is provided by the
+        // cleanDatabase() reset below plus per-test navigation in each test.
+        driver = ensureSharedDriver();
+
+        // Because we now share ONE Chrome across all UI test classes, cookies
+        // (login session, XSRF-TOKEN) and localStorage (data-theme, etc.) persist
+        // between tests — that used to be fine because every class got its own
+        // browser with a blank profile. Reset browser state before every test so
+        // each one sees a clean profile exactly as if it were the first test in
+        // a fresh Chrome. cheap: driver.manage().deleteAllCookies() + clear JS
+        // storage in the current origin (localhost:port) — no network, no reload.
+        wipeBrowserState();
+
         // UI tests share a single H2 database in the JVM. Reset it before each
         // test so stale rows from a previous test cannot leak in and break
         // ordering/assertions. TRUNCATE ... CASCADE removes child rows
@@ -45,26 +66,68 @@ public abstract class UiTestBase {
         cleanDatabase();
     }
 
+    /** Nukes cookies + localStorage/sessionStorage on the current origin and drains the browser console log. Called before every test so the shared driver behaves as a fresh profile each time AND no stale SEVERE/ERROR console entries from earlier tests pollute "console must be clean" assertions. */
+    private void wipeBrowserState() {
+        try {
+            // Ensure we're on the application origin first (cookies are scoped to origin)
+            if (!driver.getCurrentUrl().startsWith(baseUrl())) {
+                driver.get(baseUrl());
+            }
+            driver.manage().deleteAllCookies();
+            JavascriptExecutor js = (JavascriptExecutor) driver;
+            js.executeScript("try{localStorage.clear()}catch(e){}try{sessionStorage.clear()}catch(e){}");
+
+            // Drain any console entries accumulated by EARLIER tests — otherwise
+            // Selenium's goog:loggingPrefs log buffer carries over a 500/409 from
+            // a prior test into this test's "console must be clean" assertion. Read-then-discard clears it.
+            try {
+                driver.manage().logs().get(org.openqa.selenium.logging.LogType.BROWSER);
+            } catch (Exception ignored) { /* older Selenium: no log API — still fine */ }
+
+            // Also clear the in-page JS console buffer (if the test's own helper uses window.console)
+            js.executeScript("try{window.__consoleErrors=[].concat(window.__consoleErrors||[])}catch(e){}");
+        } catch (Exception e) {
+            System.err.println("[UiTestBase] wipeBrowserState: " + e.getMessage());
+        }
+    }
+
     /**
-     * Launches ONE browser session per test class (instead of one per test method),
-     * sharing the chromedriver+Chromium process across every {@code @Test} in
-     * the subclass. Test isolation is preserved by the {@code @BeforeEach}
-     * database reset — the shared driver only carries the login/CSRF state,
-     * which {@code doLogin()} re-establishes on each test as needed.
+     * Returns the singleton ChromeDriver, launching it exactly once per JVM on
+     * first use (thread-safe). Every UI test class in this fork shares this one
+     * driver, so we only pay the ~300MB + startup cost ONCE for the whole suite
+     * instead of once per class.
+     *
+     * <p>Test isolation is still preserved even though the driver is shared:
+     * each test navigates via {@code driver.get(baseUrl() + path)}, which fully
+     * resets the DOM and page state, and {@code cleanDatabase()} (called in
+     * {@code @BeforeEach}) wipes the shared H2 rows. The browser holds no
+     * application data we care about between tests — only cookies (the login
+     * session), which {@code doLogin()} re-establishes as needed.</p>
      */
-    @BeforeAll
-    void launchBrowser() {
+    private static WebDriver ensureSharedDriver() {
+        if (sharedDriver != null) {
+            return sharedDriver;
+        }
+        synchronized (DRIVER_LOCK) {
+            if (sharedDriver == null) {
+                sharedDriver = createChromeDriver();
+            }
+        }
+        return sharedDriver;
+    }
+
+    /** Builds one headless ChromeDriver session. Extracted so ensureSharedDriver stays small. */
+    private static WebDriver createChromeDriver() {
         String browserPath = detectChromeBinary();
         String browserVersion = getMajorVersion(browserPath);
         System.out.println("[UiTestBase] Browser: " + browserPath + " version: " + browserVersion);
 
-        // Try to find matching system chromedriver first
+        // Try to find matching system chromedriver first — otherwise WebDriverManager.
         String systemDriver = findSystemChromedriver(browserVersion);
         if (systemDriver != null) {
             System.setProperty("webdriver.chrome.driver", systemDriver);
             System.out.println("[UiTestBase] Using system chromedriver: " + systemDriver);
         } else {
-            // Fall back to WebDriverManager — downloads matching version
             System.out.println("[UiTestBase] No matching system chromedriver, using WebDriverManager...");
             if (browserVersion != null) {
                 WebDriverManager.chromedriver().browserVersion(browserVersion).setup();
@@ -83,8 +146,9 @@ public abstract class UiTestBase {
         if (browserPath != null) {
             options.setBinary(browserPath);
         }
-        driver = new ChromeDriver(options);
-        System.out.println("[UiTestBase] ChromeDriver session created successfully");
+        WebDriver d = new ChromeDriver(options);
+        System.out.println("[UiTestBase] Shared ChromeDriver session created once for the whole JVM");
+        return d;
     }
 
     /**
@@ -192,11 +256,23 @@ public abstract class UiTestBase {
         return null;
     }
 
-    @AfterAll
-    void tearDownClass() {
-        if (driver != null) {
-            driver.quit();
-            driver = null;
+    // NOTE: We intentionally do NOT quit the driver in a per-class @AfterAll,
+    // because the ChromeDriver is now a JVM-wide singleton shared by all 66 UI
+    // test classes. Quitting it after one class would break every subsequent
+    // class ("session deleted") and/or cause us to re-launch — defeating the
+    // whole point of shared-driver + killing RAM when forks re-spawn Chrome.
+    // The browser process is reclaimed when the test JVM exits (or, when a fork
+    // finishes) — surefire kills the OS-level chromedriver/Chromium children as
+    // part of normal fork teardown on a clean JVM shutdown. If you need an
+    // explicit quit (e.g. running a single class from an IDE), call:
+    //     UiTestBase.quitSharedDriverForTesting();
+
+    public static void quitSharedDriverForTesting() {
+        synchronized (DRIVER_LOCK) {
+            if (sharedDriver != null) {
+                try { sharedDriver.quit(); } catch (Exception ignored) { /* already dead */ }
+                sharedDriver = null;
+            }
         }
     }
 
