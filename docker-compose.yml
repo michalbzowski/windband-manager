@@ -109,4 +109,3 @@ services:
 volumes:
   pgdata:
   keycloakdata:
-    ##
