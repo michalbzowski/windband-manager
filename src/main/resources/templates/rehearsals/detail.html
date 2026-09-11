@@ -35,10 +35,14 @@
 
         <h3>Zaproś na spotkanie</h3>
 
+        <!-- Unified invite modal (t_5c77c4cb): single button + shared window.InvitationModal
+             component from src/main/resources/static/js/invitation-modal.js.
+             The legacy two-dialog flow (#invite-members-modal + #invite-group-modal)
+             was replaced by this host — the modal mounts itself into <body> on open(). -->
         <div class="rehearsal-invite-actions">
-            <button type="button" class="outline" id="open-invite-modal-btn">➕ Zaproś uczestników</button>
-            <button type="button" class="outline" id="open-invite-group-modal-btn">👥 Zaproś grupę</button>
+            <button type="button" class="outline" id="open-invite-btn">➕ Zaproś</button>
         </div>
+        <div id="unified-invite-host"></div>
 
         <h3>Lista obecności</h3>
 
@@ -120,59 +124,6 @@
                 <button type="button" class="secondary" data-close>Anuluj</button>
             </div>
         </div>
-    </div>
-</dialog>
-
-<!-- Multi-member invite modal: only members NOT yet invited are shown -->
-<dialog id="invite-members-modal" class="app-modal">
-    <div class="app-modal-content">
-        <header class="app-modal-header">
-            <div class="app-modal-header-text">
-                <h3>Zaproś uczestników</h3>
-            </div>
-            <button type="button" class="app-modal-close" aria-label="Zamknij" data-close>×</button>
-        </header>
-        <div class="app-modal-body">
-            <p th:if="${#lists.isEmpty(inviteMembers)}" class="text-muted" style="margin:0 0 0.5rem;">Wszyscy członkowie zostali już zaproszeni.</p>
-            <ul class="modal-people-list">
-                <li th:each="m : ${inviteMembers}">
-                    <input type="checkbox" class="invite-checkbox" th:value="${m.id}" th:id="'invite-cb-' + ${m.id}">
-                    <label th:for="'invite-cb-' + ${m.id}" th:text="${m.firstName} + ' ' + ${m.lastName}" style="margin:0; flex:1;">Jan Kowalski</label>
-                </li>
-            </ul>
-        </div>
-        <footer class="app-modal-footer">
-            <button type="button" class="outline" data-close>Anuluj</button>
-            <button type="button" class="primary" id="invite-selected-btn">Zaproś zaznaczone osoby</button>
-        </footer>
-    </div>
-</dialog>
-
-<!-- Group invite modal: every group of the current band, dynamic groups marked -->
-<dialog id="invite-group-modal" class="app-modal">
-    <div class="app-modal-content">
-        <header class="app-modal-header">
-            <div class="app-modal-header-text">
-                <h3>Zaproś grupę</h3>
-            </div>
-            <button type="button" class="app-modal-close" aria-label="Zamknij" data-close>×</button>
-        </header>
-        <div class="app-modal-body">
-            <p th:if="${#lists.isEmpty(groups)}" class="text-muted" style="margin:0 0 0.5rem;">Brak dostępnych grup.</p>
-            <ul class="modal-people-list">
-                <li th:each="g : ${groups}">
-                    <input type="checkbox" class="invite-group-checkbox" th:value="${g.id}" th:id="'invite-group-cb-' + ${g.id}">
-                    <label th:for="'invite-group-cb-' + ${g.id}" style="margin:0; flex:1;">
-                        <span th:text="${g.name} + ' (' + ${g.memberCount} + ' członków)'">Sekcja dęta (5 członków)</span>
-                        <small th:if="${g.dynamic}" style="margin-left:0.4rem; color:var(--pico-muted-color);">(dynamiczna)</small>
-                    </label>
-                </li>
-            </ul>
-        </div>
-        <footer class="app-modal-footer">
-            <button type="button" class="outline" data-close>Anuluj</button>
-            <button type="button" class="primary" id="invite-group-selected-btn">Zaproś zaznaczone grupy</button>
-        </footer>
     </div>
 </dialog>
 
@@ -617,35 +568,220 @@
 
 </script>
 
-<script>
-// Invite member/group handlers (existing functionality preserved)   
-document.addEventListener('DOMContentLoaded', function() { 
-    var inviteBtn = document.getElementById('open-invite-modal-btn');
-    if(inviteBtn){inviteBtn.onclick=function(){openAppModal('invite-members-modal')}};
-    
-    var inviteGroupBtn= document.getElementById('open-invite-group-modal-btn');
-    if(inviteGroupBtn){inviteGroupBtn.onclick=function(){openAppModal('invite-group-modal')}};
-    
-    document.getElementById('invite-selected-btn')?.addEventListener('click',function() { 
-        const selected = Array.from(document.querySelectorAll('.invite-checkbox:checked')).map(cb => parseInt(cb.value)); 
-        if (!selected.length) return window.showToast('Wybierz przynajmniej jedną osobę'); 
-        const rehearsalId = document.querySelector('#rehearsals-content').getAttribute('data-rehearsal-id'); 
-        const xhr=new XMLHttpRequest();
-        xhr.open("POST","/api/rehearsals/"+rehearsalId+"/invite",true);
-        xhr.setRequestHeader("Content-Type","application/json");
-        xhr.send(JSON.stringify({"rehearsalId":parseInt(rehearsalId),"memberIds":selected}));
-    });
-    
-    document.getElementById('invite-group-selected-btn')?.addEventListener('click', function() {
-        const selected = Array.from(document.querySelectorAll('.invite-group-checkbox:checked')).map(cb => parseInt(cb.value)); 
-        if(!selected.length) return window.showToast('Wybierz przynajmniej jedną grupę');
-        const rehearsalId = document.querySelector('#rehearsals-content').getAttribute('data-rehearsal-id'); 
-        const xhr=new XMLHttpRequest();
-        xhr.open("POST","/api/rehearsals/"+rehearsalId+"/invite-group",true);
-        xhr.setRequestHeader("Content-Type","application/json");
-        xhr.send(JSON.stringify({"rehearsalId":parseInt(rehearsalId),"groupId":selected[0]}));
-    });
-});</script>
+<script th:inline="none">
+// Unified invite modal (t_5c77c4cb) — replaces the old two-dialog flow.
+//
+// Wires the single "Zaproś" button to the shared window.InvitationModal
+// component (invitation-modal.js, built in t_f03a9819) using the SAME pattern
+// as the event detail page (t_c9b13437):
+//   1) fetch /api/rehearsals/{id}/invite-options → {groups, members};
+//   2) create a controlled modal: InvitationModal.create({groups, members, onConfirm});
+//   3) api.mount(host) renders it into the persistent #unified-invite-host div;
+//   4) open the <dialog> via showModal() AFTER mount (avoids the orphaned-
+//      dialog race the events page fixed in t_c9b13437);
+//   5) onConfirm fires one POST /api/rehearsals/{id}/invite {rehearsalId, memberId}
+//      per resolved id — the identical URL/method/payload the old
+//      "Zaproś uczestników" modal used ("deduplicated array of member IDs"):
+//      group selections are expanded to their member id set at resolution time,
+//      and the InvitationSelection dedup module resolves group ∪ member
+//      selections into a unique number[] passed to onConfirm.
+//   6) success → Toast.success + HTMX refresh of #rehearsals-content;
+//      failure → error toast and the modal stays open (requirement #5).
+//
+// The host div lives inside #rehearsals-content, so it is re-created by the
+// post-confirm HTMX swap. Re-opening the button fetches fresh options and
+// mounts a new instance each time — no stale state survives the swap, and we
+// never accumulate multiple modals under <body> after repeated confirms.
+document.addEventListener('DOMContentLoaded', function() {
+    var btn = document.getElementById('open-invite-btn');
+    if (!btn) return;
+    // Idempotent guard: the button node is recreated on HTMX swaps, so a per-
+    // node dataset flag prevents double-binding on re-renders (same pattern as
+    // events detail's bindUnifiedEventInvite).
+    function bind() {
+        var b = document.getElementById('open-invite-btn');
+        if (!b) return;
+        if (b.dataset.unifiedInviteBound === 'yes') return;
+        b.addEventListener('click', openUnifiedRehearsalInvite);
+        b.dataset.unifiedInviteBound = 'yes';
+    }
+    bind();
+
+    function host() {
+        var h = document.getElementById('unified-invite-host');
+        if (!h) {
+            h = document.createElement('div');
+            h.id = 'unified-invite-host';
+            var contentEl = document.getElementById('rehearsals-content');
+            (contentEl || document.body).appendChild(h);
+        }
+        return h;
+    }
+
+    // ── t_ec75454f: HTMX swap boundary guard ─────────────────────────────────
+    // #rehearsals-content is BOTH the HTMX swap target AND the parent of our
+    // host div. On every beforeSwap/afterSwap targeting it, destroy any live
+    // InvitationModal so no listeners/DOM/timers leak across the boundary.
+    //
+    // Key point: `#rehearsals-content` itself gets REPLACED on each swap — a
+    // node-level listener on it is lost with the old node. Therefore we bind ONCE
+    // to document.body (always stable) and filter by evt.target id, making the
+    // binding exactly once per page load and immune to the swap lifecycle.
+    if (!document.body.__rehearsalHtmxInviteGuard || !document.body.__rehearsalHtmxInviteGuard.rehearsals) {
+        document.body.addEventListener('htmx:beforeSwap', function (evt) {
+            var t = evt && evt.target;
+            if (!t || t.id !== 'rehearsals-content') return;
+            if (window.InvitationModal && typeof window.InvitationModal.closeAll === 'function') {
+                try { window.InvitationModal.closeAll(); } catch (_) {}
+            }
+        });
+        document.body.addEventListener('htmx:afterSwap', function () {
+            // Safety net for swaps that bypass beforeSwap (manual innerHTML, etc).
+            if (!window.InvitationModal) return;
+            var c = document.getElementById('rehearsals-content');
+            if (!c) return;
+            if (c.querySelector && c.querySelector('.invitation-modal') &&
+                typeof window.InvitationModal.closeAll === 'function') {
+                try { window.InvitationModal.closeAll(); } catch (_) {}
+            }
+        });
+        if (!document.body.__rehearsalHtmxInviteGuard) document.body.__rehearsalHtmxInviteGuard = {};
+        document.body.__rehearsalHtmxInviteGuard.rehearsals = true;
+    }
+
+    // Close the open <dialog> inside our host, if any. Safe no-op when it is
+    // already closed; keeps a stuck-open modal from lingering after confirm.
+    function closeDialog() {
+        try {
+            var h = document.getElementById('unified-invite-host');
+            var dlg = h && h.querySelector ? h.querySelector('dialog[open]') : null;
+            if (dlg && typeof dlg.close === 'function') dlg.close();
+        } catch (_) {}
+    }
+
+    // Refresh just the #rehearsals-content fragment (single invite already applied;
+    // the server re-renders the attendance table + filters). The dedicated
+    // /{id}/list endpoint renders exactly this fragment, so we reuse it instead of
+    // a full /rehearsals/{id} page swap — same DOM contract, lighter request.
+    function refreshContent(id) {
+        if (typeof htmx !== 'undefined') {
+            htmx.ajax('GET', '/rehearsals/' + id + '/list', { target: '#rehearsals-content', swap: 'innerHTML transition:true' });
+        }
+    }
+
+    // Ensure the single "Zaproś" button stays bound across HTMX content swaps:
+    // quick attendance and invite confirmations both re-render #rehearsals-content,
+    // which replaces this button node (and drops dataset flags on the old one).
+    // Delegated listener on a stable ancestor makes rebinding implicit and
+    // idempotent, so the modal keeps working after every reload.
+    function ensureButtonBound() {
+        var contentEl = document.getElementById('rehearsals-content');
+        if (!contentEl) return;
+        if (contentEl.dataset.unifiedInviteDelegated === 'yes') return;
+        contentEl.addEventListener('click', function (evt) {
+            var t = evt && evt.target;
+            if (t && typeof t.closest === 'function' && t.closest('#open-invite-btn')) openUnifiedRehearsalInvite();
+        });
+        contentEl.dataset.unifiedInviteDelegated = 'yes';
+    }
+    ensureButtonBound();
+
+    // Confirm handler passed to the shared component. onConfirm(resolvedIds)
+    // receives an already-deduplicated number[] of member ids (groups collapsed
+    // to their members by the InvitationSelection dedup module). Fire ONE POST
+    // per id against the EXACT endpoint the old flow used, then:
+    //   * at least one succeeded → success toast + HTMX refresh (modal closed);
+    //   * none succeeded        → error toast, modal stays open.
+    function inviteAndHandle(eventId, api, resolvedIds) {
+        var ids = (resolvedIds || []).map(function (n) { return parseInt(n, 10); })
+                                   .filter(function (n) { return Number.isFinite(n); });
+        if (!ids.length) {
+            if (window.Toast) Toast.error('Wybierz co najmniej jedną osobę');
+            return; // keep the modal open so the user can pick someone
+        }
+        var pending = ids.slice();
+        var succeeded = 0;
+        var failed = 0;
+
+        function finish() {
+            if (succeeded > 0) {
+                closeDialog();
+                api.destroy();
+                if (window.Toast) Toast.success('Zaproszono ' + succeeded + (succeeded === 1 ? ' osobę' : ' osób'));
+                refreshContent(eventId);
+            } else {
+                // Nothing applied → requirement #5: error notification, modal stays open.
+                if (window.Toast) Toast.error('Błąd podczas zapraszania');
+            }
+        }
+
+        function invokeOne() {
+            if (pending.length === 0) { finish(); return; }
+            var memberId = pending.shift();
+            fetchWithToast('/api/rehearsals/' + eventId + '/invite', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ rehearsalId: eventId, memberId: memberId })
+            }).then(function (resp) {
+                if (resp.ok) succeeded += 1; else failed += 1;
+                invokeOne();
+            }).catch(function (err) {
+                failed += 1;
+                console.error('Invite member error:', err);
+                invokeOne();
+            });
+        }
+        invokeOne();
+    }
+
+    function openUnifiedRehearsalInvite() {
+        var contentEl = document.getElementById('rehearsals-content');
+        if (!contentEl || !contentEl.dataset.rehearsalId) return;
+        var eventId = contentEl.dataset.rehearsalId;
+
+        if (!window.InvitationModal || typeof window.InvitationModal.create !== 'function') {
+            if (window.Toast) Toast.error('Nie można otworzyć okna zaproszeń — biblioteka niedostępna');
+            return;
+        }
+
+        fetch('/api/rehearsals/' + eventId + '/invite-options', { credentials: 'include' })
+            .then(function (res) {
+                if (!res.ok) throw new Error('invite-options status ' + res.status);
+                return res.json();
+            })
+            .then(function (opts) {
+                var groups = ((opts && opts.groups) || []).map(function (g) {
+                    return { id: g.id, name: g.name, memberIds: (g.memberIds || []) };
+                });
+                var members = ((opts && opts.members) || []).map(function (m) {
+                    return { id: m.id, name: m.name };
+                });
+
+                var h = host();
+                // Fresh instance per open: the previous one was destroyed after its
+                // confirm (or left closed), and mounting into the same host replaces
+                // its markup — no double modals can accumulate.
+                var api = window.InvitationModal.create({
+                    groups: groups,
+                    members: members,
+                    onConfirm: function (resolvedIds) { inviteAndHandle(eventId, api, resolvedIds); },
+                    onCancel: function () { closeDialog(); }
+                });
+                api.mount(h);
+
+                // Open the <dialog> AFTER mount (events t_c9b13437 fix).
+                try {
+                    var dlg = document.getElementById('invitation-unified-modal');
+                    if (dlg && typeof dlg.showModal === 'function') dlg.showModal();
+                } catch (_) {}
+            })
+            .catch(function (err) {
+                console.error('Failed to load invite options:', err);
+                if (window.Toast) Toast.error('Nie udało się wczytać listy zaproszeń');
+            });
+    }
+});
+</script>
 
     </div></section>
 </main>

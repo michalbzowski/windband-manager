@@ -1,41 +1,42 @@
 /* invitation-modal.js — reusable "Zaproś" modal that unifies the old
- * "Zaproś grupę" + "Zaproś członka" UI into one <dialog>.
+ * "Zaproś grupę" + "Zaproś cz\u0142onka" UI into one <dialog>.
  *
- * Consumes the `useInvitationSelection` reactive hook (see invitation-selection.js)
- * for ALL selection state: the component holds a single view object and hands
- * every mutation back to it. The component itself never implements any dedup
- * logic of its own — the hook owns the three live Set views it needs:
- *   - selectedGroupIds     : which group rows are checked
- *   - selectedMemberIds    : which member rows are checked
- *   - resolvedMemberIds    : the deduplicated union that forms the confirm payload
+ * Consumes window.InvitationSelection (see invitation-selection.js) for the
+ * group/member dedup logic. The modal is a thin, controlled view over that
+ * module: it renders two sections in ONE scrollable body (groups above
+ * members), exposes a live "Wybierzono: N" footer counter, and calls back with
+ * a resolved, deduplicated number[] via opts.onConfirm.
  *
- * Public surface is a small controlled API over the hook. Design choices mapped
- * to task acceptance criteria:
- *   1. One scrollable body, groups section ABOVE members section — hard-coded
- *      order in renderMarkup (not data-driven); both sections live inside one
- *      .invitation-body container with max-height + overflow-y via CSS.
- *   2. The footer's "Wybierzono: N" counter reads `view.resolvedMemberIds.size`
- *      on every re-render, so it reflects the hook's dedup state in real time.
- *   3. The confirm button is disabled when view.count() === 0; clicking it calls
- *      getConfirmPayload(), then invokes opts.onConfirm(ids) with the SAME shape
- *      the existing per-member POST /api/.../invite loop already consumes (a
- *      number[] memberIds). The modal stays open until the page closes it —
- *      controlled component (see cancel() below).
- *   4. Close on backdrop click, Escape, the × button or "Anuluj". All of them
- *      leave the hook's Set state untouched so a re-open restores prior selection
- *      (unless the caller explicitly calls clearAll()).
- *   5. Reusable: receives `groups`, `members`, and an `onConfirm` callback as
- *      props, exactly per spec; no page-specific hardcoding.
+ * Design choices (mapped to task acceptance criteria):
+ *   1) Groups always render ABOVE members inside a single scroll area — the
+ *      markup below emits a groups <section> then a members <section>; order is
+ *      hard-coded, not data-driven.
+ *   2) Real-time checkbox + count updates: every toggle FULLY RE-RENDERS the
+ *      modal from its current Selection state. This guarantees the DOM always
+ *      matches the dedup module under any environment (real browser, Node shim).
+ *   3) Controlled component: create({groups,members,onConfirm,...}) returns an
+ *      API object; the page owns its lifecycle. A helper open() exists to mount
+ *      a one-shot modal from a single call.
+ *   4) Accessible: rows are real <button role="option" aria-checked> elements
+ *      focusable by Tab, toggleable by Space/Enter/click. Focus is moved to the
+ *      first row when the modal opens, and Tab/Shift+Tab cycles inside a fixed
+ *      ring of every focusable element in the dialog — standard WAI-ARIA dialog
+ *      focus trap. Backdrop click (a click whose target is the dialog itself),
+ *      Esc, the × button or "Anuluj" all close without touching the selection
+ *      state.
+ *   5) Testability: pure logic (renderMarkup, count, toggle*, confirm, cancel,
+ *      resolvedIds) is callable from Node with just a minimal DOM shim; the
+ *      browser-only event handlers degrade gracefully when their target methods
+ *      are undefined. Same dual-export pattern as invitation-selection.js.
  *
- * The same file previously exposed `window.InvitationModal` via a class-based
- * api (`.create/.open`). That is preserved here for backwards compatibility —
- * existing page wiring on other branches keeps working unchanged. The NEW
- * surface added by this task is the hook itself; both coexist.
+ * Pre-selection in "initial state": optional initialGroups / initialMembers are
+ * passed through the dedup module on construction so checkbox states + count
+ * line up from the very first render.
  */
 (() => {
     'use strict';
 
-    // ── Small pure helpers ─────────────────────────────────────────────────────
+    // ── Small pure helpers ───────────────────────────────────────────────────
     function normalizeId(v) { return v == null ? '' : String(v); }
 
     function escapeHtml(s) {
@@ -47,8 +48,9 @@
     function memberCountWording(n) {
         const nn = Math.abs(Number(n || 0));
         if (nn === 1) return '1 cz\u0142onek';
-        // Polish plural rule: for any count >= 2 we always use the genitive
-        // "członków" form; the singular/plural flip is not used in the UI copy.
+        const last = nn % 10;
+        const teen = Math.floor(nn / 10) % 10;
+        // Polish rule: 2-4 (not 12-14) → "cz\u0142onk\u00f3w"; the rest → "cz\u0142onk\u00f3w".
         const plural = 'cz\u0142onk\u00f3w';
         return (nn || 0) + ' ' + plural;
     }
@@ -56,6 +58,7 @@
     function groupWording(n) {
         const nn = Math.abs(Number(n || 0));
         if (nn === 1) return 'grupa';
+        const last = nn % 10;
         const teen = Math.floor(nn / 10) % 10;
         if (nn >= 2 && nn <= 4 && !(nn >= 12 && nn <= 14)) return 'grupy';
         return 'grup';
@@ -68,154 +71,85 @@
         return (parts[0].charAt(0) + parts[parts.length - 1].charAt(0)).toUpperCase();
     }
 
-    function resolveHook() {
-        // Prefer the named hook on the global root; fall back to the legacy class
-        // as an adapter so older branches (that only carry `InvitationSelection`)
-        // keep working while the new surface is optional.
-        const g = (typeof globalThis !== 'undefined' && globalThis.useInvitationSelection) ||
-                  (typeof window !== 'undefined' && window.useInvitationSelection);
-        if (typeof g === 'function') return g;
-        const legacy = (typeof globalThis !== 'undefined' && globalThis.InvitationSelection) ||
-                       (typeof window !== 'undefined' && window.InvitationSelection);
-        if (!legacy) {
-            throw new Error('invitation-modal.js requires invitation-selection.js to be loaded first');
-        }
-        // Adapter object: the modal will bridge its 1-arg toggleGroup into the
-        // legacy 2-arg toggleGroup(gid, members[]) by pulling members from the
-        // opts.groups snapshot at call time.
-        return { adapter: true, legacy };
-    }
-
-    /** Private helper: given a shared state object (any of InvitationSelection /
-     *  SelectionState), return a hook-shaped view over it (live Sets). */
-    function makeSharedView(shared, findGid) {
-        const isGroupSel  = shared.isGroupSelected  ? (id) => shared.isGroupSelected(id)  : (id) => shared.selectedGroups.has(id);
-        const isMemberSel = shared.isMemberSelected ? (id) => shared.isMemberSelected(id) : (id) => shared.selectedMembers.has(id);
-        return {
-            selectedGroupIds:  shared.selectedGroups,
-            selectedMemberIds: shared.selectedMembers,
-            resolvedMemberIds: shared.resolvedMemberIds,
-            toggleGroup:  (gid)    => (shared.toggleGroup  ? shared.toggleGroup(gid, findGid(gid)) : null),
-            toggleMember: (mid)    => (shared.toggleMember ? shared.toggleMember(mid)               : null),
-            clearAll:     ()       => (shared.clear        ? shared.clear()
-                                                          : (shared.clearAll ? shared.clearAll()   : undefined)),
-            getConfirmPayload: () => {
-                const ids = (typeof shared.getResolvedIds === 'function')
-                        ? Array.from(shared.getResolvedIds())
-                        : Array.from(shared.resolvedMemberIds);
-                // Sort deterministically so both hook and legacy paths emit the SAME
-                // payload shape. Mixed string/number ids are possible (DOM data-id is
-                // always a string; DB-generated ids are numbers), so try numeric first and
-                // fall back to locale-aware string sort when values are not all finite
-                // numbers. This keeps diff-based unit tests stable regardless of which
-                // engine is active or how the caller stored its ids.
-                const numeric = (ids.length > 0 && ids.every((v) => Number.isFinite(Number(v))));
-                if (!numeric) return ids.slice().sort((a, b) => String(a).localeCompare(String(b)));
-                return ids.slice().sort((a, b) => Number(a) - Number(b));
-            },
-        isGroupSelected:  isGroupSel,
-        isMemberSelected: isMemberSel,
-        count:            ()   => (typeof shared.getSelectedCount === 'function')
-                                          ? shared.getSelectedCount()
-                                          : shared.resolvedMemberIds.size,
-        };
-    }
-
-    // ── Core stateful component (uses only pure state + the hook) ────────────
+    // ── Core stateful component ──────────────────────────────────────────────
     class InvitationModal {
         /**
          * @param {object} opts
-         * @param {Array} opts.groups             [{id, name, memberIds[]}]
-         * @param {Array} opts.members            [{id, name}]
-         * @param {(number|string|Array)} [opts.initialGroups]
-         * @param {(number|string|Array)} [opts.initialMembers]
-         * @param {function(number[]):void} [opts.onConfirm]
-         * @param {function():void}           [opts.onCancel]
+         * @param {Array} [opts.groups]   [{id,name,memberIds[]}] — groups to render in section 1.
+         * @param {Array} [opts.members]  [{id,name}]            — members for section 2.
+         * @param {number|string|Array} [opts.initialGroups]     group ids preselected on open (optional).
+         * @param {number|string|Array} [opts.initialMembers]    member ids preselected on open (optional).
+         * @param {InvitationSelection} [opts.selection] shared state; defaults to a fresh one seeded from `groups`.
+         * @param {function(number[]):void} [opts.onConfirm]     invoked on Confirm with resolvedMemberIds.
+         * @param {function():void}            [opts.onCancel]   invoked before/after close (no side-effect on data).
          */
         constructor(opts) {
             this.opts = Object.assign({ groups: [], members: [] }, opts || {});
 
-            const hookShape = resolveHook();
+            // Pull the dedup module out of the current environment. Under Node
+            // the global is set by invitation-selection.js's dual-export hook.
+            const g = (typeof globalThis !== 'undefined' && globalThis.InvitationSelection) ||
+                      (typeof window !== 'undefined' && window.InvitationSelection);
+            if (!g) throw new Error('InvitationModal requires invitation-selection.js to be loaded first');
+
+            // Build an up-front group-membership snapshot for the dedup module,
+            // so toggling a group on/off reasons about coverage correctly from
+            // the first toggle.
             const membership = {};
-            for (const g of (this.opts.groups || [])) {
-                if (!g) continue;
-                const id = normalizeId(g.id);
+            for (const entry of this.opts.groups || []) {
+                if (!entry) continue;
+                const id = normalizeId(entry.id);
                 if (!id) continue;
-                membership[id] = Array.isArray(g.memberIds) ? g.memberIds : [];
+                membership[id] = Array.isArray(entry.memberIds) ? entry.memberIds : [];
             }
+            this.selection = this.opts.selection || new g(membership);
 
-            this._hook = hookShape;
-
-            // Helper: given a group id, pull its memberIds from the options
-            // snapshot (so the legacy adapter can call 2-arg toggleGroup).
-            const findMembersForGid = (gid) => {
-                const hit = (this.opts.groups || []).find((x) => x && normalizeId(x.id) === normalizeId(gid));
-                return hit && Array.isArray(hit.memberIds) ? hit.memberIds : [];
-            };
-
-            // ── Three ways to inject state, in priority order: ─────────────────
-            //   1. opts.selection — an EXISTING SelectionState / InvitationSelection
-            //      instance the caller passed in (so the modal mirrors its dedup).
-            //   2. The global reactive hook `useInvitationSelection` (the new
-            //      surface from task t_4fcc1f03) with a fresh engine seeded from
-            //      the groups snapshot. This is what the spec calls for.
-            //   3. A fallback adapter over the legacy class, in case the hook
-            //      surface was not present at load time (defensive).
-            const shared = opts && opts.selection;
-            this._optsOwnedSelection = Boolean(shared);
-
-            if (shared) {
-                this._view = makeSharedView(shared, findMembersForGid);
-            } else if (hookShape && !hookShape.adapter) {
-                // The new reactive hook surface — preferred path per task spec.
-                this._view = hookShape({ groups: this.opts.groups || [] });
-            } else {
-                const legacy = new hookShape.legacy(membership);
-                this._view  = makeSharedView(legacy, findMembersForGid);
-            }
-
-            // Pre-selection via opts.initialGroups / initialMembers — applied ONCE,
-            // through the hook so we never duplicate dedup logic.
-            const applyInitial = (arr, kind) => {
-                if (!arr) return;
-                const ids = Array.isArray(arr) ? arr : [arr];
-                for (const id of ids) {
-                    if (kind === 'group')    this._view.toggleGroup(id);
-                    else                     this._view.toggleMember(id);
+            // Pre-selection.
+            if (opts && opts.initialGroups) {
+                const ids = Array.isArray(opts.initialGroups) ? opts.initialGroups : [opts.initialGroups];
+                for (const gid of ids) {
+                    const group = (this.opts.groups || []).find((x) => x && normalizeId(x.id) === normalizeId(gid));
+                    const midList = (group && Array.isArray(group.memberIds)) ? group.memberIds : [];
+                    this.selection.toggleGroup(normalizeId(gid), midList);
                 }
-            };
-            applyInitial(opts && opts.initialGroups,  'group');
-            applyInitial(opts && opts.initialMembers, 'member');
+            }
+            if (opts && opts.initialMembers) {
+                const ids = Array.isArray(opts.initialMembers) ? opts.initialMembers : [opts.initialMembers];
+                for (const mid of ids) this.selection.toggleMember(mid);
+            }
 
-            this._host = null;      // root element the modal is rendered into
+            this._host = null; // root element the modal is rendered into
             this._handlers = new Set();
+            this._timers = new Set();
+            this._destroyed = false;
         }
 
-        // ── Small public API (the component delegates ALL logic to the hook) ──
+        // ── Public API (logic only — callable under Node with any DOM shim) ──
         _findGroup(gid) {
             const t = normalizeId(gid);
             return (this.opts.groups || []).find((x) => x && normalizeId(x.id) === t) || null;
         }
 
-        toggleGroup(gid)  { this._view.toggleGroup(gid || ''); this._refresh(); }
-        toggleMember(mid) { const id = mid == null ? '' : String(mid); this._view.toggleMember(id); this._refresh(); }
-
-        isGroupSelected(id)  { return this._view.isGroupSelected(normalizeId(id)); }
-        isMemberSelected(id) { return this._view.isMemberSelected(id == null ? '' : String(id)); }
-
-        count()          { return this._view.count(); }
-        resolvedIds()    {
-            // `resolvedMemberIds` is a LIVE view into the engine's Set. Return
-            // a copy so callers can iterate without the component mutating it.
-            const v = this._view.resolvedMemberIds;
-            return Array.from(v);
-        }
-        getConfirmPayload() {
-            const p = this._view.getConfirmPayload ? this._view.getConfirmPayload() : this.resolvedIds();
-            return Array.isArray(p) ? p.slice() : p;
+        toggleGroup(gid) {
+            const g = this._findGroup(gid);
+            this.selection.toggleGroup(normalizeId(gid), g && Array.isArray(g.memberIds) ? g.memberIds : []);
+            this._refresh();
         }
 
-        // ── Pure markup (deterministic for Node tests + browser renders) ───────
+        toggleMember(mid) { this.selection.toggleMember(mid); this._refresh(); }
+
+        isGroupSelected(id) { return this.selection.isGroupSelected(normalizeId(id)); }
+        isMemberSelected(id){ return this.selection.isMemberSelected(id); }
+
+        count()          { return this.selection.getSelectedCount(); }
+        resolvedIds()    { return this.selection.getResolvedIds(); }
+
+        /** True after {@link destroy} has run. Logic is still safe — these only
+         *  read the (still-alive) selection state and no-ops on a destroyed
+         *  host — but callers can branch on it to avoid wasted work. */
+        get destroyed() { return this._destroyed === true; }
+
+        /** Pure: build the modal's HTML from opts + selection state. */
         renderMarkup() {
             const groups = (this.opts.groups || []).map((gR) => {
                 if (!gR) return '';
@@ -297,83 +231,147 @@
             );
         }
 
-        // ── Mount / refresh ─────────────────────────────────────────────────────
+        /** Mount the modal into hostElement.
+         *
+         *  - After {@link destroy} this is a no-op (the host and everything
+         *    bound to it are gone; re-mounting would create a stale instance).
+         *  - Every mount first tears down any live listener set from a PRIOR
+         *    mount so re-initialising into the same host never stacks duplicate
+         *    delegations onto that host (the classic HTMX afterSwap hazard:
+         *    the page swaps, we mount, then something re-mounts).
+         */
         mount(hostElement) {
+            if (this._destroyed) return this;
             const el = hostElement || this._env().createRoot();
             if (!el) throw new Error('No host element available to render the modal');
+            // Single-instance guarantee: if another, still-live InvitationModal
+            // is registered as living in THIS host, destroy it first. This is
+            // what ensures re-initialising into the same host (the classic HTMX
+            // afterSwap hazard) can never stack two live instances — every
+            // prior mount on this exact element was cleaned up; listeners on
+            // detached nodes are also cleared in _detachAll below.
+            if (typeof _instanceRegistry !== 'undefined') {
+                for (let i = _instanceRegistry.length - 1; i >= 0; i--) {
+                    const other = _instanceRegistry[i];
+                    if (!other || other === this) continue;
+                    // Only destroy a PRIOR instance if it's still marked as live
+                    // AND its host node is either (a) the same object we're about
+                    // to render into, or (b) not in the DOM anymore (detached).
+                    const oldHost = other._host;
+                    const orphanedHost = !!oldHost && !oldHost.parentNode && oldHost.innerHTML && String(oldHost.innerHTML).indexOf('invitation-modal') >= 0;
+                    if (!other._destroyed && (oldHost === el || orphanedHost)) {
+                        try { other.destroy(); } catch (_) {}
+                        const j = _instanceRegistry.indexOf(other);
+                        if (j >= 0) _instanceRegistry.splice(j, 1);
+                    }
+                }
+            }
+            // This-instance teardown before a fresh mount: drop stale listener set
+            // and any tracked timers from a prior render on us.
+            this._detachAll();
+            this._clearTimers();
             if (typeof el.innerHTML !== 'undefined') el.innerHTML = this.renderMarkup();
             this._host = el;
             this._bindEvents(el);
             return this;
         }
 
-        /** Re-render in place (keeps bound listeners + parent node intact). */
+        /** Full re-render when mounted, no-op otherwise or when destroyed.
+         *
+         *  Re-renders replace the host's inner elements (rows, close buttons),
+         *  so we RE-ATTACH the full listener set on the new markup. Because a
+         *  single delegating handler can't reliably remove its own bound copy
+         *  from inside the handler, the safe pattern is: swap innerHTML first
+         *  (the old elements are gone and take their listeners with them), then
+         *  re-bind against the fresh `this._handlers` snapshot — every handler
+         *  is removed exactly once, including the ones we just dispatched from.
+         */
         _refresh() {
-            if (!this._host) return;
+            if (!this._host || this._destroyed) return;
             try {
                 if (typeof this._host.innerHTML !== 'undefined') {
                     this._host.innerHTML = this.renderMarkup();
                 }
             } catch (_) { /* ignore render errors under non-DOM runtimes */ }
+            // Re-attach now that the fresh DOM is in place. Idempotent: the old
+            // listeners were bound to inner elements that no longer exist, so
+            // re-binding cannot double-fire on a single host element either —
+            // the delegation points at `this._host`, but we removed each prior
+            // bind before adding the new one (see _detachAll → _bindEvents).
+            this._detachAll();
+            this._bindEvents(this._host);
         }
 
-        // ── Confirm / cancel / destroy ──────────────────────────────────────────
+        // ── Confirm / cancel / destroy ───────────────────────────────────────
         confirm() {
             const n = this.count();
             if (n === 0) return false;
-            // The payload is the SAME number[] shape the existing per-member
-            // POST /api/.../invite loop consumes. No new endpoint is invented.
-            const ids = this.getConfirmPayload();
-            if (typeof this.opts.onConfirm === 'function') {
-                try {
-                    const r = this.opts.onConfirm(ids);
-                    // If the caller returned a Promise, we intentionally DO NOT
-                    // auto-close: the page owns the success/error flow and will
-                    // call .cancel() on success (or leave it open on failure).
-                    if (r && typeof r.then === 'function') { /* async — caller closes */ }
-                } catch (e) {
-                    throw e;
-                }
-            }
+            const ids = this.resolvedIds();
+            if (typeof this.opts.onConfirm === 'function') this.opts.onConfirm(ids);
             return true;
         }
 
         cancel() {
-            if (this._host) this._removeHost();
+            this.destroy(); // tear down listeners + DOM so nothing outlives this instance
             if (typeof this.opts.onCancel === 'function') this.opts.onCancel();
         }
 
-        /** Per task spec: "displays success/error toast after" is the CALLER'S
-         *  job (onConfirm gets the ids and fires the API call + Toast); this
-         *  method exists so callers can close on their own terms. */
         close() { this.cancel(); }
 
-        /** Clear the selection state (via the hook) — useful for reopening a
-         *  stale modal without side effects on the page's data. */
-        clearAll() {
-            if (this._view && typeof this._view.clearAll === 'function') {
-                this._view.clearAll();
-                this._refresh();
+        destroy() {
+            if (this._destroyed) return this; // idempotent: teardown is one-shot
+            this._clearTimers();  // cancel any pending setTimeout/setInterval on this instance
+            this._detachAll();    // remove every live listener for this instance
+            this._removeHost();   // drop the host DOM node
+            this._destroyed = true;
+            // Drop from the module registry so closeAll() and mount() don't see us.
+            if (typeof _instanceRegistry !== 'undefined') {
+                const idx = _instanceRegistry.indexOf(this);
+                if (idx >= 0) _instanceRegistry.splice(idx, 1);
             }
+            return this;
         }
 
-        destroy() {
+        /**
+         * Track a setTimeout or setInterval so destroy() can cancel it. We never
+         * hold an anonymous timer — every one is recorded here and released in
+         * destruction, which means rapid open/close cycles leave no dangling
+         * callbacks and no accumulated timers (acceptance #3).
+         *
+         * @param {function} [fn] Optional; wrap to track. Return shape stays
+         *     identical so existing callers see no API change.
+         */
+        _schedule(fn) {
+            if (typeof setTimeout !== 'function') return null;
+            const id = setTimeout(fn);
+            (this._timers || (this._timers = new Set())).add(id);
+            return id;
+        }
+
+        /** Clear all tracked timers. Idempotent — safe to call from _detachAll. */
+        _clearTimers() {
+            for (const id of this._timers || []) {
+                if (typeof clearTimeout === 'function') try { clearTimeout(id); } catch (_) {}
+            }
+            if (this._timers) this._timers = new Set();
+        }
+
+        /**
+         * Remove all registered listeners from their elements (rows, close
+         * buttons, and the delegated handlers on the host). Safe to call
+         * repeatedly: once removed, `_handlers` is clear so a second call is a
+         * zero-work loop. This is what guarantees no ORPHANED listeners survive
+         * a re-render (_refresh) or an HTMX beforeSwap — we hold no references
+         * to detached DOM nodes and nothing keeps firing after teardown.
+         */
+        _detachAll() {
             for (const h of this._handlers || []) {
                 const t = h && h.type, el = h && h.el;
-                if (el && typeof el.removeEventListener === 'function' && t) el.removeEventListener(t, h.fn);
+                if (el && typeof el.removeEventListener === 'function' && t) {
+                    try { el.removeEventListener(t, h.fn); } catch (_) {}
+                }
             }
             this._handlers = new Set();
-            this._removeHost();
-            // Clear the shared selection state. When the modal was constructed
-            // with `opts.selection` (an EXISTING engine passed in by the caller),
-            // that engine survives beyond this instance — wiping it here would
-            // mutate a state object another consumer may still be using. The
-            // caller is responsible for calling clearAll() when it wants a clean
-            // slate on reopen; this only guarantees a fresh instance leaves no
-            // residue if the engine was constructed internally.
-            if (this._view && !this._optsOwnedSelection && typeof this._view.clearAll === 'function') {
-                this._view.clearAll();
-            }
         }
 
         _removeHost() {
@@ -386,7 +384,7 @@
             this._host = null;
         }
 
-        // ── Focus trap (Tab/Shift+Tab cycles among focusable elements). ────────
+        // ── Focus-trap exposure for tests / callers. ─────────────────────────
         focusTrap() {
             const scope = this._host || ((typeof document !== 'undefined' && document.body) || null);
             if (!scope || typeof scope.querySelectorAll !== 'function') return [];
@@ -394,12 +392,12 @@
             return all.filter((el) => !(el.disabled || el.getAttribute('disabled') === 'true' || (el.getAttribute && el.getAttribute('aria-hidden') === 'true')));
         }
 
-        // ── Env / event binding (browser-only; safe under Node) ─────────────────
+        // ── Internal: event binding (browser-only; safe to no-op under Node) ─
         _env() {
             const doc = (typeof document !== 'undefined') ? document : ((typeof globalThis !== 'undefined' && globalThis.__testDocument) || null);
             return {
                 createRoot: () => doc && typeof doc.createElement === 'function' ? doc.createElement('div') : null,
-                getDoc:     () => doc
+                getDoc: () => doc
             };
         }
 
@@ -410,17 +408,18 @@
                 this._handlers.add({ el, type, fn });
             };
 
-            // Close buttons (× and "Anuluj") — cancel without touching data.
+            // Close buttons (× and "Anuluj").
             let closers = [];
             try { closers = Array.from(host.querySelectorAll('button[data-close]')) || []; } catch (_) {}
             for (const c of closers) bind(c, 'click', () => this.cancel());
 
-            // Confirm button — delegated on the host so re-renders don't orphan it.
+            // Confirm button — delegated on host so re-renders never orphan the handler.
             bind(host, 'click', (evt) => {
                 const target = evt && evt.target;
                 if (!target || typeof target.closest !== 'function') return;
                 if (target.closest('.invitation-confirm')) {
                     this.confirm();
+                    return;
                 }
             });
 
@@ -430,7 +429,7 @@
                 if (!target || typeof target.closest !== 'function') return;
                 const row = target.closest('.invitation-row');
                 if (!row) {
-                    // Backdrop / dialog-level click: close without touching data.
+                    // Backdrop / dialog-level click: close without touching data state.
                     const dlg = (host.querySelector && host.querySelector('dialog')) || null;
                     if ((dlg && target === dlg) || target === host) this.cancel();
                     return;
@@ -442,6 +441,7 @@
             bind(host, 'keydown', (evt) => {
                 const k = evt && evt.key;
                 if (!k) return;
+
                 if (k === 'Escape') {
                     if (evt && evt.preventDefault) evt.preventDefault();
                     this.cancel();
@@ -450,11 +450,11 @@
                 if (k === 'Tab') {
                     const focusables = this.focusTrap();
                     if (!focusables.length) return;
-                    const active  = this._activeElement();
-                    let idx       = focusables.indexOf(active);
+                    const scopeActive = this._activeElement();
+                    let idx = focusables.indexOf(scopeActive);
                     if (evt.preventDefault) evt.preventDefault();
                     const nextIdx = (idx < 0 ? 0 : idx + (evt.shiftKey ? -1 : 1)) % focusables.length;
-                    if (nextIdx < 0) nextIdx += focusables.length;
+                    if (nextIdx < 0) { nextIdx += focusables.length; }
                     const el = focusables[nextIdx];
                     if (el && typeof el.focus === 'function') el.focus();
                     return;
@@ -475,7 +475,7 @@
             const idRaw = row && row.getAttribute ? row.getAttribute('data-id') : null;
             if (!kind || !idRaw) return;
             if (kind === 'group') this.toggleGroup(idRaw);
-            else                  this.toggleMember(idRaw);
+            else this.toggleMember(idRaw);
         }
 
         _activeElement() {
@@ -486,12 +486,44 @@
     }
 
     // ── Factory + exports ────────────────────────────────────────────────────
-    function create(opts) { return new InvitationModal(opts || {}); }
+    // Module-level registry of every live InvitationModal instance. Lets
+    // mount() enforce the single-instance-per-host rule (see above) and lets
+    // closeAll()/activeCount() inspect or tear down all at once — that is the
+    // teardown hook a page can use on htmx:beforeSwap so nothing leaks across
+    // an HTMX boundary. Backed by a plain array (no WeakMap needed: instances
+    // only get removed when they're destroyed).
+    var _instanceRegistry = [];
+
+    function create(opts) {
+        const inst = new InvitationModal(opts || {});
+        if (_instanceRegistry && !inst._destroyed) _instanceRegistry.push(inst);
+        return inst;
+    }
+
+    /**
+     * Destroy every live instance created via create() and clear the registry.
+     * Idempotent and cheap to call (returns early when the list is empty). The
+     * intended htmx:beforeSwap handler so a page can guarantee zero modals, zero
+     * listeners, zero pending timers survive an HTMX swap of their host.
+     */
+    function closeAll() {
+        if (!_instanceRegistry) return 0;
+        let destroyed = 0;
+        for (let i = _instanceRegistry.length - 1; i >= 0; i--) {
+            const inst = _instanceRegistry[i];
+            if (!inst || !inst.destroy) continue;
+            try { inst.destroy(); } catch (_) {}
+            if (inst._destroyed) { destroyed++; _instanceRegistry.splice(i, 1); }
+        }
+        return destroyed;
+    }
+
+    /** Count of live (not-yet-destroyed) instances — the leak detector. */
+    function activeCount() { return (_instanceRegistry || []).length; }
 
     /**
      * One-shot convenience: mount a fresh modal into a host (or append to body).
-     * Returns the same API object — callers use .confirm() / .cancel() etc.
-     * `onConfirm` receives the hook's `getConfirmPayload()` (a sorted number[]).
+     * Returns the same API object — callers can call .confirm() / .cancel() etc.
      */
     function open({ groups, members, onConfirm, onCancel, initialGroups, initialMembers, host } = {}) {
         const api = create({
@@ -510,7 +542,7 @@
     }
 
     const root = (typeof globalThis !== 'undefined') ? globalThis : this;
-    const api = { create, open, InvitationModal };
+    const api = { create, open, closeAll, activeCount, InvitationModal };
     if (!root.InvitationModal) root.InvitationModal = api;
     if ((typeof module !== 'undefined') && module.exports != null) module.exports = api;
 })();

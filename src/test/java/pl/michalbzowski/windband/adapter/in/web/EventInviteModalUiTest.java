@@ -50,8 +50,19 @@ class EventInviteModalUiTest extends UiTestBase {
         wait.until(ExpectedConditions.presenceOfElementLocated(
                 By.xpath("//a[contains(., 'Szczegóły')]")));
 
-        // Open event detail (JS click: avoid overlay/scroll interception in full suite).
-        jsClick(driver.findElement(By.xpath("//a[contains(., 'Szczegóły')]")));
+        // Open OUR new event's detail page: scope the 'Szczegóły' click to the row
+        // that contains our unique event name — in full-suite runs, other rows may
+        // precede ours so the first such link is not guaranteed to be ours.
+        String ourEventName = "InviteEvt" + uid;
+        WebElement ourLink = null;
+        for (WebElement r : driver.findElements(By.cssSelector("tr"))) {
+            if (r.getText().contains(ourEventName)) {
+                ourLink = r.findElement(By.xpath(".//a[contains(., 'Szczegóły')]"));
+                break;
+            }
+        }
+        if (ourLink == null) throw new AssertionError("Our event row not found: " + ourEventName);
+        jsClick(ourLink);
         wait.until(ExpectedConditions.presenceOfElementLocated(By.id("open-invite-btn")));
 
         // Open the unified modal: single "Zaproś" button opens the shared

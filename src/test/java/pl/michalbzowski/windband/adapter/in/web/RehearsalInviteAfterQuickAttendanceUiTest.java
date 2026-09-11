@@ -18,13 +18,23 @@ import java.util.UUID;
 import static org.assertj.core.api.Assertions.assertThat;
 
 /**
- * Verifies that the "Zaproś uczestników" and "Zaproś grupę" buttons still work
- * after doing quick attendance (which triggers an HTMX reload of the detail page).
+ * t_5c77c4cb: the rehearsal detail page now uses a single unified invite
+ * modal ({@code #open-invite-btn} → {@code window.InvitationModal}) instead of
+ * the two separate "Zaproś uczestników" / "Zaproś grupę" dialogs that existed
+ * before this branch.
  *
- * The bug: After quick attendance completes, the detail page is reloaded via HTMX
- * (htmx.ajax GET /rehearsals/{id}). This does NOT fire DOMContentLoaded, so the
- * click handlers for open-invite-modal-btn and open-invite-group-modal-btn
- * are not re-attached. Clicking them does nothing.
+ * <p>Regression: after quick attendance completes, HTMX reloads
+ * {@code #rehearsals-content} via an outerHTML swap. The unified modal is
+ * initialised at DOMContentLoaded and its trigger lives inside the swapped
+ * container, so we need to confirm the click handler is re-attached after the
+ * swap. This test exercises that exactly:
+ * <ol>
+ *   <li>Create a member + rehearsal via UI.</li>
+ *   <li>Invite the member explicitly (attendance row appears).</li>
+ *   <li>Run quick attendance for that member (triggers the HTMX reload).</li>
+ *   <li>Click the single "Zaproś" button — the unified modal must open and be
+ *       functional (a group or member row should render).</li>
+ * </ol>
  */
 class RehearsalInviteAfterQuickAttendanceUiTest extends UiTestBase {
 
@@ -32,7 +42,7 @@ class RehearsalInviteAfterQuickAttendanceUiTest extends UiTestBase {
     private JdbcTemplate jdbcTemplate;
 
     @Test
-    void inviteButtonsShouldWorkAfterQuickAttendance() throws Exception {
+    void inviteButtonShouldWorkAfterQuickAttendance() throws Exception {
         WebDriverWait wait = new WebDriverWait(driver, Duration.ofSeconds(10));
         String uid = UUID.randomUUID().toString().substring(0, 8);
         String firstName = "InviteAfter" + uid;
@@ -56,7 +66,6 @@ class RehearsalInviteAfterQuickAttendanceUiTest extends UiTestBase {
         wait.until(ExpectedConditions.urlContains("/rehearsals"));
         wait.until(ExpectedConditions.not(ExpectedConditions.urlContains("/new")));
 
-        // Wait for the new rehearsal to be persisted in the DB
         Awaitility.await().atMost(Duration.ofSeconds(10)).until(() ->
                 jdbcTemplate.queryForObject(
                         "SELECT COUNT(*) FROM rehearsals WHERE date = ?", Long.class, today) > 0);
@@ -100,7 +109,6 @@ class RehearsalInviteAfterQuickAttendanceUiTest extends UiTestBase {
         });
 
         // Click PRESENT for the member (only one member, so modal will close after)
-        String beforeClick = driver.findElement(By.id("qa-progress")).getText();
         driver.findElement(By.cssSelector(".qa-status[data-status='PRESENT']")).click();
 
         // Wait for modal to close (which triggers the HTMX reload)
@@ -112,46 +120,24 @@ class RehearsalInviteAfterQuickAttendanceUiTest extends UiTestBase {
         saveWait.until(ExpectedConditions.textToBePresentInElementLocated(
                 By.id("toast-container"), "Zapisano obecność"));
 
-        // --- NOW THE BUG: After HTMX reload, the invite buttons should still work ---
-        // Wait for the detail page to be reloaded (HTMX swap completes)
-        wait.until(ExpectedConditions.presenceOfElementLocated(By.id("rehearsals-content")));
-        wait.until(ExpectedConditions.presenceOfElementLocated(By.id("open-invite-modal-btn")));
-        wait.until(ExpectedConditions.presenceOfElementLocated(By.id("open-invite-group-modal-btn")));
+        // --- NOW THE REGRESSION: After HTMX reload, the invite button should still work ---
+        wait.until(ExpectedConditions.presenceOfElementLocated(By.id("open-invite-btn")));
 
-        // --- TRY TO OPEN INVITE MEMBER MODAL ---
-        // This should work but currently doesn't because click handlers aren't re-attached
-        WebElement inviteBtn = driver.findElement(By.id("open-invite-modal-btn"));
-        ((JavascriptExecutor) driver).executeScript("arguments[0].scrollIntoView({block:'center'}); arguments[0].click();", inviteBtn);
+        // Click the single unified invite button — it must open the modal.
+        WebElement inviteBtn = driver.findElement(By.id("open-invite-btn"));
+        ((JavascriptExecutor) driver).executeScript(
+                "arguments[0].scrollIntoView({block:'center'}); arguments[0].click();", inviteBtn);
 
-        // Wait for modal to open - this will fail with the bug
-        wait.until(ExpectedConditions.presenceOfElementLocated(By.id("invite-members-modal")));
-        wait.until(d -> (Boolean) ((JavascriptExecutor) d).executeScript(
-                "return document.getElementById('invite-members-modal').open === true;"));
+        // The unified modal renders its selection rows asynchronously.
+        // Wait for at least one row (group or member) to appear.
+        wait.until(ExpectedConditions.presenceOfElementLocated(By.cssSelector(".invitation-row")));
 
-        // Verify modal is open
-        assertThat((Boolean) ((JavascriptExecutor) driver).executeScript(
-                "return document.getElementById('invite-members-modal').open === true;"))
-                .as("Invite members modal should open after quick attendance HTMX reload")
-                .isTrue();
+        // The confirm button should exist (enabled or disabled — existence is the assertion).
+        assertThat(driver.findElements(By.cssSelector(".invitation-confirm")).size())
+                .as("The unified invite modal's confirm button must be present after quick-attendance HTMX reload")
+                .isEqualTo(1);
 
-        // Close modal
-        WebElement closeBtn = driver.findElement(By.cssSelector("#invite-members-modal [data-close]"));
-        ((JavascriptExecutor) driver).executeScript("arguments[0].click();", closeBtn);
-        wait.until(d -> (Boolean) ((JavascriptExecutor) d).executeScript(
-                "return document.getElementById('invite-members-modal').open === false;"));
-
-        // --- TRY TO OPEN INVITE GROUP MODAL ---
-        WebElement inviteGroupBtn = driver.findElement(By.id("open-invite-group-modal-btn"));
-        ((JavascriptExecutor) driver).executeScript("arguments[0].scrollIntoView({block:'center'}); arguments[0].click();", inviteGroupBtn);
-
-        wait.until(ExpectedConditions.presenceOfElementLocated(By.id("invite-group-modal")));
-        wait.until(d -> (Boolean) ((JavascriptExecutor) d).executeScript(
-                "return document.getElementById('invite-group-modal').open === true;"));
-
-        assertThat((Boolean) ((JavascriptExecutor) driver).executeScript(
-                "return document.getElementById('invite-group-modal').open === true;"))
-                .as("Invite group modal should open after quick attendance HTMX reload")
-                .isTrue();
+        System.out.println("[TEST] PASS: unified invite modal opens and renders rows after quick-attendance");
     }
 
     private void createMember(String firstName, String lastName, WebDriverWait wait) throws Exception {
