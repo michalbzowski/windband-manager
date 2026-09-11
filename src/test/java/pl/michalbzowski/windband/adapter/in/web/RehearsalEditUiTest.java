@@ -378,7 +378,7 @@ public class RehearsalEditUiTest extends UiTestBase {
                 "return 'content children: ' + document.getElementById('content').children.length + " +
                 "' | h2 count: ' + document.querySelectorAll('h2').length + " +
                 "' | h2 texts: ' + Array.from(document.querySelectorAll('h2')).map(h => h.textContent).join(', ') + " +
-                "' | invite-btn: ' + (document.getElementById('open-invite-modal-btn') !== null) + " +
+                "' | invite-btn: ' + (document.getElementById('open-invite-btn') !== null) + " +
                 "' | htmx-request: ' + document.body.classList.contains('htmx-request') + " +
                 "' | current URL: ' + window.location.href + " +
                 "' | body classes: ' + document.body.className + " +
@@ -394,7 +394,7 @@ public class RehearsalEditUiTest extends UiTestBase {
                             "var h2s = document.querySelectorAll('h2'); for (var i=0; i<h2s.length; i++) { if (h2s[i].textContent.includes('Szczeg')) return true; } return false;");
                     // Check for invite button
                     Object btn = ((JavascriptExecutor) d).executeScript(
-                            "return document.getElementById('open-invite-modal-btn') !== null;");
+                            "return document.getElementById('open-invite-btn') !== null;");
                     boolean result = (Boolean) h2 || (Boolean) btn;
 
                     if (!result) {
@@ -402,7 +402,7 @@ public class RehearsalEditUiTest extends UiTestBase {
                         String debugState = (String) ((JavascriptExecutor) d).executeScript(
                                 "return 'h2 count: ' + document.querySelectorAll('h2').length + " +
                                 "' | h2 texts: ' + Array.from(document.querySelectorAll('h2')).map(h => h.textContent).join(', ') + " +
-                                "' | invite-btn: ' + (document.getElementById('open-invite-modal-btn') !== null) + " +
+                                "' | invite-btn: ' + (document.getElementById('open-invite-btn') !== null) + " +
                                 "' | content innerHTML preview: ' + document.getElementById('content').innerHTML.substring(0, 500) + " +
                                 "' | body classes: ' + document.body.className;");
                         System.err.println("[DEBUG] Waiting for fragment... " + debugState);
@@ -412,7 +412,7 @@ public class RehearsalEditUiTest extends UiTestBase {
 
         new WebDriverWait(driver, Duration.ofSeconds(15)).until(
                 ExpectedConditions.presenceOfElementLocated(
-                        By.id("open-invite-modal-btn"))); // element inside the fragment
+                        By.id("open-invite-btn"))); // element inside the fragment
 
         new WebDriverWait(driver, Duration.ofSeconds(15)).until(
                 ExpectedConditions.presenceOfElementLocated(

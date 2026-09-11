@@ -12,6 +12,7 @@ import pl.michalbzowski.windband.application.command.rehearsal.InviteGroupComman
 import pl.michalbzowski.windband.application.command.rehearsal.InviteMemberCommand;
 import pl.michalbzowski.windband.application.command.rehearsal.RecordAttendanceCommand;
 import pl.michalbzowski.windband.application.command.rehearsal.RehearsalCommandService;
+import pl.michalbzowski.windband.application.dto.InviteOptionsDto;
 import pl.michalbzowski.windband.application.command.rehearsal.ScheduleRehearsalCommand;
 import pl.michalbzowski.windband.application.query.rehearsal.RehearsalQueryService;
 import pl.michalbzowski.windband.application.query.team.TeamQueryService;
@@ -92,6 +93,19 @@ public class RehearsalController {
     public ResponseEntity<Void> deleteRehearsal(@PathVariable Long id) {
         commandService.deleteRehearsal(id);
         return ResponseEntity.noContent().build();
+    }
+
+    /**
+     * Data for the unified invite modal on the rehearsal detail page (t_5c77c4cb).
+     * Mirrors {@code GET /api/events/{id}/invite-options} — same DTO shape,
+     * so the shared {@code window.InvitationModal} component can serve both pages.
+     */
+    @GetMapping("/{id}/invite-options")
+    public InviteOptionsDto getInviteOptions(@PathVariable Long id,
+                                             @AuthenticationPrincipal OidcUser oidcUser,
+                                             HttpSession session) {
+        Long activeTeamId = resolveActiveTeamId(oidcUser, session);
+        return queryService.getInviteOptions(id, activeTeamId);
     }
 
     /**
