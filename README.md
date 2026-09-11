@@ -1,7 +1,7 @@
 # Windband Manager — Zarządzanie Orkiestrą Detą
 
 > **Aplikacja webowa do kompleksowego zarządzania orkiestrą detą.** Od członkowników i prób, przez wydarzenia i inwentarz, po analitykę i raporty — wszystko w jednym miejscu, dostępnym z każdego urządzenia.
-
+Test n8n
 ---
 
 ## 🎯 Dla kogo?
