@@ -2518,9 +2518,10 @@ body.filter-pinned #uber-filter-container select:focus {
     background: rgba(13, 148, 136, 0.06);
 }
 
-.invitation-row[aria-checked="true"] {
-    background: rgba(13, 148, 136, 0.10);
-}
+/* NOTE: the single `.invitation-row[aria-checked="true"]` accent-wash rule
+   lives below in the "Row / checkbox visual design (bug fix)" block added by
+   PR #185 for the current <div role="option"> rows. An identical legacy copy
+   that used to sit here was removed — keep exactly one source of truth. */
 
 .invitation-group-row .invitation-group-label {
     font-weight: 500;
@@ -2561,10 +2562,12 @@ body.filter-pinned #uber-filter-container select:focus {
 /* ── Row / checkbox visual design (bug fix) ──────────────── */
 /* Replace implicit Pico button styles with a compact, readable list row that
    carries a visible checkbox on the left and a muted meta badge on the right.
-   These rules target the REAL markup emitted by invitation-modal.js
-   (label.invitation-row with <input class="invitation-check">) — the legacy
-   `.invitation-group-row` / `.invitation-member-row` selectors above remain
-   for any other consumers, but do NOT style these rows. */
+   These rules target the REAL markup emitted by invitation-modal.js:
+   <div class="invitation-row" role="option" tabindex="0"> + a sibling
+   <span class="invitation-check"> (the tick is drawn in CSS, not an
+   <input> — see the PR #185 diff). The legacy `.invitation-group-row` /
+   `.invitation-member-row` selectors above remain for any other consumers
+   but do NOT style these rows. */
 
 .invitation-row {
     display: flex;

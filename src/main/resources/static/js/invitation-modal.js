@@ -17,13 +17,15 @@
  *   3) Controlled component: create({groups,members,onConfirm,...}) returns an
  *      API object; the page owns its lifecycle. A helper open() exists to mount
  *      a one-shot modal from a single call.
- *   4) Accessible: rows are real <button role="option" aria-checked> elements
- *      focusable by Tab, toggleable by Space/Enter/click. Focus is moved to the
+ *   4) Accessible: rows are <div role="option" tabindex="0"> elements,
+ *      focusable by Tab and toggleable by Space/Enter/click. Focus is moved to the
  *      first row when the modal opens, and Tab/Shift+Tab cycles inside a fixed
  *      ring of every focusable element in the dialog — standard WAI-ARIA dialog
  *      focus trap. Backdrop click (a click whose target is the dialog itself),
  *      Esc, the × button or "Anuluj" all close without touching the selection
- *      state.
+ *      state. (Historically these were real <button role="option"> elements;
+ *      #178/#179 converted them to divs to escape Pico's button chrome — this
+ *      change restores keyboard parity by re-adding tabindex="0".)
  *   5) Testability: pure logic (renderMarkup, count, toggle*, confirm, cancel,
  *      resolvedIds) is callable from Node with just a minimal DOM shim; the
  *      browser-only event handlers degrade gracefully when their target methods
@@ -158,7 +160,7 @@
                 const checked = this.isGroupSelected(id);
                 return (
                     `<div class="invitation-row invitation-row--group" role="option"${checked ? ' aria-checked="true"' : ' aria-checked="false"'} ` +
-                    `data-kind="group" data-id="${escapeHtml(id)}">` +
+                    `tabindex="0" data-kind="group" data-id="${escapeHtml(id)}">` +
                     `<span class="invitation-check" aria-hidden="true"></span>` +
                     `<span class="invitation-row__icon" aria-hidden="true">&#9834;</span>` +
                     `<span class="invitation-row__label">${escapeHtml(gR.name || '')}</span>` +
@@ -173,7 +175,7 @@
                 const checked = this.isMemberSelected(id);
                 return (
                     `<div class="invitation-row invitation-row--member" role="option"${checked ? ' aria-checked="true"' : ' aria-checked="false"'} ` +
-                    `data-kind="member" data-id="${escapeHtml(id)}">` +
+                    `tabindex="0" data-kind="member" data-id="${escapeHtml(id)}">` +
                     `<span class="invitation-check" aria-hidden="true"></span>` +
                     `<span class="invitation-row__avatar" aria-hidden="true">${escapeHtml(initialsOf(m.name))}</span>` +
                     `<span class="invitation-row__label">${escapeHtml(m.name || '')}</span>` +
@@ -386,7 +388,10 @@
         focusTrap() {
             const scope = this._host || ((typeof document !== 'undefined' && document.body) || null);
             if (!scope || typeof scope.querySelectorAll !== 'function') return [];
-            const all = Array.from(scope.querySelectorAll('button, [href], input, select, textarea')) || [];
+            // [tabindex]: rows are <div role="option" tabindex="0"> — not in the
+            // native focusable tag list above (button/input/select/textarea/a[href]),
+            // so we must name them explicitly or the Tab ring skips every row.
+            const all = Array.from(scope.querySelectorAll('button, [href], input, select, textarea, [tabindex]')) || [];
             return all.filter((el) => !(el.disabled || el.getAttribute('disabled') === 'true' || (el.getAttribute && el.getAttribute('aria-hidden') === 'true')));
         }
 
