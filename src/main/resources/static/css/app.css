@@ -2447,6 +2447,14 @@ body.filter-pinned #uber-filter-container select:focus {
      already set on <dialog>. These rules only target elements with
      an `invitation-` prefix so they can never collide with other
      modals on the page.
+
+   NOTE: rows are <div role="option"> wrappers carrying ONE visible
+   indicator (a styled span.invitation-check that acts as the checkbox)
+   plus the name text. The row is NOT a Pico button — that is what makes
+   the rows compact, readable and never accidentally styled huge by the
+   framework defaults. Clicking anywhere on the row toggles the selected
+   state (the delegated handler in invitation-modal.js calls preventDefault
+   + stopPropagation so no ancestor closes the modal).
    ============================================================ */
 
 /* Slightly wider than default app-modal (max-width of ~480px) to give the
@@ -2548,6 +2556,125 @@ body.filter-pinned #uber-filter-container select:focus {
     color: var(--pico-muted-color);
     font-size: 0.9375rem;
     text-align: center;
+}
+
+/* ── Row / checkbox visual design (bug fix) ──────────────── */
+/* Replace implicit Pico button styles with a compact, readable list row that
+   carries a visible checkbox on the left and a muted meta badge on the right.
+   These rules target the REAL markup emitted by invitation-modal.js
+   (label.invitation-row with <input class="invitation-check">) — the legacy
+   `.invitation-group-row` / `.invitation-member-row` selectors above remain
+   for any other consumers, but do NOT style these rows. */
+
+.invitation-row {
+    display: flex;
+    align-items: center;
+    gap: 0.55rem;
+    width: 100%;
+    text-align: left;
+    padding: 0.45rem 1rem;
+    background: transparent;
+    border: none;
+    border-bottom: 1px solid var(--pico-outline-color, rgba(0, 0, 0, 0.06));
+    color: var(--pico-color);
+    font-size: 0.875rem;
+    line-height: 1.35;
+    cursor: pointer;
+    user-select: none;
+    -webkit-user-select: none;
+}
+
+.invitation-row--group {
+    font-weight: 500;
+}
+
+/* Slightly indented member rows read as "sub-items of a group". */
+.invitation-row--member {
+    padding-left: 1.25rem;
+    font-size: 0.8125rem;
+    color: var(--pico-color);
+}
+
+.invitation-row:hover {
+    background: rgba(13, 148, 136, 0.06);
+}
+
+/* Checked state: a soft accent wash on the row (the span's tick is shown in
+   .invitation-check below). */
+.invitation-row[aria-checked="true"] {
+    background: rgba(13, 148, 136, 0.10);
+}
+
+/* The visible checkbox — a plain bordered box that fills with the primary
+   color when its parent row has aria-checked="true". Drawn with CSS so it
+   works on every modern browser and matches Pico's rounded-square accent. */
+.invitation-check {
+    flex: 0 0 auto;
+    position: relative;
+    width: 1.05rem;
+    height: 1.05rem;
+    margin: 0;
+    border: 1px solid var(--pico-secondary, rgba(0, 0, 0, 0.25));
+    border-radius: 4px;
+    background: #fff;
+    cursor: pointer;
+    transition: background 0.12s ease, border-color 0.12s ease;
+}
+
+/* Check mark (a rotated L-shaped pseudo-element) shown when checked. */
+.invitation-row[aria-checked="true"] .invitation-check::before {
+    content: "";
+    position: absolute;
+    left: 45%;
+    top: 30%;
+    width: 22%;
+    height: 38%;
+    border: solid var(--pico-primary, #0d9488);
+    border-width: 0 2px 2px 0;
+    transform: translate(-50%, -50%) rotate(45deg);
+}
+
+/* Slightly lighter border on hover so the whole row feels responsive. */
+.invitation-row:hover .invitation-check {
+    border-color: var(--pico-primary, #0d9488);
+}
+
+/* Right-alignment for the group member-count badge ("3 członków"). */
+.invitation-row__badge,
+.invitation-label-meta {
+    margin-left: auto;
+    font-size: 0.75rem;
+    font-weight: 400;
+    color: var(--pico-muted-color);
+}
+
+/* The small avatar circle for member rows — muted so the name stays primary. */
+.invitation-row__avatar {
+    flex: 0 0 auto;
+    width: 1.5rem;
+    height: 1.5rem;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 999px;
+    background: rgba(13, 148, 136, 0.12);
+    color: var(--pico-primary, #0d9488);
+    font-size: 0.625rem;
+    font-weight: 700;
+    letter-spacing: 0.02em;
+}
+
+/* Star icon for group rows — matches the checkbox accent. */
+.invitation-row__icon {
+    flex: 0 0 auto;
+    color: var(--pico-muted-color);
+    font-size: 1rem;
+}
+
+/* Focus visibility without a browser-default outline box (we draw our own). */
+.invitation-row:focus-visible {
+    outline: none;
+    box-shadow: inset 0 0 0 2px rgba(13, 148, 136, 0.35);
 }
 
 /* The confirm button takes the primary role — slightly bigger than default

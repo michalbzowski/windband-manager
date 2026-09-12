@@ -157,14 +157,13 @@
                 const memberCount = Array.isArray(gR.memberIds) ? gR.memberIds.length : 0;
                 const checked = this.isGroupSelected(id);
                 return (
-                    `<button type="button" role="option"` +
-                    ` class="invitation-row invitation-row--group"` +
-                    ` data-kind="group" data-id="${escapeHtml(id)}"` +
-                    ` aria-checked="${checked ? 'true' : 'false'}" tabindex="0">` +
+                    `<div class="invitation-row invitation-row--group" role="option"${checked ? ' aria-checked="true"' : ' aria-checked="false"'} ` +
+                    `data-kind="group" data-id="${escapeHtml(id)}">` +
+                    `<span class="invitation-check" aria-hidden="true"></span>` +
                     `<span class="invitation-row__icon" aria-hidden="true">&#9834;</span>` +
-                    `<strong class="invitation-row__label">${escapeHtml(gR.name || '')}</strong>` +
-                    `<span class="invitation-row__badge">${memberCount} ${memberCountWording(memberCount)}</span>` +
-                    `</button>`
+                    `<span class="invitation-row__label">${escapeHtml(gR.name || '')}</span>` +
+                    `<span class="invitation-row__badge invitation-label-meta">${memberCount} ${memberCountWording(memberCount)}</span>` +
+                    `</div>`
                 );
             }).join('\n');
 
@@ -173,13 +172,12 @@
                 const id = normalizeId(m.id);
                 const checked = this.isMemberSelected(id);
                 return (
-                    `<button type="button" role="option"` +
-                    ` class="invitation-row invitation-row--member"` +
-                    ` data-kind="member" data-id="${escapeHtml(id)}"` +
-                    ` aria-checked="${checked ? 'true' : 'false'}" tabindex="0">` +
+                    `<div class="invitation-row invitation-row--member" role="option"${checked ? ' aria-checked="true"' : ' aria-checked="false"'} ` +
+                    `data-kind="member" data-id="${escapeHtml(id)}">` +
+                    `<span class="invitation-check" aria-hidden="true"></span>` +
                     `<span class="invitation-row__avatar" aria-hidden="true">${escapeHtml(initialsOf(m.name))}</span>` +
                     `<span class="invitation-row__label">${escapeHtml(m.name || '')}</span>` +
-                    `</button>`
+                    `</div>`
                 );
             }).join('\n');
 
@@ -424,17 +422,35 @@
             });
 
             // Row clicks — delegated on the host so we survive every re-render.
+            // CRITICAL (bug fix): the click is intercepted at the delegated host
+            // handler and must NOT bubble to any ancestor (layout.html binds a
+            // backdrop-close on the <dialog>; Pico/others may also react to
+            // unhandled clicks) — so once we identify a row, we preventDefault +
+            // stopPropagation AND handle the toggle ourselves. That way a click
+            // anywhere inside the row (checkbox, icon, name, padding) selects or
+            // deselects and never closes the modal "without effect".
             bind(host, 'click', (evt) => {
                 const target = evt && evt.target;
                 if (!target || typeof target.closest !== 'function') return;
                 const row = target.closest('.invitation-row');
-                if (!row) {
-                    // Backdrop / dialog-level click: close without touching data state.
-                    const dlg = (host.querySelector && host.querySelector('dialog')) || null;
-                    if ((dlg && target === dlg) || target === host) this.cancel();
+                if (row) {
+                    if (evt.preventDefault) evt.preventDefault();
+                    if (evt.stopPropagation)   evt.stopPropagation();
+                    this._handleRow(row);
                     return;
                 }
-                this._handleRow(row);
+                // Confirm / close buttons inside the modal are handled by other
+                // delegated handlers bound on those exact nodes — stop them from
+                // triggering the backdrop-close branch below.
+                if (target.closest('.invitation-confirm') || target.closest('[data-close]')) {
+                    if (evt.stopPropagation) evt.stopPropagation();
+                    return;
+                }
+                // Backdrop / dialog-level click: close without touching data state.
+                const dlg = (host.querySelector && host.querySelector('dialog')) || null;
+                if ((dlg && target === dlg) || target === host) {
+                    this.cancel();
+                }
             });
 
             // Keyboard: Escape closes, Tab traps, Space/Enter toggles.
