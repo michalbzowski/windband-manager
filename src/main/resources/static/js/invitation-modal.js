@@ -17,13 +17,15 @@
  *   3) Controlled component: create({groups,members,onConfirm,...}) returns an
  *      API object; the page owns its lifecycle. A helper open() exists to mount
  *      a one-shot modal from a single call.
- *   4) Accessible: rows are real <button role="option" aria-checked> elements
- *      focusable by Tab, toggleable by Space/Enter/click. Focus is moved to the
+ *   4) Accessible: rows are <div role="option" tabindex="0"> elements,
+ *      focusable by Tab and toggleable by Space/Enter/click. Focus is moved to the
  *      first row when the modal opens, and Tab/Shift+Tab cycles inside a fixed
  *      ring of every focusable element in the dialog — standard WAI-ARIA dialog
  *      focus trap. Backdrop click (a click whose target is the dialog itself),
  *      Esc, the × button or "Anuluj" all close without touching the selection
- *      state.
+ *      state. (Historically these were real <button role="option"> elements;
+ *      #178/#179 converted them to divs to escape Pico's button chrome — this
+ *      change restores keyboard parity by re-adding tabindex="0".)
  *   5) Testability: pure logic (renderMarkup, count, toggle*, confirm, cancel,
  *      resolvedIds) is callable from Node with just a minimal DOM shim; the
  *      browser-only event handlers degrade gracefully when their target methods
@@ -157,14 +159,13 @@
                 const memberCount = Array.isArray(gR.memberIds) ? gR.memberIds.length : 0;
                 const checked = this.isGroupSelected(id);
                 return (
-                    `<button type="button" role="option"` +
-                    ` class="invitation-row invitation-row--group"` +
-                    ` data-kind="group" data-id="${escapeHtml(id)}"` +
-                    ` aria-checked="${checked ? 'true' : 'false'}" tabindex="0">` +
+                    `<div class="invitation-row invitation-row--group" role="option"${checked ? ' aria-checked="true"' : ' aria-checked="false"'} ` +
+                    `tabindex="0" data-kind="group" data-id="${escapeHtml(id)}">` +
+                    `<span class="invitation-check" aria-hidden="true"></span>` +
                     `<span class="invitation-row__icon" aria-hidden="true">&#9834;</span>` +
-                    `<strong class="invitation-row__label">${escapeHtml(gR.name || '')}</strong>` +
-                    `<span class="invitation-row__badge">${memberCount} ${memberCountWording(memberCount)}</span>` +
-                    `</button>`
+                    `<span class="invitation-row__label">${escapeHtml(gR.name || '')}</span>` +
+                    `<span class="invitation-row__badge invitation-label-meta">${memberCount} ${memberCountWording(memberCount)}</span>` +
+                    `</div>`
                 );
             }).join('\n');
 
@@ -173,13 +174,12 @@
                 const id = normalizeId(m.id);
                 const checked = this.isMemberSelected(id);
                 return (
-                    `<button type="button" role="option"` +
-                    ` class="invitation-row invitation-row--member"` +
-                    ` data-kind="member" data-id="${escapeHtml(id)}"` +
-                    ` aria-checked="${checked ? 'true' : 'false'}" tabindex="0">` +
+                    `<div class="invitation-row invitation-row--member" role="option"${checked ? ' aria-checked="true"' : ' aria-checked="false"'} ` +
+                    `tabindex="0" data-kind="member" data-id="${escapeHtml(id)}">` +
+                    `<span class="invitation-check" aria-hidden="true"></span>` +
                     `<span class="invitation-row__avatar" aria-hidden="true">${escapeHtml(initialsOf(m.name))}</span>` +
                     `<span class="invitation-row__label">${escapeHtml(m.name || '')}</span>` +
-                    `</button>`
+                    `</div>`
                 );
             }).join('\n');
 
@@ -388,7 +388,10 @@
         focusTrap() {
             const scope = this._host || ((typeof document !== 'undefined' && document.body) || null);
             if (!scope || typeof scope.querySelectorAll !== 'function') return [];
-            const all = Array.from(scope.querySelectorAll('button, [href], input, select, textarea')) || [];
+            // [tabindex]: rows are <div role="option" tabindex="0"> — not in the
+            // native focusable tag list above (button/input/select/textarea/a[href]),
+            // so we must name them explicitly or the Tab ring skips every row.
+            const all = Array.from(scope.querySelectorAll('button, [href], input, select, textarea, [tabindex]')) || [];
             return all.filter((el) => !(el.disabled || el.getAttribute('disabled') === 'true' || (el.getAttribute && el.getAttribute('aria-hidden') === 'true')));
         }
 
@@ -424,17 +427,35 @@
             });
 
             // Row clicks — delegated on the host so we survive every re-render.
+            // CRITICAL (bug fix): the click is intercepted at the delegated host
+            // handler and must NOT bubble to any ancestor (layout.html binds a
+            // backdrop-close on the <dialog>; Pico/others may also react to
+            // unhandled clicks) — so once we identify a row, we preventDefault +
+            // stopPropagation AND handle the toggle ourselves. That way a click
+            // anywhere inside the row (checkbox, icon, name, padding) selects or
+            // deselects and never closes the modal "without effect".
             bind(host, 'click', (evt) => {
                 const target = evt && evt.target;
                 if (!target || typeof target.closest !== 'function') return;
                 const row = target.closest('.invitation-row');
-                if (!row) {
-                    // Backdrop / dialog-level click: close without touching data state.
-                    const dlg = (host.querySelector && host.querySelector('dialog')) || null;
-                    if ((dlg && target === dlg) || target === host) this.cancel();
+                if (row) {
+                    if (evt.preventDefault) evt.preventDefault();
+                    if (evt.stopPropagation)   evt.stopPropagation();
+                    this._handleRow(row);
                     return;
                 }
-                this._handleRow(row);
+                // Confirm / close buttons inside the modal are handled by other
+                // delegated handlers bound on those exact nodes — stop them from
+                // triggering the backdrop-close branch below.
+                if (target.closest('.invitation-confirm') || target.closest('[data-close]')) {
+                    if (evt.stopPropagation) evt.stopPropagation();
+                    return;
+                }
+                // Backdrop / dialog-level click: close without touching data state.
+                const dlg = (host.querySelector && host.querySelector('dialog')) || null;
+                if ((dlg && target === dlg) || target === host) {
+                    this.cancel();
+                }
             });
 
             // Keyboard: Escape closes, Tab traps, Space/Enter toggles.
