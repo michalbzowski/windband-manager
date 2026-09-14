@@ -13,7 +13,6 @@ import jakarta.persistence.ManyToOne;
 import jakarta.persistence.PrePersist;
 import jakarta.persistence.PreUpdate;
 import jakarta.persistence.Table;
-import jakarta.persistence.UniqueConstraint;
 import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -34,9 +33,7 @@ import java.time.Instant;
  * </ul>
  */
 @Entity
-@Table(name = "compositions", uniqueConstraints = {
-        @UniqueConstraint(columnNames = {"band_id", "title"})
-})
+@Table(name = "compositions")
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class Composition {
@@ -66,16 +63,16 @@ public class Composition {
     private Band band;
 
     @Column(nullable = false, updatable = false)
-    protected Instant createdAt;
+    private Instant createdAt;
 
     @Column(nullable = false)
-    protected Instant updatedAt;
+    private Instant updatedAt;
 
     /**
-     * Package-private constructor. Deliberately performs no validation: SpotBugs
-     * {@code CT_CONSTRUCTOR_THROW} forbids escaping from a constructor before the
-     * object is fully initialised (Finalizer-attack surface). All invariants are
-     * enforced by the static factories and instance mutators below.
+     * Package-private constructor — plain field assignment only, no validation:
+     * SpotBugs {@code CT_CONSTRUCTOR_THROW} forbids a constructor from throwing with a
+     * partially initialised object (finalizer-attack surface). All invariants are
+     * therefore enforced by the static factory and the instance mutators below.
      */
     protected Composition(String title, Band band) {
         this.title = title;
@@ -122,8 +119,13 @@ public class Composition {
         this.status = CompositionStatus.ARCHIVED;
     }
 
+    /**
+     * Restore an archived composition back to its previous pre-archive state.
+     * The current implementation resets the status to {@code DRAFT}; callers that
+     * need it directly in READY after restoring can follow up with {@link #markReady()}.
+     */
     public void restore() {
-        this.status = CompositionStatus.READY;
+        this.status = CompositionStatus.DRAFT;
     }
 
     /** Only legal once the part map is verified (US-3.03 gate lives in the command service). */

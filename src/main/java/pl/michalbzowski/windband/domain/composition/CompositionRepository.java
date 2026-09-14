@@ -7,16 +7,17 @@ import java.util.Optional;
 
 /**
  * Domain repository port for {@link Composition}. Implementations must
- * enforce band isolation — a query scoped to one band never returns another
- * band's compositions.
+ * enforce band isolation — every read is scoped to a band, so no query
+ * can ever return another band's compositions.
  */
 public interface CompositionRepository {
 
     Composition save(Composition composition);
 
-    Optional<Composition> findById(Long id);
+    /** Only resolves the composition if it belongs to the given band; {@link Optional#empty()} otherwise. */
+    Optional<Composition> findByIdAndBandId(Long id, Long bandId);
 
-    /** All (non-archived) compositions of the band, newest update first. */
+    /** All compositions of the band, newest update first (archiving handled by caller). */
     List<Composition> findAllByBand(Band band);
 
     boolean existsByIdAndBandId(Long id, Long bandId);

@@ -14,7 +14,7 @@ import org.junit.jupiter.api.Test;
 import pl.michalbzowski.windband.domain.band.Band;
 
 /**
- * Pure unit tests for the {@link Composition} aggregate — no Spring context,
+ * Pure unit tests for the {@code Composition} aggregate — no Spring context,
  * band is mocked.
  */
 class CompositionTest {
@@ -64,7 +64,7 @@ class CompositionTest {
         }
 
         @Test
-        @DisplayName("create() requires a owning band (band isolation)")
+        @DisplayName("create() requires an owning band (band isolation)")
         void requires_band() {
             assertThatThrownBy(() -> Composition.create("T", null, null, null, null))
                     .isInstanceOf(NullPointerException.class);
@@ -82,9 +82,9 @@ class CompositionTest {
 
             c.updateTexts(null, "new-desc", null, "new-arranger");
 
-            assertThat(c.getTitle()).isEqualTo("Old");           // untouched
+            assertThat(c.getTitle()).isEqualTo("Old");            // untouched
             assertThat(c.getDescription()).isEqualTo("new-desc");
-            assertThat(c.getComposer()).isEqualTo("Composer");   // untouched
+            assertThat(c.getComposer()).isEqualTo("Composer");    // untouched
             assertThat(c.getArranger()).isEqualTo("new-arranger");
         }
 
@@ -95,6 +95,29 @@ class CompositionTest {
             assertThatThrownBy(() -> c.updateTexts("   ", null, null, null))
                     .isInstanceOf(IllegalArgumentException.class);
         }
+
+        @Test
+        @DisplayName("updateTexts() rejects titles longer than 200 characters")
+        void updateRejectsOversizedTitle() {
+            Composition c = draft("Ok");
+            String tooLong = "x".repeat(201);
+            assertThatThrownBy(() -> c.updateTexts(tooLong, null, null, null))
+                    .isInstanceOf(IllegalArgumentException.class)
+                    .hasMessageContaining("200");
+        }
+
+        @Test
+        @DisplayName("updateTexts() with all-null arguments leaves the aggregate unchanged")
+        void allNullIsNoOp() {
+            Composition c = draft("Keep");
+            String before = c.getDescription();
+
+            c.updateTexts(null, null, null, null);
+
+            assertThat(c.getTitle()).isEqualTo("Keep");
+            assertThat(c.getDescription()).isEqualTo(before);
+            assertThat(c.getComposer()).isEqualTo("Composer");
+        }
     }
 
     @Nested
@@ -102,7 +125,7 @@ class CompositionTest {
     class Lifecycle {
 
         @Test
-        @DisplayName("archive / restore move the status as expected")
+        @DisplayName("archive() -> restore() returns the aggregate to DRAFT (re-editable state)")
         void archiveRestore() {
             Composition c = draft("T");
             assertThat(c.getStatus()).isEqualTo(CompositionStatus.DRAFT);
@@ -112,7 +135,7 @@ class CompositionTest {
             assertThat(c.isArchived()).isTrue();
 
             c.restore();
-            assertThat(c.getStatus()).isEqualTo(CompositionStatus.READY);
+            assertThat(c.getStatus()).isEqualTo(CompositionStatus.DRAFT);
             assertThat(c.isArchived()).isFalse();
         }
 
@@ -120,6 +143,16 @@ class CompositionTest {
         @DisplayName("markReady() sets READY (gate enforced by the command service)")
         void markReady() {
             Composition c = draft("T");
+            c.markReady();
+            assertThat(c.getStatus()).isEqualTo(CompositionStatus.READY);
+        }
+
+        @Test
+        @DisplayName("restoring can be immediately promoted to READY via markReady()")
+        void restoreThenMarkReady() {
+            Composition c = draft("T");
+            c.archive();
+            c.restore();
             c.markReady();
             assertThat(c.getStatus()).isEqualTo(CompositionStatus.READY);
         }

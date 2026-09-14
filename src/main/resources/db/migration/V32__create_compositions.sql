@@ -13,8 +13,8 @@ CREATE TABLE compositions (
     band_id BIGINT NOT NULL,
     created_at TIMESTAMP WITH TIME ZONE NOT NULL,
     updated_at TIMESTAMP WITH TIME ZONE NOT NULL,
-    CONSTRAINT fk_compositions_band FOREIGN KEY (band_id) REFERENCES bands (id) ON DELETE CASCADE,
-    CONSTRAINT uq_compositions_band_title UNIQUE (band_id, title),
+    CONSTRAINT fk_compositions_band FOREIGN KEY (band_id) REFERENCES bands (id) ON DELETE RESTRICT,
+    CONSTRAINT uq_compositions_band_title UNIQUE (band_id, LOWER(title)),
     CONSTRAINT ck_compositions_status CHECK (status IN ('DRAFT', 'READY', 'ARCHIVED'))
 );
 

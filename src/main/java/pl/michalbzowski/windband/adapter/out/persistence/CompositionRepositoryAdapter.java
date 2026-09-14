@@ -10,8 +10,8 @@ import java.util.Optional;
 
 /**
  * JPA adapter implementing the domain {@link CompositionRepository} port on top of
- * {@link SpringDataCompositionRepository}. Kept thin: Spring Data already enforces
- * band-scoped queries (the band is part of the query), so the adapter only wires.
+ * {@link SpringDataCompositionRepository}. Every query is band-scoped by design, so
+ * the adapter only wires calls through.
  */
 @Component
 public class CompositionRepositoryAdapter implements CompositionRepository {
@@ -28,13 +28,12 @@ public class CompositionRepositoryAdapter implements CompositionRepository {
     }
 
     @Override
-    public Optional<Composition> findById(Long id) {
-        return springData.findById(id);
+    public Optional<Composition> findByIdAndBandId(Long id, Long bandId) {
+        return springData.findByIdAndBandId(id, bandId);
     }
 
     @Override
     public List<Composition> findAllByBand(Band band) {
-        // Spring Data method name scoping guarantees only that band's compositions are returned.
         return springData.findAllByBandOrderByUpdatedAtDesc(band);
     }
 

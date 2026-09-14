@@ -12,7 +12,7 @@ import pl.michalbzowski.windband.domain.band.Band;
 import pl.michalbzowski.windband.domain.band.BandRepository;
 
 /**
- * Integration tests for the {@link Composition} aggregate against a real
+ * Integration tests for the {@code Composition} aggregate against a real
  * (Testcontainers) database — exercises Flyway V32, JPA mapping and band isolation.
  */
 @Transactional
@@ -68,9 +68,22 @@ class CompositionIT extends BaseIntegrationTest {
     @Test
     @DisplayName("existsByIdAndBandId respects band scope")
     void existsScopedToBand() {
-        Composition c = repository.save(Composition.create("Exists?" , null, null, null, band(1L)));
+        Composition c = repository.save(Composition.create("Exists?", null, null, null, band(1L)));
 
         assertThat(repository.existsByIdAndBandId(c.getId(), 1L)).isTrue();
         assertThat(repository.existsByIdAndBandId(c.getId(), 2L)).isFalse(); // other band, same id -> false
+    }
+
+    @Test
+    @DisplayName("findByIdAndBandId never leaks another band's composition")
+    void findByIdIsBandScoped() {
+        Composition c = repository.save(Composition.create("Scoped", null, null, null, band(1L)));
+
+        // Same band -> found; the id round-trips and the FK target is preserved.
+        Composition loaded = repository.findByIdAndBandId(c.getId(), 1L).orElseThrow();
+        assertThat(loaded.getBand().getId()).isEqualTo(1L);
+
+        // Other band -> empty (no cross-band leakage through the read path).
+        assertThat(repository.findByIdAndBandId(c.getId(), 2L)).isEmpty();
     }
 }
