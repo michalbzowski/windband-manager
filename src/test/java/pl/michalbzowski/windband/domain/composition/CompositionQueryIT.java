@@ -71,11 +71,14 @@ class CompositionQueryIT extends BaseIntegrationTest {
         List<Composition> ofBand1 = repository.findAllByBand(b1);
         List<Composition> ofBand2 = repository.findAllByBand(band(2L));
 
-        assertThat(ofBand1).extracting(Composition::getBand)
-                .allMatch(b -> b.getId().equals(1L));
+        // No cross-band leakage in either direction, and getBand() is safe (lazy assoc initialised by the adapter).
+        assertThat(ofBand1).allMatch(c -> c.getBand().getId().equals(1L));
         assertThat(ofBand1).extracting(Composition::getId).contains(old.getId());
-        assertThat(ofBand1.get(0).getId()).isEqualTo(old.getId()); // most recently updated first
+        assertThat(ofBand2).allMatch(c -> c.getBand().getId().equals(band(2L).getId()));
         assertThat(ofBand2).extracting(Composition::getId).doesNotContain(old.getId());
+
+        // US-1.02: default sort is newest-update first.
+        assertThat(ofBand1.get(0).getUpdatedAt()).isAfterOrEqualTo(ofBand1.get(1).getUpdatedAt());
     }
 
     @Test
@@ -86,6 +89,8 @@ class CompositionQueryIT extends BaseIntegrationTest {
 
         List<Composition> byTitle = repository.search(1L, "kwartet");
         assertThat(byTitle).extracting(Composition::getTitle).containsExactly("Kwartet dla zespołu");
+        // getBand() must be safe: the adapter initialises the lazy association.
+        assertThat(byTitle).allMatch(c -> c.getBand().getId().equals(1L));
 
         List<Composition> byComposerCaseInsensitive = repository.search(1L, "fr. LISZT");
         assertThat(byComposerCaseInsensitive).extracting(Composition::getId)

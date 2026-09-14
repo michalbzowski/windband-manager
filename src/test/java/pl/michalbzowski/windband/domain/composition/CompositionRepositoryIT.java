@@ -29,49 +29,55 @@ class CompositionRepositoryIT extends BaseIntegrationTest {
 
     @AfterEach
     void cleanup() {
+        // Self-contained: tests here seed rows and must remove them, so the shared
+        // Testcontainers DB never leaks data across test classes.
         jdbcTemplate.execute("DELETE FROM compositions");
+    }
+
+    private Band band(Long id) {
+        return bandRepository.findById(id).orElseThrow();
     }
 
     @Test
     void search_inBand_returnsOnlyMatchingCompositionsOfThatBand() {
-        Band bandA = bandRepository.findById(1L).orElseThrow();
-        Band bandB = bandRepository.findById(2L)
-            .orElseGet(() -> bandRepository.save(Band.create("Zespół B-" + System.nanoTime(), "zespB" + System.nanoTime())));
+        // seed one composition per band so the search term matches a real row in each group.
+        repository.save(Composition.create("Walc z XIX wieku", null, "Composer A", null, band(1L)));
+        repository.save(Composition.create("Inny utwór B", null, null, "Composer B", band(2L)));
 
-        // one composition per band, sharing a matching search term in different fields …
-        Composition compA = repository.save(Composition.create("Walc z XIX wieku", null, "Composer A", null, bandA));
-        Composition compB = repository.save(Composition.create("Inny utwór B", null, null, "Composer B", bandB));
-
-        // when searching per band by that term …
+        // when searching per band by a shared term …
         List<Composition> resultsA = repository.search(1L, "composer");
         List<Composition> resultsB = repository.search(2L, "composer");
 
-        // then each band sees only its own composition (band isolation in the search path)
-        assertThat(resultsA).extracting(Composition::getId).contains(compA.getId()).doesNotContain(compB.getId());
-        assertThat(resultsA).allMatch(c -> c.getBand().getId().equals(bandA.getId()));
-        assertThat(resultsB).extracting(Composition::getId).contains(compB.getId()).doesNotContain(compA.getId());
-        assertThat(resultsB).allMatch(c -> c.getBand().getId().equals(bandB.getId()));
+        // then each band sees only its own row; no cross-band leakage in either direction.
+        assertThat(resultsA).hasSize(1)
+                .extracting(Composition::getBand)
+                .allMatch(b -> b.getId().equals(1L));
+        assertThat(resultsB).hasSize(1)
+                .extracting(Composition::getBand)
+                .allMatch(b -> b.getId().equals(2L));
     }
 
     @Test
     void search_returnsEmptyWhenNoMatchesInThatBand() {
-        repository.save(Composition.create("Utwór A", null, null, "aranżyk", bandRepository.findById(1L).orElseThrow()));
-        assertThat(repository.search(2L, "aranżer")).isEmpty(); // matches band 1's row (partial), not band 2
+        // A row that matches the term lives in band 1 only.
+        repository.save(Composition.create("Utwór A", null, null, "aranżyk", band(1L)));
+
+        assertThat(repository.search(2L, "aranżer")).isEmpty();
+        // and the same term does match for its own band (positive control).
+        assertThat(repository.search(1L, "aranżyk")).hasSize(1);
     }
 
     @Test
     void findAllByBand_neverLeaksCompositionsOfOtherBands() {
-        Band bandA = bandRepository.findById(1L).orElseThrow();
-        Band bandB = bandRepository.findById(2L)
-            .orElseGet(() -> bandRepository.save(Band.create("Zespół B-" + System.nanoTime(), "zespB" + System.nanoTime())));
+        repository.save(Composition.create("Wspólny tytuł-walczę", null, null, null, band(1L)));
+        repository.save(Composition.create("Wspólny tytuł-bis", null, null, null, band(2L)));
 
-        Composition compA = repository.save(Composition.create("Wspólny tytuł-walczę", null, null, null, bandA));
-        Composition compB = repository.save(Composition.create("Wspólny tytuł-bis", null, null, null, bandB));
+        List<Composition> ofBandA = repository.findAllByBand(band(1L));
+        List<Composition> ofBandB = repository.findAllByBand(band(2L));
 
-        List<Composition> ofBandA = repository.findAllByBand(bandA);
-        List<Composition> ofBandB = repository.findAllByBand(bandB);
-
-        assertThat(ofBandA).extracting(Composition::getId).contains(compA.getId()).doesNotContain(compB.getId());
-        assertThat(ofBandB).extracting(Composition::getId).contains(compB.getId()).doesNotContain(compA.getId());
+        assertThat(ofBandA).hasSize(1).extracting(Composition::getBand)
+                .allMatch(b -> b.getId().equals(1L));
+        assertThat(ofBandB).hasSize(1).extracting(Composition::getBand)
+                .allMatch(b -> b.getId().equals(2L));
     }
 }
