@@ -9,53 +9,42 @@ import pl.michalbzowski.windband.domain.composition.Composition;
 import pl.michalbzowski.windband.domain.composition.CompositionRepository;
 
 /**
- * Command side of the score-library module (C — Commands): create, update-texts,
- * archive and restore a {@link Composition}.
+ * Command side of the score-library module: create, update-texts, archive
+ * and restore a {@link Composition}.
  *
- * <p><b>Band isolation</b> — every read of an existing row goes through
+ * <p><b>Band isolation:</b> every read of an existing row goes through
  * {@link CompositionRepository#findByIdAndBandId(Long, Long)}, so a caller from band B can
- * never even load a row owned by band A: the pair simply does not resolve. The service maps
- * that miss to {@link IllegalStateException} (→ HTTP 409 Conflict via the global handler),
- * which is this project's established idiom for multi-tenant access conflicts; input errors
- * (blank/over-long title, unknown band) map to {@link IllegalArgumentException} (→ 400).
- * See US-multi-tenant contract and the existing band-isolation services (rehearsal, member).
+ * never even load a row owned by band A: the pair simply does not resolve.
  *
- * <p><b>ArchUnit gate:</b> this class must not depend on Spring Web or the adapter layer.
- * It injects only domain ports — keep it that way.
+ * <p><b>Error semantics</b> (single source of truth — see global handler mapping):
+ * <ul>
+ *   <li>blank title, or no band for the id → {@link IllegalArgumentException} (HTTP 400)</li>
+ *   <li>title over 200 chars (re-checked in the domain on update) → {@code IllegalArgumentException} (HTTP 400)</li>
+ *   <li>composition id not found in band, or cross-band access attempt → {@link IllegalStateException} (HTTP 409)</li>
+ * </ul>
+ *
+ * <p><b>ArchUnit gate:</b> this class must not depend on Spring Web or the adapter
+ * layer. It injects only domain ports — keep it that way.
  */
 @Service
 @RequiredArgsConstructor
 @Transactional
 public class CompositionCommandService {
 
-    static final int MAX_TITLE_LENGTH = 200;
-
     private final CompositionRepository repository;
     private final BandRepository bandRepository;
 
     // ---- create ----------------------------------------------------------
 
-    /**
-     * Persist a brand-new draft composition for the given band.
-     *
-     * @throws IllegalArgumentException if the title is blank or exceeds
-     *                                  {@value #MAX_TITLE_LENGTH} chars, or if no band
-     *                                  exists for {@code bandId}
-     */
     public Composition create(CreateCompositionCommand cmd, Long bandId) {
         Band band = requireBand(bandId);
-
-        String title = cmd.getTitle();
-        if (title == null || title.trim().isEmpty()) {
+        if (cmd.getTitle() == null || cmd.getTitle().trim().isEmpty()) {
             throw new IllegalArgumentException("Tytuł jest wymagany");
         }
-        if (title.length() > MAX_TITLE_LENGTH) {
-            throw new IllegalArgumentException(
-                    "Tytuł utworu może mieć maksymalnie " + MAX_TITLE_LENGTH + " znaków");
-        }
-
+        // Over-long titles are caught by the domain factory (Composition.create → requireTitle),
+        // so no duplicate check is needed here.
         return repository.save(Composition.create(
-                title,
+                cmd.getTitle(),
                 cmd.getDescription(),
                 cmd.getComposer(),
                 cmd.getArranger(),
@@ -64,20 +53,15 @@ public class CompositionCommandService {
 
     // ---- update ----------------------------------------------------------
 
-    /**
-     * Partial update of the textual metadata: a {@code null} argument leaves that field
-     * unchanged, so UI partial-submissions preserve existing values.
-     */
-    public Composition update(Long id, String title, String description,
-                              String composer, String arranger, Long bandId) {
+    public Composition update(Long id, UpdateCompositionCommand cmd, Long bandId) {
         Composition composition = requireOwned(id, bandId);
-        composition.updateTexts(title, description, composer, arranger);
+        composition.updateTexts(cmd.getTitle(), cmd.getDescription(),
+                                cmd.getComposer(), cmd.getArranger());
         return repository.save(composition);
     }
 
     // ---- archive / restore -----------------------------------------------
 
-    /** Move a DRAFT or READY composition into the ARCHIVED state. */
     public void archive(Long id, Long bandId) {
         requireOwned(id, bandId).archive();
     }
@@ -95,10 +79,11 @@ public class CompositionCommandService {
     }
 
     /**
-     * Resolve a composition scoped to a band. A miss is a cross-band access attempt or a
-     * stale/foreign id, so it maps to {@link IllegalStateException} (→ HTTP 409 Conflict),
-     * the project's established multi-tenant conflict idiom. Unknown-band input errors are
-     * reserved for {@code create()} where no composition id is involved yet.
+     * A composition id that does not resolve in the calling band is always a
+     * multi-tenant issue (either another band owns it, or it simply does not
+     * exist). Both cases are treated as conflicts at this layer → 409 via the
+     * {@link IllegalStateException} mapping in
+     * {@code GlobalExceptionHandler#handleConflict}.
      */
     private Composition requireOwned(Long id, Long bandId) {
         return repository.findByIdAndBandId(id, bandId)

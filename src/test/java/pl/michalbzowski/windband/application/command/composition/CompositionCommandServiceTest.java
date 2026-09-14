@@ -10,6 +10,7 @@ import pl.michalbzowski.windband.domain.composition.Composition;
 import pl.michalbzowski.windband.domain.composition.CompositionRepository;
 import pl.michalbzowski.windband.domain.composition.CompositionStatus;
 
+import java.time.Instant;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -21,10 +22,11 @@ import org.springframework.transaction.annotation.Transactional;
  * Task 1.03 — composition command service (create / update / archive / restore)
  * with strict band isolation and explicit failure paths:
  * <ul>
- *   <li>blank or too-long title is rejected before any DB write</li>
- *   <li>unknown band id fails with {@code IllegalArgumentException}</li>
- *   <li>updating / archiving a composition owned by another band fails
- *       (no cross-band access — US-1xx multi-tenant contract)</li>
+ *   <li>blank title is rejected before any DB write</li>
+ *   <li>over-long title is rejected by the domain factory ({@code IllegalArgument})</li>
+ *   <li>unknown band id on create fails with {@code IllegalArgumentException} (→ 400)</li>
+ *   <li>updating / archiving a composition owned by another band fails (→ 409,
+ *       no cross-band access — US-1xx multi-tenant contract)</li>
  * </ul>
  */
 @Transactional
@@ -52,6 +54,8 @@ class CompositionCommandServiceTest extends BaseIntegrationTest {
 
     @Test
     void create_should_persist_with_metadata_and_draft_status() {
+        Instant before = Instant.now();
+
         CreateCompositionCommand cmd = new CreateCompositionCommand();
         cmd.setTitle("Nowy utwór");
         cmd.setDescription("Opis utworu");
@@ -67,6 +71,10 @@ class CompositionCommandServiceTest extends BaseIntegrationTest {
         assertThat(saved.getComposer()).isEqualTo("Kompozytor");
         assertThat(saved.getArranger()).isEqualTo("Aragonista");
         assertThat(saved.getStatus()).isEqualTo(CompositionStatus.DRAFT);
+
+        // lifecycle timestamps are populated by JPA callbacks (@PrePersist)
+        assertThat(saved.getCreatedAt()).isInstanceOf(Instant.class).isNotNull().isAfterOrEqualTo(before);
+        assertThat(saved.getUpdatedAt()).isInstanceOf(Instant.class).isNotNull();
 
         List<Composition> inBand =
                 repository.findAllByBand(bandRepository.findById(1L).orElseThrow());
@@ -91,7 +99,9 @@ class CompositionCommandServiceTest extends BaseIntegrationTest {
     @Test
     void create_should_reject_over_long_title() {
         CreateCompositionCommand cmd = new CreateCompositionCommand();
-        cmd.setTitle("t".repeat(201)); // > 200 chars
+        // 201 chars: the service no longer re-checks length itself — the domain
+        // factory (Composition.create → requireTitle) throws the IAE first.
+        cmd.setTitle("t".repeat(201));
 
         assertThatThrownBy(() -> commandService.create(cmd, 1L))
                 .isInstanceOf(IllegalArgumentException.class)
@@ -116,23 +126,28 @@ class CompositionCommandServiceTest extends BaseIntegrationTest {
     void update_should_change_metadata_in_place() {
         Composition seed = commandService.create(title("Seed"), 1L);
 
-        Composition updated = commandService.update(
-                seed.getId(), "Zmieniony", null, null, "Nowy aranżer", 1L);
+        UpdateCompositionCommand cmd = new UpdateCompositionCommand();
+        cmd.setTitle("Zmieniony");
+        cmd.setArranger("Nowy aranżer"); // null for the others = leave unchanged
+
+        Composition updated = commandService.update(seed.getId(), cmd, 1L);
 
         assertThat(updated.getId()).isEqualTo(seed.getId());
         assertThat(updated.getTitle()).isEqualTo("Zmieniony");
-        assertThat(updated.getComposer()).isNull();          // null means leave unchanged
+        assertThat(updated.getComposer()).isNull(); // null means leave unchanged
         assertThat(updated.getArranger()).isEqualTo("Nowy aranżer");
     }
 
     /**
-     * A composition id that does not belong to band 1 is rejected with a
-     * multi-tenant conflict (409) — the repo simply cannot resolve such a pair.
+     * A composition id that does not resolve in the calling band is treated as a
+     * multi-tenant conflict (409) — either another band owns it, or it simply does not exist.
      */
     @Test
-    void update_should_fail_for_unknown_id() {
-        assertThatThrownBy(() -> commandService.update(
-                999L, "x", "y", "z", "w", 1L))
+    void update_should_reject_unknown_or_cross_band_id() {
+        UpdateCompositionCommand cmd = new UpdateCompositionCommand();
+        cmd.setTitle("x");
+
+        assertThatThrownBy(() -> commandService.update(999L, cmd, 1L))
                 .isInstanceOf(IllegalStateException.class)
                 .hasMessageContaining("band");
     }
@@ -141,12 +156,13 @@ class CompositionCommandServiceTest extends BaseIntegrationTest {
     void update_should_block_cross_band_access() {
         // Seed lives in band 1.
         Composition seed = commandService.create(title("Band-1-only"), 1L);
-        // A second band must exist to prove isolation — create one via the
-        // repository port (this is a test, not production code).
+        // A second band must exist to prove isolation — the test seed has one (see data.sql).
         var other = bandRepository.findById(2L).orElseThrow();
 
-        assertThatThrownBy(() -> commandService.update(
-                seed.getId(), "Hacked", null, null, null, other.getId()))
+        UpdateCompositionCommand cmd = new UpdateCompositionCommand();
+        cmd.setTitle("Hacked");
+
+        assertThatThrownBy(() -> commandService.update(seed.getId(), cmd, other.getId()))
                 .isInstanceOf(IllegalStateException.class)
                 .hasMessageContaining("band");
     }
