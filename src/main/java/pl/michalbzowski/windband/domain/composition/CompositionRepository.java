@@ -20,6 +20,9 @@ public interface CompositionRepository {
     /** All compositions of the band, newest update first (archiving handled by caller). */
     List<Composition> findAllByBand(Band band);
 
+    /** US-1.02: case-insensitive search across title, composer and arranger within one band. */
+    List<Composition> search(Long bandId, String term);
+
     boolean existsByIdAndBandId(Long id, Long bandId);
 
     void delete(Composition composition);
