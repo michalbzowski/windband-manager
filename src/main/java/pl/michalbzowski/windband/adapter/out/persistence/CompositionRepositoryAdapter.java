@@ -38,6 +38,14 @@ public class CompositionRepositoryAdapter implements CompositionRepository {
     }
 
     @Override
+    public List<Composition> search(Long bandId, String term) {
+        if (term == null || term.isBlank()) {
+            return List.of();
+        }
+        return springData.findByBandIdAndTitleOrComposerOrArrangerContainsIgnoreCase(bandId, term.trim());
+    }
+
+    @Override
     public boolean existsByIdAndBandId(Long id, Long bandId) {
         return springData.existsByIdAndBandId(id, bandId);
     }
