@@ -32,8 +32,8 @@ Create a team-scoped compositions library where band members can catalog pieces,
 ## 🟢 Epic 1: Domain Model & Persistence (Foundation)
 
 ### **US-1.1: Composition Entity & Repository**
-> **As a** system  
-> **I want** a `Composition` aggregate root with band-scoped persistence  
+> **As a** system
+> **I want** a `Composition` aggregate root with band-scoped persistence
 > **So that** compositions are isolated per team and support full CRUD
 
 **Acceptance Criteria:**
@@ -43,14 +43,14 @@ Create a team-scoped compositions library where band members can catalog pieces,
 - [ ] Flyway migration `V18__create_composition_table.sql`
 - [ ] Unit tests for repository adapter
 
-**Story Points:** 3  
+**Story Points:** 3
 **Dependencies:** None
 
 ---
 
 ### **US-1.2: Instrument Entity Enhancement**
-> **As a** developer  
-> **I want** the existing `Instrument` entity extended with `aliasOf` self-reference  
+> **As a** developer
+> **I want** the existing `Instrument` entity extended with `aliasOf` self-reference
 > **So that** instrument hierarchies (e.g., Kornet → Trąbka) support alias resolution
 
 **Acceptance Criteria:**
@@ -60,14 +60,14 @@ Create a team-scoped compositions library where band members can catalog pieces,
 - [ ] Migration `V19__add_alias_of_to_instrument.sql` with backfill strategy
 - [ ] Update existing UI/tests for new field
 
-**Story Points:** 2  
+**Story Points:** 2
 **Dependencies:** US-1.1
 
 ---
 
 ### **US-1.3: CompositionInstrument Link Entity**
-> **As a** system  
-> **I want** a `CompositionInstrument` entity linking compositions to instruments with page/file mapping  
+> **As a** system
+> **I want** a `CompositionInstrument` entity linking compositions to instruments with page/file mapping
 > **So that** each part knows its source pages (PDF) or files (ZIP)
 
 **Acceptance Criteria:**
@@ -77,14 +77,14 @@ Create a team-scoped compositions library where band members can catalog pieces,
 - [ ] Migration `V20__create_composition_instrument_table.sql`
 - [ ] Cascade delete when composition removed
 
-**Story Points:** 3  
+**Story Points:** 3
 **Dependencies:** US-1.1, US-1.2
 
 ---
 
 ### **US-1.4: InstrumentRoleMap (Tag-to-Role Mapping)**
-> **As a** band manager  
-> **I want** configurable mapping from member instrument tags to composition roles  
+> **As a** band manager
+> **I want** configurable mapping from member instrument tags to composition roles
 > **So that** "Trąbka" tag automatically matches "Trąbka 1", "Trąbka 2", "Kornet 1"
 
 **Acceptance Criteria:**
@@ -94,14 +94,14 @@ Create a team-scoped compositions library where band members can catalog pieces,
 - [ ] Seed default mappings for common instruments (Trąbka, Flet, Waltornia, etc.)
 - [ ] Admin UI for managing mappings (later story)
 
-**Story Points:** 2  
+**Story Points:** 2
 **Dependencies:** US-1.3
 
 ---
 
 ### **US-1.5: CompositionFile Entity (Stored Files Metadata)**
-> **As a** system  
-> **I want** track uploaded score files with storage metadata  
+> **As a** system
+> **I want** track uploaded score files with storage metadata
 > **So that** files are retrievable, secure, and auditable
 
 **Acceptance Criteria:**
@@ -110,14 +110,14 @@ Create a team-scoped compositions library where band members can catalog pieces,
 - [ ] Repository with band-scoped queries
 - [ ] Migration `V22__create_composition_file_table.sql`
 
-**Story Points:** 2  
+**Story Points:** 2
 **Dependencies:** US-1.1
 
 ---
 
 ### **US-1.6: Composition Command & Query Services**
-> **As a** developer  
-> **I want** `CompositionCommandService` and `CompositionQueryService` in `application/command/composition/` and `application/query/composition/`  
+> **As a** developer
+> **I want** `CompositionCommandService` and `CompositionQueryService` in `application/command/composition/` and `application/query/composition/`
 > **So that** use cases are encapsulated following CQRS pattern
 
 **Acceptance Criteria:**
@@ -128,7 +128,7 @@ Create a team-scoped compositions library where band members can catalog pieces,
 - [ ] Band isolation enforced via `BandQueryService.getRequiredBand(bandId)`
 - [ ] Unit tests with Mockito
 
-**Story Points:** 5  
+**Story Points:** 5
 **Dependencies:** US-1.1, US-1.3, US-1.5
 
 ---
@@ -136,8 +136,8 @@ Create a team-scoped compositions library where band members can catalog pieces,
 ## 🟡 Epic 2: File Upload & Storage (Infrastructure)
 
 ### **US-2.1: Secure File Upload Endpoint**
-> **As a** band member  
-> **I want** upload a score file (PDF or ZIP) for a composition  
+> **As a** band member
+> **I want** upload a score file (PDF or ZIP) for a composition
 > **So that** it can be analyzed and used for part distribution
 
 **Acceptance Criteria:**
@@ -150,14 +150,14 @@ Create a team-scoped compositions library where band members can catalog pieces,
 - [ ] Returns `CompositionFileDto` with `fileId` for next steps
 - [ ] Integration test with test PDF/ZIP
 
-**Story Points:** 5  
+**Story Points:** 5
 **Dependencies:** US-1.5, US-1.6
 
 ---
 
 ### **US-2.2: PDF Page Count Extraction**
-> **As a** system  
-> **I want** automatically extract page count from uploaded PDF  
+> **As a** system
+> **I want** automatically extract page count from uploaded PDF
 > **So that** UI can show page range inputs for manual mapping
 
 **Acceptance Criteria:**
@@ -167,14 +167,14 @@ Create a team-scoped compositions library where band members can catalog pieces,
 - [ ] Handles password-protected PDFs gracefully (error message)
 - [ ] Unit test with sample PDFs
 
-**Story Points:** 2  
+**Story Points:** 2
 **Dependencies:** US-2.1
 
 ---
 
 ### **US-2.3: ZIP Content Enumeration**
-> **As a** system  
-> **I want** list files inside uploaded ZIP archive  
+> **As a** system
+> **I want** list files inside uploaded ZIP archive
 > **So that** UI can show thumbnails/filenames for manual mapping
 
 **Acceptance Criteria:**
@@ -184,14 +184,14 @@ Create a team-scoped compositions library where band members can catalog pieces,
 - [ ] ZIP slip protection during extraction
 - [ ] Unit test with test ZIP
 
-**Story Points:** 2  
+**Story Points:** 2
 **Dependencies:** US-2.1
 
 ---
 
 ### **US-2.4: File Download & Access Control**
-> **As a** band member  
-> **I want** download score files I have access to  
+> **As a** band member
+> **I want** download score files I have access to
 > **So that** I can view full scores or parts
 
 **Acceptance Criteria:**
@@ -201,14 +201,14 @@ Create a team-scoped compositions library where band members can catalog pieces,
 - [ ] Content-Disposition: `inline` for PDF, `attachment` for ZIP
 - [ ] Audit log entry on download
 
-**Story Points:** 2  
+**Story Points:** 2
 **Dependencies:** US-2.1
 
 ---
 
 ### **US-2.5: File Deletion & Cleanup**
-> **As a** band manager  
-> **I want** delete score files when no longer needed  
+> **As a** band manager
+> **I want** delete score files when no longer needed
 > **So that** storage doesn't accumulate orphaned files
 
 **Acceptance Criteria:**
@@ -218,7 +218,7 @@ Create a team-scoped compositions library where band members can catalog pieces,
 - [ ] If composition has no files and status=DRAFT, allow composition deletion
 - [ ] Scheduled job to clean temp files > 24h old (optional)
 
-**Story Points:** 1  
+**Story Points:** 1
 **Dependencies:** US-2.1
 
 ---
@@ -226,8 +226,8 @@ Create a team-scoped compositions library where band members can catalog pieces,
 ## 🔵 Epic 3: Composition CRUD — Manual Entry (Core Feature)
 
 ### **US-3.1: Create Composition (Manual)**
-> **As a** band librarian  
-> **I want** create a composition record with title, composer, arranger, description  
+> **As a** band librarian
+> **I want** create a composition record with title, composer, arranger, description
 > **So that** I can catalog pieces before uploading scores
 
 **Acceptance Criteria:**
@@ -238,14 +238,14 @@ Create a team-scoped compositions library where band members can catalog pieces,
 - [ ] Band-scoped: auto-assigns current user's active band
 - [ ] Selenium test: create → verify in list
 
-**Story Points:** 3  
+**Story Points:** 3
 **Dependencies:** US-1.6
 
 ---
 
 ### **US-3.2: List Compositions**
-> **As a** band member  
-> **I want** see a paginated, searchable list of my band's compositions  
+> **As a** band member
+> **I want** see a paginated, searchable list of my band's compositions
 > **So that** I can find and manage pieces
 
 **Acceptance Criteria:**
@@ -257,14 +257,14 @@ Create a team-scoped compositions library where band members can catalog pieces,
 - [ ] "New Composition" button
 - [ ] Selenium test: search, filter, paginate
 
-**Story Points:** 3  
+**Story Points:** 3
 **Dependencies:** US-1.6
 
 ---
 
 ### **US-3.3: Composition Detail View**
-> **As a** band member  
-> **I want** view full composition details including mapped parts  
+> **As a** band member
+> **I want** view full composition details including mapped parts
 > **So that** I can verify the score mapping before distribution
 
 **Acceptance Criteria:**
@@ -275,14 +275,14 @@ Create a team-scoped compositions library where band members can catalog pieces,
 - [ ] Actions: Edit, Upload File, Analyze (if file exists), Verify, Archive
 - [ ] Selenium test: navigate, verify tabs
 
-**Story Points:** 3  
+**Story Points:** 3
 **Dependencies:** US-1.6, US-2.4
 
 ---
 
 ### **US-3.4: Edit Composition Metadata**
-> **As a** band librarian  
-> **I want** edit composition title, description, composer, arranger  
+> **As a** band librarian
+> **I want** edit composition title, description, composer, arranger
 > **So that** I can correct or update catalog information
 
 **Acceptance Criteria:**
@@ -292,14 +292,14 @@ Create a team-scoped compositions library where band members can catalog pieces,
 - [ ] Only allowed when status=DRAFT (READY/ARCHIVED locked)
 - [ ] Audit trail: `updatedAt`, `updatedBy`
 
-**Story Points:** 2  
+**Story Points:** 2
 **Dependencies:** US-3.3
 
 ---
 
 ### **US-3.5: Manual Parts Mapping (No AI)**
-> **As a** band librarian  
-> **I want** manually define instrument-to-page/file mappings  
+> **As a** band librarian
+> **I want** manually define instrument-to-page/file mappings
 > **So that** I can catalog pieces without relying on AI
 
 **Acceptance Criteria:**
@@ -313,7 +313,7 @@ Create a team-scoped compositions library where band members can catalog pieces,
 - [ ] Inline edit/delete for existing MANUAL parts
 - [ ] Selenium test: add/edit/delete part
 
-**Story Points:** 5  
+**Story Points:** 5
 **Dependencies:** US-1.3, US-3.3
 
 ---
@@ -321,8 +321,8 @@ Create a team-scoped compositions library where band members can catalog pieces,
 ## 🟠 Epic 4: AI-Assisted Score Analysis (Advanced)
 
 ### **US-4.1: AI Analysis Trigger Endpoint**
-> **As a** band librarian  
-> **I want** trigger AI analysis of an uploaded score file  
+> **As a** band librarian
+> **I want** trigger AI analysis of an uploaded score file
 > **So that** I get a proposed parts mapping to review
 
 **Acceptance Criteria:**
@@ -332,14 +332,14 @@ Create a team-scoped compositions library where band members can catalog pieces,
 - [ ] Returns `analysisId` for polling status
 - [ ] Analysis runs in background; UI shows spinner/polling
 
-**Story Points:** 3  
+**Story Points:** 3
 **Dependencies:** US-2.1, US-1.6
 
 ---
 
 ### **US-4.2: PDF Analysis Strategy (Text-Based PDF)**
-> **As a** system  
-> **I want** extract text from text-layer PDF and identify part boundaries  
+> **As a** system
+> **I want** extract text from text-layer PDF and identify part boundaries
 > **So that** AI can propose page ranges for each instrument
 
 **Acceptance Criteria:**
@@ -350,14 +350,14 @@ Create a team-scoped compositions library where band members can catalog pieces,
 - [ ] Confidence < 0.7 → `needsHumanReview: true`
 - [ ] Unit test with sample concert PDF
 
-**Story Points:** 8  
+**Story Points:** 8
 **Dependencies:** US-4.1
 
 ---
 
 ### **US-4.3: PDF Analysis Strategy (Scanned PDF / OCR)**
-> **As a** system  
-> **I want** OCR scanned PDF pages to identify instrument parts  
+> **As a** system
+> **I want** OCR scanned PDF pages to identify instrument parts
 > **So that** handwritten/scanned scores can be analyzed
 
 **Acceptance Criteria:**
@@ -368,14 +368,14 @@ Create a team-scoped compositions library where band members can catalog pieces,
 - [ ] Always sets `needsHumanReview: true`
 - [ ] Configurable: enable/disable per band (resource intensive)
 
-**Story Points:** 13  
+**Story Points:** 13
 **Dependencies:** US-4.1
 
 ---
 
 ### **US-4.4: ZIP Analysis Strategy (Image Files)**
-> **As a** system  
-> **I want** analyze ZIP contents (filenames + optional OCR) to map parts  
+> **As a** system
+> **I want** analyze ZIP contents (filenames + optional OCR) to map parts
 > **So that** pre-split score scans can be mapped
 
 **Acceptance Criteria:**
@@ -386,14 +386,14 @@ Create a team-scoped compositions library where band members can catalog pieces,
 - [ ] Groups consecutive files for same instrument (e.g., Flet 1 = files 6-7)
 - [ ] Unit test with sample ZIP
 
-**Story Points:** 5  
+**Story Points:** 5
 **Dependencies:** US-4.1, US-2.3
 
 ---
 
 ### **US-4.5: Analysis Result Preview & Editing**
-> **As a** band librarian  
-> **I want** review and edit AI-proposed mapping before accepting  
+> **As a** band librarian
+> **I want** review and edit AI-proposed mapping before accepting
 > **So that** errors are caught before parts are distributed
 
 **Acceptance Criteria:**
@@ -405,14 +405,14 @@ Create a team-scoped compositions library where band members can catalog pieces,
 - [ ] "Reject" → discards analysis, allows re-run or manual entry
 - [ ] Selenium test: accept/edit/reject flow
 
-**Story Points:** 8  
+**Story Points:** 8
 **Dependencies:** US-4.2, US-4.3, US-4.4, US-3.3
 
 ---
 
 ### **US-4.6: Analysis Status Polling & Notifications**
-> **As a** band librarian  
-> **I want** see analysis progress and get notified when done  
+> **As a** band librarian
+> **I want** see analysis progress and get notified when done
 > **So that** I don't have to wait on the page
 
 **Acceptance Criteria:**
@@ -423,14 +423,14 @@ Create a team-scoped compositions library where band members can catalog pieces,
 - [ ] Toast notification when analysis completes (if user navigated away)
 - [ ] WebSocket/SSE optional enhancement
 
-**Story Points:** 3  
+**Story Points:** 3
 **Dependencies:** US-4.1
 
 ---
 
 ### **US-4.7: Analysis History & Re-analysis**
-> **As a** band librarian  
-> **I want** see past analysis attempts and re-run if needed  
+> **As a** band librarian
+> **I want** see past analysis attempts and re-run if needed
 > **So that** I can compare results or retry with better file
 
 **Acceptance Criteria:**
@@ -440,7 +440,7 @@ Create a team-scoped compositions library where band members can catalog pieces,
 - [ ] Previous verified mappings preserved unless explicitly replaced
 - [ ] Audit trail for compliance
 
-**Story Points:** 2  
+**Story Points:** 2
 **Dependencies:** US-4.5
 
 ---
@@ -448,8 +448,8 @@ Create a team-scoped compositions library where band members can catalog pieces,
 ## 🟣 Epic 5: Instrument Alias Mapping (Distribution Logic)
 
 ### **US-5.1: Manage Instrument Role Mappings (Admin UI)**
-> **As a** band admin  
-> **I want** configure which member tags map to which composition roles  
+> **As a** band admin
+> **I want** configure which member tags map to which composition roles
 > **So that** part distribution works for my band's naming conventions
 
 **Acceptance Criteria:**
@@ -460,14 +460,14 @@ Create a team-scoped compositions library where band members can catalog pieces,
 - [ ] Band-scoped: each band manages own mappings
 - [ ] Selenium test: CRUD mappings
 
-**Story Points:** 3  
+**Story Points:** 3
 **Dependencies:** US-1.4
 
 ---
 
 ### **US-5.2: Tag-to-Role Resolution Service**
-> **As a** system  
-> **I want** a service that resolves member tags to composition instrument roles  
+> **As a** system
+> **I want** a service that resolves member tags to composition instrument roles
 > **So that** distribution logic knows which parts to send to which member
 
 **Acceptance Criteria:**
@@ -478,14 +478,14 @@ Create a team-scoped compositions library where band members can catalog pieces,
 - [ ] Fallback: if no mapping, suggest all roles containing tag as substring
 - [ ] Unit tests covering: exact, prefix, multi-tag, no-mapping, Waltornia Es/F
 
-**Story Points:** 5  
+**Story Points:** 5
 **Dependencies:** US-1.4, US-5.1
 
 ---
 
 ### **US-5.3: Ambiguous Mapping Resolution UI**
-> **As a** band librarian  
-> **I want** resolve ambiguous tag-to-role mappings before distribution  
+> **As a** band librarian
+> **I want** resolve ambiguous tag-to-role mappings before distribution
 > **So that** each musician gets exactly the right parts
 
 **Acceptance Criteria:**
@@ -496,7 +496,7 @@ Create a team-scoped compositions library where band members can catalog pieces,
 - [ ] "Remember this mapping" → creates/updates `InstrumentRoleMap`
 - [ ] Skip step if all mappings are unambiguous (high confidence)
 
-**Story Points:** 5  
+**Story Points:** 5
 **Dependencies:** US-5.2, US-6.3
 
 ---
@@ -504,8 +504,8 @@ Create a team-scoped compositions library where band members can catalog pieces,
 ## 🔴 Epic 6: Event Integration & Part Distribution (End Goal)
 
 ### **US-6.1: Add Composition to Event Program**
-> **As a** band manager  
-> **I want** add a composition from the library to an event's program  
+> **As a** band manager
+> **I want** add a composition from the library to an event's program
 > **So that** I can plan the concert repertoire
 
 **Acceptance Criteria:**
@@ -516,14 +516,14 @@ Create a team-scoped compositions library where band members can catalog pieces,
 - [ ] Migration `V23__create_event_composition_table.sql`
 - [ ] Selenium test: add, reorder, remove
 
-**Story Points:** 5  
+**Story Points:** 5
 **Dependencies:** US-1.1, existing Event domain
 
 ---
 
 ### **US-6.2: Generate Parts Package for Recipient**
-> **As a** system  
-> **I want** generate a PDF package containing only the pages/files for a specific member's parts  
+> **As a** system
+> **I want** generate a PDF package containing only the pages/files for a specific member's parts
 > **So that** each musician receives exactly their music
 
 **Acceptance Criteria:**
@@ -535,14 +535,14 @@ Create a team-scoped compositions library where band members can catalog pieces,
 - [ ] Filename: `{compositionTitle}_{role}.pdf` or `{compositionTitle}_parts.zip`
 - [ ] Unit test with sample PDF/ZIP
 
-**Story Points:** 8  
+**Story Points:** 8
 **Dependencies:** US-1.3, US-1.5, US-5.2
 
 ---
 
 ### **US-6.3: Send Parts to Event Participants**
-> **As a** band manager  
-> **I want** one-click send practice parts to all invited event participants  
+> **As a** band manager
+> **I want** one-click send practice parts to all invited event participants
 > **So that** musicians get their music automatically
 
 **Acceptance Criteria:**
@@ -556,14 +556,14 @@ Create a team-scoped compositions library where band members can catalog pieces,
 - [ ] Audit log: `PartDistributionLog` with eventId, compositionId, recipientId, sentAt, status
 - [ ] Selenium test: full flow
 
-**Story Points:** 13  
+**Story Points:** 13
 **Dependencies:** US-6.1, US-6.2, US-5.3, existing email infrastructure
 
 ---
 
 ### **US-6.4: Conductor Receives Full Score**
-> **As a** conductor  
-> **I want** receive the full score (all pages) when parts are distributed  
+> **As a** conductor
+> **I want** receive the full score (all pages) when parts are distributed
 > **So that** I have the complete picture for rehearsal
 
 **Acceptance Criteria:**
@@ -573,14 +573,14 @@ Create a team-scoped compositions library where band members can catalog pieces,
 - [ ] Separate email or same email with distinct attachment
 - [ ] Configurable per band (some bands may not want this)
 
-**Story Points:** 3  
+**Story Points:** 3
 **Dependencies:** US-6.3
 
 ---
 
 ### **US-6.5: Part Download Portal (Alternative to Email)**
-> **As a** band member  
-> **I want** access my parts via a secure download link in the app  
+> **As a** band member
+> **I want** access my parts via a secure download link in the app
 > **So that** I don't rely on email delivery
 
 **Acceptance Criteria:**
@@ -590,14 +590,14 @@ Create a team-scoped compositions library where band members can catalog pieces,
 - [ ] Access control: only parts where my tags match
 - [ ] Mobile-friendly
 
-**Story Points:** 5  
+**Story Points:** 5
 **Dependencies:** US-6.2, existing member portal
 
 ---
 
 ### **US-6.6: Distribution History & Resend**
-> **As a** band manager  
-> **I want** see distribution history and resend failed/missing parts  
+> **As a** band manager
+> **I want** see distribution history and resend failed/missing parts
 > **So that** I can ensure everyone has their music
 
 **Acceptance Criteria:**
@@ -607,7 +607,7 @@ Create a team-scoped compositions library where band members can catalog pieces,
 - [ ] "Resend to unopened" bulk action
 - [ ] Failed sends show error, allow retry
 
-**Story Points:** 3  
+**Story Points:** 3
 **Dependencies:** US-6.3
 
 ---
@@ -615,8 +615,8 @@ Create a team-scoped compositions library where band members can catalog pieces,
 ## 🟤 Epic 7: UI & UX Polish (Frontend)
 
 ### **US-7.1: Compositions Navigation & Menu Integration**
-> **As a** band member  
-> **I want** access Compositions Library from main navigation  
+> **As a** band member
+> **I want** access Compositions Library from main navigation
 > **So that** it's discoverable and consistent with app UX
 
 **Acceptance Criteria:**
@@ -626,14 +626,14 @@ Create a team-scoped compositions library where band members can catalog pieces,
 - [ ] Responsive: collapses on mobile
 - [ ] Follows `unified-header-pattern` and `dashboard-header-migration`
 
-**Story Points:** 2  
+**Story Points:** 2
 **Dependencies:** US-3.2
 
 ---
 
 ### **US-7.2: Composition List — Inline Actions**
-> **As a** band librarian  
-> **I want** quick actions (edit, upload, analyze, delete) directly in the list  
+> **As a** band librarian
+> **I want** quick actions (edit, upload, analyze, delete) directly in the list
 > **So that** I don't need to open detail for common tasks
 
 **Acceptance Criteria:**
@@ -643,14 +643,14 @@ Create a team-scoped compositions library where band members can catalog pieces,
 - [ ] Confirmation modals for destructive actions
 - [ ] Toast notifications on success/error
 
-**Story Points:** 3  
+**Story Points:** 3
 **Dependencies:** US-3.2
 
 ---
 
 ### **US-7.3: PDF Page Thumbnail Preview**
-> **As a** band librarian  
-> **I want** see page thumbnails when mapping parts manually or reviewing AI  
+> **As a** band librarian
+> **I want** see page thumbnails when mapping parts manually or reviewing AI
 > **So that** I can visually verify page assignments
 
 **Acceptance Criteria:**
@@ -660,14 +660,14 @@ Create a team-scoped compositions library where band members can catalog pieces,
 - [ ] Lazy-load thumbnails (intersection observer)
 - [ ] Works for both manual mapping and AI review
 
-**Story Points:** 5  
+**Story Points:** 5
 **Dependencies:** US-2.2, US-3.5, US-4.5
 
 ---
 
 ### **US-7.4: ZIP File Thumbnail Gallery**
-> **As a** band librarian  
-> **I want** see image thumbnails for ZIP contents  
+> **As a** band librarian
+> **I want** see image thumbnails for ZIP contents
 > **So that** I can identify parts visually
 
 **Acceptance Criteria:**
@@ -677,14 +677,14 @@ Create a team-scoped compositions library where band members can catalog pieces,
 - [ ] Checkbox for selection in AI review
 - [ ] Lazy-load, responsive grid
 
-**Story Points:** 3  
+**Story Points:** 3
 **Dependencies:** US-2.3, US-4.5
 
 ---
 
 ### **US-7.5: Sticky Parts Table Header (Collision Detection)**
-> **As a** band librarian  
-> **I want** the parts table header stay visible while scrolling  
+> **As a** band librarian
+> **I want** the parts table header stay visible while scrolling
 > **So that** I can always see column names
 
 **Acceptance Criteria:**
@@ -694,14 +694,14 @@ Create a team-scoped compositions library where band members can catalog pieces,
 - [ ] CSS custom property `--sticky-parts-top`
 - [ ] Follows `references/adaptive-sticky-filters-with-collision-detection.md`
 
-**Story Points:** 2  
+**Story Points:** 2
 **Dependencies:** US-3.3
 
 ---
 
 ### **US-7.6: Composition Search with Highlights**
-> **As a** band member  
-> **I want** search compositions with highlighted matches  
+> **As a** band member
+> **I want** search compositions with highlighted matches
 > **So that** I quickly find pieces
 
 **Acceptance Criteria:**
@@ -710,14 +710,14 @@ Create a team-scoped compositions library where band members can catalog pieces,
 - [ ] Searches across all band compositions
 - [ ] Keyboard accessible (Esc to clear, Enter to focus first result)
 
-**Story Points:** 2  
+**Story Points:** 2
 **Dependencies:** US-3.2
 
 ---
 
 ### **US-7.7: Empty States & Onboarding**
-> **As a** new band librarian  
-> **I want** helpful empty states with guidance  
+> **As a** new band librarian
+> **I want** helpful empty states with guidance
 > **So that** I know how to get started
 
 **Acceptance Criteria:**
@@ -726,14 +726,14 @@ Create a team-scoped compositions library where band members can catalog pieces,
 - [ ] Empty files: "No score file uploaded. Click 'Upload' to add a PDF or ZIP."
 - [ ] Illustrations (SVG) matching app style
 
-**Story Points:** 1  
+**Story Points:** 1
 **Dependencies:** US-3.2, US-3.3
 
 ---
 
 ### **US-7.8: Responsive Design & Mobile Support**
-> **As a** band member on mobile  
-> **I want** use Compositions Library on my phone  
+> **As a** band member on mobile
+> **I want** use Compositions Library on my phone
 > **So that** I can check parts on the go
 
 **Acceptance Criteria:**
@@ -744,7 +744,7 @@ Create a team-scoped compositions library where band members can catalog pieces,
 - [ ] Tested on Chrome DevTools device toolbar
 - [ ] Follows `dashboard-responsive-patterns.md` (3 breakpoints)
 
-**Story Points:** 5  
+**Story Points:** 5
 **Dependencies:** US-3.2, US-3.3
 
 ---
@@ -856,6 +856,6 @@ Create a team-scoped compositions library where band members can catalog pieces,
 
 ---
 
-*Document created: 2026-09-13*  
-*Author: Hermes Agent (QA & Business Analyst role)*  
+*Document created: 2026-09-13*
+*Author: Hermes Agent (QA & Business Analyst role)*
 *Based on: Analysis document + windband-manager architecture skills*
