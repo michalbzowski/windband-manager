@@ -4,7 +4,6 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
-import pl.michalbzowski.windband.domain.band.Band;
 import pl.michalbzowski.windband.domain.composition.InstrumentRoleMap;
 
 import java.util.List;
@@ -21,18 +20,16 @@ import java.util.Optional;
  * alternative ({@code findByBandIdAndSourceTag}) would be byte-exact / case-sensitive and would
  * silently bypass that contract — it is therefore deliberately NOT declared here.
  *
- * <p>{@link Band} is fetched eagerly inside each query's fetch graph ({@code JOIN FETCH m.band})
+ * <p>{@code m.band} is fetched eagerly inside each query's fetch graph ({@code JOIN FETCH m.band})
  * so callers can read {@code m.getBand().getName()} without an extra round-trip, matching the
  * adapter discipline used by {@link SpringDataCompositionInstrumentRepository}.
+ *
+ * <p><b>API surface:</b> every method is keyed by {@code Long bandId} — the redundant
+ * {@code Band}-entity overload present in the first cut of the PR was dropped so callers have a
+ * single, unambiguous lookup shape (and because JPA does not need the entity here: the unique index
+ * is on the scalar {@code band_id}).
  */
 public interface SpringDataInstrumentRoleMapRepository extends JpaRepository<InstrumentRoleMap, Long> {
-
-    @Query("""
-            SELECT m FROM InstrumentRoleMap m
-            JOIN FETCH m.band
-            WHERE m.band = :band AND LOWER(m.sourceTag) = LOWER(:sourceTag)
-            ORDER BY m.targetRolePattern ASC, m.id ASC""")
-    List<InstrumentRoleMap> findByBandAndSourceTag(@Param("band") Band band, @Param("sourceTag") String sourceTag);
 
     @Query("""
             SELECT m FROM InstrumentRoleMap m
@@ -55,9 +52,18 @@ public interface SpringDataInstrumentRoleMapRepository extends JpaRepository<Ins
     Optional<InstrumentRoleMap> findByBandIdAndSourceTagAndTargetRolePattern(
             @Param("bandId") Long bandId, @Param("sourceTag") String sourceTag, @Param("role") String role);
 
+    /**
+     * Cheap existence probe — compiled to {@code SELECT EXISTS (...)} instead of {@code SELECT COUNT}.
+     * Both are correct, but {@code EXISTS} stops at the first matching row in either direction and
+     * makes the intent ("is there a row?") obvious at the call site. Spring Data returns this as
+     * a boolean without scanning the rest of the (band, tag) partition.
+     */
     @Query("""
-            SELECT COUNT(m) FROM InstrumentRoleMap m
-            WHERE m.band.id = :bandId AND LOWER(m.sourceTag) = LOWER(:sourceTag) AND m.targetRolePattern = :role""")
+            SELECT CASE WHEN EXISTS (
+                SELECT m FROM InstrumentRoleMap m
+                WHERE m.band.id = :bandId AND LOWER(m.sourceTag) = LOWER(:sourceTag)
+                  AND m.targetRolePattern = :role
+            ) THEN TRUE ELSE FALSE END""")
     boolean existsByBandIdAndSourceTagAndTargetRolePattern(
             @Param("bandId") Long bandId, @Param("sourceTag") String sourceTag, @Param("role") String role);
 

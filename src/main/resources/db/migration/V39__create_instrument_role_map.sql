@@ -49,31 +49,35 @@ COMMENT ON COLUMN instrument_role_map.target_role_pattern IS
 
 -- ------------------------------------------------------------------
 -- Seed: default mappings for the "default" band (band_id = 1, per spec).
---     Each row is guarded against (band, lower(source_tag), role) — only inserted if NOT already present.
---     These seeds give US-1.5 (distribution) a working baseline out of the box and are
---     idempotent under repeated re-runs so Flyway replay / manual rollback+forward is safe.
+--
+-- A CTE (`seed`) holds every row exactly once and a single
+-- `INSERT ... SELECT s.* FROM seed s WHERE NOT EXISTS(...)` writes them
+-- all in one statement. This avoids six near-duplicate INSERT blocks
+-- (and the typos they tend to collect), while staying idempotent under
+-- repeated replay: `NOT EXISTS` skips rows that are already present, so
+-- a re-run touches zero rows (Flyway `repair` / rollback+forward safe).
 -- ------------------------------------------------------------------
-
+WITH seed (source_tag, target_role_pattern, description) AS (
+    VALUES
+        ('Trąbka',    'Trąbka 1',    'Trumpet / cornet in B-flat — first seat role'),
+        ('Trąbka',    'Trąbka 2',    'Trumpet / cornet in B-flat — second seat role'),
+        ('Flet',      'Flet 1',      'Flute (concert C or G) — first seat role'),
+        ('Waltornia', 'Waltornia 1', 'French horn — first seat role'),
+        ('Puzon',     'Puzon 1',     'Trombone — first seat role'),
+        ('Saksofon',  'Saksofon 1',  'Alto saxophone — first seat role')
+)
 INSERT INTO instrument_role_map (band_id, source_tag, target_role_pattern, description, created_at, updated_at)
-SELECT 1, 'Trąbka',   'Trąbka 1',   'Trumpet / cornet in B-flat — first seat role', CURRENT_TIMESTAMP AT TIME ZONE 'UTC', CURRENT_TIMESTAMP AT TIME ZONE 'UTC'
-WHERE NOT EXISTS (SELECT 1 FROM instrument_role_map m WHERE m.band_id = 1 AND lower(m.source_tag) = lower('Trąbka')   AND m.target_role_pattern = 'Trąbka 1');
-
-INSERT INTO instrument_role_map (band_id, source_tag, target_role_pattern, description, created_at, updated_at)
-SELECT 1, 'Trąbka',   'Trąbka 2',   'Trumpet / cornet in B-flat — second seat role', CURRENT_TIMESTAMP AT TIME ZONE 'UTC', CURRENT_TIMESTAMP AT TIME ZONE 'UTC'
-WHERE NOT EXISTS (SELECT 1 FROM instrument_role_map m WHERE m.band_id = 1 AND lower(m.source_tag) = lower('Trąbka')   AND m.target_role_pattern = 'Trąbka 2');
-
-INSERT INTO instrument_role_map (band_id, source_tag, target_role_pattern, description, created_at, updated_at)
-SELECT 1, 'Flet',     'Flet 1',     'Flute (concert C or G) — first seat role', CURRENT_TIMESTAMP AT TIME ZONE 'UTC', CURRENT_TIMESTAMP AT TIME ZONE 'UTC'
-WHERE NOT EXISTS (SELECT 1 FROM instrument_role_map m WHERE m.band_id = 1 AND lower(m.source_tag) = lower('Flet')     AND m.target_role_pattern = 'Flet 1');
-
-INSERT INTO instrument_role_map (band_id, source_tag, target_role_pattern, description, created_at, updated_at)
-SELECT 1, 'Waltornia','Waltornia 1','French horn — first seat role', CURRENT_TIMESTAMP AT TIME ZONE 'UTC', CURRENT_TIMESTAMP AT TIME ZONE 'UTC'
-WHERE NOT EXISTS (SELECT 1 FROM instrument_role_map m WHERE m.band_id = 1 AND lower(m.source_tag) = lower('Waltornia')  AND m.target_role_pattern = 'Waltornia 1');
-
-INSERT INTO instrument_role_map (band_id, source_tag, target_role_pattern, description, created_at, updated_at)
-SELECT 1, 'Puzon',    'Puzon 1',    'Trombone — first seat role', CURRENT_TIMESTAMP AT TIME ZONE 'UTC', CURRENT_TIMESTAMP AT TIME ZONE 'UTC'
-WHERE NOT EXISTS (SELECT 1 FROM instrument_role_map m WHERE m.band_id = 1 AND lower(m.source_tag) = lower('Puzon')    AND m.target_role_pattern = 'Puzon 1');
-
-INSERT INTO instrument_role_map (band_id, source_tag, target_role_pattern, description, created_at, updated_at)
-SELECT 1, 'Saksofon', 'Saksofon 1', 'Alto saxophone — first seat role', CURRENT_TIMESTAMP AT TIME ZONE 'UTC', CURRENT_TIMESTAMP AT TIME ZONE 'UTC'
-WHERE NOT EXISTS (SELECT 1 FROM instrument_role_map m WHERE m.band_id = 1 AND lower(m.source_tag) = lower('Saksofon') AND m.target_role_pattern = 'Saksofon 1');
+SELECT
+    1,
+    s.source_tag,
+    s.target_role_pattern,
+    s.description,
+    CURRENT_TIMESTAMP AT TIME ZONE 'UTC',
+    CURRENT_TIMESTAMP AT TIME ZONE 'UTC'
+FROM seed s
+WHERE NOT EXISTS (
+    SELECT 1 FROM instrument_role_map m
+     WHERE m.band_id             = 1
+       AND lower(m.source_tag)   = lower(s.source_tag)
+       AND m.target_role_pattern = s.target_role_pattern
+);

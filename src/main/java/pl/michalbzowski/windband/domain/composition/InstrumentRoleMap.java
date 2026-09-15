@@ -17,7 +17,6 @@ import lombok.NoArgsConstructor;
 import pl.michalbzowski.windband.domain.band.Band;
 
 import java.time.Instant;
-import java.util.Objects;
 
 /**
  * Maps a band's member instrument tag (e.g. "Trąbka") to one or more composition
@@ -91,7 +90,9 @@ public class InstrumentRoleMap {
      */
     public static InstrumentRoleMap forBand(Band band, String sourceTag, String targetRolePattern,
                                             String description) {
-        Objects.requireNonNull(band, "band required");
+        if (band == null) {
+            throw new IllegalArgumentException("band required");
+        }
         if (band.getId() == null) {
             throw new IllegalArgumentException("band.id required — pass a persisted Band instance");
         }
@@ -102,7 +103,12 @@ public class InstrumentRoleMap {
     }
 
     private static String requireNotBlank(String s, String field) {
-        if (s == null || s.isBlank()) throw new NullPointerException(field + " required");
+        if (s == null) {
+            throw new IllegalArgumentException(field + " must not be null");
+        }
+        if (s.isBlank()) {
+            throw new IllegalArgumentException(field + " must not be blank");
+        }
         return s;
     }
 

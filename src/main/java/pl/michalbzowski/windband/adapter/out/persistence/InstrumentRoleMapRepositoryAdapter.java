@@ -1,7 +1,6 @@
 package pl.michalbzowski.windband.adapter.out.persistence;
 
 import org.springframework.stereotype.Component;
-import pl.michalbzowski.windband.domain.band.Band;
 import pl.michalbzowski.windband.domain.composition.InstrumentRoleMap;
 import pl.michalbzowski.windband.domain.composition.InstrumentRoleMapRepository;
 
@@ -31,11 +30,6 @@ public class InstrumentRoleMapRepositoryAdapter implements InstrumentRoleMapRepo
     @Override
     public Optional<InstrumentRoleMap> findById(Long id) {
         return springData.findById(id);
-    }
-
-    @Override
-    public List<InstrumentRoleMap> findByBandAndSourceTag(Band band, String sourceTag) {
-        return springData.findByBandAndSourceTag(band, sourceTag);
     }
 
     @Override
