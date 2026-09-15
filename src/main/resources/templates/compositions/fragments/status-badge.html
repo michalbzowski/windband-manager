@@ -1,0 +1,11 @@
+<!DOCTYPE html>
+<html lang="pl" xmlns:th="http://www.thymeleaf.org">
+<body>
+<span th:fragment="status(status)"
+      class="badge"
+      th:classappend="${status.cssClass}"
+      th:text="${status.displayName}">
+    Szkic
+</span>
+</body>
+</html>

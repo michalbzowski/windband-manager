@@ -1,9 +1,12 @@
 package pl.michalbzowski.windband.adapter.out.persistence;
 
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Component;
 import pl.michalbzowski.windband.domain.band.Band;
 import pl.michalbzowski.windband.domain.composition.Composition;
 import pl.michalbzowski.windband.domain.composition.CompositionRepository;
+import pl.michalbzowski.windband.domain.composition.CompositionStatus;
 
 import java.util.List;
 import java.util.Optional;
@@ -35,6 +38,16 @@ public class CompositionRepositoryAdapter implements CompositionRepository {
     @Override
     public List<Composition> findAllByBand(Band band) {
         return springData.findAllByBandOrderByUpdatedAtDesc(band);
+    }
+
+    @Override
+    public Page<Composition> findAllByBand(Band band, Pageable pageable) {
+        return springData.findAllByBand(band, pageable);
+    }
+
+    @Override
+    public Page<Composition> findAllByBandAndStatus(Band band, CompositionStatus status, Pageable pageable) {
+        return springData.findAllByBandAndStatus(band, status, pageable);
     }
 
     @Override

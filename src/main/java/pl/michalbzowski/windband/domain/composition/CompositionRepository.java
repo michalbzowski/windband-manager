@@ -1,5 +1,7 @@
 package pl.michalbzowski.windband.domain.composition;
 
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import pl.michalbzowski.windband.domain.band.Band;
 
 import java.util.List;
@@ -19,6 +21,12 @@ public interface CompositionRepository {
 
     /** All compositions of the band, newest update first (archiving handled by caller). */
     List<Composition> findAllByBand(Band band);
+
+    /** Paginated version of {@link #findAllByBand(Band)}. */
+    Page<Composition> findAllByBand(Band band, Pageable pageable);
+
+    /** Paginated version filtered by status. */
+    Page<Composition> findAllByBandAndStatus(Band band, CompositionStatus status, Pageable pageable);
 
     /** US-1.02: case-insensitive search across title, composer and arranger within one band. */
     List<Composition> search(Long bandId, String term);
