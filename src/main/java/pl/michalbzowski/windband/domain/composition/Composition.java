@@ -1,5 +1,6 @@
 package pl.michalbzowski.windband.domain.composition;
 
+import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
@@ -10,6 +11,7 @@ import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
+import jakarta.persistence.OneToMany;
 import jakarta.persistence.PrePersist;
 import jakarta.persistence.PreUpdate;
 import jakarta.persistence.Table;
@@ -67,6 +69,14 @@ public class Composition {
 
     @Column(nullable = false)
     private Instant updatedAt;
+
+    /**
+     * Instrument part mappings for this composition (US-1.3). Lazy + cascade-all +
+     * orphan-removal: the aggregate root owns its parts' lifecycle, and deletion of
+     * the composition removes every part row (see V36 FK ON DELETE CASCADE as net).
+     */
+    @OneToMany(mappedBy = "composition", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
+    private java.util.List<CompositionInstrument> parts = new java.util.ArrayList<>();
 
     /**
      * Package-private constructor — plain field assignment only, no validation:
