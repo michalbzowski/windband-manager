@@ -1,0 +1,11 @@
+<!DOCTYPE html>
+<html lang="pl" xmlns:th="http://www.thymeleaf.org">
+<body>
+<span th:fragment="status(status)"
+      class="badge"
+      th:classappend="${status.name() == 'READY' ? ' success' : (status.name() == 'ARCHIVED' ? ' secondary' : ' info')}"
+      th:text="${status.name() == 'READY' ? 'Gotowy' : (status.name() == 'ARCHIVED' ? 'Zarchiwizowany' : 'Szkic')}">
+    Szkic
+</span>
+</body>
+</html>

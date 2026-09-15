@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="pl" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/layout :: head(${composition.title})}"></head>
+<body class="dashboard-page">
+<div th:replace="~{fragments/layout :: dialogs}"></div>
+
+<main class="container" id="content">
+    <section class="dashboard-upcoming">
+        <header th:replace="~{fragments/layout :: dashboard-header}"></header>
+
+        <div id="compositions-content">
+            <nav th:replace="~{fragments/page-header :: page-header(
+                    @{/bands/{bandId}/compositions(bandId=${bandId})},
+                    'Szczegóły utworu', null, null, null, null,
+                    null, null, null, null)}"></nav>
+
+            <article id="composition-detail">
+                <header>
+                    <strong th:text="${composition.title}">Tytuł utworu</strong>
+                    <span th:replace="~{compositions/fragments/status-badge :: status(${composition.status})}"></span>
+                </header>
+
+                <dl>
+                    <dt>Kompozytor</dt>
+                    <dd th:text="${composition.composer != null and !composition.composer.isBlank() ? composition.composer : '—'}">—</dd>
+                    <dt>Aranżer</dt>
+                    <dd th:text="${composition.arranger != null and !composition.arranger.isBlank() ? composition.arranger : '—'}">—</dd>
+                    <dt>Opis</dt>
+                    <dd th:text="${composition.description != null and !composition.description.isBlank() ? composition.description : 'Brak opisu'}">Brak opisu</dd>
+                </dl>
+            </article>
+        </div>
+    </section>
+</main>
+
+<footer th:replace="~{fragments/layout :: footer}"></footer>
+<div th:insert="~{fragments/layout :: toast-container}"></div>
+<div th:insert="~{fragments/layout :: footer-scripts}"></div>
+<div th:insert="~{fragments/layout :: dashboard-header-morph}"></div>
+</body>
+</html>

@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="pl" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/layout :: head('Biblioteka utworów')}"></head>
+<body class="dashboard-page">
+<div th:replace="~{fragments/layout :: dialogs}"></div>
+
+<main class="container" id="content">
+    <section class="dashboard-upcoming">
+        <header th:replace="~{fragments/layout :: dashboard-header}"></header>
+
+        <div id="compositions-content">
+            <nav th:replace="~{fragments/page-header :: page-header-b(
+                    null, 'Biblioteka utworów', 'Dodaj utwór',
+                    @{/bands/{bandId}/compositions/new(bandId=${bandId})},
+                    'plus', 'add-composition-btn', '#compositions-content',
+                    null, null, null, null)}"></nav>
+
+            <article th:if="${#lists.isEmpty(compositions)}">
+                <p>Biblioteka utworów jest pusta.</p>
+                <small>Dodaj pierwszy utwór, aby rozpocząć katalogowanie nut.</small>
+            </article>
+
+            <div th:unless="${#lists.isEmpty(compositions)}">
+                <table role="grid">
+                    <thead>
+                    <tr>
+                        <th>Tytuł</th>
+                        <th>Kompozytor</th>
+                        <th>Aranżer</th>
+                        <th>Status</th>
+                        <th>Akcje</th>
+                    </tr>
+                    </thead>
+                    <tbody>
+                    <tr th:each="composition : ${compositions}"
+                        th:id="'composition-' + ${composition.id}">
+                        <td><strong th:text="${composition.title}">Tytuł utworu</strong></td>
+                        <td th:text="${composition.composer != null and !composition.composer.isBlank() ? composition.composer : '—'}">—</td>
+                        <td th:text="${composition.arranger != null and !composition.arranger.isBlank() ? composition.arranger : '—'}">—</td>
+                        <td>
+                            <span th:replace="~{compositions/fragments/status-badge :: status(${composition.status})}"></span>
+                        </td>
+                        <td>
+                            <a role="button" class="outline small"
+                               th:href="@{/bands/{bandId}/compositions/{id}(bandId=${bandId},id=${composition.id})}">
+                                Szczegóły
+                            </a>
+                        </td>
+                    </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </section>
+</main>
+
+<footer th:replace="~{fragments/layout :: footer}"></footer>
+<div th:insert="~{fragments/layout :: toast-container}"></div>
+<div th:insert="~{fragments/layout :: footer-scripts}"></div>
+<div th:insert="~{fragments/layout :: dashboard-header-morph}"></div>
+</body>
+</html>
