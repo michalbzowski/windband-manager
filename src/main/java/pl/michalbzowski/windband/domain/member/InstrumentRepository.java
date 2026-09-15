@@ -19,6 +19,12 @@ public interface InstrumentRepository {
 
     Optional<Instrument> findByName(String name);
 
+    /** US-1.2: all instruments that have the given instrument as their alias target. */
+    List<Instrument> findByAliasOf(Instrument canonical);
+
+    /** US-1.2: all root (non-alias) instruments of a band, ordered by sort priority then name. */
+    List<Instrument> findRootInstrumentsByBandId(Long bandId);
+
     Optional<Instrument> findByNameAndBandId(String name, Long bandId);
 
     Optional<Instrument> findByIdAndBandId(Long id, Long bandId);

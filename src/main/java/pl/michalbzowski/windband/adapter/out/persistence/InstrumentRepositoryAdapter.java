@@ -55,6 +55,22 @@ public class InstrumentRepositoryAdapter implements InstrumentRepository {
     }
 
     @Override
+    public List<Instrument> findByAliasOf(Instrument canonical) {
+        if (canonical == null) {
+            return List.of();
+        }
+        return springDataRepo.findByAliasOf_Id(canonical.getId());
+    }
+
+    @Override
+    public List<Instrument> findRootInstrumentsByBandId(Long bandId) {
+        if (bandId == null) {
+            return List.of();
+        }
+        return springDataRepo.findRootInstrumentsByBandId(bandId);
+    }
+
+    @Override
     public Optional<Instrument> findByIdAndBandId(Long id, Long bandId) {
         return springDataRepo.findByIdAndBandId(id, bandId);
     }
