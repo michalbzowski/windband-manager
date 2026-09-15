@@ -28,16 +28,17 @@ import java.time.Instant;
  * <p>Invariants (enforced by the static factory + the SQL schema):
  * <ul>
  *   <li>Composition and instrument are both required — no orphan part mappings.</li>
- *   <li>One row per (composition, lowercase normalized instrument role) — the SQL unique
- *       index {@code uq_composition_instruments_band_role} enforces this at the DB level;
- *       "Flet 1" and "FLET 1" are the same row, "Flet 1" + "Flet 2" are two rows.</li>
- *   <li>{@code pageFrom <= pageTo} — a single-page part is legal (from == to); a reverse
- *       range is rejected by the factory before it escapes (SpotBugs CT_CONSTRUCTOR_THROW).</li>
- *   <li>{@code confidenceScore} is bounded to [0.0, 1.0] — a contract the US-4.x AI gate
- *       relies on for its "needs human review" threshold (confidence &lt; 0.7 ⇒ mustVerify).</li>
- *   <li>The (composition, instrument) pair must agree on band — the factory checks this so
- *       cross-band writes are never persisted and any caller (service, adapter, test) is
- *       protected from a future FK-scheme that would otherwise accept the write.</li>
+ *   <li>One row per (composition, lowercase-normalized instrument role). The SQL unique index
+ *       {@code uq_composition_instruments_role} in {@code V36__create_composition_instrument.sql} enforces
+ *       this at the DB level; "Flet 1" and "FLET 1" are the same row, "Flet 1" + "Flet 2"
+ *       are two rows.</li>
+ *   <li>{@code pageFrom <= pageTo} — a single-page part is legal (from == to); a reverse range
+ *       is rejected by the factory before it escapes (SpotBugs CT_CONSTRUCTOR_THROW).</li>
+ *   <li>{@code confidenceScore} is bounded to [0.0, 1.0] — a contract the US-4.x AI gate relies on for
+ *       its "needs human review" threshold (confidence &lt; 0.7 ⇒ mustVerify).</li>
+ *   <li>The (composition, instrument) pair must agree on band — the factory checks this so cross-band
+ *       writes are never persisted and any caller (service, adapter, test) is protected from a future
+ *       FK-scheme or JDBC path that would otherwise accept the write.</li>
  * </ul>
  *
  * <p>{@code verified_by/verified_at} form an audit pair: once a row is marked verified,
@@ -136,9 +137,20 @@ public class CompositionInstrument {
         verifyConfidence(confidenceScore);
 
         if (!bandsAgree(composition, instrument)) {
-            throw new IllegalArgumentException(
-                    "band mismatch: composition band=" + safeBandId(composition)
-                            + " differs from instrument band=" + safeBandId(instrument));
+            // Both sides expose a resolvable band — now verify they agree. A mismatch is a
+            // caller bug (a cross-band write would otherwise produce an orphan row).
+            Long cb = composition.getBand() == null ? null : composition.getBand().getId();
+            Long ib = instrument.getBand()  == null ? null : instrument.getBand().getId();
+            if (cb == null || ib == null) {
+                // One side cannot resolve its band — refuse to persist the cross-band write.
+                throw new IllegalArgumentException(
+                        "composition and instrument must share a band; one of them has no band_id resolvable");
+            }
+            if (!cb.equals(ib)) {
+                throw new IllegalArgumentException(
+                        "band mismatch: composition band=" + cb
+                                + " differs from instrument band=" + ib);
+            }
         }
 
         return new CompositionInstrument(
@@ -166,37 +178,19 @@ public class CompositionInstrument {
     }
 
     private static boolean bandsAgree(Composition c, Instrument i) {
-        // Lazy: both sides go through the same JPA session; a single SELECT on the
-        // composition.band row gives us id-based equality without forcing eager loads in
-        // the query service (which would otherwise NPE on a detached instrument).
-        return safeBandId(c) == null || safeBandId(i) == null || safeBandId(c).equals(safeBandId(i));
+        // Strict two-sided check: both sides must expose a resolvable band id AND they must be
+        // equal. We deliberately DO NOT treat "null == null" as agreement — if either side cannot
+        // resolve its band (e.g. detached lazy proxy), the caller is expected to handle it before
+        // reaching this point (the factory throws IAE below in that case). Keeping this one-sided
+        // guard means cross-band writes always fail fast at the factory, never reaching the DB.
+        Long cb = c.getBand() == null ? null : c.getBand().getId();
+        Long ib = i.getBand()  == null ? null : i.getBand().getId();
+        return cb != null && cb.equals(ib);
     }
 
-    private static Long safeBandId(Composition c) {
-        return bandIdOrNull(c);
-    }
-
-    private static Long safeBandId(Instrument i) {
-        return bandIdOrNull(i);
-    }
-
-    private static Long bandIdOrNull(Composition c) {
-        try {
-            pl.michalbzowski.windband.domain.band.Band b = c.getBand();
-            return (b == null) ? null : b.getId();
-        } catch (RuntimeException ignored) {
-            return null;
-        }
-    }
-
-    private static Long bandIdOrNull(Instrument i) {
-        try {
-            pl.michalbzowski.windband.domain.band.Band b = i.getBand();
-            return (b == null) ? null : b.getId();
-        } catch (RuntimeException ignored) {
-            return null;
-        }
-    }
+    /* BandsAgree + bandIdStrict intentionally NOT exposed as a public helper; callers should
+       rely on the factory, which is the sole write-path (see US-3.x command layer). Keep this
+       file minimal — the contract lives in {@link #forComposition}. */
 
     private static void verifyRange(int pageFrom, int pageTo) {
         if (pageFrom < 1) throw new IllegalArgumentException("pageFrom must be >= 1");

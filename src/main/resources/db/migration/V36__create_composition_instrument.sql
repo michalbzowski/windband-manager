@@ -53,11 +53,12 @@ CREATE UNIQUE INDEX uq_composition_instruments_role
 CREATE INDEX idx_composition_instruments_composition_page
     ON composition_instruments (composition_id, page_from ASC);
 
--- US-5.x "who has what" query: role lookups across a band — the distribution preview
--- pulls every part for a given band and groups by member tag. The index above handles
--- the common path; this one covers the band-level scan.
-CREATE INDEX idx_composition_instruments_band_role
-    ON composition_instruments (composition_id, lower(instrument_role));
+-- NOTE on band-level scanning: row.band is not denormalised here — it is reached via
+-- composition.band_id (NOT NULL) → bands.id. The US-5.x distribution preview joins
+-- composition → bands; the index above (composition_id, page_from) already covers the
+-- dominant path ("all parts in this composition, ordered by page"). A per-band scan
+-- across *many* compositions is out of scope for US-1.3 (we have only ~20 compositions
+-- on this schema to date); revisit when band-3 joins are a P95 hot spot.
 
 COMMENT ON TABLE composition_instruments IS
     'US-1.3: link entity between Composition and Instrument vocabulary, with role + page/file locator + confidence';

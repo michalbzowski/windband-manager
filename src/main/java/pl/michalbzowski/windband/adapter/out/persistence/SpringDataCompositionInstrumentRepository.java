@@ -1,5 +1,7 @@
 package pl.michalbzowski.windband.adapter.out.persistence;
 
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
@@ -21,10 +23,12 @@ import java.util.Optional;
  * it was part of the same fetch graph). The same discipline as
  * {@link SpringDataCompositionRepository}.
  *
- * <p>The unique index on {@code (composition_id, lower(instrument_role))} matches the SQL
- * constraint in V36 (uq_composition_instruments_role) — casefolded collisions are rejected
- * by the DB, which is what {@code CompositionInstrumentIT.unique_constraint_rejects_casefolded_duplicate}
- * pins down with a real DB failure.
+ * <p>The unique index on {@code (composition_id, lower(instrument_role))} mirrors the SQL
+ * constraint in
+ * {@code V36__create_composition_instrument.sql#uq_composition_instruments_role} — casefolded
+ * collisions are rejected by the DB on a real Postgres. The H2 test profile does NOT apply
+ * this index (it generates its own DDL from the entity model); see the NOTE at the top of
+ * {@code CompositionInstrumentIT}.
  */
 public interface SpringDataCompositionInstrumentRepository extends JpaRepository<CompositionInstrument, Long> {
 
@@ -40,8 +44,8 @@ public interface SpringDataCompositionInstrumentRepository extends JpaRepository
             JOIN FETCH ci.composition JOIN FETCH ci.instrument
             WHERE ci.composition = :composition
             ORDER BY ci.pageFrom ASC, ci.id ASC""")
-    org.springframework.data.domain.Page<CompositionInstrument> findAllByComposition(
-            @Param("composition") Composition composition, org.springframework.data.domain.Pageable pageable);
+    Page<CompositionInstrument> findAllByComposition(
+            @Param("composition") Composition composition, Pageable pageable);
 
     @Query("""
             SELECT ci FROM CompositionInstrument ci
