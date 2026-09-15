@@ -3,8 +3,11 @@ package pl.michalbzowski.windband.adapter.out.persistence;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import pl.michalbzowski.windband.domain.band.Band;
 import pl.michalbzowski.windband.domain.composition.Composition;
+import pl.michalbzowski.windband.domain.composition.CompositionStatus;
 
 import java.util.List;
 import java.util.Optional;
@@ -23,6 +26,14 @@ import java.util.Optional;
 public interface SpringDataCompositionRepository extends JpaRepository<Composition, Long> {
 
     List<Composition> findAllByBandOrderByUpdatedAtDesc(Band band);
+
+    /** Paginated version with JOIN FETCH to keep band association initialized. */
+    @Query("SELECT c FROM Composition c JOIN FETCH c.band WHERE c.band = :band ORDER BY c.updatedAt DESC")
+    Page<Composition> findAllByBand(@Param("band") Band band, Pageable pageable);
+
+    /** Paginated version filtered by status with JOIN FETCH. */
+    @Query("SELECT c FROM Composition c JOIN FETCH c.band WHERE c.band = :band AND c.status = :status ORDER BY c.updatedAt DESC")
+    Page<Composition> findAllByBandAndStatus(@Param("band") Band band, @Param("status") CompositionStatus status, Pageable pageable);
 
     /**
      * US-1.02: band-scoped, case-insensitive match on title, composer or arranger.

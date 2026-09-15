@@ -26,7 +26,8 @@
                     <dt>Aranżer</dt>
                     <dd th:text="${composition.arranger != null and !composition.arranger.isBlank() ? composition.arranger : '—'}">—</dd>
                     <dt>Opis</dt>
-                    <dd th:text="${composition.description != null and !composition.description.isBlank() ? composition.description : 'Brak opisu'}">Brak opisu</dd>
+                    <dd class="composition-description"
+                        th:text="${composition.description != null and !composition.description.isBlank() ? composition.description : 'Brak opisu'}">Brak opisu</dd>
                 </dl>
             </article>
         </div>

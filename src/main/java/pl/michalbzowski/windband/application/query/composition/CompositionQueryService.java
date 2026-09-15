@@ -1,6 +1,8 @@
 package pl.michalbzowski.windband.application.query.composition;
 
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import pl.michalbzowski.windband.domain.band.Band;
@@ -59,6 +61,17 @@ public class CompositionQueryService {
         return repository.findAllByBand(band).stream()
                 .filter(c -> c.getStatus() == statusFilter)
                 .toList();
+    }
+
+    /**
+     * Paginated version of {@link #listByBand(Long, CompositionStatus)}.
+     */
+    public Page<Composition> listByBand(Long bandId, CompositionStatus statusFilter, Pageable pageable) {
+        Band band = requireBand(bandId);
+        if (statusFilter == null) {
+            return repository.findAllByBand(band, pageable);
+        }
+        return repository.findAllByBandAndStatus(band, statusFilter, pageable);
     }
 
     /**

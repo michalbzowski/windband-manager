@@ -2696,3 +2696,59 @@ body.filter-pinned #uber-filter-container select:focus {
     background-color: color-mix(in srgb, var(--pico-primary) 90%, black);
     border-color: color-mix(in srgb, var(--pico-primary) 90%, black);
 }
+
+/* ============================================================
+   COMPOSITIONS — Score library styles
+   ============================================================ */
+.composition-description {
+    white-space: pre-wrap;
+    word-wrap: break-word;
+    max-height: 300px;
+    overflow-y: auto;
+    font-family: inherit;
+    line-height: 1.6;
+}
+
+/* Pagination for compositions list */
+.pagination {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    margin-top: 1.5rem;
+    flex-wrap: wrap;
+}
+
+.pagination a,
+.pagination span {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 2.5rem;
+    height: 2.5rem;
+    padding: 0 0.75rem;
+    border-radius: 6px;
+    text-decoration: none;
+    color: var(--pico-color);
+    background: var(--pico-card-background-color);
+    border: 1px solid var(--pico-muted-border-color);
+    transition: background 0.15s, border-color 0.15s, color 0.15s;
+}
+
+.pagination a:hover {
+    background: var(--pico-primary-background);
+    border-color: var(--pico-primary-border);
+    color: var(--pico-primary);
+}
+
+.pagination .current {
+    background: var(--pico-primary);
+    border-color: var(--pico-primary);
+    color: var(--pico-primary-inverse);
+    font-weight: 600;
+}
+
+.pagination .disabled {
+    opacity: 0.5;
+    pointer-events: none;
+}
