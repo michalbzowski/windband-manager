@@ -44,6 +44,20 @@ public class UploadValidator {
         }
     }
 
+    /**
+     * Throws {@link UploadRejectedException} (413) if a single ZIP entry exceeds the
+     * non-ZIP per-file cap. Re-applied at expansion time (US-2.3) because the archive-level
+     * ZIP cap checked at upload does not bound the size of an individual extracted entry —
+     * one 190 MB entry inside a 200 MB ZIP would pass upload but spike RAM on extraction.
+     */
+    public void requireAllowedEntrySize(long contentLength) {
+        if (contentLength > config.maxFileSizeBytesOr()) {
+            throw new UploadRejectedException(413,
+                    "Pozycja archiwum przekracza dozwolony rozmiar pojedynczego pliku ("
+                            + (config.maxFileSizeBytesOr() / 1024 / 1024) + " MB).");
+        }
+    }
+
     /** Throws {@link UploadRejectedException} (422) if any ZIP entry path escapes the target directory. */
     public void requireZipContentSafe(byte[] zipBytes) {
         List<String> unsafe = unsafeEntries(zipBytes);

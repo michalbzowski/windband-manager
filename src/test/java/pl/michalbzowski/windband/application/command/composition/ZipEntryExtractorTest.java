@@ -134,4 +134,43 @@ class ZipEntryExtractorTest {
         assertThat(result.dtos().get(0).mimeType()).isEqualTo("application/octet-stream");
         assertThat(result.dtos().get(0).isPdf()).isFalse();
     }
+
+    @Test
+    @DisplayName("an entry larger than the per-file cap is rejected with 413 even if the archive passed upload")
+    void extract_entryExceedingPerFileCap_rejected() {
+        // Default per-file cap is 50 MB; a 60 MB entry must be refused at extraction time.
+        byte[] payload = new byte[60 * 1024 * 1024];
+        try (var baos = new java.io.ByteArrayOutputStream();
+             var zos = new java.util.zip.ZipOutputStream(baos)) {
+            zos.putNextEntry(new java.util.zip.ZipEntry("huge.pdf"));
+            zos.write(payload);
+            zos.closeEntry();
+            zos.finish();
+
+            assertThatThrownBy(() -> extractor.extract(baos.toByteArray(), validator))
+                    .isInstanceOf(UploadValidator.UploadRejectedException.class)
+                    .hasFieldOrPropertyWithValue("httpStatus", 413);
+        } catch (java.io.IOException e) {
+            throw new IllegalStateException(e);
+        }
+    }
+
+    @Test
+    @DisplayName("an entry at exactly the per-file cap (50 MB) is accepted — cap is inclusive")
+    void extract_entryAtPerFileCap_accepted() {
+        byte[] payload = new byte[50 * 1024 * 1024];
+        try (var baos = new java.io.ByteArrayOutputStream();
+             var zos = new java.util.zip.ZipOutputStream(baos)) {
+            zos.putNextEntry(new java.util.zip.ZipEntry("edge.pdf"));
+            zos.write(payload);
+            zos.closeEntry();
+            zos.finish();
+
+            ZipEntryExtractor.ExtractionResult result = extractor.extract(baos.toByteArray(), validator);
+            assertThat(result.dtos()).hasSize(1);
+            assertThat(result.bytes().get(0).sizeBytes()).isEqualTo(50L * 1024 * 1024);
+        } catch (java.io.IOException e) {
+            throw new IllegalStateException(e);
+        }
+    }
 }

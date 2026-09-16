@@ -120,6 +120,8 @@ class ScoreFileExpandZipIT extends BaseIntegrationTest {
         var uploadReq = new ScoreFileUploadRequest("parts.zip", "application/zip", zip);
         var parentDto = service.upload(uploadReq, compositionId, bandId);
 
+        // FIRST expand call must happen before we assert on child rows.
+        service.expandZip(parentDto.fileId(), compositionId, bandId);
         int countAfterFirst = scoreFileRepository.findAllByComposition(compositionEntity).size();
         assertThat(countAfterFirst).isEqualTo(3); // 1 parent + 2 children
 

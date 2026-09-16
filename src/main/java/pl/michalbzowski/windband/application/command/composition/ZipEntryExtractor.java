@@ -51,6 +51,9 @@ public class ZipEntryExtractor {
             while (entry != null) {
                 if (!entry.isDirectory()) {
                     byte[] content = zis.readAllBytes();
+                    // Re-apply the per-file cap at extraction time — the archive-level ZIP
+                    // cap checked at upload does not bound a single extracted entry.
+                    validator.requireAllowedEntrySize(content.length);
                     String name = entry.getName();
                     String mime = inferMime(name);
 
