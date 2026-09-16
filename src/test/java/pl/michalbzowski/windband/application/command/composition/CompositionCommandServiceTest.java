@@ -1,9 +1,7 @@
 package pl.michalbzowski.windband.application.command.composition;
 
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.jdbc.core.JdbcTemplate;
 import pl.michalbzowski.windband.BaseIntegrationTest;
 import pl.michalbzowski.windband.domain.band.BandRepository;
 
@@ -42,14 +40,11 @@ class CompositionCommandServiceTest extends BaseIntegrationTest {
     @Autowired
     private BandRepository bandRepository;
 
-    @Autowired
-    private JdbcTemplate jdbcTemplate;
-
-    @BeforeEach
-    void cleanCompositions() {
-        // Only compositions are feature-scoped here; keep seed band intact.
-        jdbcTemplate.execute("DELETE FROM compositions");
-    }
+    // Class-level cleanup removed: the class is @Transactional, so every test's
+    // composition (and its score_files children) roll back. The old hard
+    // "DELETE FROM compositions" collided with V35's FK from non-transactional
+    // test data committed earlier in the same surefire JVM (score_files → 31),
+    // which is why this suite went red on CI only after US-2.x upload rows existed.
 
     // ---- create ----------------------------------------------------------
 
