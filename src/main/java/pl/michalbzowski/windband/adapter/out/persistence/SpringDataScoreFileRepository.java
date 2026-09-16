@@ -28,4 +28,6 @@ public interface SpringDataScoreFileRepository extends JpaRepository<ScoreFile, 
     Optional<ScoreFile> findLatestByComposition(@Param("composition") Composition composition);
 
     boolean existsByCompositionId(Long compositionId);
+
+    List<ScoreFile> findByParentFileId(Long parentFileId);
 }

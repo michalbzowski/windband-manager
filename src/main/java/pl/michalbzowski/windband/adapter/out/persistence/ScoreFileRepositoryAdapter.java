@@ -52,6 +52,11 @@ public class ScoreFileRepositoryAdapter implements ScoreFileRepository {
     }
 
     @Override
+    public List<ScoreFile> findByParentFileId(Long parentFileId) {
+        return springData.findByParentFileId(parentFileId);
+    }
+
+    @Override
     public void delete(ScoreFile scoreFile) {
         springData.delete(scoreFile);
     }
