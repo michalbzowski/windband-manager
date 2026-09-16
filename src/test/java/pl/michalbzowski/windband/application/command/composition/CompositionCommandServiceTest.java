@@ -1,7 +1,9 @@
 package pl.michalbzowski.windband.application.command.composition;
 
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.jdbc.core.JdbcTemplate;
 import pl.michalbzowski.windband.BaseIntegrationTest;
 import pl.michalbzowski.windband.domain.band.BandRepository;
 
@@ -40,11 +42,26 @@ class CompositionCommandServiceTest extends BaseIntegrationTest {
     @Autowired
     private BandRepository bandRepository;
 
-    // Class-level cleanup removed: the class is @Transactional, so every test's
-    // composition (and its score_files children) roll back. The old hard
-    // "DELETE FROM compositions" collided with V35's FK from non-transactional
-    // test data committed earlier in the same surefire JVM (score_files → 31),
-    // which is why this suite went red on CI only after US-2.x upload rows existed.
+    @Autowired
+    private JdbcTemplate jdbcTemplate;
+
+    /**
+     * The Testcontainers PostgreSQL is shared across test classes in the same
+     * surefire JVM. Several earlier classes ({@code CompositionInstrumentIT},
+     * {@code ScoreFileCommandServiceIT}, UI tests) are intentionally
+     * non-transactional — they COMMIT compositions/score_files that survive
+     * into this class's context. Our count-based assertions (e.g.
+     * "exactly one in band") would otherwise see those committed rows and
+     * fail. Clearing children first (V35 FK forbids a hard parent delete
+     * while score_files references the composition) then clearing parents
+     * restores a clean state for each test. This class is itself @Transactional,
+     * so its own rows still roll back — the cleanup only handles foreign data.
+     */
+    @BeforeEach
+    void cleanCompositions() {
+        jdbcTemplate.execute("DELETE FROM score_files");
+        jdbcTemplate.execute("DELETE FROM compositions");
+    }
 
     // ---- create ----------------------------------------------------------
 
