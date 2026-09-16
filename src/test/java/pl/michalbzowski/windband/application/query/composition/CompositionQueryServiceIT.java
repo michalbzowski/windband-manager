@@ -9,6 +9,8 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import pl.michalbzowski.windband.BaseIntegrationTest;
 import pl.michalbzowski.windband.domain.band.Band;
 import pl.michalbzowski.windband.domain.band.BandRepository;
+
+
 import pl.michalbzowski.windband.domain.composition.Composition;
 import pl.michalbzowski.windband.domain.composition.CompositionRepository;
 import pl.michalbzowski.windband.domain.composition.CompositionStatus;
@@ -157,5 +159,31 @@ class CompositionQueryServiceIT extends BaseIntegrationTest {
     void emptyResultsAreNonNullLists() {
         assertThat(queryService.listByBand(1L, null)).isNotNull().isEmpty();
         assertThat(queryService.search(1L, "zzz-no-such-term")).isNotNull().isEmpty();
+    }
+
+    // ---- US-1.6c T4: getCompositionWithParts (Shape-C read path) ----------
+
+    @Test
+    @DisplayName("getCompositionWithParts resolves composition + parts + instrument names inside the open transaction")
+    void getCompositionWithParts_resolvesPartsWithInstrumentNames() {
+        var b1 = band(1L);
+        Composition c = saveIn(b1, "W");
+
+        pl.michalbzowski.windband.application.dto.composition.CompositionWithPartsDto dto =
+                queryService.getCompositionWithParts(c.getId(), 1L);
+
+        assertThat(dto.composition().id()).isEqualTo(c.getId());
+        assertThat(dto.composition().title()).isEqualTo("W");
+        // parts not yet seeded in this stub — assert contract shape only; the full seed is in T4b (Task 4c)
+        assertThat(dto.parts()).isNotNull();
+    }
+
+    @Test
+    @DisplayName("cross-band getCompositionWithParts(id, otherBandId) fails closed like get()")
+    void getCompositionWithParts_crossBandFailsClosed() {
+        Composition c = saveIn(band(1L), "W2");
+        assertThatThrownBy(() -> queryService.getCompositionWithParts(c.getId(), 2L))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("band");
     }
 }

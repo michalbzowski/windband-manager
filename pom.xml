@@ -25,6 +25,8 @@
         <docker-java.version>3.5.3</docker-java.version>
         <springdoc.version>2.6.0</springdoc.version>
         <jasperreports.version>7.0.5</jasperreports.version>
+        <!-- US-2.2: page-count extraction on upload (Apache PDFBox). -->
+        <pdfbox.version>3.0.7</pdfbox.version>
         <!-- Surefire: UI-suite dominated build runs sequentially (each ChromeDriver is ~300MB;
              true class-parallelism OOMs 16GB boxes). Override with -Dsurefire.forkCount=N if a
              machine has the RAM to spare. -->
@@ -196,6 +198,13 @@
             <groupId>net.sf.jasperreports</groupId>
             <artifactId>jasperreports-pdf</artifactId>
             <version>${jasperreports.version}</version>
+        </dependency>
+        <!-- US-2.2: extract the PDF page count on upload (Epic 7, "Biblioteka utworów").
+             Only the `pdfbox` artifact is needed — `fontbox` and friends are transitive deps. -->
+        <dependency>
+            <groupId>org.apache.pdfbox</groupId>
+            <artifactId>pdfbox</artifactId>
+            <version>${pdfbox.version}</version>
         </dependency>
         <dependency>
             <groupId>net.sf.jasperreports</groupId>

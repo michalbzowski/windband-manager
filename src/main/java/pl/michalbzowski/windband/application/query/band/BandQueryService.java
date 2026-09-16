@@ -22,4 +22,15 @@ public class BandQueryService {
         return bandRepository.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("Band not found: " + id));
     }
+
+    /**
+     * Alias for the CQRS services — "this band must exist, a missing row is a bug".
+     * Semantically identical to {@link #getBandById(Long)}; the distinct name exists so
+     * acceptance criteria and code-review checklists can point at one identifier instead
+     * of the repository call that used to live in each service's private helper.
+     */
+    public Band getRequiredBand(Long id) {
+        return bandRepository.findById(id)
+                .orElseThrow(() -> new IllegalArgumentException("Band not found: " + id));
+    }
 }

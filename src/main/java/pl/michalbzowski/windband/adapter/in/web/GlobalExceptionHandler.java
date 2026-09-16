@@ -63,6 +63,12 @@ public class GlobalExceptionHandler {
                 .body(errorBody(ex.getMessage()));
     }
 
+    @ExceptionHandler(pl.michalbzowski.windband.application.command.composition.UploadValidator.UploadRejectedException.class)
+    public ResponseEntity<Map<String, Object>> handleUploadRejected(
+            pl.michalbzowski.windband.application.command.composition.UploadValidator.UploadRejectedException ex) {
+        return ResponseEntity.status(ex.getHttpStatus()).body(errorBody(ex.getMessage()));
+    }
+
     @ExceptionHandler(Exception.class)
     public ResponseEntity<Map<String, Object>> handleGeneral(Exception ex) {
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)

@@ -6,6 +6,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.jdbc.core.JdbcTemplate;
 import pl.michalbzowski.windband.BaseIntegrationTest;
 import pl.michalbzowski.windband.domain.band.BandRepository;
+
 import pl.michalbzowski.windband.domain.composition.Composition;
 import pl.michalbzowski.windband.domain.composition.CompositionRepository;
 import pl.michalbzowski.windband.domain.composition.CompositionStatus;
@@ -44,9 +45,21 @@ class CompositionCommandServiceTest extends BaseIntegrationTest {
     @Autowired
     private JdbcTemplate jdbcTemplate;
 
+    /**
+     * The Testcontainers PostgreSQL is shared across test classes in the same
+     * surefire JVM. Several earlier classes ({@code CompositionInstrumentIT},
+     * {@code ScoreFileCommandServiceIT}, UI tests) are intentionally
+     * non-transactional — they COMMIT compositions/score_files that survive
+     * into this class's context. Our count-based assertions (e.g.
+     * "exactly one in band") would otherwise see those committed rows and
+     * fail. Clearing children first (V35 FK forbids a hard parent delete
+     * while score_files references the composition) then clearing parents
+     * restores a clean state for each test. This class is itself @Transactional,
+     * so its own rows still roll back — the cleanup only handles foreign data.
+     */
     @BeforeEach
     void cleanCompositions() {
-        // Only compositions are feature-scoped here; keep seed band intact.
+        jdbcTemplate.execute("DELETE FROM score_files");
         jdbcTemplate.execute("DELETE FROM compositions");
     }
 
@@ -165,6 +178,25 @@ class CompositionCommandServiceTest extends BaseIntegrationTest {
         assertThatThrownBy(() -> commandService.update(seed.getId(), cmd, other.getId()))
                 .isInstanceOf(IllegalStateException.class)
                 .hasMessageContaining("band");
+    }
+
+    // ---- delete (US-1.6 AC) ----------------------------------------------
+
+    @Test
+    void delete_should_remove_row_and_fall_through_cross_band() {
+        Composition saved = commandService.create(title("Do usunięcia"), 1L);
+        Long savedId = saved.getId();
+
+        commandService.deleteComposition(savedId, 1L);
+
+        assertThat(repository.findByIdAndBandId(savedId, 1L)).isEmpty();
+
+        // cross-band — fail closed (409) and the row survives:
+        Composition mine = commandService.create(title("Tylko band-1"), 1L);
+        assertThatThrownBy(() -> commandService.deleteComposition(mine.getId(), 2L))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("band");
+        assertThat(repository.findByIdAndBandId(mine.getId(), 1L)).isPresent();
     }
 
     // ---- archive / restore ----------------------------------------------
