@@ -72,6 +72,10 @@ public class ScoreFile {
     @Column(name = "page_count")
     private Integer pageCount;
 
+    /** Parent ZIP row's id when this file was extracted from a ZIP (US-2.3). Null for standalone uploads. */
+    @Column(name = "parent_file_id")
+    private Long parentFileId;
+
     @Column(nullable = false, updatable = false)
     private Instant createdAt;
 
@@ -81,7 +85,7 @@ public class ScoreFile {
     // inside a protected constructor; keeping the body assignment-only avoids it.
     protected ScoreFile(Composition composition, String mimeType, Long sizeBytes,
                         String sha256, String storagePath, String originalName,
-                        Integer pageCount) {
+                        Integer pageCount, Long parentFileId) {
         this.composition = composition;
         this.mimeType = mimeType;
         this.sizeBytes = sizeBytes;
@@ -89,16 +93,28 @@ public class ScoreFile {
         this.storagePath = storagePath;
         this.originalName = originalName;
         this.pageCount = pageCount;
+        this.parentFileId = parentFileId;
     }
 
     /**
-     * Factory for a new score-file record. Validates the invariants before the
-     * instance escapes (safe because it is not yet published).
+     * Factory for a new standalone score-file record (no parent ZIP row).
+     * Validates the invariants before the instance escapes.
      */
     public static ScoreFile forComposition(Composition composition, String mimeType,
                                            String originalName, long sizeBytes,
                                            String sha256, String storagePath,
                                            Integer pageCount) {
+        return forComposition(composition, mimeType, originalName, sizeBytes, sha256, storagePath, pageCount, null);
+    }
+
+    /**
+     * Factory for a score-file record extracted from a ZIP (US-2.3).
+     * {@code parentFileId} links back to the parent ZIP's {@link ScoreFile} row.
+     */
+    public static ScoreFile forComposition(Composition composition, String mimeType,
+                                           String originalName, long sizeBytes,
+                                           String sha256, String storagePath,
+                                           Integer pageCount, Long parentFileId) {
         if (composition == null) {
             throw new NullPointerException("composition required");
         }
@@ -113,7 +129,8 @@ public class ScoreFile {
                 requireNotBlank(sha256, "sha256").toLowerCase(),
                 requireNotBlank(storagePath, "storagePath"),
                 originalName,
-                pageCount);
+                pageCount,
+                parentFileId);
     }
 
     private static void requireNonNegativePageCount(Integer pageCount) {

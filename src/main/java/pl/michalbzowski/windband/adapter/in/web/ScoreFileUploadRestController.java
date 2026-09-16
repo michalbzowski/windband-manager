@@ -11,6 +11,7 @@ import org.springframework.web.multipart.MultipartFile;
 import pl.michalbzowski.windband.application.command.composition.ScoreFileCommandService;
 import pl.michalbzowski.windband.application.command.composition.ScoreFileUploadRequest;
 import pl.michalbzowski.windband.application.dto.composition.ScoreFileDto;
+import pl.michalbzowski.windband.application.dto.composition.ZipEntryDto;
 
 /**
  * US-2.1 REST endpoint — multipart POST for one score file attached to a
@@ -52,5 +53,19 @@ public class ScoreFileUploadRestController {
         ScoreFileUploadRequest request = fileAssembler.toRequest(file);
         ScoreFileDto dto = commandService.upload(request, compositionId, bandId);
         return ResponseEntity.status(HttpStatus.CREATED).body(dto);
+    }
+
+    /**
+     * US-2.3 — expand a previously uploaded ZIP into individual score-file rows.
+     * Returns the list of extracted entries (file name, MIME, size) so the UI can
+     * display them for instrument mapping in Epic 4.
+     */
+    @PostMapping("/{fileId}/expand")
+    public ResponseEntity<java.util.List<ZipEntryDto>> expandZip(
+            @PathVariable("bandId") Long bandId,
+            @PathVariable("compositionId") Long compositionId,
+            @PathVariable("fileId") Long fileId) {
+        java.util.List<ZipEntryDto> entries = commandService.expandZip(fileId, compositionId, bandId);
+        return ResponseEntity.ok(entries);
     }
 }

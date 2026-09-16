@@ -25,5 +25,8 @@ public interface ScoreFileRepository {
 
     boolean existsByCompositionId(Long compositionId);
 
+    /** All extracted files that belong to a given parent ZIP row (US-2.3). */
+    List<ScoreFile> findByParentFileId(Long parentFileId);
+
     void delete(ScoreFile scoreFile);
 }
