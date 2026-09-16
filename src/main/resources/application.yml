@@ -2,6 +2,11 @@ spring:
   application:
     name: team-manager
 
+  servlet:
+    multipart:
+      max-file-size: 200MB
+      max-request-size: 250MB
+
   datasource:
     url: jdbc:postgresql://${DB_HOST}:${DB_PORT:5432}/${DB_NAME}
     username: ${DB_USER}
@@ -86,5 +91,13 @@ superset:
   password: ${SUPERSET_PASSWORD:admin}
 
 sendgrid:
-  api-key: ${SENDGRID_API_KEY:}
-  
+  api-key: ${SEND...EY:}
+
+# US-2.1 score-file upload pipeline (root + size caps). The root lives on the
+# host's mounted volume (/mnt/sda1/my_media) — see deployment docs for how to
+# persist it across Railway restarts.
+windband:
+  scores:
+    root-path: ${SCORES_ROOT_PATH:/srv/windband-scores}
+    max-file-size-bytes: 52428800        # 50 MB (PDF/JPEG/PNG)
+    max-zip-file-size-bytes: 209715200  # 200 MB (ZIP)

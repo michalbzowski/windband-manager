@@ -8,6 +8,11 @@ spring:
   application:
     name: windband-manager
 
+  servlet:
+    multipart:
+      max-file-size: 200MB
+      max-request-size: 250MB
+
   datasource:
     url: jdbc:h2:mem:windband;DB_CLOSE_DELAY=-1
     username: sa
@@ -88,3 +93,10 @@ keycloak:
     client:
       id: superset
       secret: supersetsecret
+
+# US-2.1 upload pipeline — tests write to a temp dir, never to /mnt/sda1.
+windband:
+  scores:
+    root-path: ${TMPDIR:/tmp}/windband-scores-test
+    max-file-size-bytes: 52428800
+    max-zip-file-size-bytes: 209715200

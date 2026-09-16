@@ -5,9 +5,14 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import pl.michalbzowski.windband.application.dto.composition.CompositionDto;
+import pl.michalbzowski.windband.application.dto.composition.CompositionInstrumentDto;
+import pl.michalbzowski.windband.application.dto.composition.CompositionWithPartsDto;
+import pl.michalbzowski.windband.application.query.band.BandQueryService;
 import pl.michalbzowski.windband.domain.band.Band;
-import pl.michalbzowski.windband.domain.band.BandRepository;
 import pl.michalbzowski.windband.domain.composition.Composition;
+import pl.michalbzowski.windband.domain.composition.CompositionInstrument;
+import pl.michalbzowski.windband.domain.composition.CompositionInstrumentRepository;
 import pl.michalbzowski.windband.domain.composition.CompositionRepository;
 import pl.michalbzowski.windband.domain.composition.CompositionStatus;
 
@@ -21,11 +26,19 @@ import java.util.List;
  * <p><b>Band isolation:</b> every read goes through the domain repository port's
  * band-scoped methods ({@code findAllByBand}, {@code findByIdAndBandId},
  * {@code search(bandId, term)}) — a caller from band B can never load, list
- * or find a row owned by band A: the pair simply does not resolve. The
- * underlying Spring Data adapter initialises the lazy {@code band} association
- * with an explicit {@code JOIN FETCH} (see {@code SpringDataCompositionRepository}),
- * so templates and services may safely call {@link Composition#getBand()} on
- * returned rows without a follow-up {@code LazyInitializationException}.
+ * or find a row owned by band A: the pair simply does not resolve. Band
+ * existence itself is enforced upstream via
+ * {@link BandQueryService#getRequiredBand(Long)} (US-1.6 AC "band isolation
+ * enforced via BandQueryService.getRequiredBand").
+ *
+ * <p><b>Lazy-init safety:</b> list/search paths return rows whose lazy
+ * {@code band} association the Spring Data adapter resolves with an explicit
+ * {@code JOIN FETCH} (see {@code SpringDataCompositionRepository}). The
+ * {@link CompositionInstrument} parts association is deliberately NOT fetched
+ * on those read paths — a row's parts are only resolved by
+ * {@link #getCompositionWithParts(Long, Long)}, which projects them into
+ * DTOs while the transaction is still open so Thymeleaf or an HTTP response
+ * never touches a detached lazy proxy (Shape-C pattern).
  *
  * <p><b>Error semantics</b> — single source of truth, consistent with the
  * command side (see {@code GlobalExceptionHandler} mapping):
@@ -44,7 +57,8 @@ import java.util.List;
 public class CompositionQueryService {
 
     private final CompositionRepository repository;
-    private final BandRepository bandRepository;
+    private final BandQueryService bandQueryService;
+    private final CompositionInstrumentRepository instrumentRepository;
 
     /**
      * All compositions of the given band, most-recently-updated first
@@ -54,7 +68,7 @@ public class CompositionQueryService {
      * @param statusFilter  optional filter; {@code null} means "all statuses"
      */
     public List<Composition> listByBand(Long bandId, CompositionStatus statusFilter) {
-        Band band = requireBand(bandId);
+        Band band = bandQueryService.getRequiredBand(bandId);
         if (statusFilter == null) {
             return repository.findAllByBand(band);
         }
@@ -67,7 +81,7 @@ public class CompositionQueryService {
      * Paginated version of {@link #listByBand(Long, CompositionStatus)}.
      */
     public Page<Composition> listByBand(Long bandId, CompositionStatus statusFilter, Pageable pageable) {
-        Band band = requireBand(bandId);
+        Band band = bandQueryService.getRequiredBand(bandId);
         if (statusFilter == null) {
             return repository.findAllByBand(band, pageable);
         }
@@ -80,7 +94,7 @@ public class CompositionQueryService {
      * class-level error semantics for the HTTP mapping of that outcome.
      */
     public Composition get(Long id, Long bandId) {
-        requireBand(bandId);
+        bandQueryService.getRequiredBand(bandId);
         return repository.findByIdAndBandId(id, bandId)
                 .orElseThrow(() -> new IllegalStateException(
                         "Composition " + id + " does not belong to band " + bandId));
@@ -94,17 +108,50 @@ public class CompositionQueryService {
      *         empty when nothing matches (or when the band owns no rows).
      */
     public List<Composition> search(Long bandId, String term) {
-        requireBand(bandId);
+        bandQueryService.getRequiredBand(bandId);
         if (term == null || term.isBlank()) {
             return List.of();
         }
         return repository.search(bandId, term);
     }
 
-    // ---- failure helpers --------------------------------------------------
-
-    private Band requireBand(Long bandId) {
-        return bandRepository.findById(bandId)
-                .orElseThrow(() -> new IllegalArgumentException("Band not found: " + bandId));
+    /**
+     * Full US-3.03 read target: the composition <b>and</b> every part-row of it,
+     * projected into immutable DTOs <i>inside this open read-only transaction</i>.
+     * Callers never see a lazy {@code instrument} association — resolving it here
+     * is what prevents the classic post-commit
+     * {@code LazyInitializationException} when Thymeleaf (or an HTTP response
+     * renderer) walks the parts list later.
+     *
+     * @return non-null; {@code getCompositionWithParts} fails closed (409 shape)
+     *         for unknown or foreign-band ids, exactly like {@link #get} does.
+     */
+    public CompositionWithPartsDto getCompositionWithParts(Long id, Long bandId) {
+        bandQueryService.getRequiredBand(bandId);
+        Composition composition = repository.findByIdAndBandId(id, bandId)
+                .orElseThrow(() -> new IllegalStateException(
+                        "Composition " + id + " does not belong to band " + bandId));
+        List<CompositionInstrument> parts = instrumentRepository.findAllByComposition(composition);
+        List<CompositionInstrumentDto> partDtos = parts.stream()
+                .map(p -> toPartDto(p, composition.getBand()))
+                .toList();
+        return new CompositionWithPartsDto(CompositionDto.from(composition), partDtos);
     }
+
+    private CompositionInstrumentDto toPartDto(CompositionInstrument p, Band band) {
+        String instrumentName = p.getInstrument() != null ? p.getInstrument().getName() : null;
+        return new CompositionInstrumentDto(
+                p.getId(),
+                p.getComposition() != null ? p.getComposition().getId() : null,
+                p.getInstrumentRole(),
+                instrumentName,
+                p.getPageFrom(),
+                p.getPageTo(),
+                p.getFileRef(),
+                p.getSource(),
+                p.getConfidenceScore(),
+                p.getVerifiedBy(),
+                p.getVerifiedAt());
+    }
+
 }

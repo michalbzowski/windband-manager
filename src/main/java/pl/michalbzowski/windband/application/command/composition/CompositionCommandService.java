@@ -3,8 +3,8 @@ package pl.michalbzowski.windband.application.command.composition;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import pl.michalbzowski.windband.application.query.band.BandQueryService;
 import pl.michalbzowski.windband.domain.band.Band;
-import pl.michalbzowski.windband.domain.band.BandRepository;
 import pl.michalbzowski.windband.domain.composition.Composition;
 import pl.michalbzowski.windband.domain.composition.CompositionRepository;
 
@@ -32,12 +32,12 @@ import pl.michalbzowski.windband.domain.composition.CompositionRepository;
 public class CompositionCommandService {
 
     private final CompositionRepository repository;
-    private final BandRepository bandRepository;
+    private final BandQueryService bandQueryService;
 
     // ---- create ----------------------------------------------------------
 
     public Composition create(CreateCompositionCommand cmd, Long bandId) {
-        Band band = requireBand(bandId);
+        Band band = bandQueryService.getRequiredBand(bandId);
         if (cmd.getTitle() == null || cmd.getTitle().trim().isEmpty()) {
             throw new IllegalArgumentException("Tytuł jest wymagany");
         }
@@ -71,12 +71,21 @@ public class CompositionCommandService {
         requireOwned(id, bandId).restore();
     }
 
-    // ---- failure helpers --------------------------------------------------
+    // ---- delete (US-1.6 AC) ----------------------------------------------
 
-    private Band requireBand(Long bandId) {
-        return bandRepository.findById(bandId)
-                .orElseThrow(() -> new IllegalArgumentException("Band not found: " + bandId));
+    /**
+     * Physically deletes the composition and — via V35/V38 FK {@code ON DELETE CASCADE}
+     * — every dependent {@code composition_instruments} / {@code score_files} row
+     * in the same statement set. A foreign-band id fails closed (409), never
+     * touching another band's row.
+     */
+    public void deleteComposition(Long id, Long bandId) {
+        Composition owned = requireOwned(id, bandId);
+        // Cascade net: parts rows are orphan-removed by JPA too; both paths apply.
+        repository.delete(owned);
     }
+
+    // ---- failure helpers --------------------------------------------------
 
     /**
      * A composition id that does not resolve in the calling band is always a
