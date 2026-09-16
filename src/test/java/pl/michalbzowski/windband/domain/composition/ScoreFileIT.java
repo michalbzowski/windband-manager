@@ -43,7 +43,7 @@ class ScoreFileIT extends BaseIntegrationTest {
 
         ScoreFile saved = scoreFileRepository.save(ScoreFile.forComposition(
                 composition, "application/pdf", "score-v1.pdf", 123456L,
-                "a".repeat(64), "/data/scores/1/score-v1.pdf"));
+                "a".repeat(64), "/data/scores/1/score-v1.pdf", null));
 
         assertThat(saved.getId()).isNotNull();
         assertThat(saved.getCreatedAt()).isNotNull();
@@ -69,9 +69,9 @@ class ScoreFileIT extends BaseIntegrationTest {
                 "Second", null, null, null, band(1L)));
 
         scoreFileRepository.save(ScoreFile.forComposition(
-                c1, "application/pdf", "one.pdf", 10L, "x".repeat(64), "/s/1/a"));
+                c1, "application/pdf", "one.pdf", 10L, "x".repeat(64), "/s/1/a", null));
         scoreFileRepository.save(ScoreFile.forComposition(
-                c2, "application/zip", "two.zip", 20L, "y".repeat(64), "/s/2/b"));
+                c2, "application/zip", "two.zip", 20L, "y".repeat(64), "/s/2/b", null));
 
         List<ScoreFile> ofC1 = scoreFileRepository.findAllByComposition(c1);
         List<ScoreFile> ofC2 = scoreFileRepository.findAllByComposition(c2);

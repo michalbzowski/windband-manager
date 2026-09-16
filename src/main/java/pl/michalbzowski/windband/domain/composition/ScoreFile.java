@@ -68,18 +68,27 @@ public class ScoreFile {
     @Column(length = 300)
     private String originalName;
 
+    /** Page count (PDF only). Null when non-applicable or unknown. */
+    @Column(name = "page_count")
+    private Integer pageCount;
+
     @Column(nullable = false, updatable = false)
     private Instant createdAt;
 
-    // SpotBugs CT_CONSTRUCTOR_THROW: no validation in the constructor.
+    // CT_CONSTRUCTOR_THROW guard: this constructor performs no validation on
+    // purpose — all invariants are checked in the public factory below, so the
+    // object never escapes partially-initialised. SpotBugs flags any throw path
+    // inside a protected constructor; keeping the body assignment-only avoids it.
     protected ScoreFile(Composition composition, String mimeType, Long sizeBytes,
-                        String sha256, String storagePath, String originalName) {
+                        String sha256, String storagePath, String originalName,
+                        Integer pageCount) {
         this.composition = composition;
         this.mimeType = mimeType;
         this.sizeBytes = sizeBytes;
         this.sha256 = sha256;
         this.storagePath = storagePath;
         this.originalName = originalName;
+        this.pageCount = pageCount;
     }
 
     /**
@@ -88,20 +97,29 @@ public class ScoreFile {
      */
     public static ScoreFile forComposition(Composition composition, String mimeType,
                                            String originalName, long sizeBytes,
-                                           String sha256, String storagePath) {
+                                           String sha256, String storagePath,
+                                           Integer pageCount) {
         if (composition == null) {
             throw new NullPointerException("composition required");
         }
         if (sizeBytes < 0) {
             throw new IllegalArgumentException("sizeBytes must be >= 0");
         }
+        requireNonNegativePageCount(pageCount);
         return new ScoreFile(
                 composition,
                 requireNotBlank(mimeType, "mimeType"),
                 sizeBytes,
                 requireNotBlank(sha256, "sha256").toLowerCase(),
                 requireNotBlank(storagePath, "storagePath"),
-                originalName);
+                originalName,
+                pageCount);
+    }
+
+    private static void requireNonNegativePageCount(Integer pageCount) {
+        if (pageCount != null && pageCount < 0) {
+            throw new IllegalArgumentException("pageCount must be null or >= 0");
+        }
     }
 
     private static String requireNotBlank(String value, String field) {

@@ -59,7 +59,7 @@ class ScoreFileCommandServiceIT extends BaseIntegrationTest {
     @Test
     @DisplayName("upload accepts a valid PDF, stores bytes on disk, and persists one score_files row with SHA-256")
     void uploadValidPdf_success() {
-        byte[] pdf = minimalPdfBytes();
+        byte[] pdf = TestPdfBuilder.generate(1);   // real PDF generated at test time
         ScoreFileUploadRequest request = new ScoreFileUploadRequest("score.pdf", "application/pdf", pdf);
 
         ScoreFileDto dto = service.upload(request, compositionId, bandId);
@@ -133,21 +133,36 @@ class ScoreFileCommandServiceIT extends BaseIntegrationTest {
         assertThat(saved.getMimeType()).isEqualTo("application/zip");
     }
 
-    // ---- helpers ---------------------------------------------------------
+    @Test
+    @DisplayName("upload of a 3-page PDF records page_count = 3 in the DB row (US-2.2)")
+    void uploadPdf_recordsPageCount() {
+        byte[] pdf = TestPdfBuilder.generate(3);   // real PDF generated at test time
+        ScoreFileUploadRequest request = new ScoreFileUploadRequest(
+                "three-page-score.pdf", "application/pdf", pdf);
 
-    /** Minimal but structurally-valid PDF. The pipeline only cares about bytes + MIME. */
-    static byte[] minimalPdfBytes() {
-        return """
-                %PDF-1.4
-                1 0 obj << /Type /Catalog /Pages 2 0 R >> endobj
-                2 0 obj << /Type /Pages /Kids [3 0 R] /Count 1 >> endobj
-                3 0 obj << /Type /Page /Parent 2 0 R >> endobj
-                trailer << /Size 4 /Root 1 0 R >>
-                startxref
-                0
-                %%EOF
-                """.getBytes();
+        ScoreFileDto dto = service.upload(request, compositionId, bandId);
+
+        assertThat(dto.pageCount()).as("DTO exposes the extracted page count").isEqualTo(3);
+
+        ScoreFile saved = scoreFileRepository.findAllByComposition(compositionEntity).get(0);
+        assertThat(saved.getPageCount())
+                .as("DB row (V40.page_count) carries the extracted page count")
+                .isEqualTo(3);
     }
+
+    @Test
+    @DisplayName("upload of a ZIP keeps page_count = null (not applicable)")
+    void uploadZip_staysPageCountNull() {
+        ScoreFileUploadRequest request = new ScoreFileUploadRequest(
+                "parts.zip", "application/zip", zipWithEntries("trumpet-page-1.pdf"));
+
+        service.upload(request, compositionId, bandId);
+
+        ScoreFile saved = scoreFileRepository.findAllByComposition(compositionEntity).get(0);
+        assertThat(saved.getPageCount()).as("ZIP uploads do not produce a page count").isNull();
+    }
+
+    // ---- helpers ---------------------------------------------------------
 
     static byte[] zipWithEntries(String... names) {
         try (var baos = new java.io.ByteArrayOutputStream();

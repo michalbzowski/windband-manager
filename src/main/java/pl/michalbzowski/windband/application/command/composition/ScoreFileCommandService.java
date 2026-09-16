@@ -30,6 +30,7 @@ public class ScoreFileCommandService {
     private final ScoreFileRepository scoreFileRepository;
     private final UploadValidator uploadValidator;
     private final ScoreFileStorage storage;
+    private final PdfPageCounter pdfPageCounter;
 
     /**
      * Upload + persist one score file.
@@ -65,10 +66,16 @@ public class ScoreFileCommandService {
             throw new java.io.UncheckedIOException("Nie udało się zapisać pliku na dysku.", e);
         }
 
-        // 4. Persist the row.
+        // 4. Count pages if this is a PDF (US-2.2). ZIP / non-PDF uploads stay null —
+        //    the UI hides the page-count field for those rows.
+        Integer pageCount = "application/pdf".equalsIgnoreCase(contentType)
+                ? pdfPageCounter.extract(request.bytes())
+                : null;
+
+        // 5. Persist the row.
         ScoreFile record = ScoreFile.forComposition(
                 composition, contentType, request.originalFileName(),
-                size, stored.sha256(), stored.storagePath());
+                size, stored.sha256(), stored.storagePath(), pageCount);
         scoreFileRepository.save(record);
 
         return new ScoreFileDto(
@@ -77,7 +84,7 @@ public class ScoreFileCommandService {
                 request.originalFileName(),
                 size,
                 contentType,
-                null,                          // page count is Epic 2 US-2.2's job
+                pageCount,
                 "application/zip".equalsIgnoreCase(contentType),
                 stored.sha256(),
                 Instant.now());

@@ -130,7 +130,8 @@ All six stories are implemented and tested. Remaining open work per story is not
 - [x] Test: `ScoreFileIT`
 
 **Open items:**
-- ⬜ Upload / storage-path materialisation, file-size validation, SHA-256 computation — belongs to **Epic 2**, not Epic 1. Persistence contract is complete.
+- ⬜ File download + deletion — belongs to **Epic 2 (US-2.4, US-2.5)**.
+- Note: `pageCount` added by **US-2.2** (PR #200), so the "dropped pageCount" line above was provisional as of Epic 1 close-out and is now stale-but-fine to leave as historical record.
 
 **Story Points:** 2
 **Dependencies:** US-1.1
@@ -167,10 +168,92 @@ All six stories are implemented and tested. Remaining open work per story is not
 | US-1.2 Instrument `aliasOf` | ✅ done | Migration V37; alias validation tests; write path in command service |
 | US-1.3 CompositionInstrument | ✅ done | Migrations V36 (disabled) + V38 (corrected); cascade via JPA and DB FK |
 | US-1.4 InstrumentRoleMap | 🔶 persistence done, UI open | Migration V39 with seed maps; admin UI → Epic 7 |
-| US-1.5 ScoreFile | 🔶 persistence done, upload path open | Entity `ScoreFile`, migration V35; upload / path materialisation → Epic 2 |
+| US-1.5 ScoreFile | ✅ done (US-2.1 upload + **US-2.2 pageCount**, PR #200) | Entity `ScoreFile`, migrations V35 + V40; download / deletion → US-2.4 / US-2.5 |
 | US-1.6 Command + Query services | 🔶 core CQRS done, READY-gate orchestrator open | `verifyCompositionParts` glue → Epic 3 (per-part entity `verify()` already in place) |
 
-**Migration numbering reality (vs. the original plan):** the doc suggested V18/V19/V20/V21/V22 — all were already occupied by unrelated features (system_admin, member groups, event invitations, event participation-instrument). The score-library migrations actually landed as **V32** (compositions), **V35** (score_files), **V36** (composition_instruments placeholder), **V37** (alias_of), **V38** (composition_instruments fixed DDL), **V39** (instrument_role_map). Future migrations for Epic 2+ should use **V40 and up**.
+**Migration numbering reality (vs. the original plan):** the doc suggested V18/V19/V20/V21/V22 — all were already occupied by unrelated features (system_admin, member groups, event invitations, event participation-instrument). The score-library migrations actually landed as **V32** (compositions), **V35** (score_files), **V36** (composition_instruments placeholder), **V37** (alias_of), **V38** (composition_instruments fixed DDL), **V39** (instrument_role_map), **V40** (score_files.page_count — added by US-2.2). Future migrations for Epic 3+ should use **V41 and up**.
+
+---
+
+## 🟡 Epic 2: File Upload & Storage
+
+### **US-2.1: Secure File Upload Pipeline** ✅ (PR #200)
+> **As a** band member
+> **I want** to upload a score file (PDF or ZIP) for a composition
+> **So that** it's stored securely, validated, and retrievable
+
+**Acceptance Criteria:**
+- [x] `POST /bands/{id}/compositions/{cid}/files` — multipart `file` field → `201` + `ScoreFileDto`. Lives in adapter layer; application-layer DTO is Spring Web-free (enforced by `ArchitectureTest`)
+- [x] MIME allow-list: PDF / ZIP / JPEG / PNG. Disallowed types rejected with **415**
+- [x] Size cap (per file and per ZIP): configured via `windband.scores.{max-file-size-bytes,max-zip-file-size-bytes}`; over-cap → **413**
+- [x] **ZIP-slip protection**: entries containing `..`, absolute paths, drive letters (`C:`), or backslashes are rejected with **422**
+- [x] SHA-256 computed once and stored in the `score_files.sha256` row (integrity + dedup hook from US-1.5)
+- [x] Two-phase disk storage: write to temp file, compute hash, atomic rename via `Files.move` into final location `root/{bandId}/compositions/{cid}/{uuid}_{sanitisedName}` (the original-name column remains for display only)
+- [x] Band isolation enforced in `ScoreFileCommandService`: a band can only attach files to compositions whose `band.id == caller band` (`CompositionRepository.findByIdAndBandId`)
+- [x] No Spring Web types anywhere under `pl..application..` (enforced by ArchUnit rule + code review)
+
+**Open items:** none for US-2.1 — Epic 2 stories 2.3–2.5 build on top of this pipeline.
+
+**Files touched:**
+- Production: `ScoreFileUploadRequest`, `UploadedFileAssembler`, `UploadValidator` (+ `UploadRejectedException`), `ScoreFileStorage`, `ScoreFileCommandService`, `ScoresConfig`, `ScoreFileDto`, `ScoreFileUploadRestController`; wired into `GlobalExceptionHandler`
+- Tests: `ScoreFileCommandServiceIT` (4 ITs over Testcontainers PG), `UploadValidatorZipSlipTest` (6 unit cases)
+
+**Story Points:** 8
+**Dependencies:** US-1.5 (ScoreFile entity already in place from Epic 1).
+
+---
+
+### **US-2.2: PDF Page Count Extraction** ✅ (this PR)
+> **As a** band member or admin
+> **I want to know** how many pages my uploaded score PDF has
+> **So that** I can plan assignments and see page ranges in the UI (US-4.x later)
+
+**Acceptance Criteria:**
+- [x] `ScoreFile.pageCount` column: nullable `Integer`, NULL = "not applicable" (ZIP / image uploads keep NULL naturally); > 0 = extracted
+- [x] Migration **V40__add_scorefile_page_count.sql**: `ALTER TABLE score_files ADD COLUMN IF NOT EXISTS page_count INT;` — idempotent, non-breaking (backfills left NULL)
+- [x] `PdfPageCounter.extract(byte[])`: uses Apache PDFBox 3.0.7 `Loader.loadPDF`; graceful on invalid / password-locked / truncated input (returns `null`, never throws)
+- [x] Wired into `ScoreFileCommandService.upload(...)`: after MIME validation, if `contentType == "application/pdf"` → count pages and pass to the factory; ZIP / non-PDF uploads keep `pageCount = null` in the DB
+- [x] Exposed on the response: `ScoreFileDto.pageCount` (nullable) so the UI can hide the field when N/A
+- [x] Domain factory updated: `ScoreFile.forComposition(..., Integer pageCount)` — 7-arg variant; constructor validates `pageCount >= 0 or null`; zero-page PDFs are preserved as 0 (a valid edge-case signal that "the PDF had no page")
+
+**Files touched:**
+- Production: `ScoreFile` (+1 column, +1 factory arg, +1 private validator), `PdfPageCounter` (new class, app layer — no Spring Web deps), `ScoreFileCommandService.upload(...)` updated to extract, `pom.xml` (+PDFBox 3.0.7, pinned via `${pdfbox.version}`)
+- Testing helpers: `TestPdfBuilder.generate(int pages)` — in-memory N-page PDFs built at test time (no binary fixtures in repo); used by both `PdfPageCounterTest` and `ScoreFileCommandServiceIT`
+- Tests: `ScoreFileIT` updated to the new factory signature; `PdfPageCounterTest` (5 unit tests including a real 1-page + 5-page PDF round-trip through PDFBox); `ScoreFileCommandServiceIT.uploadPdf_recordsPageCount` (DB assertion that V40 picked up the value) and `.uploadZip_staysPageCountNull`
+
+**Story Points:** 3
+**Dependencies:** US-2.1 (pipeline already in place).
+
+---
+
+### **US-2.3: ZIP Content Enumeration** ⬜ Not started
+> **As a** band member
+> **I want** the ZIP to be unpacked and its inner files listed individually
+> **So that** I can map parts (pages or files) to instruments (Epic 4)
+
+Planned API: list of `ScoreFileItem` rows per `composition_id`; extraction into a sibling directory of the original `.zip` with each file getting its own `score_files` row (one per entry), sharing `sha256` per entry. ZIP-slip protection must run again at extraction time — not just upload time.
+
+---
+
+### **US-2.4: File Download** ⬜ Not started
+> **As a** band member
+> **I want** to download a file I uploaded
+> **So that** I can view the full score or extract parts locally
+
+Planned API: `GET /bands/{id}/compositions/{cid}/files/{fileId}` — streams with `Content-Disposition` (inline vs. attachment based on the DTO's `isZip()`), band isolation via `BandQueryService.getRequiredBand(id)`.
+
+---
+
+### **US-2.5: File Delete + Scheduled Temp Cleanup** ⬜ Not started
+> **As a** band manager
+> **I want** to delete a file and any orphaned rows it left behind
+> **So that** I don't keep stale scores on disk and in the DB
+
+Planned API: `DELETE /bands/{id}/compositions/{cid}/files/{fileId}` — removes the DB row and the physical file. Also introduces `@Scheduled` cleanup of the temp location (anything older than `windband.scores.temp-cleanup-hours=24`) as a safety net against crash-recovery drift.
+
+---
+
+**Epic 2 status:** ✅ US-2.1, US-2.2 done (PR #200). ⬜ US-2.3, US-2.4, US-2.5 open — can start after PR #200 merges (they're independent from each other and all build on the US-2.1 pipeline).
 
 ---
 
