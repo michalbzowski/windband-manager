@@ -6,6 +6,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.jdbc.core.JdbcTemplate;
 import pl.michalbzowski.windband.BaseIntegrationTest;
 import pl.michalbzowski.windband.domain.band.BandRepository;
+
 import pl.michalbzowski.windband.domain.composition.Composition;
 import pl.michalbzowski.windband.domain.composition.CompositionRepository;
 import pl.michalbzowski.windband.domain.composition.CompositionStatus;
@@ -165,6 +166,25 @@ class CompositionCommandServiceTest extends BaseIntegrationTest {
         assertThatThrownBy(() -> commandService.update(seed.getId(), cmd, other.getId()))
                 .isInstanceOf(IllegalStateException.class)
                 .hasMessageContaining("band");
+    }
+
+    // ---- delete (US-1.6 AC) ----------------------------------------------
+
+    @Test
+    void delete_should_remove_row_and_fall_through_cross_band() {
+        Composition saved = commandService.create(title("Do usunięcia"), 1L);
+        Long savedId = saved.getId();
+
+        commandService.deleteComposition(savedId, 1L);
+
+        assertThat(repository.findByIdAndBandId(savedId, 1L)).isEmpty();
+
+        // cross-band — fail closed (409) and the row survives:
+        Composition mine = commandService.create(title("Tylko band-1"), 1L);
+        assertThatThrownBy(() -> commandService.deleteComposition(mine.getId(), 2L))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("band");
+        assertThat(repository.findByIdAndBandId(mine.getId(), 1L)).isPresent();
     }
 
     // ---- archive / restore ----------------------------------------------
