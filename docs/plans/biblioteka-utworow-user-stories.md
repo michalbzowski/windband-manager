@@ -235,12 +235,14 @@ Planned API: list of `ScoreFileItem` rows per `composition_id`; extraction into 
 
 ---
 
-### **US-2.4: File Download** ⬜ Not started
+### **US-2.4: File Download** ✅ done (this PR — branch `pr-201`, PR pending)
 > **As a** band member
 > **I want** to download a file I uploaded
 > **So that** I can view the full score or extract parts locally
 
-Planned API: `GET /bands/{id}/compositions/{cid}/files/{fileId}` — streams with `Content-Disposition` (inline vs. attachment based on the DTO's `isZip()`), band isolation via `BandQueryService.getRequiredBand(id)`.
+Real API: `GET /bands/{bandId}/compositions/{compositionId}/files/{fileId}` — streams with `Content-Disposition` (inline for PDF, JPEG, PNG; attachment for ZIPs and other binaries), real MIME type from `score_files.mime_type`, `Content-Length` from recorded byte size. Band isolation: layer 1 via `BandQueryService.getRequiredBand` → `IllegalArgumentException` (→ HTTP 400); layer 2 file's composition `.bandId` must equal the requested band and URL composition id must equal file's composition, else `IllegalStateException` (→ HTTP 409). Missing on disk / unreadable → `ScoreFileMissingException` (→ HTTP 410 Gone).
+
+---
 
 ---
 
@@ -253,7 +255,7 @@ Planned API: `DELETE /bands/{id}/compositions/{cid}/files/{fileId}` — removes 
 
 ---
 
-**Epic 2 status:** ✅ US-2.1, US-2.2 done (PR #200). ⬜ US-2.3, US-2.4, US-2.5 open — can start after PR #200 merges (they're independent from each other and all build on the US-2.1 pipeline).
+**Epic 2 status:** ✅ US-2.1, US-2.2 done (PR #200). ✅ US-2.4 done (this branch `pr-201`). ⬜ US-2.3, US-2.5 open — can start after PR #200 merges (they're independent from each other and all build on the US-2.1 pipeline).
 
 ---
 
