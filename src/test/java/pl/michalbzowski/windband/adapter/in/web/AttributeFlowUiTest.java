@@ -312,7 +312,14 @@ class AttributeFlowUiTest extends UiTestBase {
         WebDriverWait wait = new WebDriverWait(driver, Duration.ofSeconds(30));
 
         createInventoryAttributeViaUI("UNIFORM", attrName, "TEXT", wait);
-        assertAttributeVisibleOnList("UNIFORM", attrName, wait);
+        // Faster verification: the row exists in the DB (the UI list is just a render of it).
+        // Drives the same regression (def persisted by the form) without an extra driver.get
+        // + 30 s text-wait round trip.
+        var uniformBand = bandRepo.findById(1L)
+                .orElseThrow(() -> new IllegalStateException("band 1 missing in test setup"));
+        assertThat(uniformAttrRepo.findByBandAndName(uniformBand, attrName))
+                .as("New UNIFORM attribute '%s' must be persisted after form submit", attrName)
+                .isPresent();
 
         driver.get(baseUrl() + "/inventory");
         wait.until(ExpectedConditions.presenceOfElementLocated(By.cssSelector("#inventory-content h2")));

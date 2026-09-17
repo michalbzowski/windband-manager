@@ -507,4 +507,37 @@ public abstract class UiTestBase {
                 "xhr.send(JSON.stringify({rehearsalId: arguments[0], memberId: arguments[1], status: arguments[2]}));" +
                 "return xhr.status;", rehearsalId, memberId, status);
     }
+
+    /**
+     * Helper: create a band event via API (synchronous XHR) and return its generated id.
+     * Used by UI tests that need a deterministic event row without driving the full form
+     * flow — same pattern as {@link #createRehearsalViaApi}. The browser must already be
+     * on a same-origin page; callers navigate to the target page right after.
+     */
+    protected Long createEventViaApi(String name, LocalDate date) {
+        org.openqa.selenium.JavascriptExecutor js = (org.openqa.selenium.JavascriptExecutor) driver;
+        Object idObj = js.executeScript(
+                "var xhr = new XMLHttpRequest();" +
+                "xhr.open('POST', '/api/events', false);" +
+                "xhr.setRequestHeader('Content-Type', 'application/json');" +
+                "var csrf = document.cookie.split('; ').find(function (c) { return c.startsWith('XSRF-TOKEN='); });" +
+                "if (csrf) xhr.setRequestHeader('X-XSRF-TOKEN', csrf.split('=')[1]);" +
+                "xhr.send(JSON.stringify({name: arguments[0], date: arguments[1], startTime: '18:00', location: 'Sala koncertowa', eventType: 'CONCERT'}));" +
+                "var parsed = JSON.parse(xhr.responseText); return parsed && parsed.id !== undefined ? String(parsed.id) : null;",
+                name, date.toString());
+        if (idObj == null) return null;
+        String id = (idObj instanceof Number n) ? String.valueOf(n) : String.valueOf(idObj);
+        return id.isEmpty() ? null : Long.valueOf(id);
+    }
+
+    /**
+     * Fills the {@code email}/{@code phone} columns of a member previously created by
+     * {@link #createTestBand1Member}. Needed by UI tests whose form-edit flow pre-sets
+     * those fields (the SQL insert leaves them null).
+     */
+    protected void addEmailPhoneToMember(Long memberId, String email, String phone) {
+        jdbcTemplate.update(
+                "UPDATE members SET email = ?, phone = ? WHERE id = ?",
+                email, phone, memberId);
+    }
 }
