@@ -288,6 +288,21 @@
          */
         _refresh() {
             if (!this._host || this._destroyed) return;
+            // BUG FIX (rehearsal/event invite: clicking a checkbox closed the
+            // modal): the previous implementation replaced the host's entire
+            // innerHTML on every toggle. Because renderMarkup() emits a FRESH
+            // <dialog> element each time, the dialog that showModal() had put in
+            // the open/modal state was discarded and the replacement rendered in
+            // the default CLOSED state — so one click on any group/member row
+            // toggled its checkbox AND silently closed the modal the user was
+            // still working in. The fix: remember whether the dialog was open
+            // before the re-render and re-open it (showModal) immediately after.
+            let wasOpen = false;
+            try {
+                const oldDlg = this._host && this._host.querySelector ?
+                    this._host.querySelector('dialog') : null;
+                if (oldDlg) wasOpen = !!(typeof oldDlg.open === 'boolean' ? oldDlg.open : false);
+            } catch (_) { /* non-DOM runtime: ignore */ }
             try {
                 if (typeof this._host.innerHTML !== 'undefined') {
                     this._host.innerHTML = this.renderMarkup();
@@ -300,6 +315,15 @@
             // bind before adding the new one (see _detachAll → _bindEvents).
             this._detachAll();
             this._bindEvents(this._host);
+            if (wasOpen) {
+                try {
+                    const newDlg = this._host && this._host.querySelector ?
+                        this._host.querySelector('dialog') : null;
+                    if (newDlg && typeof newDlg.showModal === 'function' && !newDlg.open) {
+                        newDlg.showModal();
+                    }
+                } catch (_) { /* ignore in non-DOM environments */ }
+            }
         }
 
         // ── Confirm / cancel / destroy ───────────────────────────────────────
