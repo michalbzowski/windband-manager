@@ -265,7 +265,8 @@ public abstract class UiTestBase {
         // dependent rows (consent tokens, attendances, participations) without FK violations.
         String allTables = "attendances, event_participations, member_instruments, "
                 + "member_consent_tokens, member_consents, rehearsals, band_events, "
-                + "member_attribute_values, member_attribute_defs, team_members";
+                + "member_attribute_values, member_attribute_defs, team_members, "
+                + "compositions, composition_instruments, score_files";
         try {
             jdbcTemplate.execute("TRUNCATE TABLE " + allTables + " RESTART IDENTITY CASCADE");
         } catch (Exception e) {
