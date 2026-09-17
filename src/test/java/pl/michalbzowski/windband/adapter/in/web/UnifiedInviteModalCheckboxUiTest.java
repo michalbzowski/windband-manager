@@ -36,18 +36,22 @@ import static org.assertj.core.api.Assertions.assertThat;
  */
 final class UnifiedInviteModalCheckboxUiTest extends UiTestBase {
 
+    @org.springframework.beans.factory.annotation.Autowired
+    private pl.michalbzowski.windband.domain.rehearsal.RehearsalRepository rehearsalRepo;
+
     private static final String ROW_SEL       = ".invitation-row";
     private static final String CHECK_SEL     = ".invitation-check";
     private static final String LABEL_SEL     = ".invitation-row__label";
     private static final String EMPTY_STATE   = ".invitation-empty";
 
     /**
-     * Seeds a rehearsal via the application API (not the UI form) and returns
-     * its id. The browser must be on a same-origin page first (handled by the
-     * caller).
+     * Looks up the first seeded band-1 rehearsal id from data.sql via the JPA repository —
+     * no HTTP round trip needed and it works regardless of which API endpoints exist.
      */
-    private Long seedRehearsal(java.time.LocalDate date) {
-        return createRehearsalViaApi("InviteModalSeed", date);
+    private Long existingRehearsalId(WebDriverWait wait) {
+        var list = rehearsalRepo.findAllOrderByDateDescByBandId(1L);
+        assertThat(list).as("seeded band-1 rehearsals in data.sql").isNotEmpty();
+        return list.get(0).getId();
     }
 
     private Object js(String src) { return ((JavascriptExecutor) driver).executeScript(src); }
@@ -66,13 +70,11 @@ final class UnifiedInviteModalCheckboxUiTest extends UiTestBase {
     @Test
     void everyRowIsADivNotButtonHasVisibleCheckboxAndReasonableLabel() {
         WebDriverWait wait = newWait();
+        Long rehearsalId = existingRehearsalId(wait);
+        // The invite modal is mounted on a rehearsal's detail page.
         loginAndNavigateTo("/rehearsals");
-
-        // Seed the rehearsal via the application API (much faster + more
-        // reliable than driving the UI form — 10 s saved).
-        java.time.LocalDate date = java.time.LocalDate.now().plusDays(7);
-        Long rehearsalId = createRehearsalViaApi("InviteModalSeed", date);
-        assertThat(rehearsalId).isNotNull();
+        driver.get(baseUrl() + "/rehearsals/" + rehearsalId);
+        wait.until(ExpectedConditions.presenceOfElementLocated(org.openqa.selenium.By.cssSelector("#open-invite-btn")));
         jsClick("#open-invite-btn");
 
         // Wait for rows OR the empty state — either means the modal has mounted.
