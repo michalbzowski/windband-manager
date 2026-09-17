@@ -25,6 +25,9 @@ spring:
   flyway:
     enabled: true
     locations: classpath:db/migration
+    out-of-order: true
+    baseline-on-migrate: true
+    baseline-version: 0
     # Production DB was baselined before V13_5/V18_5/V28_5/V29_5 (all CREATE-TABLE-IF-NOT-EXISTS)
     # were added to the migration chain. Flyway OSS doesn't support version-specific ignore patterns,
     # so these are applied manually via flyway repair/baseline on new environments and simply don't
