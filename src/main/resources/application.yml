@@ -25,13 +25,11 @@ spring:
   flyway:
     enabled: true
     locations: classpath:db/migration
-    ignore-missing-migrations: true
-    # Baseline migration check: ignore resolved-but-unapplied entries that are
-    # known-safe, one-off table-creation scripts already present on the production
-    # database (schema baselined before Flyway). Added after a Railway deployment
-    # crashed with 'Detected resolved migration not applied to database' for V13_5/
-    # V18_5/V28_5/V29_5, all of which are CREATE TABLE IF NOT EXISTS no-ops.
-    ignore-migration-patterns: "versioned:V13_5, versioned:V18_5, versioned:V28_5, versioned:V29_5"
+    # Production DB was baselined before V13_5/V18_5/V28_5/V29_5 (all CREATE-TABLE-IF-NOT-EXISTS)
+    # were added to the migration chain. Flyway OSS doesn't support version-specific ignore patterns,
+    # so these are applied manually via flyway repair/baseline on new environments and simply don't
+    # conflict on production (which already has the tables). Do NOT re-add ignore-migration-patterns
+    # with <version> entries: that is a Redgate Commercial feature and crashes OSS deployments.
 
   thymeleaf:
     cache: false
