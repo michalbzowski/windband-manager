@@ -14,7 +14,7 @@ import org.springframework.web.client.RestTemplate;
 @Configuration
 public class RestTemplateConfig {
 
-    @Value("${superset.public-url:https://superset.michalbzowski.pl}")
+    @Value("${superset.public-url:http://localhost:8088}")
     private String supersetPublicUrl;
 
     @Bean

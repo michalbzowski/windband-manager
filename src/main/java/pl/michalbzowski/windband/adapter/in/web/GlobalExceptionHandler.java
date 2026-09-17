@@ -69,6 +69,13 @@ public class GlobalExceptionHandler {
         return ResponseEntity.status(ex.getHttpStatus()).body(errorBody(ex.getMessage()));
     }
 
+    @ExceptionHandler(
+            pl.michalbzowski.windband.application.query.composition.ScoreFileDownloadQueryService.ScoreFileMissingException.class)
+    public ResponseEntity<Map<String, Object>> handleScoreFileMissing(
+            pl.michalbzowski.windband.application.query.composition.ScoreFileDownloadQueryService.ScoreFileMissingException ex) {
+        return ResponseEntity.status(HttpStatus.GONE).body(errorBody(ex.getMessage()));
+    }
+
     @ExceptionHandler(Exception.class)
     public ResponseEntity<Map<String, Object>> handleGeneral(Exception ex) {
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
