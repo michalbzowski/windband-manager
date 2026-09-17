@@ -39,31 +39,16 @@ class QuickAttendanceModalUiTest extends UiTestBase {
         String firstName1 = "Quick" + uid;
         String firstName2 = "Quick2" + uid;
 
-        // --- Create two members via UI ---
-        createMember(firstName1, "Test" + uid);
-        createMember(firstName2, "Test" + uid);
+        // --- Create two members via SQL (fast path) ---
+        createTestBand1Member(firstName1, "Test" + uid, null);
+        createTestBand1Member(firstName2, "Test" + uid, null);
 
         loginAndNavigateTo("/rehearsals");
-        driver.findElement(By.xpath("//button[contains(., 'Zaplanuj spotkanie')]")).click();
-        wait.until(ExpectedConditions.presenceOfElementLocated(By.cssSelector("#rehearsal-form")));
-        String today = LocalDate.now().toString();
-        ((JavascriptExecutor) driver).executeScript(
-                "document.querySelector(\"input[name='date']\").value = arguments[0];" +
-                "document.querySelector(\"input[name='startTime']\").value = '18:00';" +
-                "document.querySelector(\"input[name='endTime']\").value = '20:00';" +
-                "document.querySelector(\"input[name='location']\").value = 'Sala prób';",
-                today);
-        driver.findElement(By.cssSelector("#rehearsal-form button[type='submit'].primary")).click();
-        wait.until(ExpectedConditions.urlContains("/rehearsals"));
-        wait.until(ExpectedConditions.not(ExpectedConditions.urlContains("/new")));
-        // Wait for the new rehearsal to be persisted in the DB before we read MAX(id) below
-        // (replaces fixed Thread.sleep — polls DB until row appears)
+        Long rehearsalId = createRehearsalViaApi("QuickAttendanceSeed", LocalDate.now());
         Awaitility.await().atMost(Duration.ofSeconds(10)).until(() ->
                 jdbcTemplate.queryForObject(
-                        "SELECT COUNT(*) FROM rehearsals WHERE date = ?", Long.class, today) > 0);
+                        "SELECT COUNT(*) FROM rehearsals WHERE id = ?", Long.class, rehearsalId) == 1);
 
-        Long rehearsalId = jdbcTemplate.queryForObject(
-                "SELECT MAX(id) FROM rehearsals WHERE date = ?", Long.class, today);
         Long memberId1 = jdbcTemplate.queryForObject(
                 "SELECT MAX(id) FROM members WHERE first_name = ?", Long.class, firstName1);
         Long memberId2 = jdbcTemplate.queryForObject(
@@ -186,24 +171,6 @@ class QuickAttendanceModalUiTest extends UiTestBase {
                 "return document.getElementById('quick-attendance-modal').open === true;");
     }
 
-    private void createMember(String firstName, String lastName) throws Exception {
-        WebDriverWait wait = new WebDriverWait(driver, Duration.ofSeconds(10));
-        loginAndNavigateTo("/members");
-        driver.findElement(By.xpath("//button[contains(., 'Dodaj członka')]")).click();
-        wait.until(ExpectedConditions.presenceOfElementLocated(By.cssSelector("#member-form")));
-        fill("firstName", firstName);
-        fill("lastName", lastName);
-        ((JavascriptExecutor) driver).executeScript(
-                "document.querySelector(\"input[name='dateOfBirth']\").value = '1990-05-15';");
-        driver.findElement(By.cssSelector("#member-form button[type='submit'].primary")).click();
-        wait.until(ExpectedConditions.presenceOfElementLocated(By.cssSelector("#members-content table")));
-        // Wait for the new member to be persisted in the DB before this helper returns
-        // (replaces fixed Thread.sleep — polls DB until row appears)
-        Awaitility.await().atMost(Duration.ofSeconds(10)).until(() ->
-                jdbcTemplate.queryForObject(
-                        "SELECT COUNT(*) FROM members WHERE first_name = ?", Long.class, firstName) > 0);
-    }
-
     private void inviteMember(Long rehearsalId, Long memberId) {
         ((JavascriptExecutor) driver).executeScript(
                 "var xhr = new XMLHttpRequest();" +
@@ -213,11 +180,5 @@ class QuickAttendanceModalUiTest extends UiTestBase {
                 "if (csrf) xhr.setRequestHeader('X-XSRF-TOKEN', csrf.split('=')[1]);" +
                 "xhr.send(JSON.stringify({rehearsalId: arguments[0], memberId: arguments[1]}));" +
                 "return xhr.status;", rehearsalId, memberId);
-    }
-
-    private void fill(String name, String value) {
-        WebElement el = driver.findElement(By.cssSelector("input[name='" + name + "']"));
-        el.clear();
-        el.sendKeys(value);
     }
 }

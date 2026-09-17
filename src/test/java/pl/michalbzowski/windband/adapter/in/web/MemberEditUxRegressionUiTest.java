@@ -10,6 +10,7 @@ import pl.michalbzowski.windband.UiTestBase;
 import pl.michalbzowski.windband.domain.member.MemberRepository;
 
 import java.time.Duration;
+import java.time.LocalDate;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -48,21 +49,20 @@ class MemberEditUxRegressionUiTest extends UiTestBase {
         Long memberId = null;
 
         try {
-            // === STEP 1: Create a member ===
-            loginAndNavigateTo("/members");
-            driver.findElement(By.xpath("//button[contains(., 'Dodaj członka')]")).click();
-            wait.until(ExpectedConditions.presenceOfElementLocated(By.cssSelector("#member-form")));
-
-            fillField("firstName", firstName);
-            fillField("lastName", lastName);
-            fillField("dateOfBirth", dob);
-            fillField("email", email);
-            submitPrimaryFormButton();
+            // === STEP 1: Create a member (fast path — SQL insert, no UI form) ===
+            // The UI-form creation is not the target of this regression; it was only
+            // setup. Edit-flow + toast + highlight are what we verify below.
+            loginAndNavigateTo("/");          // establish session on same-origin page
+            memberId = createTestBand1Member(firstName, lastName, LocalDate.parse(dob));
+            addEmailPhoneToMember(memberId, email, "100200300");
+            // The /members page rendered on the prior navigate would not contain our row;
+            // fetch it again now that the INSERT is committed.
+            driver.get(baseUrl() + "/members");
+            new WebDriverWait(driver, Duration.ofSeconds(20))
+                .until(ExpectedConditions.presenceOfElementLocated(By.id("content")));
 
             wait.until(ExpectedConditions.textToBePresentInElementLocated(
                     By.cssSelector("#members-content"), firstName + " " + lastName));
-
-            memberId = readMemberIdFromEditButton(wait, firstName + " " + lastName);
 
             // === STEP 2: Verify table structure — data-member-id on rows + table id ===
             WebElement ourRow = wait.until(ExpectedConditions.presenceOfElementLocated(
@@ -170,16 +170,6 @@ class MemberEditUxRegressionUiTest extends UiTestBase {
 
     // --- Helpers (kept in sync with MemberUiTest patterns) ---
 
-    private void fillField(String name, String value) {
-        WebElement input = driver.findElement(By.cssSelector("input[name='" + name + "']"));
-        if ("date".equals(input.getAttribute("type"))) {
-            ((JavascriptExecutor) driver).executeScript(
-                    "arguments[0].value = '" + value + "';", input);
-        } else {
-            input.sendKeys(value);
-        }
-    }
-
     private void clearAndFillField(String name, String value) {
         WebElement input = driver.findElement(By.cssSelector("input[name='" + name + "']"));
         input.clear();
@@ -200,17 +190,6 @@ class MemberEditUxRegressionUiTest extends UiTestBase {
                 "//tr[td[contains(., '%s')]]//button[contains(., 'Edytuj')]", fullName);
         WebElement btn = wait.until(ExpectedConditions.presenceOfElementLocated(By.xpath(xpath)));
         ((JavascriptExecutor) driver).executeScript("arguments[0].click();", btn);
-    }
-
-    private Long readMemberIdFromEditButton(WebDriverWait wait, String fullName) {
-        String xpath = String.format(
-                "//tr[td[contains(., '%s')]]//button[contains(., 'Edytuj')]", fullName);
-        WebElement btn = wait.until(ExpectedConditions.presenceOfElementLocated(By.xpath(xpath)));
-        String hxGet = btn.getAttribute("hx-get");
-        if (hxGet == null) {
-            throw new IllegalStateException("'Edytuj' button has no hx-get: " + btn.getAttribute("outerHTML"));
-        }
-        return Long.parseLong(hxGet.split("/")[2]);
     }
 
     @SuppressWarnings("unchecked")

@@ -350,37 +350,20 @@ class EventDetailFilterUiTest extends UiTestBase {
         String firstName = "MultiResp" + uid;
         String lastName = "Test" + uid;
 
-        // --- Create members via UI ---
-        createMember(firstName + "1", lastName, wait);
-        createMember(firstName + "2", lastName, wait);
-        createMember(firstName + "3", lastName, wait);
-        createMember(firstName + "4", lastName, wait);
+        // --- Create members via SQL (fast path) — the UI form is not a goal here ---
+        for (int i = 1; i <= 4; i++) {
+            createTestBand1Member(firstName + i, lastName, null);
+        }
 
-        // --- Create an event via UI ---
-        loginAndNavigateTo("/events");
-        driver.findElement(By.xpath("//button[contains(., 'Dodaj wydarzenie')]")).click();
-        wait.until(ExpectedConditions.presenceOfElementLocated(By.cssSelector("#event-form")));
+        // --- Create the event via the application API (fast path) ---
+        loginAndNavigateTo("/events"); // ensure same-origin page before XHR
+        Long eventId = createEventViaApi("Multi Response Filter Test " + uid, LocalDate.now());
+        assertThat(eventId).isNotNull();
 
-        String today = LocalDate.now().toString();
-        ((JavascriptExecutor) driver).executeScript(
-                "document.querySelector(\"input[name='name']\").value = arguments[0];" +
-                "document.querySelector(\"input[name='date']\").value = arguments[1];" +
-                "document.querySelector(\"input[name='startTime']\").value = '18:00';" +
-                "document.querySelector(\"input[name='location']\").value = 'Sala koncertowa';",
-                "Multi Response Filter Test " + uid, today);
-        driver.findElement(By.cssSelector("#event-form button[type='submit'].primary")).click();
-        wait.until(ExpectedConditions.urlContains("/events"));
-        wait.until(ExpectedConditions.not(ExpectedConditions.urlContains("/new")));
-
-        // Wait for event to be persisted
+        // Wait for the event to be persisted before we read rows off it.
         Awaitility.await().atMost(Duration.ofSeconds(10)).until(() ->
                 jdbcTemplate.queryForObject(
-                        "SELECT COUNT(*) FROM band_events WHERE name = ?", Long.class,
-                        "Multi Response Filter Test " + uid) > 0);
-
-        Long eventId = jdbcTemplate.queryForObject(
-                "SELECT MAX(id) FROM band_events WHERE name = ?", Long.class,
-                "Multi Response Filter Test " + uid);
+                        "SELECT COUNT(*) FROM band_events WHERE id = ?", Long.class, eventId) == 1);
 
         List<Long> memberIds = jdbcTemplate.query(
                 "SELECT id FROM members WHERE first_name LIKE ? ORDER BY id",
