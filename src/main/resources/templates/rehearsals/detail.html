@@ -680,8 +680,17 @@ document.addEventListener('DOMContentLoaded', function() {
         if (contentEl.dataset.unifiedInviteDelegated === 'yes') return;
         contentEl.addEventListener('click', function (evt) {
             var t = evt && evt.target;
-            if (t && typeof t.closest === 'function' && t.closest('#open-invite-btn')) openUnifiedRehearsalInvite();
-        });
+            if (!(t && typeof t.closest === 'function' && t.closest('#open-invite-btn'))) return;
+            // DOUBLE-CLICK GUARD: the same button also has a direct listener in
+            // bind() above (re-bound after every HTMX swap recreates it). The two
+            // flags used to be different, so ONE click fired openUnifiedRehearsalInvite()
+            // TWICE; the second mount destroys the first instance and removes its
+            // host from the DOM, which dropped the just-opened <dialog> — the
+            // "modal appears and immediately vanishes" bug. Stop propagation on the
+            // delegated path so the direct handler sees only one event per click.
+            evt.stopPropagation();
+            openUnifiedRehearsalInvite();
+        }, true);
         contentEl.dataset.unifiedInviteDelegated = 'yes';
     }
     ensureButtonBound();
