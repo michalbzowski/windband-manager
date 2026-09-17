@@ -213,7 +213,7 @@ public class AuthController {
      */
     @GetMapping("/debug-dns")
     public ResponseEntity<?> debugDns() {
-        String host = "keycloak.railway.internal";
+        String host = System.getenv().getOrDefault("KEYCLOAK_INTERNAL_URL", "localhost:8180").replaceAll(":\\d+$", "");
         String resolved;
         try {
             var addr = java.net.InetAddress.getByName(host);

@@ -29,7 +29,7 @@ public class DashboardController {
     private final DashboardQueryService dashboardQueryService;
     private final TeamQueryService teamQueryService;
 
-    @Value("${superset.public-url:https://superset.michalbzowski.pl}")
+    @Value("${superset.public-url:http://localhost:8088}")
     private String supersetPublicUrl;
 
     /**

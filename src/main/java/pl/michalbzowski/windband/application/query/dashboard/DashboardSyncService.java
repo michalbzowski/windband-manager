@@ -100,11 +100,10 @@ public class DashboardSyncService {
             dashboard.setActive(true);
             dashboard.setIcon("fa-chart-bar");
             // Register as embedded in Superset
-            String embeddedUuid = supersetClient.registerEmbeddedDashboard(supersetId, "https://windband.michalbzowski.pl,https://localhost:8080");
+            String embeddedUuid = supersetClient.registerEmbeddedDashboard(supersetId, "http://localhost:8080");
             if (embeddedUuid != null) {
                 dashboard.setEmbeddedUuid(embeddedUuid);
             }
-            dashboardRepository.save(dashboard);
             result.incrementAdded();
             log.info("Added new dashboard from Superset: '{}' (id={})", title, supersetId);
         } else {

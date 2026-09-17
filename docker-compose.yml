@@ -1,3 +1,23 @@
+# ===========================================================================
+# Windband Manager — fully self-contained LOCAL stack
+# ===========================================================================
+# One command, no external services, everything on localhost:
+#
+#     docker compose up -d
+#
+# Services (all on the host's localhost):
+#   - db            PostgreSQL for the app          -> localhost:5432
+#   - keycloak-db   PostgreSQL for Keycloak         -> localhost:5433
+#   - keycloak      OIDC provider (realm auto-import) -> http://localhost:8180
+#   - app           Spring Boot app (built here)    -> http://localhost:8080
+#
+# The Keycloak realm "windband" (client "windband-local" + user admin/admin)
+# is imported automatically on first start from ./keycloak/import.
+#
+# No reverse proxy, no custom domains, no Superset, no cloud references.
+# Log in to the app at http://localhost:8080 with admin / admin.
+# ===========================================================================
+
 services:
   keycloak-db:
     image: postgres:16-alpine
@@ -21,7 +41,9 @@ services:
     image: quay.io/keycloak/keycloak:25.0
     container_name: windband-keycloak
     restart: unless-stopped
-    command: start-dev
+    # start-dev = plain HTTP, no TLS/proxy required (laptop-friendly).
+    # --import-realm loads every JSON under /opt/keycloak/data/import on boot.
+    command: start-dev --import-realm
     depends_on:
       keycloak-db:
         condition: service_healthy
@@ -30,22 +52,28 @@ services:
       KC_DB_URL: jdbc:postgresql://keycloak-db:5432/keycloak
       KC_DB_USERNAME: keycloak
       KC_DB_PASSWORD: ${KEYCLOAK_DB_PASSWORD:-keycloak}
-      KC_HOSTNAME: keycloak.michalbzowski.pl
+      # Issuer host must match what the browser AND the app container use.
+      KC_HOSTNAME: localhost
       KC_HOSTNAME_STRICT: "false"
-      KC_PROXY: "edge"
+      KC_HTTP_PORT: 8180
       KEYCLOAK_ADMIN: ${KEYCLOAK_ADMIN:-admin}
       KEYCLOAK_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD:-admin}
-      KC_HTTP_PORT: 8180
     ports:
       - "8180:8180"
     volumes:
-      # Motyw Keycloaka — hot-reload w trybie development
+      # Auto-import the local realm on first start.
+      - ./keycloak/import:/opt/keycloak/data/import:ro
+      # Custom login theme (hot-reload in dev mode).
       - ./themes:/opt/keycloak/themes:ro
     healthcheck:
-      test: ["CMD-SHELL", "wget -qO- http://localhost:8180/health/ready 2>/dev/null || exit 0"]
+      # KC 25 hides /health unless KC_HEALTH_ENABLED. Probe the realm's OIDC
+      # discovery endpoint instead — that's the exact readiness signal the app
+      # needs before it can start its OIDC client.
+      test: ["CMD-SHELL", "exec 3<>/dev/tcp/localhost/8180 && printf 'GET /realms/windband/.well-known/openid-configuration HTTP/1.0\\r\\nHost: localhost\\r\\n\\r\\n' >&3 && grep -q '200 OK' <&3"]
       interval: 15s
       timeout: 10s
-      retries: 3
+      retries: 10
+      start_period: 60s
 
   db:
     image: postgres:16-alpine
@@ -66,7 +94,11 @@ services:
       retries: 5
 
   app:
-    image: windband-manager-app:latest
+    # Built locally from the repo Dockerfile so `docker compose up` is enough.
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: windband-manager-app:local
     container_name: windband-app
     restart: unless-stopped
     depends_on:
@@ -74,39 +106,39 @@ services:
         condition: service_healthy
       keycloak:
         condition: service_healthy
+    # Make `localhost` inside the container resolve to the Docker host, so the
+    # app reaches the published Keycloak port at localhost:8180 — the SAME URL
+    # the browser uses. This keeps the OIDC issuer claim consistent and removes
+    # the need for any custom-domain extra_hosts.
     extra_hosts:
-      - "keycloak.michalbzowski.pl:172.17.0.1"
-      - "superset.michalbzowski.pl:172.17.0.1"
-      - "superset:172.20.0.6"
+      - "localhost:host-gateway"
     ports:
       - "8080:8080"
     environment:
+      # Use the local Spring profile: plain-HTTP localhost OIDC URLs.
+      SPRING_PROFILES_ACTIVE: local
       DB_HOST: db
       DB_PORT: 5432
       DB_NAME: windband
       DB_USER: windband
       DB_PASS: ${WINDDB_PASSWORD:-windband}
       SERVER_PORT: 8080
-      MAIL_HOST: ${MAIL_HOST:-smtp.gmail.com}
-      MAIL_PORT: ${MAIL_PORT:-587}
+      # Mail: point at a local SMTP (e.g. mailpit on 1025) if you run one;
+      # otherwise sending simply fails without blocking startup.
+      MAIL_HOST: ${MAIL_HOST:-localhost}
+      MAIL_PORT: ${MAIL_PORT:-1025}
       MAIL_USER: ${MAIL_USER:-}
       MAIL_PASS: ${MAIL_PASS:-}
       BASE_URL: ${BASE_URL:-http://localhost:8080}
-      KEYCLOAK_URL: http://localhost:8180
-      KEYCLOAK_INTERNAL_URL: localhost:8180
-      KEYCLOAK_PUBLIC_URL: http://localhost:8180
-      KEYCLOAK_AUTH_URL: localhost:8180
       KEYCLOAK_REALM: ${KEYCLOAK_REALM:-windband}
-      KEYCLOAK_CLIENT_ID: ${KEYCLOAK_CLIENT_ID:-windband-manager}
-      KEYCLOAK_CLIENT_SECRET: ${KEYCLOAK_CLIENT_SECRET:-windband-secret-key-change-in-production-2026}
-      SUPERSET_BASE_URL: http://superset:8088
-      SUPERSET_PUBLIC_URL: ${SUPERSET_PUBLIC_URL:-https://superset.michalbzowski.pl}
-      SUPERSET_GUEST_TOKEN_JWT_SECRET: ${SUPERSET_GUEST_TOKEN_JWT_SECRET:-WindbandGuestToken2026!ChangeMe#VeryLongSecretForSecurity}
-      SUPERSET_USERNAME: ${SUPERSET_USERNAME:-admin}
-      SUPERSET_PASSWORD: ${SUPERSET_PASSWORD:-admin}
-      KEYCLOAK_SUPERSET_CLIENT_ID: ${KEYCLOAK_SUPERSET_CLIENT_ID:-superset}
-      KEYCLOAK_SUPERSET_CLIENT_SECRET: ${KEYCLOAK_SUPERSET_CLIENT_SECRET:-iDOlRVY6BvflwAW7oCPE7QDjFB52g11J}
+      KEYCLOAK_CLIENT_ID: ${KEYCLOAK_CLIENT_ID:-windband-local}
+      KEYCLOAK_CLIENT_SECRET: ${KEYCLOAK_CLIENT_SECRET:-windband-local-secret}
+      # Score-file upload root (persisted in the `scores` volume).
+      SCORES_ROOT_PATH: /srv/windband-scores
+    volumes:
+      - scores:/srv/windband-scores
+
 volumes:
   pgdata:
   keycloakdata:
-
+  scores:
