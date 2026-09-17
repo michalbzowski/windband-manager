@@ -21,7 +21,7 @@ Create a team-scoped compositions library where band members can catalog pieces,
 |------|---------|-------|--------|
 | **Epic 1: Domain Model & Persistence** | 1.1 – 1.6 | Core entities, repositories, migrations | ✅ All done (2026-09) |
 | **Epic 2: File Upload & Storage** | 2.1 – 2.5 | Secure upload, storage strategy, validation | ⬜ Not started |
-| **Epic 3: Composition CRUD (Manual)** | 3.1 – 3.5 | Create/read/update/delete without AI | ⬜ Not started |
+| **Epic 3: Composition CRUD (Manual)** | 3.1 – 3.5 | Create/read/update/delete without AI | 🔶 US-3.03 done · 3.1/3.2/3.4/3.5 not started |
 | **Epic 4: AI-Assisted Score Analysis** | 4.1 – 4.7 | PDF/ZIP analysis, preview, verification | ⬜ Not started |
 | **Epic 5: Instrument Alias Mapping** | 5.1 – 5.3 | Tag-to-role resolution for distribution | ⬜ Not started |
 | **Epic 6: Event Integration & Distribution** | 6.1 – 6.6 | Assign to event, generate parts, send | ⬜ Not started |
@@ -263,6 +263,44 @@ Real API: `DELETE /bands/{bandId}/compositions/{compositionId}/files/{fileId}` �
 ---
 
 **Epic 2 status:** ✅ US-2.1, US-2.2 done (PR #200). ✅ US-2.4 done (branch `pr-201`, PR #202 merged). 🔶 US-2.3 — implementation + endpoint already present in the codebase (`ScoreFileCommandService.expandZip`, `POST .../files/{fileId}/expand`, covered by `ZipEntryExtractorTest` / `ScoreFileExpandZipIT`) but not yet reflected as "done" in this doc's status table; flag for a follow-up PR to officially close it. ✅ US-2.5 done (this change).
+
+---
+
+## 🟢 Epic 3: Composition CRUD (Manual)
+
+### **US-3.03: Manual part verification + ready-gate** ✅ (this change)
+> **As a** band manager or librarian
+> **I want to explicitly verify the instrument-parts mapping of a composition before it can be marked READY**
+> **So that** distribution (Epic 6) and AI-assisted review (Epic 4) only ever operate on parts a human has confirmed
+
+This is the "verify-gate" that US-1.6 deliberately deferred to Epic 3 (see US-1.6's open-items note in this doc, and the `Composition#markReady` / `CompositionInstrument#verify` javadoc that both point here). It is also what US-4.5 ("AI preview accept") will call through instead of bypassing the READY transition.
+
+**Acceptance Criteria:**
+- [x] `CompositionCommandService.verifyCompositionParts(Long id, Long bandId, String verifier)` — the single legal entry point for DRAFT → READY and for auditing part-row ownership at the service boundary. Blank verifier → `IllegalArgumentException` (HTTP 400); unknown or foreign-band composition id → `IllegalStateException` (HTTP 409 fail-closed) with no part row read, modified, or saved in either failure path.
+- [x] Reuses — does not duplicate — the per-row audit primitives already on the domain: `CompositionInstrument.verify(verifier, instant)` (idempotent, first-writer wins by construction) and `Composition.markReady()` (already present, previously unreachable without either hand-editing status or an invalid lifecycle path).
+- [x] Idempotent / non-destructive: a re-run of this method after a partial earlier verification (e.g. one part verified by user A yesterday, the rest just now by user B) leaves the first-writer's `verifiedBy`/`verifiedAt` untouched and only fills in the missing rows before promoting to `READY`. No pre-verified row is ever overwritten — matching the exact audit-pair freeze contract already exercised by `CompositionInstrumentIT` ("Even a different actor calling verify() cannot hijack an existing audit row").
+- [x] Promotion decision: READY is set only when **zero** parts remain unverified after this pass; if any part has no verifier yet, the composition stays in its current status (DRAFT) and simply gains whatever partial verification was just recorded — no forced transition.
+- [x] Band isolation: enforced through the same `requireOwned(id, bandId)` helper every other mutating method in this service already uses (`findByIdAndBandId` + fail-closed `IllegalStateException`) — a caller from band B can never audit, and therefore never promote, a composition owned by band A.
+- [x] Integration tests: 4 new cases appended to the existing `CompositionCommandServiceTest` (all run against shared Testcontainers PostgreSQL via `BaseIntegrationTest`):
+  - happy-path: 2 unverified parts → all verified with the caller's identity + non-null timestamp, composition promoted DRAFT → READY;
+  - blank-verifier rejection: `IllegalArgumentException("verifier required")`, composition still DRAFT, part row untouched (`verifiedBy == null`) — proves the failure path has zero side effects;
+  - cross-band rejection: foreign band id → `IllegalStateException(...band...)`, composition still DRAFT, part row untouched — proves fail-closed isolation of this new write path specifically (not just re-tested via the existing list/update paths);
+  - audit-pair freeze / partial prior verification: one part pre-verified by a different actor with a pinned timestamp, method called again by another verifier → first-writer's `verifiedBy`/`verifiedAt` preserved verbatim, the other part filled in by the new verifier, and only then (once fully verified) promoted to READY — exercises the exact contract US-4.5/US-6.3 depend on.
+
+**Files touched:**
+- Production: `CompositionCommandService` (+1 imports block for `CompositionInstrument`/`CompositionInstrumentRepository`/`Instant`/`List`, +1 autowired field `compositionInstrumentRepository`, +1 new method `verifyCompositionParts`, no changes to any existing method)
+- Tests: `CompositionCommandServiceTest` (+2 autowired repositories, +4 test methods, +2 small private seed helpers `seedComposition` / `instrumentInBand` reusing patterns already present in `CompositionInstrumentIT`)
+
+**Test command:**
+```bash
+./mvnw test -Dtest=CompositionCommandServiceTest#verifyParts_should_verify_all_unverified_parts_and_promote_to_ready+verifyParts_should_refuse_blank_verifier_and_change_nothing+verifyParts_should_fail_closed_on_cross_band_access+verifyParts_should_preserve_prior_auditor_and_promote_only_when_all_verified
+```
+(full class run `./mvnw test -Dtest=CompositionCommandServiceTest` — 14 tests green — or the Epic-3-relevant set `./mvnw test -Dtest='CompositionCommandServiceTest,CompositionInstrumentIT,CompositionQueryServiceIT,CompositionTest'` — 39 tests green, used as the regression gate here).
+
+**Story Points:** 3
+**Dependencies:** US-1.3 (parts + audit primitive), US-1.6 (CQRS command service + `requireOwned` pattern both already in place and reused, not re-invented).
+
+**Open items / next in this Epic:** none for US-3.03 itself — it is a complete, self-contained story. Remaining Epic 3 stories (US-3.1 "create composition via UI/endpoint", US-3.2 "list/browse per band without pages leaking across bands through the web layer", US-3.4 "update metadata through the command service's existing `update` exposed over HTTP/HTMX", US-3.5 "archive/restore/delete with confirmation UX") are all **not yet started** and none are blocked on this change — they can be picked up in any order; this gate does not pre-empt or constrain any of them, it only makes READY reachable through a legal, audited path.
 
 ---
 

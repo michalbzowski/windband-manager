@@ -6,7 +6,12 @@ import org.springframework.transaction.annotation.Transactional;
 import pl.michalbzowski.windband.application.query.band.BandQueryService;
 import pl.michalbzowski.windband.domain.band.Band;
 import pl.michalbzowski.windband.domain.composition.Composition;
+import pl.michalbzowski.windband.domain.composition.CompositionInstrument;
+import pl.michalbzowski.windband.domain.composition.CompositionInstrumentRepository;
 import pl.michalbzowski.windband.domain.composition.CompositionRepository;
+
+import java.time.Instant;
+import java.util.List;
 
 /**
  * Command side of the score-library module: create, update-texts, archive
@@ -33,6 +38,7 @@ public class CompositionCommandService {
 
     private final CompositionRepository repository;
     private final BandQueryService bandQueryService;
+    private final CompositionInstrumentRepository instrumentRepository;
 
     // ---- create ----------------------------------------------------------
 
@@ -83,6 +89,42 @@ public class CompositionCommandService {
         Composition owned = requireOwned(id, bandId);
         // Cascade net: parts rows are orphan-removed by JPA too; both paths apply.
         repository.delete(owned);
+    }
+
+    // ---- verify-gate (US-3.03) -------------------------------------------
+
+    /**
+     * Verifies every unverified part of the composition as authored by {@code verifier}
+     * and transitions the composition to {@code READY} once no part remains unverified.
+     *
+     * <p>Idempotent for already-verified rows: {@link CompositionInstrument#verify(String, Instant)}
+     * freezes the audit pair on first call, so a second pass (or a re-run of this method after
+     * an earlier partial verification) cannot hijack another user's {@code verifiedBy}/{@code verifiedAt}.
+     * A caller with an unverified parts list simply completes the missing ones and promotes — no row is
+     * ever reset or overwritten.
+     *
+     * <p><b>Error semantics</b> (consistent with this service's existing contract):
+     * blank {@code verifier} → {@link IllegalArgumentException} (HTTP 400, pure input error);
+     * unknown or foreign-band composition id → {@link IllegalStateException} (HTTP 409 fail-closed) — no part row
+     * is read, modified, or saved in either failure path.
+     */
+    public void verifyCompositionParts(Long id, Long bandId, String verifier) {
+        if (verifier == null || verifier.isBlank()) {
+            throw new IllegalArgumentException("verifier required");
+        }
+        Composition composition = requireOwned(id, bandId);
+        List<CompositionInstrument> parts = instrumentRepository.findAllByComposition(composition);
+        Instant now = Instant.now();
+        for (CompositionInstrument part : parts) {
+            if (part.getVerifiedBy() == null) {
+                part.verify(verifier.trim(), now);
+            }
+        }
+        boolean anyUnverified = parts.stream().anyMatch(p -> p.getVerifiedBy() == null);
+        if (!anyUnverified) {
+            composition.markReady();
+        }
+        repository.save(composition); // dirty-check persists the part rows + (potentially) the status flip
     }
 
     // ---- failure helpers --------------------------------------------------

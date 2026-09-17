@@ -6,10 +6,14 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.jdbc.core.JdbcTemplate;
 import pl.michalbzowski.windband.BaseIntegrationTest;
 import pl.michalbzowski.windband.domain.band.BandRepository;
-
 import pl.michalbzowski.windband.domain.composition.Composition;
+import pl.michalbzowski.windband.domain.composition.CompositionInstrument;
+import pl.michalbzowski.windband.domain.composition.CompositionInstrumentRepository;
 import pl.michalbzowski.windband.domain.composition.CompositionRepository;
 import pl.michalbzowski.windband.domain.composition.CompositionStatus;
+import pl.michalbzowski.windband.domain.composition.PartSource;
+import pl.michalbzowski.windband.domain.member.Instrument;
+import pl.michalbzowski.windband.domain.member.InstrumentRepository;
 
 import java.time.Instant;
 import java.util.List;
@@ -44,6 +48,12 @@ class CompositionCommandServiceTest extends BaseIntegrationTest {
 
     @Autowired
     private JdbcTemplate jdbcTemplate;
+
+    @Autowired
+    private CompositionInstrumentRepository compositionInstrumentRepository;
+
+    @Autowired
+    private InstrumentRepository instrumentRepository;
 
     /**
      * The Testcontainers PostgreSQL is shared across test classes in the same
@@ -227,7 +237,119 @@ class CompositionCommandServiceTest extends BaseIntegrationTest {
                 .hasMessageContaining("band");
     }
 
+    // ---- verify-gate (US-3.03) -------------------------------------------
+
+    @Test
+    void verifyParts_should_verify_all_unverified_parts_and_promote_to_ready() {
+        Composition c = seedComposition(1L, "Verify happy-path");
+        Instrument flute = instrumentInBand(1L, "Flet");
+        compositionInstrumentRepository.save(
+                CompositionInstrument.forComposition(c, flute, "Flet 1", 1, 3, null, PartSource.MANUAL, 1.0));
+        compositionInstrumentRepository.save(
+                CompositionInstrument.forComposition(c, flute, "Flet 2", 5, 9, null, PartSource.MANUAL, 1.0));
+
+        commandService.verifyCompositionParts(c.getId(), 1L, "admin@example.com");
+
+        Composition reloaded = repository.findByIdAndBandId(c.getId(), 1L).orElseThrow();
+        assertThat(reloaded.getStatus()).isEqualTo(CompositionStatus.READY);
+        List<CompositionInstrument> parts = compositionInstrumentRepository.findAllByComposition(reloaded);
+        assertThat(parts).hasSize(2).allSatisfy(p -> {
+            assertThat(p.getVerifiedBy()).isEqualTo("admin@example.com");
+            assertThat(p.getVerifiedAt()).isNotNull();
+        });
+    }
+
+    @Test
+    void verifyParts_should_refuse_blank_verifier_and_change_nothing() {
+        Composition c = seedComposition(1L, "Verify blank-verifier");
+        Instrument flute = instrumentInBand(1L, "Flet");
+        compositionInstrumentRepository.save(
+                CompositionInstrument.forComposition(c, flute, "Flet 1", 1, 3, null, PartSource.MANUAL, 1.0));
+
+        assertThatThrownBy(() -> commandService.verifyCompositionParts(c.getId(), 1L, "   "))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("verifier");
+
+        // No side effects of any kind: composition still DRAFT, the part row untouched.
+        Composition reloaded = repository.findByIdAndBandId(c.getId(), 1L).orElseThrow();
+        assertThat(reloaded.getStatus()).isEqualTo(CompositionStatus.DRAFT);
+        List<CompositionInstrument> parts = compositionInstrumentRepository.findAllByComposition(reloaded);
+        assertThat(parts).hasSize(1).allSatisfy(p -> {
+            assertThat(p.getVerifiedBy()).isNull();
+            assertThat(p.getVerifiedAt()).isNull();
+        });
+    }
+
+    @Test
+    void verifyParts_should_fail_closed_on_cross_band_access() {
+        Composition c = seedComposition(1L, "Verify cross-band");
+        Instrument flute = instrumentInBand(1L, "Flet");
+        compositionInstrumentRepository.save(
+                CompositionInstrument.forComposition(c, flute, "Flet 1", 1, 3, null, PartSource.MANUAL, 1.0));
+
+        var otherBand = bandRepository.findById(2L).orElseThrow();
+        assertThatThrownBy(() -> commandService.verifyCompositionParts(c.getId(), otherBand.getId(), "attacker@example.com"))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("band");
+
+        // Neither the composition status nor any part row may have moved.
+        Composition reloaded = repository.findByIdAndBandId(c.getId(), 1L).orElseThrow();
+        assertThat(reloaded.getStatus()).isEqualTo(CompositionStatus.DRAFT);
+        List<CompositionInstrument> parts = compositionInstrumentRepository.findAllByComposition(reloaded);
+        assertThat(parts).hasSize(1).allSatisfy(p -> {
+            assertThat(p.getVerifiedBy()).isNull();
+            assertThat(p.getVerifiedAt()).isNull();
+        });
+    }
+
+    @Test
+    void verifyParts_should_preserve_prior_auditor_and_promote_only_when_all_verified() {
+        Composition c = seedComposition(1L, "Verify idempotent re-entry");
+        Instrument flute = instrumentInBand(1L, "Flet");
+        compositionInstrumentRepository.save(
+                CompositionInstrument.forComposition(c, flute, "Flet 1", 1, 3, null, PartSource.MANUAL, 1.0));
+        compositionInstrumentRepository.save(
+                CompositionInstrument.forComposition(c, flute, "Flet 2", 5, 9, null, PartSource.MANUAL, 1.0));
+
+        // Simulate a partial prior verification by a different actor on one of the two parts —
+        // the audit pair is frozen to them and must survive a later full-verify pass.
+        CompositionInstrument flet1 = compositionInstrumentRepository
+                .findByCompositionIdAndInstrumentRole(c.getId(), "Flet 1")
+                .orElseThrow();
+        Instant earlierAudit = Instant.ofEpochMilli(1_700_000_000_000L);
+        flet1.verify("first@example.com", earlierAudit);
+        compositionInstrumentRepository.save(flet1);
+
+        commandService.verifyCompositionParts(c.getId(), 1L, "second@example.com");
+
+        Composition reloaded = repository.findByIdAndBandId(c.getId(), 1L).orElseThrow();
+        assertThat(reloaded.getStatus()).isEqualTo(CompositionStatus.READY); // now fully verified
+        List<CompositionInstrument> parts = compositionInstrumentRepository.findAllByComposition(reloaded);
+        parts.stream().filter(p -> p.getInstrumentRole().equals("Flet 1"))
+                .findFirst().ifPresent(p -> {
+                    assertThat(p.getVerifiedBy()).isEqualTo("first@example.com"); // first-writer wins, not hijacked
+                    assertThat(p.getVerifiedAt()).isEqualTo(earlierAudit);
+                });
+        parts.stream().filter(p -> p.getInstrumentRole().equals("Flet 2"))
+                .findFirst().ifPresent(p -> {
+                    assertThat(p.getVerifiedBy()).isEqualTo("second@example.com");
+                    assertThat(p.getVerifiedAt()).isNotNull();
+                });
+    }
+
     // helper ---------------------------------------------------------------
+
+    private Composition seedComposition(Long bandId, String title) {
+        var cmd = new CreateCompositionCommand();
+        cmd.setTitle(title);
+        return commandService.create(cmd, bandId);
+    }
+
+    private Instrument instrumentInBand(Long bandId, String name) {
+        // Reuse the row if another test already seeded it (shared Testcontainers DB).
+        return instrumentRepository.findByNameAndBandId(name, bandId)
+                .orElseGet(() -> instrumentRepository.save(Instrument.create(name, bandRepository.findById(bandId).orElseThrow())));
+    }
 
     private static CreateCompositionCommand title(String t) {
         var cmd = new CreateCompositionCommand();
