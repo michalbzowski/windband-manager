@@ -18,6 +18,15 @@ import pl.michalbzowski.windband.application.config.ScoresConfig;
 @Component
 public class ScoreFileStorage {
 
+    /**
+     * Temp-file naming convention written during a two-phase upload (US-2.1):
+     * {@code <root>/upload-*.tmp}. This constant is the single source of truth
+     * so any cleanup code (US-2.5) must match exactly what this class writes —
+     * changing one without the other silently breaks the safety-net sweep.
+     */
+    public static final String TEMP_FILE_PREFIX = "upload-";
+    public static final String TEMP_FILE_SUFFIX = ".tmp";
+
     private final ScoresConfig config;
 
     public ScoreFileStorage(ScoresConfig config) {
@@ -36,7 +45,7 @@ public class ScoreFileStorage {
      */
     public StoredFile store(InputStream in, long sizeBytes, String originalName) throws IOException {
         Path root = ensureRoot();
-        Path tmp = Files.createTempFile(root, "upload-", ".tmp");
+        Path tmp = Files.createTempFile(root, TEMP_FILE_PREFIX, TEMP_FILE_SUFFIX);
         try {
             // 1. Write bytes to the temp file on the same volume as the destination.
             Files.copy(in, tmp, StandardCopyOption.REPLACE_EXISTING);
@@ -83,10 +92,17 @@ public class ScoreFileStorage {
     }
 
     private Path ensureRoot() throws IOException {
+        return Files.createDirectories(effectiveRootPath());
+    }
+
+    /**
+     * Resolves the configured (or default) absolute scores root path. Exposed for US-2.5
+     * so {@code ScoreFileTempCleanupScheduler} can walk exactly the directory this class
+     * writes to, without duplicating the null-fallback logic.
+     */
+    public Path effectiveRootPath() {
         String configured = (config != null && config.rootPath() != null) ? config.rootPath() : "/tmp/windband-scores";
-        Path root = Path.of(configured).toAbsolutePath();
-        Files.createDirectories(root);
-        return root;
+        return Path.of(configured).toAbsolutePath();
     }
 
     private Path destination(Path root, String originalName) {

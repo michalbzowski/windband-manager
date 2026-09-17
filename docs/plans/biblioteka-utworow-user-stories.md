@@ -246,16 +246,23 @@ Real API: `GET /bands/{bandId}/compositions/{compositionId}/files/{fileId}` — 
 
 ---
 
-### **US-2.5: File Delete + Scheduled Temp Cleanup** ⬜ Not started
+### **US-2.5: File Delete + Scheduled Temp Cleanup** ✅ (this PR)
 > **As a** band manager
 > **I want** to delete a file and any orphaned rows it left behind
 > **So that** I don't keep stale scores on disk and in the DB
 
-Planned API: `DELETE /bands/{id}/compositions/{cid}/files/{fileId}` — removes the DB row and the physical file. Also introduces `@Scheduled` cleanup of the temp location (anything older than `windband.scores.temp-cleanup-hours=24`) as a safety net against crash-recovery drift.
+Real API: `DELETE /bands/{bandId}/compositions/{compositionId}/files/{fileId}` → `204 No Content` on success. Band isolation follows the same two-layer contract as US-2.4 — layer 1, unknown band → `IllegalArgumentException` (→ HTTP 400); layer 2.1, unknown file id → `IllegalStateException` (→ HTTP 409); layer 2.2/2.3, composition mismatch or cross-band ownership → `IllegalStateException` (→ HTTP 409), no row or on-disk bytes touched in any failure path.
+
+**Files touched:**
+- Production: `ScoreFileDeleteCommandService` (new, app layer — band isolation + cascade of ZIP-extracted child rows via `parent_file_id`, then best-effort filesystem delete; deliberately non-fatal if the bytes are already gone), `ScoreFileDeleteRestController` (new, adapter layer), `ScoreFileTempCleanupScheduler` (new, `@Scheduled(fixedDelay=1h)` safety-net sweep over the scores root for stale `upload-*.tmp` files older than the configured threshold), `ScoresConfig` (+1 field: `tempCleanupHours`, default 24h), `ScoreFileStorage` (+public `TEMP_FILE_PREFIX`/`TEMP_FILE_SUFFIX` constants so the writer and the cleaner can never diverge on naming convention, +exposed `effectiveRootPath()`)
+- Tests: `ScoreFileDeleteCommandServiceTest` (7 unit tests — ownership success, cascade-order of children, unknown band / unknown file / cross-band / composition-mismatch failures with on-disk bytes left untouched, missing-on-disk tolerance), `ScoreFileTempCleanupSchedulerTest` (4 pure-JVM tests over a real temp dir: stale removed, fresh kept, non-temp ignored, short-threshold applies, missing-root no-op), `ScoreFileDeleteRestControllerTest` (4 MockMvc web-slice tests pinning 204 / 400 / 409 mapping through the real `GlobalExceptionHandler`)
+
+**Story Points:** 5
+**Dependencies:** US-2.1 (upload pipeline already in place).
 
 ---
 
-**Epic 2 status:** ✅ US-2.1, US-2.2 done (PR #200). ✅ US-2.4 done (this branch `pr-201`). ⬜ US-2.3, US-2.5 open — can start after PR #200 merges (they're independent from each other and all build on the US-2.1 pipeline).
+**Epic 2 status:** ✅ US-2.1, US-2.2 done (PR #200). ✅ US-2.4 done (branch `pr-201`, PR #202 merged). 🔶 US-2.3 — implementation + endpoint already present in the codebase (`ScoreFileCommandService.expandZip`, `POST .../files/{fileId}/expand`, covered by `ZipEntryExtractorTest` / `ScoreFileExpandZipIT`) but not yet reflected as "done" in this doc's status table; flag for a follow-up PR to officially close it. ✅ US-2.5 done (this change).
 
 ---
 

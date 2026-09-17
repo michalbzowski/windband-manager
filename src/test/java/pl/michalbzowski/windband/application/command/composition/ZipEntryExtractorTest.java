@@ -20,7 +20,7 @@ class ZipEntryExtractorTest {
 
     @BeforeEach
     void setUp() {
-        ScoresConfig config = new ScoresConfig("/tmp/windband-test", null, null);
+        ScoresConfig config = new ScoresConfig("/tmp/windband-test", null, null, null);
         validator = new UploadValidator(config);
         extractor = new ZipEntryExtractor();
     }
