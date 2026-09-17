@@ -63,7 +63,7 @@ class EventDetailFilterVerificationUiTest extends UiTestBase {
 
     @Test
     void allAcceptanceScenariosPassWithCleanConsole() throws Exception {
-        WebDriverWait wait = new WebDriverWait(driver, Duration.ofSeconds(15));
+        WebDriverWait wait = new WebDriverWait(driver, Duration.ofSeconds(8));
         String u = UUID.randomUUID().toString().substring(0, 8);
 
         // DEFENSE: MemberQueryService.getMembersById builds a priority map via
@@ -76,22 +76,25 @@ class EventDetailFilterVerificationUiTest extends UiTestBase {
         String tagName   = "Kazar" + u;                 // ASCII-ish root shared with M1 first-name stem
 
         // M1 tagged member — exercises NAME+TAG union (scenario 4).
-        createMemberUi("Kaz" + u, "Tagg" + u, wait);
-        setPrimaryKeyInstrumentTag("Kaz" + u, tagName);
+        Long mTaggedId = createTestBand1Member("Kaz" + u, "Tagg" + u, null);
+        setPrimaryKeyInstrumentTag(firstNameOf(mTaggedId), tagName);
 
         // M2 TAGGED with the spec word — proves tag branch with Polish diacritics.
-        createMemberUi("Iwona" + u, "Tagged" + u, wait);
-        setPrimaryKeyInstrumentTag("Iwona" + u, tagWord);
+        Long mUnameId = createTestBand1Member("Iwona" + u, "Tagged" + u, null);
+        setPrimaryKeyInstrumentTag(firstNameOf(mUnameId), tagWord);
 
         // M3 neutral — exercises clean last-name filter only (scenario 2), no tags, no name overlap.
-        createMemberUi("Marek" + u, "NowakX" + u, wait);
+        Long mNeutralId = createTestBand1Member("Marek" + u, "NowakX" + u, null);
 
-        mTaggedId  = idByFirstOrNull("Kaz" + u);
-        mUnameId   = idByFirstOrNull("Iwona" + u);
-        mNeutralId = idByFirstOrNull("Marek" + u);
         assertThat(mTaggedId).isNotNull();
         assertThat(mUnameId).isNotNull();
         assertThat(mNeutralId).isNotNull();
+
+        // Sanity: all three seeded members are visible in the DB before any UI interaction.
+        Integer seedCount = jdbcTemplate.queryForObject(
+                "SELECT COUNT(*) FROM members WHERE id IN (?, ?, ?)",
+                Integer.class, mTaggedId, mUnameId, mNeutralId);
+        assertThat(seedCount).as("all three seeded members must be present in DB").isEqualTo(3);
 
         // Event created directly (schema matches BandEvent: name, date, start_time, event_type NOT NULL,
         // payment_type NOT NULL default FREE, band_id NOT NULL — all supplied below).
@@ -214,19 +217,6 @@ class EventDetailFilterVerificationUiTest extends UiTestBase {
 
     // ─────────────────────── fixture helpers (patterns from EventDetailFilterUiTest) ─────────
 
-    private void createMemberUi(String firstName, String lastName, WebDriverWait wait) throws Exception {
-        loginAndNavigateTo("/members");
-        driver.findElement(By.xpath("//button[contains(., 'Dodaj cz\u0142onka')]")).click();
-        wait.until(ExpectedConditions.presenceOfElementLocated(By.cssSelector("#member-form")));
-        fill("firstName", firstName);
-        fill("lastName", lastName);
-        ((JavascriptExecutor) driver).executeScript(
-                "document.querySelector(\"input[name='dateOfBirth']\").value = '1990-05-15';");
-        driver.findElement(By.cssSelector("#member-form button[type='submit'].primary")).click();
-        wait.until(ExpectedConditions.presenceOfElementLocated(By.cssSelector("#members-content table")));
-        Awaitility.await().atMost(Duration.ofSeconds(10)).until(() -> idByFirstOrNull(firstName) != null);
-    }
-
     /** Creates the instrument (band-1 scoped) and makes it the member's primary — sibling-test pattern.
      *  Explicitly sets sort_priority: MemberQueryService.toMap(Instrument::getSortPriority,...) NPEs if null. */
     private void setPrimaryKeyInstrumentTag(String firstName, String instrument) {
@@ -253,12 +243,6 @@ class EventDetailFilterVerificationUiTest extends UiTestBase {
                 memberId, instrumentId);
     }
 
-    private void fill(String name, String value) {
-        WebElement el = driver.findElement(By.cssSelector("input[name='" + name + "']"));
-        el.clear();
-        el.sendKeys(value);
-    }
-
     private Long idByFirstOrNull(String firstName) {
         try {
             Number c = jdbcTemplate.queryForObject(
@@ -268,6 +252,11 @@ class EventDetailFilterVerificationUiTest extends UiTestBase {
         } catch (Exception e) {
             return null;
         }
+    }
+
+    private String firstNameOf(Long memberId) {
+        return jdbcTemplate.queryForObject(
+                "SELECT first_name FROM members WHERE id = ?", String.class, memberId);
     }
 
 }

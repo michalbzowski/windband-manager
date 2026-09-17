@@ -27,42 +27,35 @@ class EventInviteModalUiTest extends UiTestBase {
 
     @Test
     void inviteMultipleMembersViaModal() throws Exception {
-        WebDriverWait wait = new WebDriverWait(driver, Duration.ofSeconds(10));
+        WebDriverWait wait = new WebDriverWait(driver, Duration.ofSeconds(8));
         String uid = UUID.randomUUID().toString().substring(0, 8);
         String aFirst = "InvA" + uid;
         String aLast = "Test" + uid;
         String bFirst = "InvB" + uid;
         String bLast = "Test" + uid;
 
-        createMember(aFirst, aLast);
-        createMember(bFirst, bLast);
+        // Fast setup: seed two band-1 members directly in the DB (no UI form). This test's
+        // purpose is the multi-member invite MODAL flow, not the member-create flow — the
+        // UI-based createMember() (navigate /members + fill 4 fields + submit + wait form-hide)
+        // added ~2 s per member for no coverage in this scenario.
+        Long idA = createTestBand1Member(aFirst, aLast, null);
+        Long idB = createTestBand1Member(bFirst, bLast, null);
+        assertThat(idA).as("seeded member A must have a generated id").isNotNull();
+        assertThat(idB).as("seeded member B must have a generated id").isNotNull();
+
+        // Sanity: both members are visible in the team's active member list before the invite.
+        Integer seedCount = jdbcTemplate.queryForObject(
+                "SELECT COUNT(*) FROM members WHERE id IN (?, ?)", Integer.class, idA, idB);
+        assertThat(seedCount).as("both seeded members must be present in DB before the invite flow").isEqualTo(2);
 
         // Create an event (band_events are truncated per test, so list starts empty).
-        loginAndNavigateTo("/events");
-        driver.findElement(By.xpath("//button[contains(., 'Dodaj wydarzenie')]")).click();
-        wait.until(ExpectedConditions.presenceOfElementLocated(By.cssSelector("#event-form")));
-        String eventName = "InviteEvt" + uid;
-        fill("name", eventName);
-        String today = java.time.LocalDate.now().toString();
-        ((JavascriptExecutor) driver).executeScript(
-                "document.querySelector(\"input[name='date']\").value = '" + today + "';");
-        driver.findElement(By.cssSelector("#event-form button[type='submit'].primary")).click();
-        wait.until(ExpectedConditions.presenceOfElementLocated(
-                By.xpath("//a[contains(., 'Szczegóły')]")));
+        // loginAndNavigateTo also establishes (or reuses) the admin session — needed for the
+        // XHR-based inviteMemberToEvent helper that runs later on the detail page.
+        Long eventId = createEventViaModalForm(uid);
+        assertThat(eventId).as("event created via modal form must have a generated id").isNotNull();
 
-        // Open OUR new event's detail page: scope the 'Szczegóły' click to the row
-        // that contains our unique event name — in full-suite runs, other rows may
-        // precede ours so the first such link is not guaranteed to be ours.
-        String ourEventName = "InviteEvt" + uid;
-        WebElement ourLink = null;
-        for (WebElement r : driver.findElements(By.cssSelector("tr"))) {
-            if (r.getText().contains(ourEventName)) {
-                ourLink = r.findElement(By.xpath(".//a[contains(., 'Szczegóły')]"));
-                break;
-            }
-        }
-        if (ourLink == null) throw new AssertionError("Our event row not found: " + ourEventName);
-        jsClick(ourLink);
+        // Open OUR new event's detail page.
+        driver.get(baseUrl() + "/events/" + eventId);
         wait.until(ExpectedConditions.presenceOfElementLocated(By.id("open-invite-btn")));
 
         // Open the unified modal: single "Zaproś" button opens the shared
@@ -92,6 +85,18 @@ class EventInviteModalUiTest extends UiTestBase {
         wait.until(ExpectedConditions.presenceOfElementLocated(By.xpath(
                 "//*[@id='participants-table']//tr[.//td[contains(., '" + bFirst + "')]]")));
 
+        // Hard DB assertion: both invite rows persisted — the source of truth, independent of
+        // render timing / highlight animation on slow CI runners.
+        org.testcontainers.shaded.org.awaitility.Awaitility.await()
+                .atMost(Duration.ofSeconds(8))
+                .pollInterval(Duration.ofMillis(50))
+                .untilAsserted(() -> {
+                    Integer count = jdbcTemplate.queryForObject(
+                            "SELECT COUNT(*) FROM event_participations WHERE event_id = ? AND member_id IN (?, ?)",
+                            Integer.class, eventId, idA, idB);
+                    assertThat(count).as("both invited members must be persisted as participants").isEqualTo(2);
+                });
+
         // At least one newly invited row should be highlighted (green pulse).
         wait.until(ExpectedConditions.presenceOfElementLocated(
                 By.cssSelector("#participants-table tbody tr.highlight-row")));
@@ -102,18 +107,32 @@ class EventInviteModalUiTest extends UiTestBase {
         assertThat(after).isEqualTo(before + 2);
     }
 
-    private void createMember(String first, String last) {
-        WebDriverWait wait = new WebDriverWait(driver, Duration.ofSeconds(10));
-        loginAndNavigateTo("/members");
-        driver.findElement(By.xpath("//button[contains(., 'Dodaj członka')]")).click();
-        wait.until(ExpectedConditions.presenceOfElementLocated(By.cssSelector("#member-form")));
-        fill("firstName", first);
-        fill("lastName", last);
+    /**
+     * Creates a new event through the REAL UI form flow (which is what this test class covers:
+     * the invite modal on an existing event), then returns the generated event id.
+     *\
+     * <p>Returns the event's DB id so that subsequent navigation / XHR helpers can work with a
+     * stable key instead of scraping it out of the DOM.
+     */
+    private Long createEventViaModalForm(String uid) {
+        WebDriverWait wait = new WebDriverWait(driver, Duration.ofSeconds(8));
+        loginAndNavigateTo("/events");
+        driver.findElement(By.xpath("//button[contains(., 'Dodaj wydarzenie')]")).click();
+        wait.until(ExpectedConditions.presenceOfElementLocated(By.cssSelector("#event-form")));
+        String eventName = "InviteEvt" + uid;
+        fill("name", eventName);
+        String today = java.time.LocalDate.now().toString();
         ((JavascriptExecutor) driver).executeScript(
-                "document.querySelector(\"input[name='dateOfBirth']\").value = '1990-05-15';");
-        driver.findElement(By.cssSelector("#member-form button[type='submit'].primary")).click();
-        // Modal closes on success — the create form's visibility flip is the settle signal.
-        wait.until(ExpectedConditions.invisibilityOfElementLocated(By.cssSelector("#member-form")));
+                "document.querySelector(\"input[name='date']\").value = '" + today + "'");
+        driver.findElement(By.cssSelector("#event-form button[type='submit'].primary")).click();
+        wait.until(ExpectedConditions.presenceOfElementLocated(
+                By.xpath("//a[contains(., 'Szczegóły')]")));
+
+        // Resolve our new event's id from the list (band-scoped, name is unique per uid).
+        Long eventId = jdbcTemplate.queryForObject(
+                "SELECT id FROM band_events WHERE name = ?", Long.class, eventName);
+        assertThat(eventId).as("newly created event must be visible in DB by its unique name").isNotNull();
+        return eventId;
     }
 
     /**

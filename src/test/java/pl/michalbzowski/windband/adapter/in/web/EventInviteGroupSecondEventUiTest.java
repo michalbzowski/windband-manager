@@ -30,18 +30,23 @@ class EventInviteGroupSecondEventUiTest extends UiTestBase {
 
     @Test
     void inviteSameGroupToTwoEventsViaHtmxNavigation() throws Exception {
-        WebDriverWait wait = new WebDriverWait(driver, Duration.ofSeconds(10));
+        WebDriverWait wait = new WebDriverWait(driver, Duration.ofSeconds(8));
 
         loginAsAdmin(driver, wait);
 
         String uid = "g2" + System.nanoTime();
-        createMemberViaUi(driver, wait, "Alpha" + uid, "Kowalski" + uid);
-        createMemberViaUi(driver, wait, "Beta" + uid, "Nowak" + uid);
-        Long alphaId = jdbcTemplate.queryForObject(
-                "SELECT MAX(id) FROM members WHERE first_name = ?", Long.class, "Alpha" + uid);
-        Long betaId = jdbcTemplate.queryForObject(
-                "SELECT MAX(id) FROM members WHERE first_name = ?", Long.class, "Beta" + uid);
+        Long alphaId = createTestBand1Member("Alpha" + uid, "Kowalski" + uid, null);
+        Long betaId = createTestBand1Member("Beta" + uid, "Nowak" + uid, null);
+        assertThat(alphaId).isNotNull();
+        assertThat(betaId).isNotNull();
         System.out.println("[TEST] alphaId=" + alphaId + " betaId=" + betaId);
+
+        Integer memberCount = jdbcTemplate.queryForObject(
+                "SELECT COUNT(*) FROM members WHERE id IN (?, ?)",
+                Integer.class, alphaId, betaId);
+        assertThat(memberCount)
+                .as("Both seeded members must be present in DB before any UI interaction")
+                .isEqualTo(2);
 
         // Band of the members we just created (the current team's band) — events
         // must belong to this band to appear in the list (which is band-scoped).
@@ -181,18 +186,6 @@ class EventInviteGroupSecondEventUiTest extends UiTestBase {
         return eventIdStr != null ? Long.valueOf(eventIdStr) : null;
     }
 
-    private void createMemberViaUi(WebDriver driver, WebDriverWait wait, String first, String last) {
-        loginAndNavigateTo("/members");
-        driver.findElement(By.xpath("//button[contains(., 'Dodaj członka')]")).click();
-        wait.until(ExpectedConditions.presenceOfElementLocated(By.id("member-form")));
-        fillField("firstName", first);
-        fillField("lastName", last);
-        ((JavascriptExecutor) driver).executeScript(
-                "document.querySelector(\"input[name='dateOfBirth']\").value = '1990-05-15';");
-        driver.findElement(By.cssSelector("#member-form button[type='submit'].primary")).click();
-        wait.until(ExpectedConditions.presenceOfElementLocated(By.cssSelector("#members-content table")));
-    }
-
     private void addMemberToGroupViaApi(WebDriver driver, Long groupId, Long memberId) {
         ((JavascriptExecutor) driver).executeScript(
                 "return fetch('/api/groups/' + arguments[0] + '/members/' + arguments[1], {"
@@ -207,12 +200,6 @@ class EventInviteGroupSecondEventUiTest extends UiTestBase {
         driver.findElement(org.openqa.selenium.By.cssSelector("button[type='submit']")).click();
         wait.until(ExpectedConditions.not(
                 ExpectedConditions.urlContains("/login")));
-    }
-
-    private void fillField(String name, String value) {
-        WebElement el = driver.findElement(By.name(name));
-        el.clear();
-        el.sendKeys(value);
     }
 
     private void waitForHtmxSettle() {
