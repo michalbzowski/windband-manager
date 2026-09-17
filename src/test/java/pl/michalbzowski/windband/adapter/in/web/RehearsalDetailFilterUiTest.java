@@ -1,5 +1,6 @@
 package pl.michalbzowski.windband.adapter.in.web;
 
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.openqa.selenium.By;
 import org.openqa.selenium.JavascriptExecutor;
@@ -29,6 +30,16 @@ class RehearsalDetailFilterUiTest extends UiTestBase {
     @Autowired
     private JdbcTemplate jdbcTemplate;
 
+    /**
+     * Before each test, establish an authenticated browser session on a real page.
+     * This lets tests freely call {@code createRehearsalViaApi} / XHR helpers which
+     * issue an XMLHttpRequest that needs a valid origin + CSRF cookie context.
+     */
+    @BeforeEach
+    void ensureLoggedIn() throws Exception {
+        loginAndNavigateTo("/rehearsals");
+    }
+
     @Test
     void textFilterShouldFilterByFirstName() throws Exception {
         WebDriverWait wait = new WebDriverWait(driver, Duration.ofSeconds(10));
@@ -36,41 +47,21 @@ class RehearsalDetailFilterUiTest extends UiTestBase {
         String firstName = "FilterFirst" + uid;
         String lastName = "Test" + uid;
 
-        // --- Create members via UI ---
-        createMember(firstName, lastName, wait);
-        createMember("OtherFirst" + uid, "OtherLast" + uid, wait);
+        // --- Seed members directly in the DB (the member form is covered by
+        //     dedicated UI tests; this test only verifies filter behaviour). ---
+        createTestBand1Member(firstName, lastName, null);
+        Long otherId = createTestBand1Member("OtherFirst" + uid, "OtherLast" + uid, null);
 
-        // --- Create a rehearsal via UI ---
-        loginAndNavigateTo("/rehearsals");
-        driver.findElement(By.xpath("//button[contains(., 'Zaplanuj spotkanie')]")).click();
-        wait.until(ExpectedConditions.presenceOfElementLocated(By.cssSelector("#rehearsal-form")));
-
-        String today = LocalDate.now().toString();
-        ((JavascriptExecutor) driver).executeScript(
-                "document.querySelector(\"input[name='date']\").value = arguments[0];" +
-                "document.querySelector(\"input[name='startTime']\").value = '18:00';" +
-                "document.querySelector(\"input[name='endTime']\").value = '20:00';" +
-                "document.querySelector(\"input[name='location']\").value = 'Sala prób';",
-                today);
-        driver.findElement(By.cssSelector("#rehearsal-form button[type='submit'].primary")).click();
-        wait.until(ExpectedConditions.urlContains("/rehearsals"));
-        wait.until(ExpectedConditions.not(ExpectedConditions.urlContains("/new")));
-
-        // Wait for rehearsal to be persisted
-        Awaitility.await().atMost(Duration.ofSeconds(10)).until(() ->
-                jdbcTemplate.queryForObject(
-                        "SELECT COUNT(*) FROM rehearsals WHERE date = ?", Long.class, today) > 0);
-
-        Long rehearsalId = jdbcTemplate.queryForObject(
-                "SELECT MAX(id) FROM rehearsals WHERE date = ?", Long.class, today);
+        // --- Create a rehearsal (via API helper for a deterministic id) ---
+        java.time.LocalDate date = java.time.LocalDate.now().plusDays(7);
+        Long rehearsalId = createRehearsalViaApi(uid, date);
+        assertNotNull(rehearsalId);
 
         Long memberId1 = jdbcTemplate.queryForObject(
-                "SELECT MAX(id) FROM members WHERE first_name = ?", Long.class, firstName);
-
+                "SELECT id FROM members WHERE first_name = ?", Long.class, firstName);
         Long memberId2 = jdbcTemplate.queryForObject(
-                "SELECT MAX(id) FROM members WHERE first_name = ?", Long.class, "OtherFirst" + uid);
+                "SELECT id FROM members WHERE first_name = ?", Long.class, "OtherFirst" + uid);
 
-        assertThat(rehearsalId).isNotNull();
         assertThat(memberId1).isNotNull();
         assertThat(memberId2).isNotNull();
 
@@ -111,47 +102,27 @@ class RehearsalDetailFilterUiTest extends UiTestBase {
         String firstName = "Test" + uid;
         String lastName = "FilterLast" + uid;
 
-        // --- Create members via UI ---
-        createMember(firstName, lastName, wait);
-        createMember("Test" + uid, "OtherLast" + uid, wait);
+        // --- Seed members directly in the DB (the member form is covered by
+        //     dedicated UI tests; this test only verifies filter behaviour). ---
+        createTestBand1Member(firstName, lastName, null);
+        Long otherId = createTestBand1Member("Test" + uid, "OtherLast" + uid, null);
 
-        // --- Create a rehearsal via UI ---
-        loginAndNavigateTo("/rehearsals");
-        driver.findElement(By.xpath("//button[contains(., 'Zaplanuj spotkanie')]")).click();
-        wait.until(ExpectedConditions.presenceOfElementLocated(By.cssSelector("#rehearsal-form")));
-
-        String today = LocalDate.now().toString();
-        ((JavascriptExecutor) driver).executeScript(
-                "document.querySelector(\"input[name='date']\").value = arguments[0];" +
-                "document.querySelector(\"input[name='startTime']\").value = '18:00';" +
-                "document.querySelector(\"input[name='endTime']\").value = '20:00';" +
-                "document.querySelector(\"input[name='location']\").value = 'Sala prób';",
-                today);
-        driver.findElement(By.cssSelector("#rehearsal-form button[type='submit'].primary")).click();
-        wait.until(ExpectedConditions.urlContains("/rehearsals"));
-        wait.until(ExpectedConditions.not(ExpectedConditions.urlContains("/new")));
-
-        // Wait for rehearsal to be persisted
-        Awaitility.await().atMost(Duration.ofSeconds(10)).until(() ->
-                jdbcTemplate.queryForObject(
-                        "SELECT COUNT(*) FROM rehearsals WHERE date = ?", Long.class, today) > 0);
-
-        Long rehearsalId = jdbcTemplate.queryForObject(
-                "SELECT MAX(id) FROM rehearsals WHERE date = ?", Long.class, today);
+        // --- Create a rehearsal (via API helper for a deterministic id) ---
+        java.time.LocalDate date = java.time.LocalDate.now().plusDays(7);
+        Long rehearsalId = createRehearsalViaApi(uid, date);
+        assertNotNull(rehearsalId);
 
         Long memberId1 = jdbcTemplate.queryForObject(
-                "SELECT MAX(id) FROM members WHERE last_name = ?", Long.class, lastName);
-
+                "SELECT id FROM members WHERE last_name = ?", Long.class, lastName);
         Long memberId2 = jdbcTemplate.queryForObject(
-                "SELECT MAX(id) FROM members WHERE last_name = ?", Long.class, "OtherLast" + uid);
+                "SELECT id FROM members WHERE last_name = ?", Long.class, "OtherLast" + uid);
 
-        assertThat(rehearsalId).isNotNull();
         assertThat(memberId1).isNotNull();
         assertThat(memberId2).isNotNull();
 
         // --- Invite both members to the rehearsal ---
         inviteMemberToRehearsal(rehearsalId, memberId1);
-        inviteMemberToRehearsal(rehearsalId, memberId2);
+        inviteMemberToRehearsal(rehearsalId, otherId);
 
         // --- Navigate to rehearsal detail ---
         driver.get(baseUrl() + "/rehearsals/" + rehearsalId);
@@ -186,41 +157,22 @@ class RehearsalDetailFilterUiTest extends UiTestBase {
         String firstName = "AttFilter" + uid;
         String lastName = "Test" + uid;
 
-        // --- Create members via UI ---
-        createMember(firstName + "1", lastName, wait);
-        createMember(firstName + "2", lastName, wait);
-        createMember(firstName + "3", lastName, wait);
+        // --- Seed members directly in the DB (the member form is covered by
+        //     dedicated UI tests; this test only verifies filter behaviour). ---
+        createTestBand1Member(firstName + "1", lastName, null);
+        Long id2 = createTestBand1Member(firstName + "2", lastName, null);
+        Long id3 = createTestBand1Member(firstName + "3", lastName, null);
 
-        // --- Create a rehearsal via UI ---
-        loginAndNavigateTo("/rehearsals");
-        driver.findElement(By.xpath("//button[contains(., 'Zaplanuj spotkanie')]")).click();
-        wait.until(ExpectedConditions.presenceOfElementLocated(By.cssSelector("#rehearsal-form")));
-
-        String today = LocalDate.now().toString();
-        ((JavascriptExecutor) driver).executeScript(
-                "document.querySelector(\"input[name='date']\").value = arguments[0];" +
-                "document.querySelector(\"input[name='startTime']\").value = '18:00';" +
-                "document.querySelector(\"input[name='endTime']\").value = '20:00';" +
-                "document.querySelector(\"input[name='location']\").value = 'Sala prób';",
-                today);
-        driver.findElement(By.cssSelector("#rehearsal-form button[type='submit'].primary")).click();
-        wait.until(ExpectedConditions.urlContains("/rehearsals"));
-        wait.until(ExpectedConditions.not(ExpectedConditions.urlContains("/new")));
-
-        // Wait for rehearsal to be persisted
-        Awaitility.await().atMost(Duration.ofSeconds(10)).until(() ->
-                jdbcTemplate.queryForObject(
-                        "SELECT COUNT(*) FROM rehearsals WHERE date = ?", Long.class, today) > 0);
-
-        Long rehearsalId = jdbcTemplate.queryForObject(
-                "SELECT MAX(id) FROM rehearsals WHERE date = ?", Long.class, today);
+        // --- Create a rehearsal (via API helper for a deterministic id) ---
+        java.time.LocalDate date = java.time.LocalDate.now().plusDays(7);
+        Long rehearsalId = createRehearsalViaApi(uid, date);
+        assertNotNull(rehearsalId);
 
         List<Long> memberIds = jdbcTemplate.query(
                 "SELECT id FROM members WHERE first_name LIKE ? ORDER BY id",
                 (rs, rowNum) -> rs.getLong("id"),
                 firstName + "%");
 
-        assertThat(rehearsalId).isNotNull();
         assertThat(memberIds).hasSize(3);
 
         // --- Invite all three members to the rehearsal ---
@@ -281,42 +233,23 @@ class RehearsalDetailFilterUiTest extends UiTestBase {
         String firstName = "MultiAtt" + uid;
         String lastName = "Test" + uid;
 
-        // --- Create members via UI ---
-        createMember(firstName + "1", lastName, wait);
-        createMember(firstName + "2", lastName, wait);
-        createMember(firstName + "3", lastName, wait);
-        createMember(firstName + "4", lastName, wait);
+        // --- Seed members directly in the DB (the member form is covered by
+        //     dedicated UI tests; this test only verifies filter behaviour). ---
+        createTestBand1Member(firstName + "1", lastName, null);
+        Long id2 = createTestBand1Member(firstName + "2", lastName, null);
+        Long id3 = createTestBand1Member(firstName + "3", lastName, null);
+        Long id4 = createTestBand1Member(firstName + "4", lastName, null);
 
-        // --- Create a rehearsal via UI ---
-        loginAndNavigateTo("/rehearsals");
-        driver.findElement(By.xpath("//button[contains(., 'Zaplanuj spotkanie')]")).click();
-        wait.until(ExpectedConditions.presenceOfElementLocated(By.cssSelector("#rehearsal-form")));
-
-        String today = LocalDate.now().toString();
-        ((JavascriptExecutor) driver).executeScript(
-                "document.querySelector(\"input[name='date']\").value = arguments[0];" +
-                "document.querySelector(\"input[name='startTime']\").value = '18:00';" +
-                "document.querySelector(\"input[name='endTime']\").value = '20:00';" +
-                "document.querySelector(\"input[name='location']\").value = 'Sala prób';",
-                today);
-        driver.findElement(By.cssSelector("#rehearsal-form button[type='submit'].primary")).click();
-        wait.until(ExpectedConditions.urlContains("/rehearsals"));
-        wait.until(ExpectedConditions.not(ExpectedConditions.urlContains("/new")));
-
-        // Wait for rehearsal to be persisted
-        Awaitility.await().atMost(Duration.ofSeconds(10)).until(() ->
-                jdbcTemplate.queryForObject(
-                        "SELECT COUNT(*) FROM rehearsals WHERE date = ?", Long.class, today) > 0);
-
-        Long rehearsalId = jdbcTemplate.queryForObject(
-                "SELECT MAX(id) FROM rehearsals WHERE date = ?", Long.class, today);
+        // --- Create a rehearsal (via API helper for a deterministic id) ---
+        java.time.LocalDate date = java.time.LocalDate.now().plusDays(7);
+        Long rehearsalId = createRehearsalViaApi(uid, date);
+        assertNotNull(rehearsalId);
 
         List<Long> memberIds = jdbcTemplate.query(
                 "SELECT id FROM members WHERE first_name LIKE ? ORDER BY id",
                 (rs, rowNum) -> rs.getLong("id"),
                 firstName + "%");
 
-        assertThat(rehearsalId).isNotNull();
         assertThat(memberIds).hasSize(4);
 
         // --- Invite all four members to the rehearsal ---
@@ -372,40 +305,21 @@ class RehearsalDetailFilterUiTest extends UiTestBase {
         String firstName = "CountUpdate" + uid;
         String lastName = "Test" + uid;
 
-        // --- Create members via UI ---
-        createMember(firstName + "1", lastName, wait);
-        createMember(firstName + "2", lastName, wait);
+        // --- Seed members directly in the DB (the member form is covered by
+        //     dedicated UI tests; this test only verifies filter behaviour). ---
+        createTestBand1Member(firstName + "1", lastName, null);
+        Long id2 = createTestBand1Member(firstName + "2", lastName, null);
 
-        // --- Create a rehearsal via UI ---
-        loginAndNavigateTo("/rehearsals");
-        driver.findElement(By.xpath("//button[contains(., 'Zaplanuj spotkanie')]")).click();
-        wait.until(ExpectedConditions.presenceOfElementLocated(By.cssSelector("#rehearsal-form")));
-
-        String today = LocalDate.now().toString();
-        ((JavascriptExecutor) driver).executeScript(
-                "document.querySelector(\"input[name='date']\").value = arguments[0];" +
-                "document.querySelector(\"input[name='startTime']\").value = '18:00';" +
-                "document.querySelector(\"input[name='endTime']\").value = '20:00';" +
-                "document.querySelector(\"input[name='location']\").value = 'Sala prób';",
-                today);
-        driver.findElement(By.cssSelector("#rehearsal-form button[type='submit'].primary")).click();
-        wait.until(ExpectedConditions.urlContains("/rehearsals"));
-        wait.until(ExpectedConditions.not(ExpectedConditions.urlContains("/new")));
-
-        // Wait for rehearsal to be persisted
-        Awaitility.await().atMost(Duration.ofSeconds(10)).until(() ->
-                jdbcTemplate.queryForObject(
-                        "SELECT COUNT(*) FROM rehearsals WHERE date = ?", Long.class, today) > 0);
-
-        Long rehearsalId = jdbcTemplate.queryForObject(
-                "SELECT MAX(id) FROM rehearsals WHERE date = ?", Long.class, today);
+        // --- Create a rehearsal (via API helper for a deterministic id) ---
+        java.time.LocalDate date = java.time.LocalDate.now().plusDays(7);
+        Long rehearsalId = createRehearsalViaApi(uid, date);
+        assertNotNull(rehearsalId);
 
         List<Long> memberIds = jdbcTemplate.query(
                 "SELECT id FROM members WHERE first_name LIKE ? ORDER BY id",
                 (rs, rowNum) -> rs.getLong("id"),
                 firstName + "%");
 
-        assertThat(rehearsalId).isNotNull();
         assertThat(memberIds).hasSize(2);
 
         // --- Invite both members to the rehearsal ---
@@ -476,34 +390,16 @@ class RehearsalDetailFilterUiTest extends UiTestBase {
         String firstName = "Combined" + uid;
         String lastName = "Filter" + uid;
 
-        // --- Create members via UI ---
-        createMember(firstName + "1", lastName + "A", wait);
-        createMember(firstName + "2", lastName + "B", wait);
-        createMember("Other" + uid, "Person" + uid, wait);
+        // --- Seed members directly in the DB (the member form is covered by
+        //     dedicated UI tests; this test only verifies filter behaviour). ---
+        createTestBand1Member(firstName + "1", lastName + "A", null);
+        Long id2 = createTestBand1Member(firstName + "2", lastName + "B", null);
+        Long otherId = createTestBand1Member("Other" + uid, "Person" + uid, null);
 
-        // --- Create a rehearsal via UI ---
-        loginAndNavigateTo("/rehearsals");
-        driver.findElement(By.xpath("//button[contains(., 'Zaplanuj spotkanie')]")).click();
-        wait.until(ExpectedConditions.presenceOfElementLocated(By.cssSelector("#rehearsal-form")));
-
-        String today = LocalDate.now().toString();
-        ((JavascriptExecutor) driver).executeScript(
-                "document.querySelector(\"input[name='date']\").value = arguments[0];" +
-                "document.querySelector(\"input[name='startTime']\").value = '18:00';" +
-                "document.querySelector(\"input[name='endTime']\").value = '20:00';" +
-                "document.querySelector(\"input[name='location']\").value = 'Sala prób';",
-                today);
-        driver.findElement(By.cssSelector("#rehearsal-form button[type='submit'].primary")).click();
-        wait.until(ExpectedConditions.urlContains("/rehearsals"));
-        wait.until(ExpectedConditions.not(ExpectedConditions.urlContains("/new")));
-
-        // Wait for rehearsal to be persisted
-        Awaitility.await().atMost(Duration.ofSeconds(10)).until(() ->
-                jdbcTemplate.queryForObject(
-                        "SELECT COUNT(*) FROM rehearsals WHERE date = ?", Long.class, today) > 0);
-
-        Long rehearsalId = jdbcTemplate.queryForObject(
-                "SELECT MAX(id) FROM rehearsals WHERE date = ?", Long.class, today);
+        // --- Create a rehearsal (via API helper for a deterministic id) ---
+        java.time.LocalDate date = java.time.LocalDate.now().plusDays(7);
+        Long rehearsalId = createRehearsalViaApi(uid, date);
+        assertNotNull(rehearsalId);
 
         List<Long> memberIds = jdbcTemplate.query(
                 "SELECT id FROM members WHERE first_name LIKE ? ORDER BY id",
@@ -511,9 +407,9 @@ class RehearsalDetailFilterUiTest extends UiTestBase {
                 firstName + "%");
 
         Long otherMemberId = jdbcTemplate.queryForObject(
-                "SELECT id FROM members WHERE first_name = ?", Long.class, "Other" + uid);
+                "SELECT id FROM members WHERE first_name = ? AND last_name = ?",
+                Long.class, "Other" + uid, "Person" + uid);
 
-        assertThat(rehearsalId).isNotNull();
         assertThat(memberIds).hasSize(2);
         assertThat(otherMemberId).isNotNull();
 
@@ -578,8 +474,10 @@ class RehearsalDetailFilterUiTest extends UiTestBase {
         String firstNameB = "Beta" + uid;
         String lastName = "Test" + uid;
 
-        createMember(firstNameA, lastName, wait);
-        createMember(firstNameB, lastName, wait);
+        // --- Seed members directly in the DB (the member form is covered by
+        //     dedicated UI tests; this test only verifies filter behaviour). ---
+        createTestBand1Member(firstNameA, lastName, null);
+        Long idB = createTestBand1Member(firstNameB, lastName, null);
 
         // --- Create a future-dated rehearsal via API (deterministic id) ---
         LocalDate date = LocalDate.now().plusDays(7);
@@ -679,23 +577,6 @@ class RehearsalDetailFilterUiTest extends UiTestBase {
             Thread.currentThread().interrupt();
         }
     }
-    private void createMember(String firstName, String lastName, WebDriverWait wait) throws Exception {
-        loginAndNavigateTo("/members");
-        driver.findElement(By.xpath("//button[contains(., 'Dodaj członka')]")).click();
-        wait.until(ExpectedConditions.presenceOfElementLocated(By.cssSelector("#member-form")));
-        fill("firstName", firstName);
-        fill("lastName", lastName);
-        ((JavascriptExecutor) driver).executeScript(
-                "document.querySelector(\"input[name='dateOfBirth']\").value = '1990-05-15';");
-        driver.findElement(By.cssSelector("#member-form button[type='submit'].primary")).click();
-        wait.until(ExpectedConditions.presenceOfElementLocated(By.cssSelector("#members-content table")));
-
-        // Wait for the new member to be persisted in the DB
-        Awaitility.await().atMost(Duration.ofSeconds(10)).until(() ->
-                jdbcTemplate.queryForObject(
-                        "SELECT COUNT(*) FROM members WHERE first_name = ?", Long.class, firstName) > 0);
-    }
-
     private void fill(String name, String value) {
         WebElement el = driver.findElement(By.cssSelector("input[name='" + name + "']"));
         el.clear();
@@ -719,8 +600,8 @@ class RehearsalDetailFilterUiTest extends UiTestBase {
         String lastName = "Test" + uid;
 
         // Create A tagged "Trąbka", B untagged.
-        createAndTagMember("TrumpetGuy" + uid, lastName, "Trąbka", wait);
-        createMember("NoTag" + uid, lastName, wait);
+        createAndTagMember("TrumpetGuy" + uid, lastName, "Trąbka");
+        Long untaggedId = createTestBand1Member("NoTag" + uid, lastName, null);
 
         LocalDate date = LocalDate.now().plusDays(7);
         Long rehearsalId = createRehearsalViaApi(uid, date);
@@ -728,8 +609,6 @@ class RehearsalDetailFilterUiTest extends UiTestBase {
 
         Long taggedId = jdbcTemplate.queryForObject(
                 "SELECT id FROM members WHERE first_name = ?", Long.class, "TrumpetGuy" + uid);
-        Long untaggedId = jdbcTemplate.queryForObject(
-                "SELECT id FROM members WHERE first_name = ?", Long.class, "NoTag" + uid);
 
         inviteMemberToRehearsal(rehearsalId, taggedId);
         inviteMemberToRehearsal(rehearsalId, untaggedId);
@@ -775,9 +654,9 @@ class RehearsalDetailFilterUiTest extends UiTestBase {
      * join table, which is what the rehearsal detail template reads as
      * ${m.primaryInstrument}.  Mirrors the event-side createMemberWithInstrument().
      */
-    private void createAndTagMember(String firstName, String lastName,
-                                    String instrument, WebDriverWait wait) throws Exception {
-        createMember(firstName, lastName, wait);
+    private String createAndTagMember(String firstName, String lastName,
+                                      String instrument) {
+        Long memberId = createTestBand1Member(firstName, lastName, null);
         try {
             Integer count = jdbcTemplate.queryForObject(
                     "SELECT COUNT(*) FROM instruments WHERE name = ?", Integer.class, instrument);
@@ -785,13 +664,12 @@ class RehearsalDetailFilterUiTest extends UiTestBase {
                 jdbcTemplate.update("INSERT INTO instruments (name) VALUES (?)", instrument);
             }
         } catch (Exception ignored) { /* duplicate row or race on name lookup — instrument is created once */ }
-        Long memberId = jdbcTemplate.queryForObject(
-                "SELECT id FROM members WHERE first_name = ?", Long.class, firstName);
         Long instrumentId = jdbcTemplate.queryForObject(
                 "SELECT id FROM instruments WHERE name = ?", Long.class, instrument);
         jdbcTemplate.update(
                 "MERGE INTO member_instruments (member_id, instrument_id, is_primary) KEY(member_id, instrument_id) " +
                 "VALUES (?, ?, TRUE)",
                 memberId, instrumentId);
+        return String.valueOf(memberId);
     }
 }

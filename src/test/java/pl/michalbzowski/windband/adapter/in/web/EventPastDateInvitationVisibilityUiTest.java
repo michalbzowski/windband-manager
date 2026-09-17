@@ -57,23 +57,18 @@ class EventPastDateInvitationVisibilityUiTest extends UiTestBase {
 
         assertThat(driver.getCurrentUrl()).contains("/events/" + eventId);
 
-        // The invitation sending section should NOT be visible for past events
+        // The invitation section should NOT be visible for past events
         By invitationSectionLocator = By.xpath("//h3[contains(., '📧 Wyślij zaproszenia')]");
-
+        // Negative check: the element must disappear from the DOM. Selenium 4's
+        // invisibilityOf polls for absence with a short timeout — no full 10 s wait.
+        org.openqa.selenium.support.ui.WebDriverWait invisible = new org.openqa.selenium.support.ui.WebDriverWait(driver, Duration.ofMillis(300));
         try {
-            waitHelper().until(ExpectedConditions.presenceOfElementLocated(invitationSectionLocator));
-            assertThat(false).as("Invitation section should be hidden for event dated " + yesterday).isTrue();
-        } catch (org.openqa.selenium.TimeoutException e) {
-            // Expected: element not present = section is properly hidden
+            invisible.until(ExpectedConditions.invisibilityOfElementLocated(invitationSectionLocator));
+        } catch (org.openqa.selenium.TimeoutException ignored) {
+            // Element did not appear within the poll window — that is the correct outcome.
         }
-
-        final WebElement[] foundElement = {null};
-        try {
-            foundElement[0] = driver.findElement(invitationSectionLocator);
-            assertThat(false).as("Invitation sending section should be absent for past event (yesterday)").isTrue();
-        } catch (org.openqa.selenium.NoSuchElementException e) {
-            // This is the expected behavior - element doesn't exist in DOM
-        }
+        // Final assertion: the element must be absent from the DOM at this moment.
+        org.assertj.core.api.Assertions.assertThat(driver.findElements(invitationSectionLocator)).isEmpty();
     }
 
     @Test
@@ -88,21 +83,13 @@ class EventPastDateInvitationVisibilityUiTest extends UiTestBase {
 
         // The invitation section should be hidden for events dated today
         By invitationSectionLocator = By.xpath("//h3[contains(., '📧 Wyślij zaproszenia')]");
-
+        org.openqa.selenium.support.ui.WebDriverWait invisible = new org.openqa.selenium.support.ui.WebDriverWait(driver, Duration.ofMillis(300));
         try {
-            waitHelper().until(ExpectedConditions.presenceOfElementLocated(invitationSectionLocator));
-            assertThat(false).as("Invitation section should be hidden for event dated " + today).isTrue();
-        } catch (org.openqa.selenium.TimeoutException e) {
-            // Expected: element not present = section is properly hidden
+            invisible.until(ExpectedConditions.invisibilityOfElementLocated(invitationSectionLocator));
+        } catch (org.openqa.selenium.TimeoutException ignored) {
+            // Element did not appear within the poll window — that is the correct outcome.
         }
-
-        final WebElement[] foundElement = {null};
-        try {
-            foundElement[0] = driver.findElement(invitationSectionLocator);
-            assertThat(false).as("Invitation sending section should be absent for event dated today").isTrue();
-        } catch (org.openqa.selenium.NoSuchElementException e) {
-            // Expected behavior - element doesn't exist in DOM
-        }
+        org.assertj.core.api.Assertions.assertThat(driver.findElements(invitationSectionLocator)).isEmpty();
     }
 
     @Test

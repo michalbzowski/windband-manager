@@ -4,8 +4,6 @@ import org.junit.jupiter.api.Test;
 import org.openqa.selenium.JavascriptExecutor;
 import org.openqa.selenium.support.ui.ExpectedConditions;
 import org.openqa.selenium.support.ui.WebDriverWait;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.jdbc.core.JdbcTemplate;
 
 import pl.michalbzowski.windband.UiTestBase;
 
@@ -43,7 +41,14 @@ final class UnifiedInviteModalCheckboxUiTest extends UiTestBase {
     private static final String LABEL_SEL     = ".invitation-row__label";
     private static final String EMPTY_STATE   = ".invitation-empty";
 
-    @Autowired private JdbcTemplate jdbcTemplate;
+    /**
+     * Seeds a rehearsal via the application API (not the UI form) and returns
+     * its id. The browser must be on a same-origin page first (handled by the
+     * caller).
+     */
+    private Long seedRehearsal(java.time.LocalDate date) {
+        return createRehearsalViaApi("InviteModalSeed", date);
+    }
 
     private Object js(String src) { return ((JavascriptExecutor) driver).executeScript(src); }
 
@@ -62,26 +67,12 @@ final class UnifiedInviteModalCheckboxUiTest extends UiTestBase {
     void everyRowIsADivNotButtonHasVisibleCheckboxAndReasonableLabel() {
         WebDriverWait wait = newWait();
         loginAndNavigateTo("/rehearsals");
-        wait.until(ExpectedConditions.presenceOfElementLocated(
-                org.openqa.selenium.By.cssSelector("#rehearsals-content")));
 
-        // Create one rehearsal dated +7 days (past date would 400 on delete).
-        driver.findElement(org.openqa.selenium.By.xpath("//button[contains(., 'Zaplanuj spotkanie')]")).click();
-        wait.until(ExpectedConditions.presenceOfElementLocated(
-                org.openqa.selenium.By.cssSelector("#rehearsal-form")));
+        // Seed the rehearsal via the application API (much faster + more
+        // reliable than driving the UI form — 10 s saved).
         java.time.LocalDate date = java.time.LocalDate.now().plusDays(7);
-        ((JavascriptExecutor) driver).executeScript(
-            "var d = document.querySelector(\"input[name='date']\"); if (d) d.value = arguments[0];" +
-            "var st = document.querySelector(\"input[name='startTime']\"); if (st) st.value = '18:00';" +
-            "var lo = document.querySelector(\"input[name='location']\"); if (lo) lo.value = 'Sala';",
-            date.toString());
-        driver.findElement(org.openqa.selenium.By.cssSelector("#rehearsal-form button[type='submit'].primary")).click();
-        wait.until(ExpectedConditions.urlMatches(".*/rehearsals/\\d+.*"));
-        Long rehearsalId = jdbcTemplate.queryForObject(
-                "SELECT MAX(id) FROM rehearsals WHERE date = ?", Long.class, date.toString());
+        Long rehearsalId = createRehearsalViaApi("InviteModalSeed", date);
         assertThat(rehearsalId).isNotNull();
-
-        // Open the unified modal.
         jsClick("#open-invite-btn");
 
         // Wait for rows OR the empty state — either means the modal has mounted.

@@ -316,15 +316,12 @@ public abstract class UiTestBase {
         driver.get(baseUrl() + "/");
     }
 
+    private boolean sessionEstablished = false;
+
     private void doLogin() {
-        String cur = driver.getCurrentUrl();
-        boolean onLogin = (cur != null && cur.contains("/login"));
-
-        // If we're NOT on /login, a prior login should still be in effect — but to
-        // be safe for the repeated-login pattern tests like RehearsalListSortingUiTest
-        // use, we always force a fresh POST /login cycle below. (Spring Security's
-        // session persists across pages, so re-logging-in is just a fast no-op.)
-
+        if (sessionEstablished) {
+            return; // session persists across the test class's browser instance
+        }
         driver.get(baseUrl() + "/login");
 
         WebDriverWait w = new WebDriverWait(driver, Duration.ofSeconds(10));
@@ -337,8 +334,8 @@ public abstract class UiTestBase {
         passwordField.sendKeys("admin");
 
         driver.findElement(By.cssSelector("button[type='submit']")).click();
-
         w.until(ExpectedConditions.not(ExpectedConditions.urlContains("/login")));
+        sessionEstablished = true;
     }
 
     /**
@@ -359,6 +356,50 @@ public abstract class UiTestBase {
      */
     protected Long createTestBand1Instrument(String name) {
         return createTestBand1Instrument(name, 0);
+    }
+
+    /**
+     * Inserts a band-1 member directly into the shared H2 test database.
+     * Used by UI tests whose purpose is NOT to verify the member form — they
+     * need a deterministic, unique member row for tagging / filtering
+     * scenarios and driving the form per-member adds ~250 ms of login/POST
+     * overhead per seed (loginAndNavigateTo + submit wait). This helper is
+     * the fast path; UI tests that genuinely test the member form keep their
+     * own inline flow.
+     *
+     * <p>Required NOT-NULL columns are filled with sensible defaults
+     * ({@code active=true}, {@code joinedDate=today}); the caller controls the
+     * name and (optionally) date of birth so filter / search tests can rely on
+     * exact strings. Callers should include a UUID suffix in the name, as with
+     * every other seed helper in this class.
+     *
+     * @param firstName   required, stored verbatim
+     * @param lastName    required, stored verbatim
+     * @param dateOfBirth nullable; use null for "no DOB" rows
+     * @return auto-generated member id
+     */
+    protected Long createTestBand1Member(String firstName, String lastName, java.time.LocalDate dateOfBirth) {
+        org.springframework.jdbc.support.GeneratedKeyHolder kh =
+                new org.springframework.jdbc.support.GeneratedKeyHolder();
+        jdbcTemplate.update(con -> {
+            var ps = con.prepareStatement(
+                    "INSERT INTO members (first_name, last_name, date_of_birth, active, joined_date, email_consent_given, band_id) " +
+                    "VALUES (?, ?, ?, TRUE, CURRENT_DATE, FALSE, 1)",
+                    java.sql.Statement.RETURN_GENERATED_KEYS);
+            ps.setString(1, firstName);
+            ps.setString(2, lastName);
+            if (dateOfBirth != null) {
+                ps.setDate(3, java.sql.Date.valueOf(dateOfBirth));
+            } else {
+                ps.setNull(3, java.sql.Types.DATE);
+            }
+            return ps;
+        }, kh);
+        Number key = kh.getKey();
+        if (key == null) {
+            throw new IllegalStateException("Failed to obtain generated id for test member: " + firstName);
+        }
+        return key.longValue();
     }
 
     protected Long createTestBand1Instrument(String name, int sortPriority) {
