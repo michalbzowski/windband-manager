@@ -48,11 +48,14 @@ class CompositionQueryServiceIT extends BaseIntegrationTest {
     void truncateCompositionsOnly() {
         // Isolate this class's rows in the shared PostgreSQL container.
         // Bands (seed data) stay intact — we must not touch other tables.
+        // Child FIRST, so our bare parent DELETE does not trip the V35 FK from score_files.
+        jdbcTemplate.execute("DELETE FROM score_files");
         jdbcTemplate.execute("DELETE FROM compositions");
     }
 
     @AfterEach
     void cleanupRows() {
+        jdbcTemplate.execute("DELETE FROM score_files");
         jdbcTemplate.execute("DELETE FROM compositions");
     }
 
