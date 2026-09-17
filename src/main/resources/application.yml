@@ -30,7 +30,7 @@ spring:
     # database (schema baselined before Flyway). Added after a Railway deployment
     # crashed with 'Detected resolved migration not applied to database' for V13_5/
     # V18_5/V28_5/V29_5, all of which are CREATE TABLE IF NOT EXISTS no-ops.
-    ignore-migration-patterns: "V13_5:ignored, V18_5:ignored, V28_5:ignored, V29_5:ignored"
+    ignore-migration-patterns: "versioned:V13_5, versioned:V18_5, versioned:V28_5, versioned:V29_5"
 
   thymeleaf:
     cache: false
