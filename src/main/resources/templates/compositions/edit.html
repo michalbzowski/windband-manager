@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="pl" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/layout :: head('Edytuj utwór')}"></head>
+<body class="dashboard-page">
+<div th:replace="~{fragments/layout :: dialogs}"></div>
+
+<main class="container" id="content">
+    <section class="dashboard-upcoming">
+        <header th:replace="~{fragments/layout :: dashboard-header}"></header>
+
+        <div id="compositions-content">
+            <nav th:replace="~{fragments/page-header :: page-header-c(
+                    @{/bands/{bandId}/compositions/{compositionId}(bandId=${bandId}, compositionId=${compositionId})},
+                    'Edytuj utwór', null, null)}"></nav>
+
+            <article id="composition-edit-form-errors" th:if="${error != null}" aria-live="polite">
+                <strong>Błąd formularza</strong>
+                <p th:text="${error}">Błąd walidacji</p>
+            </article>
+
+            <form id="composition-edit-form" method="post"
+                  th:action="@{/bands/{bandId}/compositions/{compositionId}(bandId=${bandId}, compositionId=${compositionId})}"
+                  novalidate>
+                <label for="title">
+                    Tytuł *
+                    <input id="title" name="title" type="text" maxlength="200"
+                           th:value="${command.title}" aria-required="true" required>
+                </label>
+
+                <div class="grid">
+                    <label for="composer">
+                        Kompozytor
+                        <input id="composer" name="composer" type="text" maxlength="150"
+                               th:value="${command.composer}">
+                    </label>
+                    <label for="arranger">
+                        Aranżer
+                        <input id="arranger" name="arranger" type="text" maxlength="150"
+                               th:value="${command.arranger}">
+                    </label>
+                </div>
+
+                <label for="description">
+                    Opis
+                    <textarea id="description" name="description" rows="5" maxlength="2000"
+                              th:text="${command.description}"></textarea>
+                </label>
+
+                <div role="group">
+                    <button id="save-composition-edit-btn" type="submit">Zapisz zmiany</button>
+                    <a role="button" class="secondary outline"
+                       th:href="@{/bands/{bandId}/compositions/{compositionId}(bandId=${bandId}, compositionId=${compositionId})}">Anuluj</a>
+                </div>
+            </form>
+        </div>
+    </section>
+</main>
+
+<footer th:replace="~{fragments/layout :: footer}"></footer>
+<div th:insert="~{fragments/layout :: toast-container}"></div>
+<div th:insert="~{fragments/layout :: footer-scripts}"></div>
+<div th:insert="~{fragments/layout :: dashboard-header-morph}"></div>
+</body>
+</html>

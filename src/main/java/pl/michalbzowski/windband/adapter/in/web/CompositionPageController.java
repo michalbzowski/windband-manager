@@ -13,6 +13,7 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.ModelAttribute;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import pl.michalbzowski.windband.application.command.composition.UpdateCompositionCommand;
 import org.springframework.web.bind.annotation.RequestAttribute;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
@@ -84,6 +85,59 @@ public class CompositionPageController {
             prepareForm(model, bandId, command, validationMessage(exception));
             return "compositions/form";
         }
+    }
+
+    // ---- edit form (US-3.4) ---------------------------------------------
+
+    @GetMapping("/{id}/edit")
+    public String editForm(@PathVariable Long bandId, @PathVariable Long id,
+                           @AuthenticationPrincipal OidcUser oidcUser,
+                           Model model) {
+        requireBandAccess(oidcUser, bandId);
+        Composition composition = queryService.get(id, bandId);
+        UpdateCompositionCommand command = new UpdateCompositionCommand();
+        command.setTitle(composition.getTitle());
+        command.setDescription(composition.getDescription());
+        command.setComposer(composition.getComposer());
+        command.setArranger(composition.getArranger());
+        prepareEditForm(model, bandId, id, command, null);
+        return "compositions/edit";
+    }
+
+    @PostMapping("/{id}")
+    public String update(@PathVariable Long bandId, @PathVariable Long id,
+                         @AuthenticationPrincipal OidcUser oidcUser,
+                         @Valid @ModelAttribute UpdateCompositionCommand command,
+                         BindingResult bindingResult,
+                         Model model) {
+        requireBandAccess(oidcUser, bandId);
+        if (bindingResult.hasErrors()) {
+            String error = firstFieldError(bindingResult);
+            prepareEditForm(model, bandId, id, command, error);
+            return "compositions/edit";
+        }
+        try {
+            commandService.update(id, command, bandId);
+        } catch (IllegalArgumentException exception) {
+            // Domain validation on update (e.g. blank title). Re-render form with message.
+            prepareEditForm(model, bandId, id, command, validationMessage(exception));
+            return "compositions/edit";
+        }
+        return "redirect:/bands/" + bandId + "/compositions/" + id;
+    }
+
+    private void prepareEditForm(Model model, Long bandId, Long compositionId, UpdateCompositionCommand command, String error) {
+        model.addAttribute("command", command);
+        model.addAttribute("bandId", bandId);
+        model.addAttribute("compositionId", compositionId);
+        model.addAttribute("error", error);
+    }
+
+    private String firstFieldError(BindingResult bindingResult) {
+        return bindingResult.getFieldErrors().stream()
+                .map(fe -> fe.getDefaultMessage())
+                .findFirst()
+                .orElse("Błąd walidacji formularza");
     }
 
     @GetMapping("/{id}")
