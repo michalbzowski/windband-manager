@@ -1,6 +1,9 @@
 package pl.michalbzowski.windband.application.query.composition;
 
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+import pl.michalbzowski.windband.domain.composition.CompositionInstrument;
+import pl.michalbzowski.windband.domain.composition.CompositionInstrumentRepository;
 import pl.michalbzowski.windband.domain.composition.CompositionRepository;
 import pl.michalbzowski.windband.domain.composition.ScoreFile;
 import pl.michalbzowski.windband.domain.composition.ScoreFileRepository;
@@ -33,20 +36,46 @@ public class ScoreFileListQueryService {
 
     private final CompositionRepository compositionRepository;
     private final ScoreFileRepository scoreFileRepository;
+    private final CompositionInstrumentRepository compositionInstrumentRepository;
 
     public ScoreFileListQueryService(CompositionRepository compositionRepository,
-                                     ScoreFileRepository scoreFileRepository) {
+                                     ScoreFileRepository scoreFileRepository,
+                                     CompositionInstrumentRepository compositionInstrumentRepository) {
         this.compositionRepository = Objects.requireNonNull(compositionRepository, "compositionRepository");
         this.scoreFileRepository   = Objects.requireNonNull(scoreFileRepository, "scoreFileRepository");
+        this.compositionInstrumentRepository = Objects.requireNonNull(
+                compositionInstrumentRepository, "compositionInstrumentRepository");
     }
 
     /** All files of {@code compositionId} for {@code bandId}, newest first. Empty list if none. */
+    @Transactional(readOnly = true)
     public List<ScoreFile> listByComposition(Long compositionId, Long bandId) {
         Objects.requireNonNull(compositionId, "compositionId");
         Objects.requireNonNull(bandId, "bandId");
         var composition = compositionRepository.findByIdAndBandId(compositionId, bandId)
                 .orElseThrow(() -> new CompositionNotFoundException(compositionId));
         return scoreFileRepository.findAllByComposition(composition);
+    }
+
+    /**
+     * US-7.1 — "Oznacz głosy na stronach nut": all part mappings (composition → instrument + role
+     * + page range) for a given composition, scoped to the band. Mirrors {@link #listByComposition}
+     * scope semantics: throws {@link CompositionNotFoundException} when the composition
+     * does not belong to the caller's band, refuses on cross-band enumeration.
+     */
+    @Transactional(readOnly = true)
+    public List<CompositionInstrument> partsFor(Long compositionId, Long bandId) {
+        Objects.requireNonNull(compositionId, "compositionId");
+        Objects.requireNonNull(bandId, "bandId");
+        var composition = compositionRepository.findByIdAndBandId(compositionId, bandId)
+                .orElseThrow(() -> new CompositionNotFoundException(compositionId));
+        var parts = compositionInstrumentRepository.findAllByComposition(composition);
+        // p.instrument is a lazy ManyToOne proxy; resolve it inside this session so the
+        // Thymeleaf template (rendered outside any transaction) can read p.instrument.name.
+        for (var part : parts) {
+            part.getInstrument().getName();
+        }
+        return parts;
     }
 
     /** 404 mirror of the repository contract (a file that is not on the disk or does not belong to the comp). */

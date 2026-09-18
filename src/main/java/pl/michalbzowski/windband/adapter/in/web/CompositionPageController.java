@@ -22,6 +22,7 @@ import pl.michalbzowski.windband.application.command.composition.CompositionComm
 import pl.michalbzowski.windband.application.command.composition.CreateCompositionCommand;
 import pl.michalbzowski.windband.application.query.composition.CompositionQueryService;
 import pl.michalbzowski.windband.application.query.composition.ScoreFileListQueryService;
+import pl.michalbzowski.windband.application.query.instrument.InstrumentQueryService;
 import pl.michalbzowski.windband.application.query.scoreanalysis.ScoreAnalysisQueryService;
 import pl.michalbzowski.windband.domain.composition.Composition;
 
@@ -34,6 +35,7 @@ public class CompositionPageController {
     private final CompositionCommandService commandService;
     private final ScoreFileListQueryService scoreFileListQueryService;
     private final ScoreAnalysisQueryService analysisQueryService;
+    private final InstrumentQueryService instrumentQueryService;
 
     @GetMapping
     public String list(@PathVariable Long bandId,
@@ -220,6 +222,10 @@ public class CompositionPageController {
         model.addAttribute("latestValidationTxtPath",        latest.map(pl.michalbzowski.windband.application.query.scoreanalysis.ScoreAnalysisQueryService.LatestScoreAnalysisDto::validationTxtPath).orElse(null));
         model.addAttribute("latestStartedAt",     latest.map(pl.michalbzowski.windband.application.query.scoreanalysis.ScoreAnalysisQueryService.LatestScoreAnalysisDto::startedAt).orElse(null));
         model.addAttribute("latestFinishedAt",    latest.map(pl.michalbzowski.windband.application.query.scoreanalysis.ScoreAnalysisQueryService.LatestScoreAnalysisDto::finishedAt).orElse(null));
+        // US-7.1 — "Oznacz głosy na stronach nut" panel: the mapping of pages → instruments
+        // for this composition, plus the band roster's instrument list for the picker dropdown.
+        model.addAttribute("parts", scoreFileListQueryService.partsFor(id, bandId));
+        model.addAttribute("bandInstruments", instrumentQueryService.findAll(bandId));
         model.addAttribute("composition", composition);
         model.addAttribute("bandId", bandId);
         if (Boolean.TRUE.equals(isHtmx)) {

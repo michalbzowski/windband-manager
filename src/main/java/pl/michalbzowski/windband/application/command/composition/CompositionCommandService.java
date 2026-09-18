@@ -9,6 +9,9 @@ import pl.michalbzowski.windband.domain.composition.Composition;
 import pl.michalbzowski.windband.domain.composition.CompositionInstrument;
 import pl.michalbzowski.windband.domain.composition.CompositionInstrumentRepository;
 import pl.michalbzowski.windband.domain.composition.CompositionRepository;
+import pl.michalbzowski.windband.domain.composition.PartSource;
+import pl.michalbzowski.windband.domain.member.Instrument;
+import pl.michalbzowski.windband.domain.member.InstrumentRepository;
 
 import java.time.Instant;
 import java.util.List;
@@ -39,6 +42,7 @@ public class CompositionCommandService {
     private final CompositionRepository repository;
     private final BandQueryService bandQueryService;
     private final CompositionInstrumentRepository instrumentRepository;
+    private final InstrumentRepository memberInstrumentRepository;
 
     // ---- create ----------------------------------------------------------
 
@@ -89,6 +93,44 @@ public class CompositionCommandService {
         Composition composition = requireOwned(id, bandId);
         composition.restore();
         repository.save(composition);
+    }
+
+    // ---- parts (US-7.1) --------------------------------------------------
+
+    /**
+     * US-7.1 — "Oznacz głosy na stronach nut": maps one band member's instrument onto a
+     * page range of this score. The instrument must belong to the same band (cross-band
+     * references fail closed via {@code InstrumentRepository.findByIdAndBandId}).
+     *
+     * <p>Validation: title/page range checked by the domain factory
+     * ({@link CompositionInstrument#forComposition}); band-membership + role
+     * normalization happen here. The composition must be a DRAFT or READY row belonging
+     * to {@code bandId} (see {@code requireOwned}).</p>
+     */
+    public CompositionInstrument addPart(Long compositionId,
+                                         Long instrumentId,
+                                         String role,
+                                         int pageFrom,
+                                         int pageTo,
+                                         Double confidence,
+                                         Long bandId) {
+        Objects.requireNonNull(instrumentId, "instrumentId");
+        Objects.requireNonNull(bandId, "bandId");
+
+        var composition = requireOwned(compositionId, bandId);
+        var instrument = memberInstrumentRepository.findByIdAndBandId(instrumentId, bandId)
+                .orElseThrow(() -> new IllegalArgumentException("Nie znaleziono instrumentu w tym zespole"));
+
+        // Domain factory enforces: pageTo >= pageFrom >= 1, role non-blank when present.
+        var cleanRole = (role == null) ? null : role.trim();
+        if (cleanRole != null && cleanRole.isEmpty()) {
+            cleanRole = null;
+        }
+
+        var part = CompositionInstrument.forComposition(
+                composition, instrument, cleanRole, pageFrom, pageTo, null,
+                PartSource.MANUAL, confidence);
+        return instrumentRepository.save(part);
     }
 
     // ---- delete (US-1.6 AC) ----------------------------------------------

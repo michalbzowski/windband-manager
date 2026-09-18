@@ -371,6 +371,65 @@
 })();
 </script>
 
+<!-- US-7.1 — "Oznacz głosy na stronach nut" panel: one table listing all saved part-mappings for
+     this score (instrument + role + page range), plus a form to add a new one. All data comes
+     from the `parts` and `bandInstruments` model attributes — pre-loaded inside a service
+     transaction in CompositionPageController, so we never touch the lazy `composition.parts`
+     collection here (that would LazyInitializationException outside a session). -->
+<section id="parts-panel" class="composition-parts">
+    <header>
+        <h3>Oznacz głosy na stronach nut</h3>
+        <small>Każda pozycja opisuje, które strony PDF-a odpowiadają danemu instrumentowi / role.</small>
+    </header>
+
+    <table id="existing-parts" class="data-table">
+        <thead><tr><th>Instrument</th><th>Rola</th><th>Strona od</th><th>Strona do</th></tr></thead>
+        <tbody>
+            <tr th:if="${parts == null or parts.size() == 0}" class="empty-row"><td colspan="4">Brak oznaczonych głosów — dodaj poniżej.</td></tr>
+            <tr th:each="p : ${parts}">
+                <td th:text="${p.instrument.name}">Instrument</td>
+                <td th:text="${p.instrumentRole != null and !#strings.isEmpty(p.instrumentRole) ? p.instrumentRole : '—'}">Rola</td>
+                <td th:text="${p.pageFrom}">1</td>
+                <td th:text="${p.pageTo}">2</td>
+            </tr>
+        </tbody>
+    </table>
+
+    <!-- Form: instrument picker (band roster), free-form role, page range; POST → redirect back here. -->
+    <form id="add-part-form" method="post" th-action="@{'/bands/' + ${bandId} + '/compositions/' + ${composition.id} + '/parts'}">
+        <div class="form-row">
+            <label>Instrument:
+                <select name="instrumentId" id="part-instrument-picker" class="form-element-secondary" required="">
+                    <option th:if="${bandInstruments == null or #lists.isEmpty(bandInstruments)}" disabled="" selected="" value="">Brak instrumentów w zespole — dodaj je najpierw w Członkach</option>
+                    <option th:each="instr : ${bandInstruments}" th:value="${instr.id}" th:text="${instr.name}"></option>
+                </select>
+            </label>
+            <label>Rola: <input type="text" name="role" class="form-input" placeholder="np. Flet 1, Saxofon II"></label>
+        </div>
+        <div class="form-row">
+            <label>Strona od: <input type="number" name="pageFrom" min="1" max="999" value="1" class="form-input"></label>
+            <label>Strona do: <input type="number" name="pageTo" min="2" max="999" value="2" class="form-input"></label>
+        </div>
+        <div class="modal-actions">
+            <button type="submit" class="primary">➕ Dodaj pozycję</button>
+            <button type="button" id="clear-part-form-btn" class="secondary">Wyczyść</button>
+        </div>
+    </form>
+</section>
+
+<script>
+(function () {
+    var form = document.getElementById('add-part-form');
+    if (form) {
+        // "Wyczyść" button — reset the fields back to their defaults.
+        var clearBtn = document.getElementById('clear-part-form-btn');
+        if (clearBtn) {
+            clearBtn.addEventListener('click', function () { form.reset(); });
+        }
+    }
+})();
+</script>
+
 <footer th:replace="~{fragments/layout :: footer}"></footer>
 <div th:insert="~{fragments/layout :: toast-container}"></div>
 <div th:insert="~{fragments/layout :: footer-scripts}"></div>
