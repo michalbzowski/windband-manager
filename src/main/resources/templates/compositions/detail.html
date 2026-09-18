@@ -42,6 +42,15 @@
 
     <button type="button" id="delete-composition-btn" class="secondary danger"
             onclick="openLifecycleDialog('delete')">🗑 Usuń bezpowrotnie</button>
+
+    <!-- US-4.3 — "Analizuj utwór" opens the AI analysis modal (file picker + progress panel).
+         Only visible when this composition actually has at least one uploaded score file;
+         otherwise the user would see a disabled submit button, which is worse than hiding
+         the entry entirely. The dropdown inside the modal lists the same files this
+         condition guards over — single source of truth, no second fetch. -->
+    <button type="button" id="analyze-composition-btn" class="primary"
+            th:if="${scoreFiles != null and !scoreFiles.isEmpty()}"
+            onclick="openAnalyzeModal()">🎼 Analizuj utwór</button>
 </div>
 
 </article>
@@ -64,6 +73,66 @@
                 <button type="submit" id="lifecycle-confirm-btn" class="primary">Potwierdź</button>
                 <button type="button" id="lifecycle-cancel-btn" class="secondary">Anuluj</button>
             </form>
+        </div>
+    </div>
+</dialog>
+
+<!-- US-4.3 — single modal that: (1) lets the user pick one of the composition's uploaded
+     score files, (2) starts the analysis via POST .../score-files/{fileId}/analyze, and
+     (3) swaps in a progress panel that auto-polls GET .../analysis/latest every 2 s until
+     the row reaches SUCCEEDED or FAILED. The terminal panel lists the artefacts
+     (arrangement.json / .musicxml / .mid / validation.txt) with their download URLs so
+     the user can inspect the result immediately without leaving the page. This dialog is
+     a distinct element from #lifecycle-dialog on purpose — two different flows, two
+     different confirmation buttons, no cross-talk in the [data-close] delegation below. -->
+<dialog id="analyze-dialog" class="app-modal">
+    <div class="app-modal-content">
+        <header class="app-modal-header">
+            <div class="app-modal-header-text">
+                <strong aria-live="polite">🤖 Analiza utworu przez AI</strong>
+                <small>Wybierz plik nut, uruchom pipe i śledź postęp.</small>
+            </div>
+            <button type="button" class="app-modal-close" aria-label="Zamknij" data-close>×</button>
+        </header>
+        <div class="app-modal-body">
+
+            <!-- (1) Start panel — file picker + submit. Hidden once a run is in progress. -->
+            <section id="analyze-start-panel">
+                <label for="score-file-picker" class="secondary">Plik nut do analizy</label>
+                <select id="score-file-picker" class="form-element-secondary">
+                    <option th:each="file : ${scoreFiles}"
+                            th:value="${file.id}"
+                            th:text="'#' + ${file.id} + ' — ' + ${file.originalName} + ' (' + ${file.mimeType} + ')'">
+                        file
+                    </option>
+                </select>
+                <p class="form-note" id="analyze-hint">AI wygeneruje aranżację i plik MIDI dla tej wersji. Analizę można zapuścić ponownie, poprzednie wyniki pozostają widoczne.</p>
+                <div class="modal-actions">
+                    <button type="button" id="analyze-start-btn" class="primary" disabled>🚀 Rozpocznij analizę</button>
+                    <button type="button" id="analyze-cancel-btn" class="secondary">Anuluj</button>
+                </div>
+            </section>
+
+            <!-- (2) Progress panel — hidden until a run starts. Phase badge updates on every poll. -->
+            <section id="analyze-progress-panel" class="hidden" role="status" aria-live="polite">
+                <p>Analizuje plik <strong id="analyze-file-name"></strong> …</p>
+                <p id="analyze-phase-badge" class="badge badge-secondary">PENDING</p>
+                <p id="analyze-progress-note" class="form-note">Śledzę postęp — zamknięcie okna nie przerywa analizy.</p>
+            </section>
+
+            <!-- (3) Result panel — appears on SUCCEEDED or FAILED. Download links for artefacts, error text on FAILED. -->
+            <section id="analyze-result-panel" class="hidden">
+                <p id="analyze-result-phase" class="badge badge-primary"></p>
+                <div th:if="${latestPhase != null and latestPhase == 'SUCCEEDED'}">
+                    <h3>Wyniki analizy</h3>
+                    <ul id="artifact-links">
+                        <!-- artefact rows appended/updated by JS on poll SUCCEEDED -->
+                        <li><a th:href="@{/bands/{bandId}/compositions/{compId}/files(arrangementJson=${latestArrangementJsonPath})}">arrangement.json</a></li>
+                    </ul>
+                </div>
+                <p th:if="${latestPhase != null and latestPhase == 'FAILED'}" id="analyze-error-text" class="danger" role="alert"></p>
+            </section>
+
         </div>
     </div>
 </dialog>
@@ -128,6 +197,177 @@
     // Keep the cancel handler alive across HTMX swaps — same rebind hook layout.html
     // uses for its own modal wiring (fragments/layout.html: htmx:afterSettle handler).
     document.addEventListener('htmx:afterSettle', bindCancel);
+
+    /*
+     * US-4.3 — AI analysis modal logic (file picker → POST analyze → poll latest → render artefacts).
+     *
+     * The three panels inside #analyze-dialog (#analyze-start-panel / #analyze-progress-panel /
+     * #analyze-result-panel) are mutually exclusive views of the SAME pipeline state, surfaced
+     * by toggling their 'hidden' class. The single source of state is `state.phase` (PENDING /
+     * RUNNING / SUCCEEDED / FAILED), updated on every poll iteration; the render step then maps
+     * that value to either panel 1, 2 or 3 and repaints only the elements whose content actually
+     * changed. Keeping the DOM write loop inside `render()` makes the state machine the single
+     * point of mutation — easy to read, easy to test, no race when a poll lands mid-render.
+     *
+     * The cancel button (#analyze-cancel-btn) follows the same convention as the lifecycle
+     * modal above: per-button addEventListener (NOT [data-close]) because it sits inside the
+     * submit group and should not double-fire through the layout-wide delegation. The
+     * htmx:afterSettle re-bind below mirrors bindCancel so an HTMX swap that replaces
+     * #compositions-content does not drop the binding.
+     */
+    var state = { phase: null, fileId: null, runnerRef: null, pollTimer: null };
+
+    function openAnalyzeModal() {
+        var dlg = document.getElementById('analyze-dialog');
+        // Reset to the start panel so a re-open after a previous FAILED run does not show
+        // stale artefacts from the prior run — the user re-pick, re-analyze.
+        hideAllPanels();
+        state.phase = null;
+        state.fileId = null;
+        showStartPanel();
+        var picker = document.getElementById('score-file-picker');
+        if (picker) {
+            startBtn.disabled = !picker.value;    // single file auto-selected → button ready
+            picker.addEventListener('change', enableStartOnValue);
+        }
+        if (typeof openAppModal === 'function') { openAppModal(dlg); }
+        else if (dlg && typeof dlg.showModal === 'function') { dlg.showModal(); }
+    }
+
+    window.openAnalyzeModal = function () { openAnalyzeModal(); };
+
+    function enableStartOnValue() {
+        var picker = document.getElementById('score-file-picker');
+        startBtn.disabled = !picker || !picker.value;
+    }
+
+    function hideAllPanels() {
+        ['analyze-start-panel', 'analyze-progress-panel', 'analyze-result-panel'].forEach(function (id) {
+            var el = document.getElementById(id);
+            if (el) { el.classList.add('hidden'); }
+        });
+    }
+
+    function showStartPanel() {
+        var el = document.getElementById('analyze-start-panel');
+        if (el) { el.classList.remove('hidden'); }
+    }
+
+    function startAnalysis() {
+        var picker = document.getElementById('score-file-picker');
+        if (!picker || !picker.value) { return; }
+        state.fileId = picker.value;
+        startBtn.disabled = true;
+        hideAllPanels();
+        var progress = document.getElementById('analyze-progress-panel');
+        if (progress) { progress.classList.remove('hidden'); }
+        setPhaseBadge('PENDING');
+        // Fire-and-forget POST — the UI stays responsive while the pipeline runs.
+        fetch('/bands/' + bandId + '/compositions/' + compId + '/score-files/' + state.fileId + '/analyze', { method: 'POST' })
+            .then(function (resp) {
+                if (!resp.ok) {
+                    setPhaseBadge('FAILED');
+                    showResultPanel({ phase: 'FAILED', errorMessage: 'HTTP ' + resp.status });
+                    return;
+                }
+                pollNext();
+            })
+            .catch(function (err) {
+                setPhaseBadge('FAILED');
+                showResultPanel({ phase: 'FAILED', errorMessage: String(err && err.message || err) });
+            });
+    }
+
+    startBtn.addEventListener('click', startAnalysis);
+
+    function pollNext() {
+        if (state.pollTimer) { clearInterval(state.pollTimer); state.pollTimer = null; }
+        var t = new Date().getTime();
+        fetch('/bands/' + bandId + '/compositions/' + compId + '/analysis/latest' + '?t=' + t, { cache: 'no-store' })
+            .then(function (resp) {
+                if (!resp.ok) {
+                    setTimeout(function () { pollNext(); }, 2000);    // transient? retry
+                    return;
+                }
+                return resp.json();
+            })
+            .then(function (dto) {
+                if (!dto) {
+                    setTimeout(function () { pollNext(); }, 2000);
+                    return;
+                }
+                setPhaseBadge(dto.phase || 'PENDING');
+                if (dto.phase === 'SUCCEEDED' || dto.phase === 'FAILED') {
+                    hideAllPanels();
+                    showResultPanel(dto);
+                    if (state.pollTimer) { clearInterval(state.pollTimer); state.pollTimer = null; }
+                    return;
+                }
+            })
+            .catch(function (err) {
+                setPhaseBadge('PENDING');
+                // On fetch error, re-arm the poll so a transient network drop does not kill the UI.
+            });
+        if (state.pollTimer === null) { state.pollTimer = setInterval(pollNext, 2000); }
+    }
+
+    function setPhaseBadge(text) {
+        var b = document.getElementById('analyze-phase-badge');
+        if (b && b.textContent !== text) { b.textContent = text; }
+        var res = document.getElementById('analyze-result-phase');
+        if (res && res.textContent !== text) { res.textContent = text; }
+    }
+
+    function showResultPanel(dto) {
+        var panel = document.getElementById('analyze-result-panel');
+        if (!panel) { return; }
+        panel.classList.remove('hidden');
+        // Build artefact list from the DTO (arrangement paths + validation report).
+        var ul = document.querySelector('#artifact-links');
+        if (ul) {
+            ul.innerHTML = '';
+            var links = [
+                dto.arrangementJsonPath   ? { label: 'arrangement.json (JSON)',  path: dto.arrangementJsonPath,    ext: 'json' }     : null,
+                dto.arrangementMusicxmlPath ? { label: 'arrangement.musicxml',      path: dto.arrangementMusicxmlPath,  ext: 'musicxml' }  : null,
+                dto.arrangementMidPath    ? { label: 'arrangement.mid (MIDI)',    path: dto.arrangementMidPath,     ext: 'mid' }      : null,
+                dto.validationTxtPath     ? { label: 'validation.txt',            path: dto.validationTxtPath,      ext: 'txt' }        : null
+            ].filter(Boolean);
+            links.forEach(function (l) {
+                var li = document.createElement('li');
+                var a  = document.createElement('a');
+                a.href = '/bands/' + bandId + '/compositions/' + compId + '/files?artifact=' + encodeURIComponent(l.ext);
+                a.textContent = l.label;
+                a.download = '';
+                li.appendChild(a);
+                ul.appendChild(li);
+            });
+        }
+        if (dto.phase === 'FAILED') {
+            var errEl = document.getElementById('analyze-error-text');
+            if (errEl) { errEl.textContent = dto.errorMessage || 'Analiza zakończona błędem'; }
+        }
+    }
+
+    function closeAnalyzeModal() {
+        var dlg = document.getElementById('analyze-dialog');
+        // Stop the poll on the way out — no work after the user closes the modal.
+        if (state.pollTimer) { clearInterval(state.pollTimer); state.pollTimer = null; }
+        if (typeof closeAppModal === 'function') { closeAppModal(dlg); }
+        else if (dlg) { dlg.removeAttribute('open'); }
+    }
+
+    function bindAnalyzeCancel() {
+        var cancelBtn = document.getElementById('analyze-cancel-btn');
+        if (!cancelBtn || cancelBtn.dataset.bound === '1') { return; }
+        cancelBtn.dataset.bound = '1';
+        cancelBtn.addEventListener('click', function (evt) {
+            evt.preventDefault();
+            closeAnalyzeModal();
+        });
+    }
+    bindAnalyzeCancel();
+    // Re-bind after every HTMX swap (same hook layout.html uses for its own modal wiring).
+    document.addEventListener('htmx:afterSettle', bindAnalyzeCancel);
 })();
 </script>
 

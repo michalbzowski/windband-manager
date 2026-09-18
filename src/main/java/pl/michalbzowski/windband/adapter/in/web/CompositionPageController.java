@@ -21,6 +21,8 @@ import pl.michalbzowski.windband.adapter.in.security.WindbandOidcUser;
 import pl.michalbzowski.windband.application.command.composition.CompositionCommandService;
 import pl.michalbzowski.windband.application.command.composition.CreateCompositionCommand;
 import pl.michalbzowski.windband.application.query.composition.CompositionQueryService;
+import pl.michalbzowski.windband.application.query.composition.ScoreFileListQueryService;
+import pl.michalbzowski.windband.application.query.scoreanalysis.ScoreAnalysisQueryService;
 import pl.michalbzowski.windband.domain.composition.Composition;
 
 @Controller
@@ -30,6 +32,8 @@ public class CompositionPageController {
 
     private final CompositionQueryService queryService;
     private final CompositionCommandService commandService;
+    private final ScoreFileListQueryService scoreFileListQueryService;
+    private final ScoreAnalysisQueryService analysisQueryService;
 
     @GetMapping
     public String list(@PathVariable Long bandId,
@@ -199,7 +203,24 @@ public class CompositionPageController {
                          @RequestAttribute(name = HtmxRequestInterceptor.HTMX_REQUEST_ATTRIBUTE, required = false) Boolean isHtmx,
                          Model model) {
         requireBandAccess(oidcUser, bandId);
-        model.addAttribute("composition", queryService.get(id, bandId));
+        var composition = queryService.get(id, bandId);
+        // US-4.3 — the "Analizuj utwór" modal needs a stable snapshot of this composition's
+        // uploaded score files (one must be picked before the analyze button enables).
+        // Reading files() INSIDE the service transaction avoids LazyInitializationException on
+        // render after Hibernate closes the session.
+        model.addAttribute("scoreFiles", scoreFileListQueryService.listByComposition(id, bandId));
+        var latest = analysisQueryService.latestFor(id, bandId);
+        model.addAttribute("latestAnalysisId",     latest.map(pl.michalbzowski.windband.application.query.scoreanalysis.ScoreAnalysisQueryService.LatestScoreAnalysisDto::id).orElse(null));
+        model.addAttribute("latestPhase",          latest.map(pl.michalbzowski.windband.application.query.scoreanalysis.ScoreAnalysisQueryService.LatestScoreAnalysisDto::phase).orElse(null));
+        model.addAttribute("latestRunnerRef",      latest.map(pl.michalbzowski.windband.application.query.scoreanalysis.ScoreAnalysisQueryService.LatestScoreAnalysisDto::runnerRef).orElse(null));
+        model.addAttribute("latestErrorMessage",   latest.map(pl.michalbzowski.windband.application.query.scoreanalysis.ScoreAnalysisQueryService.LatestScoreAnalysisDto::errorMessage).orElse(null));
+        model.addAttribute("latestArrangementJsonPath",      latest.map(pl.michalbzowski.windband.application.query.scoreanalysis.ScoreAnalysisQueryService.LatestScoreAnalysisDto::arrangementJsonPath).orElse(null));
+        model.addAttribute("latestArrangementMusicxmlPath",  latest.map(pl.michalbzowski.windband.application.query.scoreanalysis.ScoreAnalysisQueryService.LatestScoreAnalysisDto::arrangementMusicxmlPath).orElse(null));
+        model.addAttribute("latestArrangementMidPath",       latest.map(pl.michalbzowski.windband.application.query.scoreanalysis.ScoreAnalysisQueryService.LatestScoreAnalysisDto::arrangementMidPath).orElse(null));
+        model.addAttribute("latestValidationTxtPath",        latest.map(pl.michalbzowski.windband.application.query.scoreanalysis.ScoreAnalysisQueryService.LatestScoreAnalysisDto::validationTxtPath).orElse(null));
+        model.addAttribute("latestStartedAt",     latest.map(pl.michalbzowski.windband.application.query.scoreanalysis.ScoreAnalysisQueryService.LatestScoreAnalysisDto::startedAt).orElse(null));
+        model.addAttribute("latestFinishedAt",    latest.map(pl.michalbzowski.windband.application.query.scoreanalysis.ScoreAnalysisQueryService.LatestScoreAnalysisDto::finishedAt).orElse(null));
+        model.addAttribute("composition", composition);
         model.addAttribute("bandId", bandId);
         if (Boolean.TRUE.equals(isHtmx)) {
             return "compositions/detail :: #compositions-content";
