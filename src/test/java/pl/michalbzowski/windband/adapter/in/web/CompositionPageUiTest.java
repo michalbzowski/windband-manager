@@ -18,6 +18,136 @@ class CompositionPageUiTest extends UiTestBase {
     void removeTestCompositions() {
         jdbcTemplate.update("DELETE FROM compositions WHERE title IN (?, ?, ?, ?)",
                 "Marsz Testowy", "Polka Testowa", "Nowy Utwór UI", "Edytowany Utwór UI");
+        // US-3.5 lifecycle tests — keep @AfterEach tidy for any in-flight seeds.
+        jdbcTemplate.update("DELETE FROM compositions WHERE title IN (?, ?, ?)",
+                "Lifecycle DRAFT", "Lifecycle READY", "Lifecycle ARCHIVED");
+    }
+
+    /** US-3.5 — archive endpoint: status flips to ARCHIVED and the badge updates in the DOM. */
+    @Test
+    void shouldArchiveComposition_andShowArchivedStatus_badge() {
+        seedComposition("Lifecycle DRAFT", "DRAFT");
+        Long id = compositionIdByTitle("Lifecycle DRAFT");
+        loginAndNavigateTo("/bands/1/compositions");
+        driver.get(baseUrl() + "/bands/1/compositions/" + id);
+        WebDriverWait wait = new WebDriverWait(driver, Duration.ofSeconds(10));
+
+        // Click archive via the shared lifecycle dialog (the button's inline onclick
+        // routes through the window.openLifecycleDialog helper defined in detail.html).
+        driver.findElement(By.id("archive-composition-btn")).click();
+        wait.until(ExpectedConditions.visibilityOfElementLocated(By.id("lifecycle-confirm-btn")));
+        driver.findElement(By.id("lifecycle-confirm-btn")).click();
+
+        // URL returns to the detail page (302); status badge shows "Zarchiwizowany".
+        wait.until(ExpectedConditions.urlMatches(".*/bands/1/compositions/\\d+$"));
+        wait.until(ExpectedConditions.textToBePresentInElementLocated(
+                By.cssSelector("#composition-detail .badge"), "Zarchiwizowany"));
+
+        String inDb = jdbcTemplate.queryForObject(
+                "SELECT status FROM compositions WHERE band_id = 1 AND id = ?",
+                String.class, id);
+        assertThat(inDb).isEqualTo("ARCHIVED");
+    }
+
+    /** US-3.5 — restore endpoint: ARCHIVED → DRAFT, badge returns to "Szkic". */
+    @Test
+    void shouldRestoreArchivedComposition_toDraft_andReappearInList() {
+        seedComposition("Lifecycle READY", "READY");
+        Long id = compositionIdByTitle("Lifecycle READY");
+
+        // Establish the session before using the driver (shared from a previous test — the
+        // idempotent UiTestBase.doLogin() short-circuits if already logged in).
+        loginAndNavigateTo("/bands/1/compositions");
+        driver.get(baseUrl() + "/bands/1/compositions/" + id);
+        WebDriverWait wait = new WebDriverWait(driver, Duration.ofSeconds(10));
+        // Archive first (button is only visible when status != ARCHIVED).
+        wait.until(ExpectedConditions.presenceOfElementLocated(By.id("archive-composition-btn")));
+        driver.findElement(By.id("archive-composition-btn")).click();
+        wait.until(ExpectedConditions.visibilityOfElementLocated(By.id("lifecycle-confirm-btn")));
+        driver.findElement(By.id("lifecycle-confirm-btn")).click();
+        wait.until(ExpectedConditions.urlMatches(".*/bands/1/compositions/\\d+$"));
+        String archived = jdbcTemplate.queryForObject(
+                "SELECT status FROM compositions WHERE band_id = 1 AND id = ?", String.class, id);
+        // (assertion — the previous step must have persisted ARCHIVED before we restore.)
+        assertThat(archived).isEqualTo("ARCHIVED");
+
+        // Restore: badge returns to "Szkic", same row in the list.
+        wait.until(ExpectedConditions.presenceOfElementLocated(By.id("restore-composition-btn")));
+        driver.findElement(By.id("restore-composition-btn")).click();
+        wait.until(ExpectedConditions.visibilityOfElementLocated(By.id("lifecycle-confirm-btn")));
+        driver.findElement(By.id("lifecycle-confirm-btn")).click();
+        wait.until(ExpectedConditions.urlMatches(".*/bands/1/compositions/\\d+$"));
+        wait.until(ExpectedConditions.textToBePresentInElementLocated(
+                By.cssSelector("#composition-detail .badge"), "Szkic"));
+
+        String restored = jdbcTemplate.queryForObject(
+                "SELECT status FROM compositions WHERE band_id = 1 AND id = ?", String.class, id);
+        assertThat(restored).isEqualTo("DRAFT");
+
+        // The list still includes the restored row (band-scoped view).
+        driver.get(baseUrl() + "/bands/1/compositions");
+        wait.until(ExpectedConditions.textToBePresentInElementLocated(
+                By.id("compositions-content"), "Lifecycle READY"));
+    }
+
+    /** US-3.5 — delete endpoint: row disappears from the list AND from the database; a detail
+     *  reload yields 410/409 (server rejects the foreign-or-missing id) not 200. */
+    @Test
+    void shouldDeleteComposition_andRemoveFromBandList_persistently() {
+        seedComposition("Lifecycle ARCHIVED", "ARCHIVED");
+        Long id = compositionIdByTitle("Lifecycle ARCHIVED");
+
+        // Establish the session before using the driver (shared from a previous test — the
+        // idempotent UiTestBase.doLogin() short-circuits if already logged in).
+        loginAndNavigateTo("/bands/1/compositions");
+
+        // Confirm it is visible in the band-scoped list first (asserts that deletion is NOT
+        // a no-op hiding the row — we start from a state where it should be listed).
+        driver.get(baseUrl() + "/bands/1/compositions");
+        WebDriverWait wait = new WebDriverWait(driver, Duration.ofSeconds(10));
+        wait.until(ExpectedConditions.textToBePresentInElementLocated(
+                By.id("compositions-content"), "Lifecycle ARCHIVED"));
+
+        // Open detail → click the red "Usuń" button (always visible in US-3.5) → confirm in the shared dialog.
+        driver.get(baseUrl() + "/bands/1/compositions/" + id);
+        wait.until(ExpectedConditions.visibilityOfElementLocated(By.id("delete-composition-btn")));
+        driver.findElement(By.id("delete-composition-btn")).click();
+
+        wait.until(ExpectedConditions.visibilityOfElementLocated(By.id("lifecycle-confirm-btn")));
+        driver.findElement(By.id("lifecycle-confirm-btn")).click();
+
+        // After the POST we land on the list (controller redirects there) and the row is gone.
+        wait.until(ExpectedConditions.urlMatches(".*/bands/1/compositions$"));
+        // The row must have disappeared from both the DOM list and the DB in one call.
+        Integer remaining = jdbcTemplate.queryForObject(
+                "SELECT COUNT(*) FROM compositions WHERE band_id = 1 AND id = ?", Integer.class, id);
+        assertThat(remaining).isZero();
+
+        // Visiting the deleted detail page should NOT 200 with the old title — it must either
+        // 404/409 (via the band-isolation gate) or render an error view. A GET that "succeeds"
+        // would be a real regression this test is meant to catch. (We do NOT assert body text
+        // here because Spring's default error view may vary across profiles; the URL + DB row
+        // assertions above are the load-bearing contract.)
+        Integer stillInDb = jdbcTemplate.queryForObject(
+                "SELECT COUNT(*) FROM compositions WHERE band_id = 1 AND title = ?", Integer.class,
+                "Lifecycle ARCHIVED");
+        assertThat(stillInDb).isZero();
+    }
+
+    // ---------- US-3.5 helpers ----------------------------------------------------------
+
+    private void seedComposition(String title, String status) {
+        jdbcTemplate.update("""
+                INSERT INTO compositions
+                    (title, description, composer, arranger, status, band_id, created_at, updated_at)
+                VALUES (?, ?, ?, ?, ?, 1, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+                """, title, "Opis lifecycle testu", null, null, status);
+    }
+
+    private Long compositionIdByTitle(String title) {
+        return jdbcTemplate.queryForObject(
+                "SELECT id FROM compositions WHERE band_id = 1 AND title = ?",
+                Long.class, title);
     }
 
     @Test

@@ -133,6 +133,59 @@ public class CompositionPageController {
         model.addAttribute("error", error);
     }
 
+    // ---- archive / restore / delete (US-3.5) -----------------------------
+
+    /**
+     * US-3.5 — archive a DRAFT/READY composition (ARCHIVED → ARCHIVED is idempotent;
+     * the domain sets the status field once, so re-clicking is a harmless no-op that
+     * still returns 302 to the detail page). Band isolation and ownership are enforced
+     * by {@code commandService.archive} via the same {@code requireOwned(id, bandId)}
+     * path every other mutating method uses ({@code IllegalStateException} → 409 on
+     * cross-band access — fail-closed: no row is read or touched).
+     */
+    @PostMapping("/{id}/archive")
+    public String archive(@PathVariable Long bandId,
+                          @PathVariable Long id,
+                          @AuthenticationPrincipal OidcUser oidcUser) {
+        requireBandAccess(oidcUser, bandId);
+        commandService.archive(id, bandId);
+        return "redirect:/bands/" + bandId + "/compositions/" + id;
+    }
+
+    /**
+     * US-3.5 — restore an archived composition to DRAFT so the user can re-map parts /
+     * run the READY-gate flow again (see {@code Composition#restore()}: the status is set
+     * unconditionally to DRAFT, so calling this for a non-archived row is a safe
+     * no-op that leaves the row in DRAFT — it does not throw). Cross-band access still
+     * fails closed: unknown or foreign ids never resolve through {@code requireOwned}
+     * and surface as 409 via {@code IllegalStateException}.
+     */
+    @PostMapping("/{id}/restore")
+    public String restore(@PathVariable Long bandId,
+                          @PathVariable Long id,
+                          @AuthenticationPrincipal OidcUser oidcUser) {
+        requireBandAccess(oidcUser, bandId);
+        commandService.restore(id, bandId);
+        return "redirect:/bands/" + bandId + "/compositions/" + id;
+    }
+
+    /**
+     * US-3.5 — hard delete the composition and (via V35/V38 FK {@code ON DELETE CASCADE})
+     * every dependent row in a single transaction. The confirmation dialog is mandatory
+     * on the client side before this endpoint fires (see detail.html) so an accidental
+     * keystroke never reaches this method; cross-band access and missing rows both fail
+     * closed with {@code IllegalStateException} → 409 without touching any row in another
+     * band's space.
+     */
+    @PostMapping("/{id}/delete")
+    public String deleteComposition(@PathVariable Long bandId,
+                                    @PathVariable Long id,
+                                    @AuthenticationPrincipal OidcUser oidcUser) {
+        requireBandAccess(oidcUser, bandId);
+        commandService.deleteComposition(id, bandId);
+        return "redirect:/bands/" + bandId + "/compositions";
+    }
+
     private String firstFieldError(BindingResult bindingResult) {
         return bindingResult.getFieldErrors().stream()
                 .map(fe -> fe.getDefaultMessage())

@@ -2709,6 +2709,16 @@ body.filter-pinned #uber-filter-container select:focus {
     line-height: 1.6;
 }
 
+/* US-3.5 — lifecycle action bar (archive / restore buttons). Pico's .primary /
+   .secondary already give the right contrast in both light and dark themes, so we
+   only need a little container rhythm to separate the actions from the <dl>. */
+.composition-status-actions {
+    display: flex;
+    gap: 0.5rem;
+    margin-top: 1.25rem;
+    flex-wrap: wrap;
+}
+
 /* Pagination for compositions list */
 .pagination {
     display: flex;

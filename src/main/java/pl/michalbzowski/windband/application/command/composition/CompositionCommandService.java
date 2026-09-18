@@ -69,12 +69,16 @@ public class CompositionCommandService {
     // ---- archive / restore -----------------------------------------------
 
     public void archive(Long id, Long bandId) {
-        requireOwned(id, bandId).archive();
+        Composition composition = requireOwned(id, bandId);
+        composition.archive();
+        repository.save(composition);
     }
 
     /** Revert an archived composition back to DRAFT (US lifecycle step). */
     public void restore(Long id, Long bandId) {
-        requireOwned(id, bandId).restore();
+        Composition composition = requireOwned(id, bandId);
+        composition.restore();
+        repository.save(composition);
     }
 
     // ---- delete (US-1.6 AC) ----------------------------------------------
