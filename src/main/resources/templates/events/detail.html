@@ -84,7 +84,65 @@
     </div>
 </div>
 
+<!-- US-7.2 — "Skad repertuaru tego wydarzenia" panel: lists all compositions linked to this event in setlist order, + a dialog to add a new one from the band's score library. -->
+<section id="event-setlist-panel" style="margin-bottom:1.5rem;">
+    <header style="display:flex; align-items:center; gap:0.75rem; margin-bottom:0.5rem;">
+        <h3 style="margin:0;">Skad repertuaru tego wydarzenia</h3>
+        <button type="button" class="secondary" id="add-setlist-composition-btn">+ Dodaj utwór</button>
+    </header>
+
+    <table th:if="${eventCompositions != null and !eventCompositions.isEmpty()}"
+           class="data-table" style="max-width:600px;">
+        <thead><tr><th>#</th><th>Tytul utworu</th></tr></thead>
+        <tbody>
+            <tr th:each="ec, st : ${eventCompositions}">
+                <td th:text="${st.count}" data-label="Pozycja">1</td>
+                <td th:text="${ec.composition.title}" data-label="Tytul utworu">Marsz Testowy</td>
+            </tr>
+        </tbody>
+    </table>
+    <p th:if="${eventCompositions == null or eventCompositions.isEmpty()}"
+       style="color: var(--pico-muted-color); margin:0;">
+        Brak przypisanych utworow. Kliknij "+ Dodaj utwór", aby dobrać sklad z biblioteki nut.
+    </p>
+</section>
+
+<dialog id="add-composition-dialog" class="app-modal">
+    <form method="post" th:action="@{/events/{id}/compositions(id=${event.id})}"
+          onsubmit="return submitCompositionAddForm(this)">
+        <h3 style="margin-top:0;">Dodaj utwór do wydarzenia</h3>
+        <label style="display:block; margin-bottom:0.5rem;">Wybierz utwór z biblioteki:
+            <select name="compositionId" id="setlist-composition-picker" required=""
+                    class="form-element-secondary" style="width:100%; max-width:400px; padding:0.5rem;">
+                <option value="" disabled="" selected="">— wybierz utwór —</option>
+                <option th:each="c : ${bandCompositions}" th:value="${c.id}" th:text="${c.title}"></option>
+            </select>
+        </label>
+        <small style="display:block; margin-bottom:1rem; color:var(--pico-muted-color);">Utwór zostanie dopisany na koniec listy (pozycja auto-następna).</small>
+        <div class="modal-actions" style="display:flex; gap:0.5rem;">
+            <button type="submit" class="primary">➕ Dodaj</button>
+            <button type="button" class="secondary" id="close-add-composition-btn">Anuluj</button>
+        </div>
+    </form>
+</dialog>
+
 <h3>Uczestnicy</h3>
+
+<script th:inline="javascript">
+(function () {
+    var openBtn = document.getElementById('add-setlist-composition-btn');
+    var dialog  = document.getElementById('add-composition-dialog');
+    if (openBtn && dialog) {
+        openBtn.addEventListener('click', function () { dialog.showModal(); });
+        var closeBtn = document.getElementById('close-add-composition-btn');
+        if (closeBtn) { closeBtn.addEventListener('click', function () { dialog.close(); }); }
+        // Native <dialog> auto-closes on backdrop click for us by default (no cancel event needed).
+    }
+    // submitCompositionAddForm is referenced from th:action / onsubmit above; the POST body
+    // sends compositionId as a form-encoded field, and the controller saves + 302-redirects back.
+    window.submitCompositionAddForm = function (form) { return true; };
+})();
+</script>
 
     <!-- Combined filter container for StickyManager -->
     <div id="uber-filter-container">

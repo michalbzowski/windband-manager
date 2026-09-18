@@ -6,6 +6,8 @@ import org.springframework.transaction.annotation.Transactional;
 import pl.michalbzowski.windband.application.command.member.MemberNotFoundException;
 import pl.michalbzowski.windband.domain.band.Band;
 import pl.michalbzowski.windband.domain.band.BandRepository;
+import pl.michalbzowski.windband.domain.composition.Composition;
+import pl.michalbzowski.windband.domain.composition.CompositionRepository;
 import pl.michalbzowski.windband.domain.event.*;
 import pl.michalbzowski.windband.domain.member.Group;
 import pl.michalbzowski.windband.domain.member.GroupRepository;
@@ -16,6 +18,7 @@ import pl.michalbzowski.windband.domain.band.MemberAttributeValueRepository;
 import pl.michalbzowski.windband.domain.member.MemberRepository;
 
 import java.math.BigDecimal;
+import java.util.List;
 
 @Service
 @RequiredArgsConstructor
@@ -29,6 +32,8 @@ public class EventCommandService {
     private final InstrumentRepository instrumentRepository;
     private final MemberAttributeValueRepository memberAttributeValueRepository;
     private final NotificationCommandService notificationCommandService;
+    private final EventCompositionRepository eventCompositionRepository;
+    private final CompositionRepository compositionRepository;
 
     public BandEvent createEvent(CreateEventCommand cmd, Long teamId) {
         Band band = bandRepository.findById(teamId)
@@ -216,5 +221,39 @@ public class EventCommandService {
             participation.setInstrument(null);
         }
         eventRepository.save(event);
+    }
+
+    // ---- US-7.2 - composition to event link ----------------------------
+
+    /** Links a composition into the event's setlist as the last piece. */
+    public EventComposition assignComposition(Long eventId, Long compositionId) {
+        BandEvent event = eventRepository.findById(eventId)
+                .orElseThrow(() -> new EventNotFoundException(eventId));
+        Long bandId = event.getBand() == null ? null : event.getBand().getId();
+        if (bandId == null) {
+            throw new IllegalStateException("Event has no band");
+        }
+        // Band isolation first: refuse cross-band compositions with ISE (HTTP 409), not IAE (HTTP 400).
+        Composition composition = compositionRepository.findByIdAndBandId(compositionId, bandId).orElse(null);
+        if (composition == null) {
+            throw new IllegalStateException("Composition does not belong to the event's band");
+        }
+        int nextOrder = (int) eventCompositionRepository.findAllByEventIdOrderByOrderInSetAsc(eventId).size() + 1;
+        EventComposition row = eventCompositionRepository.findByEventIdAndCompositionId(eventId, compositionId)
+                .orElseGet(() -> EventComposition.link(event, composition, nextOrder));
+        return eventCompositionRepository.save(row);
+    }
+
+    /** Unlinks ONE specific composition from this event. Idempotent — safe on missing rows. */
+    public void unassignComposition(Long eventId, Long compositionId) {
+        eventRepository.findById(eventId).orElseThrow(() -> new EventNotFoundException(eventId));
+        eventCompositionRepository.findByEventIdAndCompositionId(eventId, compositionId)
+                .ifPresent(row -> eventCompositionRepository.delete(row));
+    }
+
+    /** All setlist rows for this event (empty list when none yet). */
+    public List<EventComposition> getEventCompositions(Long eventId) {
+        eventRepository.findById(eventId).orElseThrow(() -> new EventNotFoundException(eventId));
+        return eventCompositionRepository.findAllByEventIdOrderByOrderInSetAsc(eventId);
     }
 }

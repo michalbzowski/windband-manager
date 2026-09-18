@@ -16,6 +16,8 @@ import pl.michalbzowski.windband.application.query.event.EventQueryService;
 
 import pl.michalbzowski.windband.application.query.member.MemberQueryService;
 
+import pl.michalbzowski.windband.application.command.event.EventCommandService;
+import pl.michalbzowski.windband.application.query.composition.CompositionQueryService;
 import pl.michalbzowski.windband.application.query.instrument.InstrumentQueryService;
 
 import java.time.LocalDate;
@@ -32,6 +34,8 @@ public class EventPageController {
 
     private final MemberQueryService memberQueryService;
 
+    private final EventCommandService eventCommandService;
+    private final CompositionQueryService compositionQueryService;
     private final InstrumentQueryService instrumentQueryService;
 
     @GetMapping
@@ -116,6 +120,8 @@ public class EventPageController {
 
         model.addAttribute("members", availableMembers);
         model.addAttribute("instruments", instrumentQueryService.findAll(activeTeamId));
+        model.addAttribute("bandCompositions", compositionQueryService.listByBand(activeTeamId, null));
+        model.addAttribute("eventCompositions", eventCommandService.getEventCompositions(id));
         model.addAttribute("event", eventDetail);
 
         // Determine back URL from Referer header, default to events list
@@ -170,4 +176,23 @@ public class EventPageController {
 
     }
 
+    // ---- US-7.2 - composition to event link ------------------------------
+
+    /** Links a composition into this event's setlist (POST from the detail-page dialog). */
+    @PostMapping("/{id}/compositions")
+    public String assignComposition(@PathVariable Long eventId,
+                                    @RequestParam("compositionId") Long compositionId,
+                                    @ModelAttribute("activeTeamId") Long activeTeamId) {
+        eventCommandService.assignComposition(eventId, compositionId);
+        return "redirect:/events/" + eventId;
+    }
+
+    /** Unlinks ONE specific composition from this event's setlist. */
+    @DeleteMapping("/{id}/compositions/{cid}")
+    public String unassignComposition(@PathVariable Long eventId,
+                                      @PathVariable("cid") Long compositionId,
+                                      @ModelAttribute("activeTeamId") Long activeTeamId) {
+        eventCommandService.unassignComposition(eventId, compositionId);
+        return "redirect:/events/" + eventId;
+    }
 }
