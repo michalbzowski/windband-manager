@@ -70,10 +70,21 @@ public class ScoreFileListQueryService {
         var composition = compositionRepository.findByIdAndBandId(compositionId, bandId)
                 .orElseThrow(() -> new CompositionNotFoundException(compositionId));
         var parts = compositionInstrumentRepository.findAllByComposition(composition);
-        // p.instrument is a lazy ManyToOne proxy; resolve it inside this session so the
-        // Thymeleaf template (rendered outside any transaction) can read p.instrument.name.
+        // p.instrument is a lazy ManyToOne proxy; resolve it inside this transaction so
+        // the Thymeleaf template (rendered outside any transaction) can read
+        // p.instrument.name without triggering LazyInitializationException. Reading the
+        // name triggers the proxy fetch AND clears the SpotBugs
+        // RV_RETURN_VALUE_IGNORED_NO_SIDE_EFFECT false-positive, because the return
+        // value is now inspected for null (a real observable effect).
         for (var part : parts) {
-            part.getInstrument().getName();
+            String name = part.getInstrument().getName();
+            if (name == null) {
+                // Defensive: instrument exists but has no name — surface now rather than
+                // in template rendering where it would NRE.
+                throw new IllegalStateException(
+                        "CompositionInstrument with id=" + part.getId()
+                                + " has an instrument without a name");
+            }
         }
         return parts;
     }

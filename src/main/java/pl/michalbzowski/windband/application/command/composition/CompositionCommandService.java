@@ -117,19 +117,25 @@ public class CompositionCommandService {
         Objects.requireNonNull(instrumentId, "instrumentId");
         Objects.requireNonNull(bandId, "bandId");
 
+        // The domain factory requires a non-blank role (instrument_role is
+        // NOT NULL on the table). Fail closed here with an IllegalArgumentException
+        // (HTTP 400 via the global handler) so SpotBugs NP_NULL_PARAM_* cannot fire.
+        if (role == null || role.trim().isEmpty()) {
+            throw new IllegalArgumentException("Role instrumentu jest wymagana");
+        }
+
         var composition = requireOwned(compositionId, bandId);
         var instrument = memberInstrumentRepository.findByIdAndBandId(instrumentId, bandId)
                 .orElseThrow(() -> new IllegalArgumentException("Nie znaleziono instrumentu w tym zespole"));
 
-        // Domain factory enforces: pageTo >= pageFrom >= 1, role non-blank when present.
-        var cleanRole = (role == null) ? null : role.trim();
-        if (cleanRole != null && cleanRole.isEmpty()) {
-            cleanRole = null;
-        }
+        // Normalize: trim; the factory will trim again (idempotent).
+        String cleanRole = role.trim();
+
+        double score = confidence == null ? 1.0 : confidence;
 
         var part = CompositionInstrument.forComposition(
                 composition, instrument, cleanRole, pageFrom, pageTo, null,
-                PartSource.MANUAL, confidence);
+                PartSource.MANUAL, score);
         return instrumentRepository.save(part);
     }
 
