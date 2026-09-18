@@ -69,11 +69,16 @@ public class GlobalExceptionHandler {
         return ResponseEntity.status(ex.getHttpStatus()).body(errorBody(ex.getMessage()));
     }
 
-    @ExceptionHandler(
-            pl.michalbzowski.windband.application.query.composition.ScoreFileDownloadQueryService.ScoreFileMissingException.class)
+    @ExceptionHandler(pl.michalbzowski.windband.application.query.composition.ScoreFileDownloadQueryService.ScoreFileMissingException.class)
     public ResponseEntity<Map<String, Object>> handleScoreFileMissing(
             pl.michalbzowski.windband.application.query.composition.ScoreFileDownloadQueryService.ScoreFileMissingException ex) {
         return ResponseEntity.status(HttpStatus.GONE).body(errorBody(ex.getMessage()));
+    }
+
+    @ExceptionHandler(pl.michalbzowski.windband.application.command.scoreanalysis.AiAnalysisRunner.RunnerNotConfiguredException.class)
+    public ResponseEntity<Map<String, Object>> handleAiRunnerNotConfigured(
+            pl.michalbzowski.windband.application.command.scoreanalysis.AiAnalysisRunner.RunnerNotConfiguredException ex) {
+        return ResponseEntity.status(HttpStatus.NOT_IMPLEMENTED).body(errorBody(ex.getMessage()));
     }
 
     @ExceptionHandler(Exception.class)

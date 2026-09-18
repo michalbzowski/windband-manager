@@ -6,5 +6,8 @@
 
 /BOOT-INF/
 
+# US-4.1 AI-analysis artefacts (runtime output)
+/data/
+
 # --- Keycloak theme build output ---
 themes/bandmanager/target/
