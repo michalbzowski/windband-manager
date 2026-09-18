@@ -178,9 +178,9 @@ public class CompositionPageController {
      * band's space.
      */
     @PostMapping("/{id}/delete")
-    public String deleteComposition(@PathVariable Long bandId,
-                                    @PathVariable Long id,
-                                    @AuthenticationPrincipal OidcUser oidcUser) {
+    public String delete(@PathVariable Long bandId,
+                         @PathVariable Long id,
+                         @AuthenticationPrincipal OidcUser oidcUser) {
         requireBandAccess(oidcUser, bandId);
         commandService.deleteComposition(id, bandId);
         return "redirect:/bands/" + bandId + "/compositions";

@@ -74,7 +74,17 @@ public class CompositionCommandService {
         repository.save(composition);
     }
 
-    /** Revert an archived composition back to DRAFT (US lifecycle step). */
+    /**
+     * Revert an <b>archived</b> composition back to DRAFT (US lifecycle step).
+     *
+     * <p><b>Status semantics:</b> {@link Composition#restore()} unconditionally sets the
+     * status to {@code DRAFT} — even when called on a {@code READY} row (which the UI gate
+     * does not expose, but a direct call could reach). Downgrading {@code READY → DRAFT} is
+     * the safe choice: it forces the user through {@code verifyCompositionParts()} before
+     * they can promote back to {@code READY}, never silently re-publishing an unverified part
+     * map. Cross-band access fails closed via {@code requireOwned} ({@link IllegalStateException}
+     * → HTTP 409).</p>
+     */
     public void restore(Long id, Long bandId) {
         Composition composition = requireOwned(id, bandId);
         composition.restore();
