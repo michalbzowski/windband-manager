@@ -372,6 +372,12 @@
                     <span class="nav-label">Kalendarz</span>
                 </a>
             </li>
+            <li>
+                <a th:href="${activeTeamId} != null ? @{/bands/{bandId}/compositions(bandId=${activeTeamId})} : @{/}" hx-target="#content" hx-swap="innerHTML transition:true" aria-label="Utwory">
+                    <span class="nav-icon" aria-hidden="true">🎼</span>
+                    <span class="nav-label">Utwory</span>
+                </a>
+            </li>
         </ul>
 
         <button type="button"
@@ -426,6 +432,7 @@
                     <li><a th:href="@{/members}" hx-target="#content" hx-swap="innerHTML transition:true" data-close>👥 Członkowie</a></li>
                     <li sec:authorize="hasAnyRole('ADMIN', 'SYSTEM_ADMIN')"><a th:href="@{/groups}" hx-target="#content" hx-swap="innerHTML transition:true" data-close>👥 Grupy</a></li>
                     <li sec:authorize="hasAnyRole('ADMIN', 'SYSTEM_ADMIN')"><a th:href="@{/tags}" hx-target="#content" hx-swap="innerHTML transition:true" data-close>🏷 Tagi</a></li>
+                    <li sec:authorize="isAuthenticated()"><a th:href="${activeTeamId} != null ? @{/bands/{bandId}/compositions(bandId=${activeTeamId})} : @{/}" hx-target="#content" hx-swap="innerHTML transition:true" data-close>🎼 Utwory</a></li>
                     <li><a th:href="@{/inventory}" hx-target="#content" hx-swap="innerHTML transition:true" data-close>📦 Zasoby</a></li>
                 </ul>
 
