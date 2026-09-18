@@ -10,11 +10,11 @@ import pl.michalbzowski.windband.domain.composition.CompositionInstrument;
 import pl.michalbzowski.windband.domain.composition.CompositionInstrumentRepository;
 import pl.michalbzowski.windband.domain.composition.CompositionRepository;
 import pl.michalbzowski.windband.domain.composition.PartSource;
-import pl.michalbzowski.windband.domain.member.Instrument;
 import pl.michalbzowski.windband.domain.member.InstrumentRepository;
 
 import java.time.Instant;
 import java.util.List;
+import java.util.Objects;
 
 /**
  * Command side of the score-library module: create, update-texts, archive
