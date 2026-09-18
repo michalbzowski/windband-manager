@@ -2,6 +2,7 @@
 <html lang="pl" xmlns:th="http://www.thymeleaf.org">
 <head th:replace="~{fragments/layout :: head(${composition.title})}"></head>
 <body class="dashboard-page">
+
 <div th:replace="~{fragments/layout :: dialogs}"></div>
 
 <main class="container" id="content">
@@ -9,10 +10,7 @@
         <header th:replace="~{fragments/layout :: dashboard-header}"></header>
 
         <div id="compositions-content">
-            <nav th:replace="~{fragments/page-header :: page-header(
-                    @{/bands/{bandId}/compositions(bandId=${bandId})},
-                    'Szczegóły utworu', null, null, null, null,
-                    null, null, null, null)}"></nav>
+            <h2>Szczegóły utworu</h2>
 
             <article id="composition-detail">
                 <header>
@@ -29,14 +27,114 @@
                     <dd class="composition-description"
                         th:text="${composition.description != null and !composition.description.isBlank() ? composition.description : 'Brak opisu'}">Brak opisu</dd>
                 </dl>
-            </article>
-        </div>
+
+<!-- US-3.5 lifecycle actions: archive / restore (status-dependent) and the always-visible
+     hard-delete red button. All three open the same shared <dialog id="lifecycle-dialog">
+     below via window.openLifecycleDialog(action); the form's action is rewritten to the
+     matching endpoint (archive | restore | delete). -->
+<div class="composition-status-actions">
+    <button type="button" id="archive-composition-btn" class="secondary"
+            th:if="${composition.status.name() != 'ARCHIVED'}"
+            onclick="openLifecycleDialog('archive')">📦 Archiwizuj</button>
+    <button type="button" id="restore-composition-btn" class="primary"
+            th:if="${composition.status.name() == 'ARCHIVED'}"
+            onclick="openLifecycleDialog('restore')">↩️ Przywróć</button>
+
+    <button type="button" id="delete-composition-btn" class="secondary danger"
+            onclick="openLifecycleDialog('delete')">🗑 Usuń bezpowrotnie</button>
+</div>
+
+</article>
+</div>
     </section>
 </main>
+
+<dialog id="lifecycle-dialog" class="app-modal">
+    <div class="app-modal-content">
+        <header class="app-modal-header">
+            <div class="app-modal-header-text">
+                <strong id="lifecycle-title" aria-live="polite">Potwierdź</strong>
+                <small>Zmiana ma wpływ na widoczność utworu w bibliotece.</small>
+            </div>
+            <button type="button" class="app-modal-close" aria-label="Zamknij" data-close>×</button>
+        </header>
+        <div class="app-modal-body">
+            <p id="lifecycle-message" role="alert"></p>
+            <form id="lifecycle-form" method="post">
+                <button type="submit" id="lifecycle-confirm-btn" class="primary">Potwierdź</button>
+                <button type="button" id="lifecycle-cancel-btn" class="secondary">Anuluj</button>
+            </form>
+        </div>
+    </div>
+</dialog>
+
+<script th:inline="javascript">
+(function () {
+    var bandId = /*[[${bandId}]]*/ 0;
+    var compId = /*[[${composition.id}]]*/ 0;
+    var compositionTitle = /*[[${composition.title}]]*/ 'Utwór';
+
+    window.openLifecycleDialog = function (action) {
+        var plans = {
+            archive: {title: 'Archiwizować utwór?',
+                body: '„' + compositionTitle + '” trafi do archiwum i zniknie z listy. Możesz go w każdej chwili przywrócić.',
+                confirm: '📦 Archiwizuj',
+                url: '/bands/' + bandId + '/compositions/' + compId + '/archive'},
+            restore: {title: 'Przywrócić utwór?',
+                body: '„' + compositionTitle + '” wróci do statusu Szkic. Parts i opisy pozostają bez zmian.',
+                confirm: '↩️ Przywróć',
+                url: '/bands/' + bandId + '/compositions/' + compId + '/restore'},
+            delete:  {title: 'Usuń utwór bezpowrotnie?',
+                body: '„' + compositionTitle + '” wraz z powiązanymi plikami i parts zostanie usunięty. Tej operacji nie można cofnąć.',
+                confirm: '🗑 Usuń bezpowrotnie',
+                url: '/bands/' + bandId + '/compositions/' + compId + '/delete'}
+        };
+        var plan = plans[action];
+        if (!plan) { return; }
+
+        document.getElementById('lifecycle-title').textContent    = plan.title;
+        document.getElementById('lifecycle-message').textContent  = plan.body;
+        document.getElementById('lifecycle-confirm-btn').textContent = plan.confirm;
+        document.getElementById('lifecycle-form').action = plan.url;
+
+        // Open the dialog. openAppModal / closeAppModal are injected by layout.html's
+        // footer-scripts — they also wire backdrop-click and [data-close] handlers.
+        // Fallback to raw showModal for browsers that lack the helper (or a race where
+        // footer-scripts has not yet executed around this inline script).
+        var dlg = document.getElementById('lifecycle-dialog');
+        if (typeof openAppModal === 'function') { openAppModal('lifecycle-dialog'); }
+        else if (dlg && typeof dlg.showModal === 'function') { dlg.showModal(); }
+        else if (dlg) { dlg.setAttribute('open', ''); }
+    };
+
+    // "Anuluj" sits inside <form id="lifecycle-form"> (see the modal body). It is a
+    // type=button so it never submits, but the project-wide [data-close] delegation
+    // (fragments/layout.html → bindModalCloseHandlers) only fires for clicks on *that
+    // specific element*, and "Anuluj" has no [data-close]. Events/detail.html uses the
+    // same escape hatch (a per-button closeAppModal binding) — follow that pattern.
+    function bindCancel() {
+        var cancelBtn = document.getElementById('lifecycle-cancel-btn');
+        if (!cancelBtn || cancelBtn.dataset.bound === '1') { return; }
+        cancelBtn.dataset.bound = '1';
+        cancelBtn.addEventListener('click', function (evt) {
+            evt.preventDefault();
+            var dlg = document.getElementById('lifecycle-dialog');
+            if (typeof closeAppModal === 'function') { closeAppModal(dlg); }
+            else if (dlg) { dlg.removeAttribute('open'); }
+        });
+    }
+    bindCancel();
+
+    // Keep the cancel handler alive across HTMX swaps — same rebind hook layout.html
+    // uses for its own modal wiring (fragments/layout.html: htmx:afterSettle handler).
+    document.addEventListener('htmx:afterSettle', bindCancel);
+})();
+</script>
 
 <footer th:replace="~{fragments/layout :: footer}"></footer>
 <div th:insert="~{fragments/layout :: toast-container}"></div>
 <div th:insert="~{fragments/layout :: footer-scripts}"></div>
 <div th:insert="~{fragments/layout :: dashboard-header-morph}"></div>
+
 </body>
 </html>
