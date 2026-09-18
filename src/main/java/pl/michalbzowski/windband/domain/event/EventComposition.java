@@ -1,5 +1,8 @@
 package pl.michalbzowski.windband.domain.event;
 
+import org.hibernate.annotations.OnDelete;
+import org.hibernate.annotations.OnDeleteAction;
+
 import jakarta.persistence.*;
 import lombok.AccessLevel;
 import lombok.Getter;
@@ -41,10 +44,12 @@ public class EventComposition {
 
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "event_id", nullable = false)
+    @OnDelete(action = OnDeleteAction.CASCADE)
     private BandEvent event;
 
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "composition_id", nullable = false)
+    @OnDelete(action = OnDeleteAction.CASCADE)
     private Composition composition;
 
     /** 1-based position in the event's setlist. */
