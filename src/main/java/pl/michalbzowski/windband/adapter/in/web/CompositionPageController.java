@@ -13,6 +13,7 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.ModelAttribute;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import pl.michalbzowski.windband.application.command.composition.AddPartCommand;
 import pl.michalbzowski.windband.application.command.composition.UpdateCompositionCommand;
 import org.springframework.web.bind.annotation.RequestAttribute;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -190,6 +191,36 @@ public class CompositionPageController {
         requireBandAccess(oidcUser, bandId);
         commandService.deleteComposition(id, bandId);
         return "redirect:/bands/" + bandId + "/compositions";
+    }
+
+    /**
+     * US-7.1 — "Oznacz głosy na stronach nut" (manual entry): add one {@code CompositionInstrument}
+     * part mapping to this composition. The form in {@code compositions/detail.html} collects
+     * the instrument id, the role (free-form text), and a page range (from…to inclusive).
+     *
+     * <p>On success the browser is redirected back to the detail page, where the new row
+     * appears in the "Pliki nuty / Oznacz głosy" table (rendered from
+     * {@code scoreFileListQueryService.partsFor(id, bandId)}). On Bean-Validation failure
+     * the form is re-rendered with a Polish error message — no cross-band or unknown-id
+     * paths are exercised here: {@code requireBandAccess} + the service's band-scoped lookup
+     * fail-closed (409/400) before any row is touched.</p>
+     */
+    @PostMapping("/{id}/parts")
+    public String addPart(@PathVariable Long bandId, @PathVariable Long id,
+                          @AuthenticationPrincipal OidcUser oidcUser,
+                          @Valid @ModelAttribute AddPartCommand cmd,
+                          BindingResult bindingResult) {
+        requireBandAccess(oidcUser, bandId);
+        if (bindingResult.hasErrors()) {
+            String error = bindingResult.getFieldErrors().stream()
+                    .map(fe -> fe.getDefaultMessage())
+                    .findFirst()
+                    .orElse("Błąd walidacji formularza");
+            throw new IllegalArgumentException(error);
+        }
+        commandService.addPart(id, cmd.getInstrumentId(), cmd.getRole(),
+                cmd.getPageFrom(), cmd.getPageTo(), null, bandId);
+        return "redirect:/bands/" + bandId + "/compositions/" + id;
     }
 
     private String firstFieldError(BindingResult bindingResult) {

@@ -188,13 +188,12 @@ class ScoreFileUploadUiTest extends UiTestBase {
                 .containsIgnoringCase("pdf");
         assertThat(driver.findElement(By.id("upload-score-btn")).isEnabled())
                 .as("submit button is enabled after file selection").isFalse(); // starts disabled
-        assertThat(driver.findElement(By.id("cancel-score-upload-btn")).isDisplayed())
-                .as("cancel button visible on mobile").isTrue();
 
-        // 4. The file label text is visible (not clipped off the panel).
-        WebElement label = driver.findElement(By.id("score-file-label"));
+        // 4. The big "choose file" area (the picker label) is visible and invites
+        //    a click — clicking anywhere in the panel drives it.
+        WebElement label = driver.findElement(By.cssSelector(".score-file-picker"));
         assertThat(label.isDisplayed()).as("file-picker label visible").isTrue();
-        assertThat(label.getText()).containsIgnoringCase("wybierz");
+        assertThat(label.getText()).containsIgnoringCase("kliknij");
 
         // Restore a sensible viewport size for other tests in this class.
         driver.manage().window().setSize(new Dimension(1280, 900));

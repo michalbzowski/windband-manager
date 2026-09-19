@@ -377,24 +377,25 @@
      on success ScoreFileDto is rendered inline below the section and a success toast fires.
      The existing scoreFiles model attribute (from US-4.3) is the single source of truth
      for currently attached files — we do NOT double-render it here. -->
-<section id="score-upload-panel" class="composition-parts">
+<section id="score-upload-panel" class="composition-parts score-upload-clickable" role="group" aria-label="Wgraj nuty (PDF)">
     <header>
         <h3>Wgraj nuty (PDF)</h3>
-        <small>Dozwolone: PDF, maks. 50 MB. Po wgraniu plik pojawi się na liście i jego strony będą dostępne dla panelu "Oznacz głosy".</small>
+        <small>Kliknij w dowolne miejsce tego panelu, aby wybrać plik PDF (maks. 50 MB). Po wgraniu plik pojawi się na liście i jego strony będą dostępne dla panelu "Oznacz głosy".</small>
     </header>
 
     <form id="score-upload-form" novalidate>
         <div class="form-row">
-            <label class="file-input-label" for="score-file-input">
-                <span id="score-file-label" class="file-input-text">Wybierz plik PDF…</span>
+            <label class="file-input-label score-file-picker" for="score-file-input" style="display:flex; align-items:center; justify-content:center; min-height:56px; padding:14px 20px; border:2px dashed #b0b8c4; border-radius:10px; background:#f5f7fa; color:#334155; font-weight:600; cursor:pointer; transition:border-color .15s ease, background .15s ease;">
+                <span>📄 Kliknij tutaj, aby wybrać plik PDF…</span>
             </label>
-            <input type="file" id="score-file-input" name="file" accept="application/pdf" style="display:none">
+            <input type="file" id="score-file-input" name="file" accept="application/pdf,.pdf" style="display:none">
         </div>
         <p id="score-upload-error" class="danger hidden" role="alert"></p>
         <div class="modal-actions" style="flex-wrap:wrap; gap:8px;">
-            <button type="submit" id="upload-score-btn" class="primary" disabled>📎 Wgraj nuty</button>
-            <button type="button" id="cancel-score-upload-btn" class="secondary">Anuluj wybranie</button>
+            <button type="submit" id="upload-score-btn" class="primary" disabled aria-describedby="score-upload-helper">📎 Wgraj nuty</button>
+            <button type="button" id="cancel-score-upload-btn" class="secondary" title="Anuluj wybranie pliku" hidden>Anuluj</button>
         </div>
+        <p id="score-upload-helper" hidden style="margin-top:8px; font-size:.85rem; color:#64748b;">Najpierw wybierz plik PDF, aby włączyć przycisk wysyłki.</p>
     </form>
 
     <!-- Uploaded-file confirmation row (populated by JS after a successful POST). -->
@@ -424,46 +425,72 @@
     var compId = /*[[${composition.id}]]*/ 0;
 
     var input       = document.getElementById('score-file-input');
-    var label       = document.getElementById('score-file-label');
+    var picker      = document.querySelector('.score-file-picker');
+    var pickerText  = picker ? picker.querySelector('span') : null;
+    var panel       = document.getElementById('score-upload-panel');
     var form        = document.getElementById('score-upload-form');
     var submitBtn   = document.getElementById('upload-score-btn');
     var cancelBtn   = document.getElementById('cancel-score-upload-btn');
     var errorEl     = document.getElementById('score-upload-error');
     var resultEl    = document.getElementById('score-upload-result');
+    var helperEl    = document.getElementById('score-upload-helper');
     var resultToast = resultEl ? resultEl.querySelector('.toast') : null;
 
     if (!input || !form) return;
 
+    // ---- helpers: state display -------------------------------------------
+    function setPicker(text) { if (pickerText) pickerText.textContent = text; }
+    function showHelper(show) {
+        if (!helperEl) return;
+        helperEl.hidden = !show;
+    }
+
     // ---- file selection ----------------------------------------------------
     input.addEventListener('change', function () {
         var f = input.files[0];
+        showHelper(false);
         if (!f) {
-            label.textContent = 'Wybierz plik PDF…';
+            setPicker('📄 Kliknij tutaj, aby wybrać plik PDF…');
+            submitBtn.textContent = '📎 Wgraj nuty';
             submitBtn.disabled = true;
+            if (cancelBtn) cancelBtn.hidden = true;
             hideError();
             return;
         }
-        label.textContent = f.name + ' (' + formatBytes(f.size) + ')';
 
         // Client-side validation: type + size (mirrors UploadValidator).
         if (f.type !== 'application/pdf' && !/\.pdf$/i.test(f.name)) {
-            showError('Wybierz plik PDF (type=\"application/pdf\").');
+            showError('Wybierz plik PDF (type="application/pdf").');
+            setPicker(f.name + ' (' + formatBytes(f.size) + ')');
+            submitBtn.textContent = '📎 Wgraj nuty';
             submitBtn.disabled = true;
+            if (cancelBtn) cancelBtn.hidden = false;
             return;
         }
         if (f.size > MAX_PDF_BYTES) {
             showError('Plik jest większy niż 50 MB. Dozwolony rozmiar: maks. 50 MB.');
+            setPicker(f.name + ' (' + formatBytes(f.size) + ')');
+            submitBtn.textContent = '📎 Wgraj nuty';
             submitBtn.disabled = true;
+            if (cancelBtn) cancelBtn.hidden = false;
             return;
         }
+
         hideError();
+        setPicker('✅ ' + f.name + ' (' + formatBytes(f.size) + ')');
+        // Make the big button echo the selected file — zero ambiguity.
+        submitBtn.textContent = '📎 Wgraj: ' + f.name;
         submitBtn.disabled = false;
+        if (cancelBtn) cancelBtn.hidden = false;
     });
 
-    cancelBtn.addEventListener('click', function () {
+    cancelBtn.addEventListener('click', function (e) {
+        e.preventDefault();
         input.value = '';
-        label.textContent = 'Wybierz plik PDF…';
+        setPicker('📄 Kliknij tutaj, aby wybrać plik PDF…');
+        submitBtn.textContent = '📎 Wgraj nuty';
         submitBtn.disabled = true;
+        cancelBtn.hidden = true;
         hideError();
     });
 
@@ -517,7 +544,9 @@
             }
             appendFileToList(dto);
             input.value = '';
-            label.textContent = 'Wybierz plik PDF…';
+            setPicker('📄 Kliknij tutaj, aby wybrać plik PDF…');
+            if (cancelBtn) cancelBtn.hidden = true;
+            submitBtn.textContent = '📎 Wgraj nuty';
             submitBtn.disabled = false;
             resetButton();
             if (window.Toast) Toast.success('Wgrano plik: ' + (dto.originalName || f.name));
