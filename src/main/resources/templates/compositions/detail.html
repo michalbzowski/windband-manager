@@ -371,6 +371,210 @@
 })();
 </script>
 
+<!-- US-7.9 — Upload section: file input + "Wgraj nuty (PDF)" button.
+     Client-side validation mirrors UploadValidator: PDF only, max 50 MB.
+     Server responds 413/415 with a JSON error body (handled by GlobalExceptionHandler);
+     on success ScoreFileDto is rendered inline below the section and a success toast fires.
+     The existing scoreFiles model attribute (from US-4.3) is the single source of truth
+     for currently attached files — we do NOT double-render it here. -->
+<section id="score-upload-panel" class="composition-parts">
+    <header>
+        <h3>Wgraj nuty (PDF)</h3>
+        <small>Dozwolone: PDF, maks. 50 MB. Po wgraniu plik pojawi się na liście i jego strony będą dostępne dla panelu "Oznacz głosy".</small>
+    </header>
+
+    <form id="score-upload-form" novalidate>
+        <div class="form-row">
+            <label class="file-input-label" for="score-file-input">
+                <span id="score-file-label" class="file-input-text">Wybierz plik PDF…</span>
+            </label>
+            <input type="file" id="score-file-input" name="file" accept="application/pdf" style="display:none">
+        </div>
+        <p id="score-upload-error" class="danger hidden" role="alert"></p>
+        <div class="modal-actions" style="flex-wrap:wrap; gap:8px;">
+            <button type="submit" id="upload-score-btn" class="primary" disabled>📎 Wgraj nuty</button>
+            <button type="button" id="cancel-score-upload-btn" class="secondary">Anuluj wybranie</button>
+        </div>
+    </form>
+
+    <!-- Uploaded-file confirmation row (populated by JS after a successful POST). -->
+    <div id="score-upload-result" class="hidden">
+        <p class="toast success" role="status"></p>
+        <a id="score-download-link" target="_blank" rel="noopener" href="#">📄 Otwórz pełny PDF w nowej karcie</a>
+    </div>
+
+    <!-- Existing score files (from US-4.3 model attribute). Rendered once from the model;
+         newly uploaded files are appended client-side to keep this list in sync without a reload. -->
+    <h4>Pliki nuty (aktualne)</h4>
+    <ul id="score-files-list" class="composition-file-list">
+        <li th:if="${scoreFiles == null or scoreFiles.isEmpty()}" class="empty-row">Brak wgranych plików.</li>
+        <li th:each="f : ${scoreFiles}" style="margin-bottom:6px;">
+            <a th:href="@{/bands/{bandId}/compositions/{compId}/files/{fileId}(bandId=${bandId}, compId=${composition.id}, fileId=${f.id})}"
+               target="_blank" rel="noopener" th:text="${f.originalName + ' (' + f.sizeBytes + ' bajtów)'}">plik</a>
+            <span th:if="${f.pageCount != null}">— <span th:text="${f.pageCount}"></span> stron</span>
+        </li>
+    </ul>
+</section>
+
+<script th:inline="javascript">
+(function () {
+    'use strict';
+    var MAX_PDF_BYTES = 50 * 1024 * 1024;   // mirrors ScoresConfig.DEFAULT_MAX_FILE_BYTES / application.yml
+    var bandId = /*[[${bandId}]]*/ 0;
+    var compId = /*[[${composition.id}]]*/ 0;
+
+    var input       = document.getElementById('score-file-input');
+    var label       = document.getElementById('score-file-label');
+    var form        = document.getElementById('score-upload-form');
+    var submitBtn   = document.getElementById('upload-score-btn');
+    var cancelBtn   = document.getElementById('cancel-score-upload-btn');
+    var errorEl     = document.getElementById('score-upload-error');
+    var resultEl    = document.getElementById('score-upload-result');
+    var resultToast = resultEl ? resultEl.querySelector('.toast') : null;
+
+    if (!input || !form) return;
+
+    // ---- file selection ----------------------------------------------------
+    input.addEventListener('change', function () {
+        var f = input.files[0];
+        if (!f) {
+            label.textContent = 'Wybierz plik PDF…';
+            submitBtn.disabled = true;
+            hideError();
+            return;
+        }
+        label.textContent = f.name + ' (' + formatBytes(f.size) + ')';
+
+        // Client-side validation: type + size (mirrors UploadValidator).
+        if (f.type !== 'application/pdf' && !/\.pdf$/i.test(f.name)) {
+            showError('Wybierz plik PDF (type=\"application/pdf\").');
+            submitBtn.disabled = true;
+            return;
+        }
+        if (f.size > MAX_PDF_BYTES) {
+            showError('Plik jest większy niż 50 MB. Dozwolony rozmiar: maks. 50 MB.');
+            submitBtn.disabled = true;
+            return;
+        }
+        hideError();
+        submitBtn.disabled = false;
+    });
+
+    cancelBtn.addEventListener('click', function () {
+        input.value = '';
+        label.textContent = 'Wybierz plik PDF…';
+        submitBtn.disabled = true;
+        hideError();
+    });
+
+    // ---- submit ------------------------------------------------------------
+    form.addEventListener('submit', function (e) {
+        e.preventDefault();
+        var f = input.files[0];
+        if (!f) return;
+
+        submitBtn.disabled = true;
+        submitBtn.textContent = 'Wgrywanie…';
+
+        var csrfToken = getCookieLocal('XSRF-TOKEN');
+        var headers = {};
+        if (csrfToken) { headers['X-XSRF-TOKEN'] = decodeURIComponent(csrfToken); }
+
+        fetch('/bands/' + bandId + '/compositions/' + compId + '/files', {
+            method:  'POST',
+            body:    (function(){ var fd = new FormData(); fd.append('file', f); return fd; })(),
+            headers: headers,
+            credentials: 'same-origin'
+        })
+        .then(handleResponse)
+        .catch(function (err) {
+            showError('Błąd połączenia: ' + (err && err.message ? err.message : 'spróbuj ponownie'));
+            resetButton();
+        });
+    });
+
+    function handleResponse(resp) {
+        return resp.json().then(function (dto) {
+            if (!resp.ok) {
+                // Server error body may contain { message: "..." } or plain string.
+                var msg = (dto && (dto.message || dto.error)) || 'HTTP ' + resp.status;
+                showError(msg);
+                resetButton();
+                return;
+            }
+
+            // Success — render confirmation + add to file list.
+            if (resultToast) {
+                var pageLabel = dto.pageCount != null ? ' — ' + dto.pageCount + ' stron' : '';
+                resultToast.textContent = '✓ Wgrano: ' + (dto.originalName || f.name) + pageLabel;
+            }
+            if (resultEl) {
+                var link = document.getElementById('score-download-link');
+                if (link) {
+                    link.href = '/bands/' + bandId + '/compositions/' + compId + '/files/' + dto.fileId;
+                }
+                resultEl.classList.remove('hidden');
+            }
+            appendFileToList(dto);
+            input.value = '';
+            label.textContent = 'Wybierz plik PDF…';
+            submitBtn.disabled = false;
+            resetButton();
+            if (window.Toast) Toast.success('Wgrano plik: ' + (dto.originalName || f.name));
+
+        }).catch(function () {
+            // Non-JSON error body (e.g. HTML error page).
+            showError('Nie udało się wgrać pliku (HTTP ' + resp.status + ').');
+            resetButton();
+        });
+    }
+
+    function appendFileToList(dto) {
+        var list = document.getElementById('score-files-list');
+        if (!list) return;
+        // Remove "Brak wgranych plików." row if present.
+        var emptyRow = null;
+        for (var i = 0; i < list.children.length; i++) {
+            if (list.children[i].textContent.indexOf('Brak wgranych') === 0) {
+                emptyRow = list.children[i];
+            }
+        }
+        if (emptyRow) { list.removeChild(emptyRow); }
+
+        var li = document.createElement('li');
+        var a  = document.createElement('a');
+        a.href  = '/bands/' + bandId + '/compositions/' + compId + '/files/' + dto.fileId;
+        a.target = '_blank';
+        a.rel    = 'noopener';
+        var pageLabel = dto.pageCount != null ? ' — ' + dto.pageCount + ' stron' : '';
+        a.textContent = (dto.originalName || 'plik') + ' (' + formatBytes(dto.sizeBytes) + ')' + pageLabel;
+        li.appendChild(a);
+        list.insertBefore(li, list.firstChild);
+    }
+
+    // ---- helpers -----------------------------------------------------------
+    function showError(msg) {
+        if (errorEl) { errorEl.textContent = msg; errorEl.classList.remove('hidden'); }
+    }
+    function hideError() {
+        if (errorEl) { errorEl.textContent = ''; errorEl.classList.add('hidden'); }
+    }
+    function resetButton() {
+        submitBtn.disabled = false;
+        submitBtn.textContent = '📎 Wgraj nuty';
+    }
+    function formatBytes(n) {
+        if (n < 1024) return n + ' B';
+        if (n < 1024 * 1024) return (n / 1024).toFixed(1) + ' KB';
+        return (n / 1024 / 1024).toFixed(1) + ' MB';
+    }
+    function getCookieLocal(name) {
+        var m = document.cookie.match(new RegExp('(^|;\\s*)' + name + '=([^;]*)'));
+        return m ? m[2] : null;
+    }
+})();
+</script>
+
 <!-- US-7.1 — "Oznacz głosy na stronach nut" panel: one table listing all saved part-mappings for
      this score (instrument + role + page range), plus a form to add a new one. All data comes
      from the `parts` and `bandInstruments` model attributes — pre-loaded inside a service

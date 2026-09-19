@@ -9,5 +9,11 @@
 # US-4.1 AI-analysis artefacts (runtime output)
 /data/
 
+# US-7.9 score-file uploads (local dev storage; Railway prod uses a volume at the same path)
+/scores/
+
+# Score file thumbnails cache (server-side rendered PDF page thumbnails, local dev only)
+/thumbnails/
+
 # --- Keycloak theme build output ---
 themes/bandmanager/target/
