@@ -629,7 +629,7 @@
     </table>
 
     <!-- Form: instrument picker (band roster), free-form role, page range; POST → redirect back here. -->
-    <form id="add-part-form" method="post" th-action="@{'/bands/' + ${bandId} + '/compositions/' + ${composition.id} + '/parts'}">
+    <form id="add-part-form" method="post" th:action="@{/bands/{bandId}/compositions/{compositionId}/parts(bandId=${bandId}, compositionId=${composition.id})}">
         <div class="form-row">
             <label>Instrument:
                 <select name="instrumentId" id="part-instrument-picker" class="form-element-secondary" required="">
