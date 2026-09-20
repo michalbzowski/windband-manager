@@ -655,26 +655,42 @@
         </tbody>
     </table>
 
-    <!-- Form: instrument picker (band roster), free-form role, page range; POST → redirect back here. -->
-    <form id="add-part-form" method="post" th:action="@{/bands/{bandId}/compositions/{compositionId}/parts(bandId=${bandId}, compositionId=${composition.id})}">
-        <div class="form-row">
-            <label>Instrument:
-                <select name="instrumentId" id="part-instrument-picker" class="form-element-secondary" required="">
-                    <option th:if="${bandInstruments == null or #lists.isEmpty(bandInstruments)}" disabled="" selected="" value="">Brak instrumentów w zespole — dodaj je najpierw w Członkach</option>
-                    <option th:each="instr : ${bandInstruments}" th:value="${instr.id}" th:text="${instr.name}"></option>
-                </select>
-            </label>
-            <label>Rola: <input type="text" name="role" class="form-input" placeholder="np. Flet 1, Saxofon II"></label>
-        </div>
-        <div class="form-row">
-            <label>Strona od: <input type="number" name="pageFrom" min="1" max="999" value="1" class="form-input"></label>
-            <label>Strona do: <input type="number" name="pageTo" min="2" max="999" value="2" class="form-input"></label>
-        </div>
-        <div class="modal-actions">
-            <button type="submit" class="primary">➕ Dodaj pozycję</button>
-            <button type="button" id="clear-part-form-btn" class="secondary">Wyczyść</button>
-        </div>
-    </form>
+    <!-- ＋ Dodaj głos (US-7.9 redesign). Click opens a native <dialog>, not a full-width form.
+         Validation: strona od ≥ 1; strona do ≥ strona od; if serverMaxPageCount is known,
+         strona do ≤ that bound (the real PDF page count). All three rules are enforced client-side. -->
+
+    <button type="button" id="open-add-part-modal-btn" class="primary">＋ Dodaj głos</button>
+
+    <dialog id="add-part-dialog" class="app-modal">
+        <header>
+            <h3 id="add-part-dialog-title">Dodaj głos (strony w nutach)</h3>
+        </header>
+        <form id="add-part-form" method="post" th:action="@{/bands/{bandId}/compositions/{compositionId}/parts(bandId=${bandId}, compositionId=${composition.id})}">
+            <div class="form-row">
+                <label>Instrument:
+                    <select name="instrumentId" id="part-instrument-picker" class="form-element-secondary" required="">
+                        <option th:if="${bandInstruments == null or #lists.isEmpty(bandInstruments)}" disabled="" selected="" value="">Brak instrumentów w zespole — dodaj je najpierw w Członkach</option>
+                        <option th:each="instr : ${bandInstruments}" th:value="${instr.id}" th:text="${instr.name}"></option>
+                    </select>
+                </label>
+                <label>Rola: <input type="text" name="role" class="form-input" placeholder="np. Flet 1, Saxofon II"></label>
+            </div>
+            <div class="form-row">
+                <label>Strona od: <input type="number" name="pageFrom" id="part-page-from" min="1" value="1" required="" class="form-input"></label>
+            </div>
+
+            <div class="form-row">
+                <label>Strona do: <input type="number" name="pageTo" id="part-page-to" min="2" value="2" required=""
+                        th:max="${serverMaxPageCount != null ? serverMaxPageCount : 999}" class="form-input"></label>
+            </div>
+            <p id="part-range-error" class="hidden text-danger" role="alert"></p>
+            <footer class="modal-actions">
+                <button type="submit" class="primary">✓ Zapisz głos</button>
+                <button type="button" id="clear-part-form-btn" class="secondary">Wyczyść</button>
+            </footer>
+        </form>
+    </dialog>
+
 </section>
 
 <!-- US-7.10 — "Udostępnij głos" modal (one per page, dynamically filled by the part row's data-* attributes). -->
@@ -851,6 +867,74 @@
             clearBtn.addEventListener('click', function () { form.reset(); });
         }
     }
+})();
+</script>
+
+<script th:inline="none">
+(function () {
+    'use strict';
+    // 「Dodaj głos」 modal — native <dialog>, opened via the ＋ button above.
+    var openBtn  = document.getElementById('open-add-part-modal-btn');
+    var dlg      = document.getElementById('add-part-dialog');
+    if (!openBtn || !dlg) return;
+
+    openBtn.addEventListener('click', function () {
+        window.openAppModal && window.openAppModal('add-part-dialog');
+        dlg.showModal();
+    });
+
+    // Close on ESC — handled by native <dialog>, but keep it explicit for clarity.
+    // Close on backdrop click (outside the dialog box).
+    dlg.addEventListener('click', function (ev) {
+        var rect = dlg.getBoundingClientRect();
+        var inDialog = ev.clientX >= rect.left && ev.clientX <= rect.right &&
+                       ev.clientY >= rect.top  && ev.clientY <= rect.bottom;
+        if (!inDialog) { closeAppModal(dlg); }
+    });
+
+    // Range validation — runs before submit.
+    var form     = document.getElementById('add-part-form');
+    var fromInp  = document.getElementById('part-page-from');
+    var toInp    = document.getElementById('part-page-to');
+    var errEl    = document.getElementById('part-range-error');
+    if (!form) return;
+
+    function showError(msg) {
+        if (errEl) { errEl.textContent = msg; errEl.classList.remove('hidden'); }
+    }
+    function clearError() { if (errEl) errEl.classList.add('hidden'); }
+
+    form.addEventListener('submit', function (ev) {
+        var fromVal = parseInt(fromInp && fromInp.value, 10) || 1;
+        var toVal   = parseInt(toInp   && toInp.value,   10) || 2;
+        // Rule 1: strona do must be ≥ strona od.
+        if (toVal < fromVal) {
+            ev.preventDefault();
+            showError('Strona do musi być większa lub równa stronie od.');
+            return;
+        }
+        // Rule 2: if we know the real server-side max page count, enforce it.
+        var serverMax = parseInt(toInp && toInp.getAttribute('max'), 10);
+        if (serverMax && !isNaN(serverMax) && toVal > serverMax) {
+            ev.preventDefault();
+            showError('Strona do nie może przekroczyć ' + serverMax + ' (to liczbę stron PDF-a).');
+            return;
+        }
+        clearError();
+    });
+
+    // Live feedback while typing — re-check on input so users see errors fix as they type.
+    [fromInp, toInp].forEach(function (inp) {
+        if (inp) inp.addEventListener('input', function () {
+            var f = parseInt(fromInp && fromInp.value, 10);
+            var t = parseInt(toInp   && toInp.value,   10);
+            if (!isNaN(f) && !isNaN(t)) {
+                if (t < f) showError('Strona do musi być większa lub równa stronie od.');
+                else clearError();
+            }
+        });
+    });
+
 })();
 </script>
 
