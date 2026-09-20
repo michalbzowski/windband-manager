@@ -374,42 +374,69 @@
      on success ScoreFileDto is rendered inline below the section and a success toast fires.
      The existing scoreFiles model attribute (from US-4.3) is the single source of truth
      for currently attached files — we do NOT double-render it here. -->
-<section id="score-upload-panel" class="composition-parts score-upload-clickable" role="group" aria-label="Wgraj nuty (PDF)">
-    <header>
-        <h3>Wgraj nuty (PDF)</h3>
-        <small>Kliknij w dowolne miejsce tego panelu, aby wybrać plik PDF (maks. 50 MB). Po wgraniu plik pojawi się na liście i jego strony będą dostępne dla panelu "Oznacz głosy".</small>
+<section id="score-upload-panel" class="composition-parts score-upload-clickable" role="group" aria-label="Pliki nut (PDF)">
+    <header class="section-header">
+        <h3>Pliki nut</h3>
+        <small>Kliknij w dowolne miejsce poniższego pola, aby wybrać plik PDF (maks. 50 MB). Po wgraniu plik pojawi się na liście — jego strony stają się dostępne dla "Analizuj utwór" i "Udostępnij głos".</small>
     </header>
 
     <form id="score-upload-form" novalidate>
-        <div class="form-row">
-            <label class="file-input-label score-file-picker" for="score-file-input" style="display:flex; align-items:center; justify-content:center; min-height:56px; padding:14px 20px; border:2px dashed #b0b8c4; border-radius:10px; background:#f5f7fa; color:#334155; font-weight:600; cursor:pointer; transition:border-color .15s ease, background .15s ease;">
-                <span>📄 Kliknij tutaj, aby wybrać plik PDF…</span>
+        <div class="hero-empty score-hero">
+            <label class="file-input-label score-file-picker score-hero-pick" for="score-file-input">
+                <span aria-hidden="true">📄</span>
+                <span>Kliknij tutaj, aby wybrać plik PDF…</span>
             </label>
-            <input type="file" id="score-file-input" name="file" accept="application/pdf,.pdf" style="display:none">
+            <input type="file" id="score-file-input" name="file" accept="application/pdf,.pdf" class="visually-hidden">
         </div>
+
         <p id="score-upload-error" class="danger hidden" role="alert"></p>
-        <div class="modal-actions" style="flex-wrap:wrap; gap:8px;">
+
+        <div class="form-actions">
             <button type="submit" id="upload-score-btn" class="primary" disabled aria-describedby="score-upload-helper">📎 Wgraj nuty</button>
             <button type="button" id="cancel-score-upload-btn" class="secondary" title="Anuluj wybranie pliku" hidden>Anuluj</button>
         </div>
-        <p id="score-upload-helper" hidden style="margin-top:8px; font-size:.85rem; color:#64748b;">Najpierw wybierz plik PDF, aby włączyć przycisk wysyłki.</p>
+        <p id="score-upload-helper" hidden class="form-note">Najpierw wybierz plik PDF, aby włączyć przycisk wysyłki.</p>
     </form>
 
-    <!-- Uploaded-file confirmation row (populated by JS after a successful POST). -->
+    <!-- Uploaded-file confirmation row (populated by JS after a successful POST). 
+         Kept for backward-compat with pinned tests; the "Otwórz" action is ALSO on the new row below,
+         so users always see a persistent affordance even after refresh. -->
     <div id="score-upload-result" class="hidden">
         <p class="toast success" role="status"></p>
-        <a id="score-download-link" target="_blank" rel="noopener" href="#">📄 Otwórz pełny PDF w nowej karcie</a>
+        <a id="score-download-link" target="_blank" rel="noopener" href="#">📄 Pobierz pełny PDF</a>
     </div>
 
-    <!-- Existing score files (from US-4.3 model attribute). Rendered once from the model;
-         newly uploaded files are appended client-side to keep this list in sync without a reload. -->
-    <h4>Pliki nuty (aktualne)</h4>
+    <!-- LIST ROWS: filename (primary affordance, ellipsized) + meta (size · pages · date) + Otwórz/Pobierz/Usuń -->
+    <h4>Lista plików</h4>
     <ul id="score-files-list" class="composition-file-list">
-        <li th:if="${scoreFiles == null or scoreFiles.isEmpty()}" class="empty-row">Brak wgranych plików.</li>
-        <li th:each="f : ${scoreFiles}" style="margin-bottom:6px;">
-            <a th:href="@{/bands/{bandId}/compositions/{compId}/files/{fileId}(bandId=${bandId}, compId=${composition.id}, fileId=${f.id})}"
-               target="_blank" rel="noopener" th:text="${f.originalName + ' (' + f.sizeBytes + ' bajtów)'}">plik</a>
-            <span th:if="${f.pageCount != null}">— <span th:text="${f.pageCount}"></span> stron</span>
+        <li th:if="${scoreFiles == null or scoreFiles.isEmpty()}" class="empty-row">Brak wgranych plików. Wgrany PDF odblokuje analize i podział na głosy.</li>
+
+        <li th:each="f : ${scoreFiles}" class="file-list-row">
+            <span class="file-icon" aria-hidden="true">📄</span>
+
+            <!-- Filename — primary affordance, ellipsized on overflow (see .file-name { text-overflow: ellipsis; } in app.css) -->
+            <a class="file-name" target="_blank" rel="noopener"
+               th:href="@{/bands/{bandId}/compositions/{compId}/files/{fileId}(bandId=${bandId}, compId=${composition.id}, fileId=${f.id})}"
+               th:aria-label="Otwórz PDF ${f.originalName} w nowej karcie"
+               th:text="${f.originalName}">placeholder.pdf</a>
+
+
+            <!-- Meta: size · pages · date — separate spans each guarded by th:if for missing fields. -->
+            <span class="file-meta">
+                <span th:text="${#numbers.formatDecimal(f.sizeBytes, 1, 'COMMA', 0, 'POINT')} + ' B'">1431911 B</span>
+                <span th:if="${f.pageCount != null}" class="meta-pages"> · <span th:text="${f.pageCount}"></span> stron</span>
+                <span th:if="${f.createdAt != null}" class="meta-date"> · <span th:text="${#temporals.format(f.createdAt, 'dd.MM.yyyy')}"></span></span>
+            </span>
+
+            <!-- Actions — Otwórz (primary), Pobierz (download), Usuń (hidden; no backend endpoint yet). -->
+            <span class="file-actions" role="toolbar" aria-label="Akcje pliku">
+                <a class="btn secondary" target="_blank" rel="noopener"
+                   th:href="@{/bands/{bandId}/compositions/{compId}/files/{fileId}(bandId=${bandId}, compId=${composition.id}, fileId=${f.id})}"
+                   th:title="Otwórz ${f.originalName} w nowej karcie">📄 Otwórz</a>
+                <a class="btn secondary" download
+                   th:href="@{/bands/{bandId}/compositions/{compId}/files/{fileId}(bandId=${bandId}, compId=${composition.id}, fileId=${f.id})}"
+                   th:title="Pobierz ${f.originalName} na dysk">⬇️</a>
+            </span>
         </li>
     </ul>
 </section>
@@ -608,7 +635,7 @@
      collection here (that would LazyInitializationException outside a session). -->
 <section id="parts-panel" class="composition-parts">
     <header>
-        <h3>Oznacz głosy na stronach nut</h3>
+        <h3>Głosy w nutach</h3>
         <small>Każda pozycja opisuje, które strony PDF-a odpowiadają danemu instrumentowi / role.</small>
     </header>
 
@@ -664,12 +691,12 @@
             <label for="share-link-input">Link do PDF-a (kliknij, aby wyklajrować):</label>
             <div class="row" style="gap: 0.5rem; margin-top: 4px;">
                 <input type="text" id="share-link-input" readonly="readonly"
-                       style="flex: 1; font-family: monospace; background:#f7f7f9;" />
+                       class="share-link-input" />
                 <button type="button" class="secondary" id="copy-share-link-btn" title="Kopiuj link do schowka">📋 Kopiuj</button>
                 <a id="open-share-link-btn" target="_blank" rel="noopener"><button type="button" class="secondary" onclick="window.open(this.parentElement.href,'_blank','noopener');return false;" title="Otwórz PDF w nowej karcie">Otwórz</button></a>
             </div>
 
-            <hr style="border:none;border-top:1px solid #eaecef;margin: 0.8rem 0;"/>
+            <hr class="modal-separator">
 
             <label for="share-recipients-input">Adresy e-mail (dziel przecinkami lub średnikami):</label>
             <textarea id="share-recipients-input" rows="3"
