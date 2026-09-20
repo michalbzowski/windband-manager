@@ -31,6 +31,10 @@ public interface SpringDataCompositionRepository extends JpaRepository<Compositi
     @Query("SELECT c FROM Composition c JOIN FETCH c.band WHERE c.band = :band ORDER BY c.updatedAt DESC")
     Page<Composition> findAllByBand(@Param("band") Band band, Pageable pageable);
 
+    /** All rows of the band with the given status — newest update first (used for in-memory text filtering). */
+    @Query("SELECT c FROM Composition c JOIN FETCH c.band WHERE c.band = :band AND c.status = :status ORDER BY c.updatedAt DESC")
+    List<Composition> listAllByBandAndStatus(@Param("band") Band band, @Param("status") CompositionStatus status);
+
     /** Paginated version filtered by status with JOIN FETCH. */
     @Query("SELECT c FROM Composition c JOIN FETCH c.band WHERE c.band = :band AND c.status = :status ORDER BY c.updatedAt DESC")
     Page<Composition> findAllByBandAndStatus(@Param("band") Band band, @Param("status") CompositionStatus status, Pageable pageable);
@@ -55,3 +59,4 @@ public interface SpringDataCompositionRepository extends JpaRepository<Compositi
 
     boolean existsByIdAndBandId(Long id, Long bandId);
 }
+

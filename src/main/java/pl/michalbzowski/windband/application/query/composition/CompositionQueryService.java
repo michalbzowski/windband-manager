@@ -3,6 +3,7 @@ package pl.michalbzowski.windband.application.query.composition;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.PageImpl;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import pl.michalbzowski.windband.application.dto.composition.CompositionDto;
@@ -86,6 +87,68 @@ public class CompositionQueryService {
             return repository.findAllByBand(band, pageable);
         }
         return repository.findAllByBandAndStatus(band, statusFilter, pageable);
+    }
+
+    /**
+     * Paginated listing with independent optional filters: case-insensitive
+     * substring match on title, composer, and arranger (any combination of the
+     * three — blank or null means "no constraint for that field"), plus an
+     * optional status filter. All filters combine as AND; band isolation is
+     * enforced via the repository port's band-scoped contract so no
+     * foreign-band row can match.
+     * <p>Implementation strategy: fetch all rows of the band (small — a band is
+     * tens to hundreds of compositions), then filter in-memory on the three
+     * text fields, finally apply DB-side pagination over status-filtered rows.
+     * This sidesteps binding null-typed JPQL parameters with Postgres' bytea
+     * default (a real issue discovered during IT execution).</p>
+     */
+    public Page<Composition> listByBand(Long bandId, String titleFilter, String composerFilter, String arrangerFilter,
+                                        CompositionStatus statusFilter, Pageable pageable) {
+        Band band = bandQueryService.getRequiredBand(bandId);
+
+        // Fetch all rows (unfiltered by status if any of the text filters apply,
+        // or with status filter when only that is set — either way the dataset
+        // is bounded by the band's total size, which is small in practice).
+        List<Composition> base;
+        if (statusFilter == null) {
+            base = repository.findAllByBand(band);
+        } else {
+            base = repository.listAllByBandAndStatus(band, statusFilter);
+        }
+
+        // Apply each text filter as a case-insensitive substring match.
+        String t = normalize(titleFilter);
+        String c = normalize(composerFilter);
+        String a = normalize(arrangerFilter);
+        List<Composition> filtered = base.stream()
+                .filter(x -> t == null || contains(x.getTitle(), t))
+                .filter(x -> c == null || contains(x.getComposer(), c))
+                .filter(x -> a == null || contains(x.getArranger(), a))
+                .toList();
+
+        // Manual in-memory pagination (stable ordering preserved from findAllByBand).
+        // Guard against Pageable.unpaged() which throws on getOffset()/getPageSize().
+        int from;
+        int size;
+        if (pageable == null || pageable.isUnpaged()) {
+            from = 0;
+            size = filtered.size();
+        } else {
+            from = Math.min((int) pageable.getOffset(), filtered.size());
+            size = pageable.getPageSize();
+        }
+        int to = from + size;
+        List<Composition> window = filtered.subList(from, Math.min(to, filtered.size()));
+        return new PageImpl<>(window, pageable == null ? Pageable.unpaged() : pageable, filtered.size());
+    }
+
+    private static String normalize(String term) {
+        if (term == null || term.isBlank()) return null;
+        return term.trim().toLowerCase();
+    }
+
+    private static boolean contains(String value, String lowercasedTerm) {
+        return value != null && value.toLowerCase().contains(lowercasedTerm);
     }
 
     /**

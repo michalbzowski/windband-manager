@@ -26,6 +26,7 @@ import pl.michalbzowski.windband.application.query.composition.ScoreFileListQuer
 import pl.michalbzowski.windband.application.query.instrument.InstrumentQueryService;
 import pl.michalbzowski.windband.application.query.scoreanalysis.ScoreAnalysisQueryService;
 import pl.michalbzowski.windband.domain.composition.Composition;
+import pl.michalbzowski.windband.domain.composition.CompositionStatus;
 
 @Controller
 @RequestMapping("/bands/{bandId}/compositions")
@@ -43,14 +44,35 @@ public class CompositionPageController {
                        @AuthenticationPrincipal OidcUser oidcUser,
                        @RequestParam(defaultValue = "0") int page,
                        @RequestParam(defaultValue = "20") int size,
+                       @RequestParam(name = "title", required = false) String titleFilter,
+                       @RequestParam(name = "composer", required = false) String composerFilter,
+                       @RequestParam(name = "arranger", required = false) String arrangerFilter,
+                       @RequestParam(name = "status", required = false) CompositionStatus statusFilter,
                        @RequestAttribute(name = HtmxRequestInterceptor.HTMX_REQUEST_ATTRIBUTE, required = false) Boolean isHtmx,
                        Model model) {
         requireBandAccess(oidcUser, bandId);
         Pageable pageable = PageRequest.of(page, size);
-        var compositionsPage = queryService.listByBand(bandId, null, pageable);
+        boolean hasFilters = (titleFilter != null && !titleFilter.isBlank())
+                || (composerFilter != null && !composerFilter.isBlank())
+                || (arrangerFilter != null && !arrangerFilter.isBlank())
+                || statusFilter != null;
+        var compositionsPage = hasFilters
+                ? queryService.listByBand(bandId,
+                        titleFilter == null || titleFilter.isBlank() ? null : titleFilter.trim(),
+                        composerFilter == null || composerFilter.isBlank() ? null : composerFilter.trim(),
+                        arrangerFilter == null || arrangerFilter.isBlank() ? null : arrangerFilter.trim(),
+                        statusFilter, pageable)
+                : queryService.listByBand(bandId, null, pageable);
         model.addAttribute("compositions", compositionsPage.getContent());
         model.addAttribute("page", compositionsPage);
         model.addAttribute("bandId", bandId);
+        // Echo the active filters back into the template so the form pre-fills
+        // whatever the user already set (GET requests preserve state via query
+        // string, and HTMX partial refreshes re-render the same <form>).
+        model.addAttribute("filterTitle", titleFilter == null ? "" : titleFilter);
+        model.addAttribute("filterComposer", composerFilter == null ? "" : composerFilter);
+        model.addAttribute("filterArranger", arrangerFilter == null ? "" : arrangerFilter);
+        model.addAttribute("filterStatus", statusFilter == null ? "" : statusFilter.name());
         if (Boolean.TRUE.equals(isHtmx)) {
             return "compositions/list :: #compositions-content";
         }

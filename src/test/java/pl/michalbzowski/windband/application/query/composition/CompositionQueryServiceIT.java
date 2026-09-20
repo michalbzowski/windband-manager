@@ -6,6 +6,8 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.PageRequest;
 import pl.michalbzowski.windband.BaseIntegrationTest;
 import pl.michalbzowski.windband.domain.band.Band;
 import pl.michalbzowski.windband.domain.band.BandRepository;
@@ -189,4 +191,103 @@ class CompositionQueryServiceIT extends BaseIntegrationTest {
                 .isInstanceOf(IllegalStateException.class)
                 .hasMessageContaining("band");
     }
+
+    // ---- Biblioteka filtrów: title / composer / arranger / status --------------
+
+    @Test
+    @DisplayName("listByBand (with filters) returns no cross-band rows — filter matches only that band")
+    void listByBandFilters_isolatesCrossBand() {
+        var b1 = band(1L);
+        var b2 = band(2L);
+        Composition odaB1 = saveIn(b1, "Oda do radości");
+        saveIn(b2,  "Inaczej: Oda do smutku");
+
+        // Same title fragment under a different band must never leak.
+        var minePage = queryService.listByBand(1L, "oda", null, null, null, Pageable.unpaged());
+        List<Composition> mine = minePage.getContent();
+        assertThat(mine).extracting(Composition::getId)
+                .hasSize(1)
+                .containsExactly(odaB1.getId());
+
+        // From band 2's view the same term does not pull in band 1's row either.
+        var theirsPage = queryService.listByBand(2L, "oda", null, null, null, Pageable.unpaged());
+        List<Composition> theirs = theirsPage.getContent();
+        assertThat(theirs).hasSize(1);
+        assertThat(theirs.get(0).getBand().getId()).isEqualTo(2L);
+    }
+
+    @Test
+    @DisplayName("listByBandFilters: case-insensitive prefix matches on title (any of the 3 text fields)")
+    void listByBandFilters_titleComposerArranger() {
+        var b1 = band(1L);
+        Composition byTitle    = saveIn(b1, "Beethoven: Furiosa");
+        Composition byComposer = saveIn(b1, "Allegro maestoso");
+        byComposer.updateTexts(null, null, "Furtados", null);
+        repository.save(byComposer);
+        Composition byArranger = saveIn(b1, "Adagio grazioso");
+        byArranger.updateTexts(null, null, null, "Kowalski");
+        repository.save(byArranger);
+
+        // title fragment (case-insensitive)
+        assertThat(queryService.listByBand(1L, "furiosa", null, null, null, Pageable.unpaged()).getContent())
+                .extracting(Composition::getId).containsExactly(byTitle.getId());
+
+        // composer fragment
+        assertThat(queryService.listByBand(1L, null, "furtados", null, null, Pageable.unpaged()).getContent())
+                .extracting(Composition::getId).containsExactly(byComposer.getId());
+
+        // arranger fragment
+        assertThat(queryService.listByBand(1L, null, null, "kowalski", null, Pageable.unpaged()).getContent())
+                .extracting(Composition::getId).containsExactly(byArranger.getId());
+    }
+
+    @Test
+    @DisplayName("listByBandFilters: each text filter ANDs with the status — only rows matching BOTH pass")
+    void listByBandFilters_composesWithStatus() {
+        var b1 = band(1L);
+        Composition hitTitleAndReady  = saveIn(b1, "Symphonia grandiosa");
+        hitTitleAndReady.markReady();
+        repository.save(hitTitleAndReady);
+
+        Composition hitsTitleButDraft = saveIn(b1, "Symphonica minuta");
+        // default DRAFT status → must be excluded by the READY filter
+
+        var resPage = queryService.listByBand(1L,
+                "symphon", null, null, CompositionStatus.READY, Pageable.unpaged());
+        List<Composition> result = resPage.getContent();
+        assertThat(result).extracting(Composition::getId)
+                .containsExactly(hitTitleAndReady.getId())  // READY + title match
+                .doesNotContain(hitsTitleButDraft.getId());  // DRAFT, so excluded despite title hit
+    }
+
+    @Test
+    @DisplayName("listByBandFilters: blank-string filters are treated as 'no filter' (backward-compat for empty form input)")
+    void listByBandFilters_blankStringsBehaveAsNull() {
+        var b1 = band(1L);
+        saveIn(b1, "Szkic A");   // DRAFT by default
+        Composition readyB = saveIn(b1, "Gotow B");
+        readyB.markReady();
+        repository.save(readyB);
+
+        var wbPage = queryService.listByBand(1L, "   ", "", null, null, Pageable.unpaged());
+        List<Composition> withBlankFilter = wbPage.getContent();
+        var basePage = queryService.listByBand(1L, null, null, null, null, Pageable.unpaged());
+        List<Composition> baseline        = basePage.getContent();
+
+        // Same result set — whitespace-only filter must behave like no filter.
+        assertThat(withBlankFilter).extracting(Composition::getId)
+                .containsExactlyInAnyOrderElementsOf(baseline.stream().map(Composition::getId).toList());
+    }
+
+    @Test
+    @DisplayName("listByBandFilters: zero matches returns an empty Page (never null)")
+    void listByBandFilters_noMatches() {
+        var b1 = band(1L);
+        saveIn(b1, "Taki zwykly utwór");
+
+        var page = queryService.listByBand(1L, "zzz-no-such-term", null, null, CompositionStatus.READY, PageRequest.of(0, 20));
+        assertThat(page.getContent()).isNotNull().isEmpty();
+        assertThat(page.getTotalElements()).isZero();
+    }
+
 }
