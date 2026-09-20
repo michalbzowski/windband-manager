@@ -243,7 +243,7 @@ public class CompositionPageController {
             throw new IllegalArgumentException(error);
         }
         commandService.addPart(id, cmd.getInstrumentId(), cmd.getRole(),
-                cmd.getPageFrom(), cmd.getPageTo(), null, bandId);
+                cmd.getPageFrom(), cmd.getPageTo(), null, cmd.getScoreFileId(), bandId);
         return "redirect:/bands/" + bandId + "/compositions/" + id;
     }
 

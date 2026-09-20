@@ -42,4 +42,11 @@ public class AddPartCommand {
     @Min(value = 1, message = "Strona do musi być >= 1")
     @Max(value = 999, message = "Strona do musi być <= 999")
     private Integer pageTo = 2;
+
+    /**
+     * US-7.14 — explicit binding to one uploaded {@code ScoreFile}. When set, the
+     * domain factory validates {@code pageTo <= scoreFile.pageCount} (instead of
+     * "largest uploaded PDF covers this range"). When null, that legacy behaviour survives.
+     */
+    private Long scoreFileId;
 }

@@ -84,6 +84,17 @@ public class CompositionInstrument {
     @Column(name = "file_ref", length = 300)
     private String fileRef;
 
+    /**
+     * US-7.14 — explicit link to the uploaded ScoreFile whose pages this mapping describes.
+     * Optional / backward-compatible: legacy rows (created before this column existed)
+     * stay null and keep today's "largest PDF covering [pageFrom..pageTo]" resolution
+     * in {@code PartLinkQueryService}. New rows carry a concrete FK so the UI can
+     * unambiguously show which PDF a given part lives in.
+     */
+    @ManyToOne(fetch = FetchType.LAZY, optional = true)
+    @JoinColumn(name = "score_file_id")
+    private ScoreFile scoreFile;
+
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 10)
     private PartSource source = PartSource.MANUAL;
@@ -108,7 +119,8 @@ public class CompositionInstrument {
 
     // SpotBugs CT_CONSTRUCTOR_THROW: no validation in the constructor — the factory owns it.
     protected CompositionInstrument(Composition composition, Instrument instrument, String role,
-                                    int pageFrom, int pageTo, String fileRef, PartSource source,
+                                    int pageFrom, int pageTo, String fileRef, ScoreFile scoreFile,
+                                     PartSource source,
                                     double confidenceScore) {
         this.composition = composition;
         this.instrument = instrument;
@@ -116,6 +128,7 @@ public class CompositionInstrument {
         this.pageFrom = pageFrom;
         this.pageTo = pageTo;
         this.fileRef = fileRef;           // factory normalises (null or non-blank) before calling
+        this.scoreFile = scoreFile;        // may be null (legacy) — the FK is ON DELETE RESTRICT so cascade delete never runs from here.
         this.source = source;
         this.confidenceScore = confidenceScore;
     }
@@ -154,8 +167,38 @@ public class CompositionInstrument {
         }
 
         return new CompositionInstrument(
-                composition, instrument, trimmedRole, pageFrom, pageTo, normalizedFileRef,
+                composition, instrument, trimmedRole, pageFrom, pageTo, normalizedFileRef, null,
                 (source == null ? PartSource.MANUAL : source), confidenceScore);
+    }
+
+    /** US-7.14 — explicit ScoreFile binding (overrides the legacy "largest-covering-file" read). */
+    public static CompositionInstrument forComposition(Composition composition, Instrument instrument,
+                                                       String role, int pageFrom, int pageTo, String fileRef,
+                                                       ScoreFile scoreFile,
+                                                       PartSource source, double confidenceScore) {
+        if (scoreFile == null) {
+            // Delegate: the legacy path keeps working — for null scoreFile the caller gets
+            // today's read behaviour (largest uploaded PDF that includes [pageFrom..pageTo]).
+            return forComposition(composition, instrument, role, pageFrom, pageTo, fileRef, source, confidenceScore);
+        }
+        if (scoreFile.getComposition() == null) throw new IllegalArgumentException("scoreFile must be attached to a composition");
+        if (!sameComposition(composition, scoreFile)) {
+            throw new IllegalArgumentException(
+                    "scoreFile must belong to the same composition as the part mapping");
+        }
+        if (scoreFile.getPageCount() != null && pageTo > scoreFile.getPageCount()) {
+            throw new IllegalArgumentException(
+                    "pageTo (" + pageTo + ") exceeds the selected ScoreFile's pageCount (" + scoreFile.getPageCount() + ")");
+        }
+        return new CompositionInstrument(
+                composition, instrument, role.trim(), pageFrom, pageTo, requireNullableNotBlank(fileRef, "fileRef"),
+                scoreFile, (source == null ? PartSource.MANUAL : source), confidenceScore);
+    }
+
+    private static boolean sameComposition(Composition c, ScoreFile f) {
+        Long fc = (f.getComposition() == null) ? null : f.getComposition().getId();
+        Long cc = (c == null) ? null : c.getId();
+        return cc != null && cc.equals(fc);
     }
 
     /** Convenience factory for the US-4.x AI strategy: source=AI by construction. */

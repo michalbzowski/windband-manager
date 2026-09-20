@@ -17,6 +17,10 @@ public record CompositionInstrumentDto(
         Integer pageFrom,
         Integer pageTo,
         String fileRef,
+        /** US-7.14 — the explicit ScoreFile this mapping points at (nullable for legacy rows). */
+        Long scoreFileId,
+        /** Optional display name of that ScoreFile (resolved eagerly during the projection). */
+        String scoreFileName,
         pl.michalbzowski.windband.domain.composition.PartSource source,
         Double confidenceScore,
         String verifiedBy,

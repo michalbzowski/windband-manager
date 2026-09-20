@@ -12,6 +12,7 @@ import pl.michalbzowski.windband.application.dto.composition.CompositionWithPart
 import pl.michalbzowski.windband.application.query.band.BandQueryService;
 import pl.michalbzowski.windband.domain.band.Band;
 import pl.michalbzowski.windband.domain.composition.Composition;
+import pl.michalbzowski.windband.domain.composition.ScoreFile;
 import pl.michalbzowski.windband.domain.composition.CompositionInstrument;
 import pl.michalbzowski.windband.domain.composition.CompositionInstrumentRepository;
 import pl.michalbzowski.windband.domain.composition.CompositionRepository;
@@ -60,6 +61,7 @@ public class CompositionQueryService {
     private final CompositionRepository repository;
     private final BandQueryService bandQueryService;
     private final CompositionInstrumentRepository instrumentRepository;
+    private final ScoreFileListQueryService scoreFileListQueryService;
 
     /**
      * All compositions of the given band, most-recently-updated first
@@ -194,15 +196,25 @@ public class CompositionQueryService {
         Composition composition = repository.findByIdAndBandId(id, bandId)
                 .orElseThrow(() -> new IllegalStateException(
                         "Composition " + id + " does not belong to band " + bandId));
+        java.util.Map<Long, String> fileNamesById = new java.util.HashMap<>();
+        java.util.List<ScoreFile> files = scoreFileListQueryService.listByComposition(id, bandId);
+        for (ScoreFile sf : files) {
+            if (sf.getId() == null || sf.getOriginalName() == null) continue;
+            fileNamesById.put(sf.getId(), sf.getOriginalName());
+            }
         List<CompositionInstrument> parts = instrumentRepository.findAllByComposition(composition);
         List<CompositionInstrumentDto> partDtos = parts.stream()
-                .map(p -> toPartDto(p, composition.getBand()))
+                .map(p -> toPartDto(p, composition.getBand(), fileNamesById))
                 .toList();
         return new CompositionWithPartsDto(CompositionDto.from(composition), partDtos);
     }
 
-    private CompositionInstrumentDto toPartDto(CompositionInstrument p, Band band) {
+    private CompositionInstrumentDto toPartDto(CompositionInstrument p, Band band,
+                                               java.util.Map<Long, String> fileNamesById) {
         String instrumentName = p.getInstrument() != null ? p.getInstrument().getName() : null;
+        Long scoreFileId = p.getScoreFile() == null ? null : p.getScoreFile().getId();
+        // Resolve the display name eagerly while the lazy association is still attached.
+        String fileName = (scoreFileId == null) ? null : fileNamesById.get(scoreFileId);
         return new CompositionInstrumentDto(
                 p.getId(),
                 p.getComposition() != null ? p.getComposition().getId() : null,
@@ -211,10 +223,11 @@ public class CompositionQueryService {
                 p.getPageFrom(),
                 p.getPageTo(),
                 p.getFileRef(),
+                scoreFileId,
+                fileName,
                 p.getSource(),
                 p.getConfidenceScore(),
                 p.getVerifiedBy(),
                 p.getVerifiedAt());
     }
-
 }
