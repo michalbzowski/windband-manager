@@ -1,5 +1,6 @@
 package pl.michalbzowski.windband.adapter.in.web;
 
+import java.util.Objects;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.PageRequest;
@@ -13,6 +14,7 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.ModelAttribute;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import pl.michalbzowski.windband.domain.composition.ScoreFile;
 import pl.michalbzowski.windband.application.command.composition.AddPartCommand;
 import pl.michalbzowski.windband.application.command.composition.UpdateCompositionCommand;
 import org.springframework.web.bind.annotation.RequestAttribute;
@@ -264,6 +266,11 @@ public class CompositionPageController {
         // Reading files() INSIDE the service transaction avoids LazyInitializationException on
         // render after Hibernate closes the session.
         model.addAttribute("scoreFiles", scoreFileListQueryService.listByComposition(id, bandId));
+        // US-7.9 — max page count across this composition's score files, used to validate
+        // the part-form's "strona do" field against the actual PDF bounds.
+        Integer serverMaxPageCount = scoreFileListQueryService.listByComposition(id, bandId)
+                .stream().map(ScoreFile::getPageCount).filter(Objects::nonNull).max(Integer::compareTo).orElse(null);
+        model.addAttribute("serverMaxPageCount", serverMaxPageCount);
         var latest = analysisQueryService.latestFor(id, bandId);
         model.addAttribute("latestAnalysisId",     latest.map(pl.michalbzowski.windband.application.query.scoreanalysis.ScoreAnalysisQueryService.LatestScoreAnalysisDto::id).orElse(null));
         model.addAttribute("latestPhase",          latest.map(pl.michalbzowski.windband.application.query.scoreanalysis.ScoreAnalysisQueryService.LatestScoreAnalysisDto::phase).orElse(null));
