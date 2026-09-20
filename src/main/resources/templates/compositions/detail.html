@@ -616,14 +616,17 @@
     </header>
 
     <table id="existing-parts" class="data-table">
-        <thead><tr><th>Instrument</th><th>Rola</th><th>Strona od</th><th>Strona do</th></tr></thead>
+        <thead><tr><th>Instrument</th><th>Rola</th><th>Strona od</th><th>Strona do</th><th>Akcje</th></tr></thead>
         <tbody>
-            <tr th:if="${parts == null or parts.size() == 0}" class="empty-row"><td colspan="4">Brak oznaczonych głosów — dodaj poniżej.</td></tr>
-            <tr th:each="p : ${parts}">
-                <td th:text="${p.instrument.name}">Instrument</td>
+            <tr th:if="${parts == null or parts.size() == 0}" class="empty-row"><td colspan="5">Brak oznaczonych głosów — dodaj poniżej.</td></tr>
+            <tr th:each="p : ${parts}"
+                th:attr="data-part-id=${p.id}, data-instrument-name=${p.instrument != null ? p.instrument.name : ''}, data-role=${p.instrumentRole != null and !#strings.isEmpty(p.instrumentRole) ? p.instrumentRole : '—'}, data-page-from=${p.pageFrom}, data-page-to=${p.pageTo}">
+                <td th:text="${p.instrument != null ? p.instrument.name : ''}">Instrument</td>
                 <td th:text="${p.instrumentRole != null and !#strings.isEmpty(p.instrumentRole) ? p.instrumentRole : '—'}">Rola</td>
                 <td th:text="${p.pageFrom}">1</td>
                 <td th:text="${p.pageTo}">2</td>
+                <td><button type="button" class="secondary part-share-btn"
+                        title="Udostępnij ten głos (link do PDF-a + opcjonalnie e-mail do wielu odbiorców)">📤 Udostępnij</button></td>
             </tr>
         </tbody>
     </table>
@@ -649,6 +652,167 @@
         </div>
     </form>
 </section>
+
+<!-- US-7.10 — "Udostępnij głos" modal (one per page, dynamically filled by the part row's data-* attributes). -->
+<section id="part-share-modal-section" style="margin-top: 1.2rem;">
+    <dialog id="part-share-modal">
+        <header>
+            <h3>📤 Udostępnij głos</h3>
+            <p class="muted" style="font-size: 0.9em;">
+                <span id="share-modal-voice-label">Głos</span>
+                <span class="page-range" id="share-modal-pages"></span>
+            </p>
+        </header>
+        <div style="padding: 1rem 1.5rem 0.25rem;">
+            <label for="share-link-input">Link do PDF-a (kliknij, aby wyklajrować):</label>
+            <div class="row" style="gap: 0.5rem; margin-top: 4px;">
+                <input type="text" id="share-link-input" readonly="readonly"
+                       style="flex: 1; font-family: monospace; background:#f7f7f9;" />
+                <button type="button" class="secondary" id="copy-share-link-btn" title="Kopiuj link do schowka">📋 Kopiuj</button>
+                <a id="open-share-link-btn" target="_blank" rel="noopener"><button type="button" class="secondary" onclick="window.open(this.parentElement.href,'_blank','noopener');return false;" title="Otwórz PDF w nowej karcie">Otwórz</button></a>
+            </div>
+
+            <hr style="border:none;border-top:1px solid #eaecef;margin: 0.8rem 0;"/>
+
+            <label for="share-recipients-input">Adresy e-mail (dziel przecinkami lub średnikami):</label>
+            <textarea id="share-recipients-input" rows="3"
+                      placeholder="np. anna@example.com, jan@pl.katowice.pl; flet@bigband.org"
+                      style="width: 100%; margin-top: 4px;" class="form-input"></textarea>
+
+            <div id="share-result-el" class="hidden mt-2" role="status" aria-live="polite"></div>
+            <div id="share-error-el" class="text-danger hidden mt-2" role="alert"></div>
+        </div>
+        <footer class="modal-actions" style="justify-content: flex-end; padding: 0.75rem 1rem;">
+            <button type="button" class="secondary" id="share-cancel-btn">Anuluj</button>
+            <button type="button" class="primary" id="share-send-btn">📨 Wyślij</button>
+        </footer>
+    </dialog>
+</section>
+
+<script th:inline="none">
+(function () {
+  var bandId = /*[[${bandId}]]*/ 0;
+  var compId = /*[[${composition.id}]]*/ 0;
+
+  var modal      = document.getElementById('part-share-modal');
+  if (!modal) { return; }           // defensive: template missing
+
+  var voiceLabel = document.getElementById('share-modal-voice-label');
+  var pagesEl    = document.getElementById('share-modal-pages');
+  var linkInput  = document.getElementById('share-link-input');
+  var openLnk    = document.getElementById('open-share-link-btn');
+  var copyBtn    = document.getElementById('copy-share-link-btn');
+  var recIp      = document.getElementById('share-recipients-input');
+  var resEl      = document.getElementById('share-result-el');
+  var errEl      = document.getElementById('share-error-el');
+  var sendBtn    = document.getElementById('share-send-btn');
+  var cancelBtn  = document.getElementById('share-cancel-btn');
+
+  var currentPartId = null;
+
+  function openFor(row) {
+    currentPartId = row.getAttribute('data-part-id');
+    if (!currentPartId) return;
+    // Reset UI state.
+    resEl.textContent = ''; resEl.classList.add('hidden');
+    errEl.textContent = ''; errEl.classList.add('hidden');
+    recIp.value = '';
+    sendBtn.disabled = false;
+
+    var instr = row.getAttribute('data-instrument-name') || '—';
+    var role  = row.getAttribute('data-role')            || '—';
+    var pf    = row.getAttribute('data-page-from')       || '?';
+    var pt    = row.getAttribute('data-page-to')         || '?';
+    voiceLabel.textContent = '[' + instr + ' · ' + role + ']';
+    pagesEl.textContent    = 'strony ' + pf + '–' + pt;
+
+    var url = '/bands/' + bandId + '/compositions/' + compId + '/parts/' + currentPartId;
+    linkInput.value  = window.location.origin + url;
+    openLnk.href     = window.location.origin + url;
+
+    if (typeof modal.showModal === 'function') { modal.showModal(); } else { modal.setAttribute('open',''); }
+  }
+
+  function closeSelf() {
+    if (typeof modal.close === 'function') { modal.close(); } else { modal.removeAttribute('open'); }
+    sendBtn.disabled = false;
+  }
+
+  Array.prototype.forEach.call(document.querySelectorAll('.part-share-btn'), function (btn) {
+    btn.addEventListener('click', function () {
+      var row = btn.closest('tr');
+      if (row) openFor(row);
+    });
+  });
+
+  cancelBtn.addEventListener('click', closeSelf);
+  modal.addEventListener('cancel', function () { closeSelf(); });
+
+  copyBtn.addEventListener('click', async function () {
+    try {
+      await navigator.clipboard.writeText(linkInput.value);
+      resEl.textContent = 'Skopiowano do schowka ✓';
+      resEl.classList.remove('hidden');
+      setTimeout(function(){ resEl.classList.add('hidden'); }, 3500);
+    } catch (e) {
+      errEl.textContent = 'Kopiowanie nieudane — zaznacz link ręcznie i użyj Ctrl+C.';
+      errEl.classList.remove('hidden');
+    }
+  });
+
+  sendBtn.addEventListener('click', async function () {
+    if (!currentPartId) return;
+    var raw = recIp.value || '';
+    if (!raw.trim()) { errEl.textContent = 'Podaj co najmniej jeden adres e-mail.'; errEl.classList.remove('hidden'); return; }
+
+    sendBtn.disabled = true;
+    resEl.textContent = ''; resEl.classList.add('hidden');
+    errEl.textContent = ''; errEl.classList.add('hidden');
+
+    var url = '/bands/' + bandId + '/compositions/' + compId + '/parts/' + currentPartId + '/share';
+    var resp;
+    try {
+      resp = await fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ recipientsCsv: raw })
+      });
+    } catch (netErr) {
+      sendBtn.disabled = false;
+      errEl.textContent = 'Sieć niedostępna — spróbuj ponownie.';
+      errEl.classList.remove('hidden');
+      return;
+    }
+    sendBtn.disabled = false;
+
+    if (!resp.ok) {
+      var msg = resp.status + '';
+      try {
+        var j = await resp.json();
+        if (j && j.error) msg = j.error;
+            else if (j && j.message) msg = j.message;
+      } catch (_) { /* fall back to status code */ }
+      errEl.textContent = 'Błąd ' + msg;
+      errEl.classList.remove('hidden');
+      return;
+    }
+
+    var body = await resp.json().catch(function(){ return null; });
+    if (body && typeof body.sent === 'number') {
+      resEl.textContent = '✓ Wysłano do ' + body.sent + ' adresów.';
+      resEl.classList.remove('hidden');
+    } else {
+      resEl.textContent = '✓ Zlecenie wysłania przyjęte przez serwer.';
+      resEl.classList.remove('hidden');
+    }
+  });
+
+  // ESC-close the dialog without firing form submit (no <form> here, just safety).
+  modal.addEventListener('keydown', function (ev) {
+    if (ev.key === 'Escape') { ev.preventDefault(); closeSelf(); }
+  });
+})();
+</script>
 
 <script>
 (function () {
