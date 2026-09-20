@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>Głos z „&lt;strong th:text="${compositionTitle}">Utwór</strong>"</title>
+</head>
+<body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
+    <div style="background-color: #f8f9fa; padding: 20px; border-radius: 8px;">
+        <h2 style="color: #2c3e50;">Głos &laquo;<span th:text="${voiceLabel}">głos</span>&raquo; &mdash; <span th:text="${compositionTitle}">Utwór</span></h2>
+        <p>
+            Zespo&lstrok; <strong th:text="${bandName}">Band</strong> dzieli si&euml; z Tob&#261; swoim wydrukiem:
+        </p>
+        <ul style="margin: 0.4em 0 0.8em 1.6em;">
+            <li><strong>Instrument/ro&lstrok;a:</strong> <span th:text="${voiceLabel}">głos</span></li>
+            <li><strong>Strony PDF-a:</strong> <strong th:style="font-size:1.05em" th:text="${pageFrom} + "–" + ${pageTo}">1–2</strong></li>
+            <li><strong>Plik:</strong> <span th:text="${originalName}">score.pdf</span>
+                (<span th:text="(${sizeBytes} div 1048576) &lt; 1 ? ((${sizeBytes} div 1024) + ' KB') : ((${sizeBytes} div 1048576.0) + ' MB')">…</span>)</li>
+        </ul>
+
+        <p style="text-align: center;">
+            <a th:href="${partLink}" target="_blank" rel="noopener"
+               style="background-color: #3498db; color: white; padding: 12px 24px; text-decoration: none; border-radius: 4px; display: inline-block;">
+                🎵 &Oslash;; otwórz swój głos w przeglądarce
+            </a>
+        </p>
+        <p style="text-align: center; font-size: 0.9em; color: #7f8c8d; margin-top: 0.5em;">
+            Link jest unikalny dla tego konkretnego wiersza — nie musisz logować si&euml;, aby go otworzyć.<br>
+            Zapisz go na dysku lub wyślij dalej.
+        </p>
+
+        <hr style="border: none; border-top: 1px solid #eee; margin: 20px 0;">
+        <p style="font-size: 0.9em; color: #7f8c8d;">
+            Pozdrawiamy,<br>
+            Twoj zesp&oacute;l muzyczny
+        </p>
+    </div>
+</body>
+</html>
