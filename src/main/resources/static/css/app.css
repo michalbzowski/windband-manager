@@ -2427,10 +2427,46 @@ body.filter-pinned #uber-filter-container {
                 inset 0 -1px 0 rgba(255, 255, 255, 0.60);
 }
 
+/* Dark theme overrides for PHASE C pinned filter container */
+[data-theme="dark"] body.filter-pinned #uber-filter-container {
+    background: linear-gradient(180deg, rgba(18, 18, 20, 0.86), rgba(26, 26, 30, 0.78));
+    border-top: 1px solid rgba(148, 163, 184, 0.35);
+    border-bottom: 1px solid rgba(148, 163, 184, 0.25);
+    box-shadow: 0 10px 26px rgba(0, 0, 0, 0.45),
+                inset 0 -1px 0 rgba(255, 255, 255, 0.04);
+}
+
+@media (prefers-color-scheme: dark) {
+    body.filter-pinned #uber-filter-container {
+        background: linear-gradient(180deg, rgba(18, 18, 20, 0.86), rgba(26, 26, 30, 0.78));
+        border-top: 1px solid rgba(148, 163, 184, 0.35);
+        border-bottom: 1px solid rgba(148, 163, 184, 0.25);
+        box-shadow: 0 10px 26px rgba(0, 0, 0, 0.45),
+                    inset 0 -1px 0 rgba(255, 255, 255, 0.04);
+    }
+}
+
 body.filter-pinned #uber-filter-container input,
 body.filter-pinned #uber-filter-container select {
     background: #ffffff;
     border-color: rgba(13, 148, 136, 0.45);
+}
+
+/* Dark theme input/select overrides for PHASE C */
+[data-theme="dark"] body.filter-pinned #uber-filter-container input,
+[data-theme="dark"] body.filter-pinned #uber-filter-container select {
+    background: #1a1a1e;
+    border-color: rgba(148, 163, 184, 0.45);
+    color: var(--pico-color);
+}
+
+@media (prefers-color-scheme: dark) {
+    body.filter-pinned #uber-filter-container input,
+    body.filter-pinned #uber-filter-container select {
+        background: #1a1a1e;
+        border-color: rgba(148, 163, 184, 0.45);
+        color: var(--pico-color);
+    }
 }
 
 body.filter-pinned #uber-filter-container input:focus,
