@@ -1114,10 +1114,5 @@
                 }, 0);
             }
         }
-        // Belt-and-suspenders: re-bind on BOTH afterSwap AND afterSettle so we
-        // catch the swap whichever event fires first. HTMX dispatches both.
-        document.body.addEventListener('htmx:afterSettle', scheduleRebindAfterSwap, true);
-        document.body.addEventListener('htmx:afterSwap', scheduleRebindAfterSwap, true);
-
     })(window);
 

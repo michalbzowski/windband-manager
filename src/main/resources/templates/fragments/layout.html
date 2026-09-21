@@ -664,6 +664,28 @@
             });
     })();
 
+    // ---------------------------------------------------------------------------
+    // HTMX rebind after swap/settle — safe registration in footer-scripts (body present).
+    // We register once and use a target-id guard inside to skip unrelated swaps.
+    function _rebindDetailHandlersAfterSwap(evt) {
+        if (!evt || !evt.detail || !evt.detail.target) return;
+        var id = evt.detail.target.id || '';
+        if (id === 'rehearsals-content' && window.rebindRehearsalDetailFilters) {
+            setTimeout(function(){ window.rebindRehearsalDetailFilters(); }, 0);
+        } else if (id === 'events-content' && window.rebindEventDetailFilters) {
+            setTimeout(function(){ window.rebindEventDetailFilters(); }, 0);
+        }
+    }
+
+    // Register globally exactly once — guard by attribute on body.
+    (function() {
+        if (!document.body || document.body.getAttribute('data-utils-rebind-registered') === '1') return;
+        document.body.setAttribute('data-utils-rebind-registered', '1');
+        document.body.addEventListener('htmx:afterSettle', _rebindDetailHandlersAfterSwap, true);
+        document.body.addEventListener('htmx:afterSwap',   _rebindDetailHandlersAfterSwap, true);
+    })();
+
+
     function doLogout() {
         fetch('/api/auth/logout', {
             method: 'POST',
