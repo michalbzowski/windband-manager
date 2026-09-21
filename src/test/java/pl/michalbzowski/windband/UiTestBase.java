@@ -42,6 +42,13 @@ public abstract class UiTestBase {
         // test so stale rows from a previous test cannot leak in and break
         // ordering/assertions. TRUNCATE ... CASCADE removes child rows
         // (consent tokens, attendances, participations) without FK violations.
+        // clean up stale DB state before every test method (see cleanDatabase below).
+        // We cannot clear browser cookies here: the shared ChromeDriver session is
+        // created in @BeforeAll and its JSESSIONID belongs to the Spring Security
+        // session that will be re-issued by doLogin() if needed.  The DB-level reset
+        // (cleanDatabase) is what guarantees test isolation — Spring sessions are
+        // in-memory and survive TRUNCATE, so a stale login cookie is harmless:
+        // it just carries the same admin principal.
         cleanDatabase();
     }
 
