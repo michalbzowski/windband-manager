@@ -115,9 +115,14 @@ class CompositionPageUiTest extends UiTestBase {
         // (same-class tests share one ChromeDriver session and an immediate driver.get() is
         // a same-origin soft reload that does not clear the DOM).
         driver.get(baseUrl() + "/bands/1/compositions");
-        wait.until(drv -> drv.findElements(By.cssSelector("#compositions-content tbody tr"))
-                               .stream()
-                               .anyMatch(tr -> tr.getText().contains("Lifecycle READY")));
+        try {
+            wait.until(drv -> drv.findElements(By.cssSelector("#compositions-content tbody tr"))
+                                   .stream()
+                                   .anyMatch(tr -> tr.getText().contains("Lifecycle READY")));
+        } catch (Exception e) {
+            dumpDiagnosis(e, "shouldRestoreArchivedComposition");
+            throw e;
+        }
     }
 
     /** US-3.5 — delete endpoint: row disappears from the database; a detail reload yields 409/410 (no longer 200). */
@@ -171,6 +176,31 @@ class CompositionPageUiTest extends UiTestBase {
         assertThat(getHttp).isGreaterThanOrEqualTo(400);
     }
 
+    private void dumpDiagnosis(Exception cause, String testName) {
+        String url = diagSafe(drv -> drv.getCurrentUrl());
+        String body = diagSafe(drv -> drv.findElement(org.openqa.selenium.By.id("content")).getText());
+        Integer count;
+        try {
+            count = jdbcTemplate.queryForObject("SELECT COUNT(*) FROM compositions WHERE band_id = 1", Integer.class);
+        } catch (Exception e) {
+            count = -1; // DB lookup itself failed — still report it, not fatal
+        }
+        String snippet = body.length() > 400 ? body.substring(0, 400) : body;
+        System.err.println("[DIAGNOSTIC] " + testName + " failed wait:\n"
+                + "  currentUrl=" + url + "\n"
+                + "  dbCount(band_id=1)=" + count + "\n"
+                + "  contentSnippet=" + snippet);
+        cause.printStackTrace(System.err);
+    }
+
+    private String diagSafe(java.util.function.Function<org.openqa.selenium.WebDriver, String> probe) {
+        try {
+            return probe.apply(driver);
+        } catch (Exception e) {
+            return "(unavailable: " + e.getClass().getSimpleName() + ")";
+        }
+    }
+
     // ---------- US-3.5 helpers ----------------------------------------------------------
 
     private void seedComposition(String title, String status) {
@@ -210,10 +240,15 @@ class CompositionPageUiTest extends UiTestBase {
         // titles pins this test's seed and eliminates the cross-test DOM leak.
         loginAndNavigateTo("/bands/1/compositions");
         WebDriverWait wait = new WebDriverWait(driver, Duration.ofSeconds(15));
-        wait.until(drv -> {
-            String text = drv.findElement(By.id("compositions-content")).getText();
-            return text.contains("Marsz Testowy") && text.contains("Polka Testowa");
-        });
+        try {
+            wait.until(drv -> {
+                String text = drv.findElement(By.id("compositions-content")).getText();
+                return text.contains("Marsz Testowy") && text.contains("Polka Testowa");
+            });
+        } catch (Exception e) {
+            dumpDiagnosis(e, "shouldListSeededCompositionsAndCreateANewOne");
+            throw e;
+        }
 
         assertThat(driver.findElements(By.cssSelector("#compositions-content tbody tr"))).hasSize(2);
         assertThat(driver.findElement(By.id("compositions-content")).getText())
