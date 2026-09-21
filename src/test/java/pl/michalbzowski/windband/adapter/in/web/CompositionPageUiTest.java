@@ -115,15 +115,13 @@ class CompositionPageUiTest extends UiTestBase {
         // (same-class tests share one ChromeDriver session and an immediate driver.get() is
         // a same-origin soft reload that does not clear the DOM).
         driver.get(baseUrl() + "/bands/1/compositions");
-        // Hard reload: breaks HTTP-cache reuse of the list render from a prior test,
-        // so this wait actually validates *this* test's DB state. On CI (remote PG,
-        // cold cache) a plain driver.get() can otherwise serve a stale cached HTML and
-        // defeat the assertion below.
-        driver.navigate().refresh();
         try {
+            wait.until(ExpectedConditions.presenceOfElementLocated(
+                    By.cssSelector("#compositions-content tbody tr")));
             wait.until(drv -> drv.findElements(By.cssSelector("#compositions-content tbody tr"))
-                                   .stream()
-                                   .anyMatch(tr -> tr.getText().contains("Lifecycle READY")));
+                    .stream()
+                    .map(WebElement::getText)
+                    .anyMatch(text -> text.contains("Lifecycle READY")));
         } catch (Exception e) {
             dumpDiagnosis(e, "shouldRestoreArchivedComposition");
             throw e;

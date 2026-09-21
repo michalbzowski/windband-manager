@@ -363,7 +363,10 @@ public abstract class UiTestBase {
         doLogin();
         driver.get(baseUrl() + path);
         new WebDriverWait(driver, Duration.ofSeconds(30))
-            .until(ExpectedConditions.presenceOfElementLocated(By.id("content")));
+            .until(ExpectedConditions.or(
+                    ExpectedConditions.presenceOfElementLocated(By.id("content")),
+                    ExpectedConditions.presenceOfElementLocated(By.id("compositions-content")),
+                    ExpectedConditions.presenceOfElementLocated(By.id("composition-detail"))));
     }
 
     /**
@@ -386,9 +389,11 @@ public abstract class UiTestBase {
             return; // session persists across the test class's browser instance
         }
         driver.get(baseUrl() + "/login");
+        new WebDriverWait(driver, Duration.ofSeconds(10))
+                .until(ExpectedConditions.presenceOfElementLocated(By.cssSelector("form[action='/login'] input[name='username']")));
 
         WebDriverWait w = new WebDriverWait(driver, Duration.ofSeconds(10));
-        WebElement usernameField = w.until(ExpectedConditions.visibilityOfElementLocated(By.name("username")));
+        WebElement usernameField = w.until(ExpectedConditions.visibilityOfElementLocated(By.cssSelector("form[action='/login'] input[name='username']")));
         usernameField.clear();
         usernameField.sendKeys("admin");
 
