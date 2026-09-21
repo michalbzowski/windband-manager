@@ -270,10 +270,12 @@ public abstract class UiTestBase {
         // Child tables only — keep members/bands/teams/users seeded by data.sql
         // so legacy UI tests that rely on those rows keep working. CASCADE clears
         // dependent rows (consent tokens, attendances, participations) without FK violations.
-        String allTables = "attendances, event_participations, member_instruments, "
-                + "member_consent_tokens, member_consents, rehearsals, band_events, "
-                + "member_attribute_values, member_attribute_defs, team_members, "
-                + "compositions, composition_instruments, score_files";
+        // IMPORTANT: Do NOT truncate member_consent_tokens / member_consents —
+        // these are needed by Spring Security to authorize admin after each login.
+        // TRUNCATEing them mid-test causes 302 → /login loops (unterminated session).
+        String allTables = "attendances, event_participations, member_instruments, " +
+                "rehearsals, band_events, member_attribute_values, member_attribute_defs, team_members, " +
+                "compositions, composition_instruments, score_files";
         try {
             jdbcTemplate.execute("TRUNCATE TABLE " + allTables + " RESTART IDENTITY CASCADE");
         } catch (Exception e) {
