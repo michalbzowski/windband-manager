@@ -9,6 +9,7 @@ import org.openqa.selenium.support.ui.WebDriverWait;
 import pl.michalbzowski.windband.UiTestBase;
 
 import java.time.Duration;
+import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -110,9 +111,14 @@ class CompositionPageUiTest extends UiTestBase {
                 "SELECT status FROM compositions WHERE band_id = 1 AND id = ?", String.class, id);
         assertThat(restored).isEqualTo("DRAFT");
 
-        // The list still includes the restored row (band-scoped view) — proves this is not a
-        // soft-hide in the DB, but a real status flip back to DRAFT.
+        // Wait for the restored row to actually appear in the rendered table (the previous
+        // bare text-poll raced with Thymeleaf's deferred fragment render in headless CI —
+        // #compositions-content exists, but its <tbody> rows land one frame later).
         driver.get(baseUrl() + "/bands/1/compositions");
+        wait.until(drv -> {
+            List<WebElement> rows = drv.findElements(By.cssSelector("#compositions-content tbody tr"));
+            return !rows.isEmpty();
+        });
         wait.until(ExpectedConditions.textToBePresentInElementLocated(
                 By.id("compositions-content"), "Lifecycle READY"));
     }
@@ -200,8 +206,15 @@ class CompositionPageUiTest extends UiTestBase {
                 VALUES (?, ?, ?, ?, 'READY', 1, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
                 """, "Polka Testowa", null, "Anna Testowa", "Piotr Testowy");
 
+        // Wait for the table to render both seeded rows before asserting counts — a bare
+        // findElements() right after loginAndNavigateTo raced with Thymeleaf fragment
+        // render in headless CI (#compositions-content exists, but <tbody> rows land later).
         loginAndNavigateTo("/bands/1/compositions");
-        WebDriverWait wait = new WebDriverWait(driver, Duration.ofSeconds(10));
+        WebDriverWait wait = new WebDriverWait(driver, Duration.ofSeconds(15));
+        wait.until(drv -> {
+            List<WebElement> rows = drv.findElements(By.cssSelector("#compositions-content tbody tr"));
+            return rows.size() >= 2;
+        });
 
         assertThat(driver.findElements(By.cssSelector("#compositions-content tbody tr"))).hasSize(2);
         assertThat(driver.findElement(By.id("compositions-content")).getText())
