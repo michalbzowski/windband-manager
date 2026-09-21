@@ -9,7 +9,6 @@ import org.openqa.selenium.support.ui.WebDriverWait;
 import pl.michalbzowski.windband.UiTestBase;
 
 import java.time.Duration;
-import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -111,16 +110,14 @@ class CompositionPageUiTest extends UiTestBase {
                 "SELECT status FROM compositions WHERE band_id = 1 AND id = ?", String.class, id);
         assertThat(restored).isEqualTo("DRAFT");
 
-        // Wait for the restored row to actually appear in the rendered table (the previous
-        // bare text-poll raced with Thymeleaf's deferred fragment render in headless CI —
-        // #compositions-content exists, but its <tbody> rows land one frame later).
+        // Wait for the restored row to actually appear in the rendered table — waiting on
+        // this test's seed title avoids matching STALE <tbody> rows from a preceding test
+        // (same-class tests share one ChromeDriver session and an immediate driver.get() is
+        // a same-origin soft reload that does not clear the DOM).
         driver.get(baseUrl() + "/bands/1/compositions");
-        wait.until(drv -> {
-            List<WebElement> rows = drv.findElements(By.cssSelector("#compositions-content tbody tr"));
-            return !rows.isEmpty();
-        });
-        wait.until(ExpectedConditions.textToBePresentInElementLocated(
-                By.id("compositions-content"), "Lifecycle READY"));
+        wait.until(drv -> drv.findElements(By.cssSelector("#compositions-content tbody tr"))
+                               .stream()
+                               .anyMatch(tr -> tr.getText().contains("Lifecycle READY")));
     }
 
     /** US-3.5 — delete endpoint: row disappears from the database; a detail reload yields 409/410 (no longer 200). */
@@ -206,14 +203,16 @@ class CompositionPageUiTest extends UiTestBase {
                 VALUES (?, ?, ?, ?, 'READY', 1, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
                 """, "Polka Testowa", null, "Anna Testowa", "Piotr Testowy");
 
-        // Wait for the table to render both seeded rows before asserting counts — a bare
-        // findElements() right after loginAndNavigateTo raced with Thymeleaf fragment
-        // render in headless CI (#compositions-content exists, but <tbody> rows land later).
+        // Wait for BOTH seeded titles to be present in the rendered list — a bare
+        // ">=2 tr" check passes trivially on STALE <tbody> rows left over from a preceding
+        // test (the same JUnit class shares one ChromeDriver session, and driver.get() is a
+        // same-origin soft reload that does not clear the DOM).  Waiting on the specific
+        // titles pins this test's seed and eliminates the cross-test DOM leak.
         loginAndNavigateTo("/bands/1/compositions");
         WebDriverWait wait = new WebDriverWait(driver, Duration.ofSeconds(15));
         wait.until(drv -> {
-            List<WebElement> rows = drv.findElements(By.cssSelector("#compositions-content tbody tr"));
-            return rows.size() >= 2;
+            String text = drv.findElement(By.id("compositions-content")).getText();
+            return text.contains("Marsz Testowy") && text.contains("Polka Testowa");
         });
 
         assertThat(driver.findElements(By.cssSelector("#compositions-content tbody tr"))).hasSize(2);
