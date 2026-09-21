@@ -52,6 +52,7 @@ public abstract class UiTestBase {
         sessionEstablished = false; // Force re-authentication after cleanDatabase() TRUNCATE
         cleanDatabase();
         reseedDeletedMembersIfNeeded(); // Ensure members exist for FK references in consent tables
+        cleanupOrphanMemberConsents(); // Drop orphaned consent/token rows left by prior tests
     }
 
     /**
@@ -339,6 +340,23 @@ public abstract class UiTestBase {
         }
     }
 
+
+    /**
+     * CRITICAL FIX (PostgreSQL CI): a previous test class may delete Member rows while the
+     * async welcome/consent flow still holds references to them. Such orphaned rows in the
+     * consent tables then violate FKs when Spring Security / listeners re-touch members, so we
+     * remove consent + token rows whose parent member no longer exists. Runs before every test.
+     */
+    private void cleanupOrphanMemberConsents() {
+        try {
+            jdbcTemplate.update("DELETE FROM member_consents mc WHERE NOT EXISTS "
+                    + "(SELECT 1 FROM members m WHERE m.id = mc.member_id)");
+            jdbcTemplate.update("DELETE FROM member_consent_tokens mct WHERE NOT EXISTS "
+                    + "(SELECT 1 FROM members m WHERE m.id = mct.member_id)");
+        } catch (Exception e) {
+            System.err.println("[cleanup] Could not remove orphan consent rows (ignoring): " + e.getMessage());
+        }
+    }
 
     protected void loginAndNavigateTo(String path) {
         // Reuse the login flow for consistency, then navigate.
