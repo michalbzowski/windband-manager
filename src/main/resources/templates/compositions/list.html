@@ -33,11 +33,11 @@
             </form>
 
             <article th:if="${#lists.isEmpty(compositions)}">
-                <p th:if="${(filterTitle != null and !filterTitle == '') or (filterComposer != null and !filterComposer == '')
-                             or (filterArranger != null and !filterArranger == '') or (filterStatus != null and !filterStatus == '')}">
+                <p th:if="${!#strings.isEmpty(filterTitle) or !#strings.isEmpty(filterComposer)
+                             or !#strings.isEmpty(filterArranger) or !#strings.isEmpty(filterStatus)}">
                     Brak utworów spełniających filtry.</p>
-                <p th:unless="${(filterTitle != null and !filterTitle == '') or (filterComposer != null and !filterComposer == '')
-                                 or (filterArranger != null and !filterArranger == '') or (filterStatus != null and !filterStatus == '')}">
+                <p th:unless="${!#strings.isEmpty(filterTitle) or !#strings.isEmpty(filterComposer)
+                                 or !#strings.isEmpty(filterArranger) or !#strings.isEmpty(filterStatus)}">
                     Biblioteka utworów jest pusta.</p>
                 <small>Dodaj pierwszy utwór, aby rozpocząć katalogowanie nut.</small>
             </article>

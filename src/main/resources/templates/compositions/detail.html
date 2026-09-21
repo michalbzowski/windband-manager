@@ -368,7 +368,7 @@
 })();
 </script>
 
-<!-- US-7.9 — Upload section: file input + "Wgraj nuty (PDF)" button.
+<!-- US-7.9 — Upload section: file input + "Pliki nut (PDF)" button.
      Client-side validation mirrors UploadValidator: PDF only, max 50 MB.
      Server responds 413/415 with a JSON error body (handled by GlobalExceptionHandler);
      on success ScoreFileDto is rendered inline below the section and a success toast fires.
@@ -628,7 +628,7 @@
 })();
 </script>
 
-<!-- US-7.1 — "Oznacz głosy na stronach nut" panel: one table listing all saved part-mappings for
+<!-- US-7.1 — "Głosy w nutach" panel: one table listing all saved part-mappings for
      this score (instrument + role + page range), plus a form to add a new one. All data comes
      from the `parts` and `bandInstruments` model attributes — pre-loaded inside a service
      transaction in CompositionPageController, so we never touch the lazy `composition.parts`
@@ -683,7 +683,7 @@
                 <label>Plik nut:
                     <select name="scoreFileId" id="part-score-file-picker" class="form-element-secondary">
                         <option value="">— wybierz plik (nieobowiązkowo) —</option>
-                        <th:block th:each="sf : ${c.scoreFiles}"><option th:value="${sf.id}" th:text="${sf.filename + ' • ' + sf.pageCount + ' stron'}"/></th:block>
+                        <th:block th:each="sf : ${scoreFiles}"><option th:value="${sf.fileId}" th:text="${sf.originalName + ' • ' + sf.pageCount + ' stron'}"/></th:block>
                     </select>
                 </label>
             </div>
@@ -902,6 +902,7 @@
     });
 
     // Range validation — runs before submit.
+    var filePicker = document.getElementById('part-score-file-picker');
     // ── US-7.14 — Plik nut picker (max enforcement) ─────────────────────────
     // Pre-select on load: pick the largest file by pageCount (best default).
     if (filePicker) {
@@ -915,7 +916,6 @@
         }
         if (best && best.v !== '') filePicker.value = best.v;
     }
-    var filePicker = document.getElementById('part-score-file-picker');
     function selectedMax() {
         if (!filePicker) return null;
         var selectedValue = String(filePicker.value);
