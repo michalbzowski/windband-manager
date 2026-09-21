@@ -26,7 +26,10 @@
                                                      th:value="${filterArranger}" placeholder="np. Kowalski"></label>
                     <label for="filter-status">Status<select id="filter-status" name="status">
                             <option value="" th:selected="${filterStatus == null or (filterStatus != null and filterStatus eq '')}">Wszystkie</option>
-                            <option value=...[truncated]
+                            <option value="DRAFT"    th:selected="${filterStatus != null and filterStatus eq 'DRAFT'}"    >Szkic</option>
+                            <option value="READY"    th:selected="${filterStatus != null and filterStatus eq 'READY'}"    >Gotowy</option>
+                            <option value="ARCHIVED" th:selected="${filterStatus != null and filterStatus eq 'ARCHIVED'}" >Zarchiwizowany</option>
+                        </select></label>
                 </div>
                 <button type="submit" class="primary small">Filtruj</button>
                 <a class="secondary small" th:href="@{/bands/{bandId}/compositions(bandId=${bandId})}">Wyczyść</a>
