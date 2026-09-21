@@ -32,8 +32,8 @@ public class MeetingListUiTest extends UiTestBase {
                 By.xpath("//tr[contains(@id, 'meeting-')]")));
         assertThat(upcomingRow.isDisplayed()).isTrue();
 
-        // And the badge shows "Koncert bezpłatny"
-        assertThat(driver.getPageSource()).contains("Koncert bezpłatny");
+        // Badge column was removed (deprecated 2026-09-21). Verify the event title is present instead.
+        assertThat(driver.getPageSource()).contains("Koncert Noworoczny");
     }
 
     @Test

@@ -32,7 +32,7 @@
                         <th>Data</th>
                         <th>Godzina</th>
                         <th>Miejsce / Szczegóły</th>
-                        <th>Status</th>
+                        <!-- Status column deprecated 2026-09-21: non-informative, removed from UI -->
                         <th>Akcje</th>
                     </tr>
                 </thead>
@@ -43,9 +43,7 @@
                         <td data-label="Data" th:text="${m.date}">01.01.2025</td>
                         <td data-label="Godzina" th:text="${m.startTime}">18:00</td>
                         <td data-label="Miejsce" th:text="${m.subtitle}">Miejsce spotkania</td>
-                        <td data-label="Status">
-                            <span th:text="${m.badge}" class="badge">🎵 Próba</span>
-                        </td>
+                        <!-- Status column deprecated 2026-09-21 -->
                         <td data-label="Akcje">
                             <a th:href="${m.href}" class="outline small" style="text-decoration:none; display:inline-block;">📋 Szczegóły</a>
                         </td>
@@ -65,7 +63,7 @@
                         <th>Data</th>
                         <th>Godzina</th>
                         <th>Miejsce / Szczegóły</th>
-                        <th>Status</th>
+                        <!-- Status column deprecated 2026-09-21: non-informative, removed from UI -->
                         <th>Akcje</th>
                     </tr>
                 </thead>
@@ -79,9 +77,7 @@
                         </td>
                         <td data-label="Godzina" th:text="${m.startTime}">18:00</td>
                         <td data-label="Miejsce" th:text="${m.subtitle}">Miejsce spotkania</td>
-                        <td data-label="Status">
-                            <span th:text="${m.badge}" class="badge">🎵 Próba</span>
-                        </td>
+                        <!-- Status column deprecated 2026-09-21 -->
                         <td data-label="Akcje">
                             <a th:href="${m.href}" class="outline small" style="text-decoration:none; display:inline-block;">📋 Szczegóły</a>
                         </td>
