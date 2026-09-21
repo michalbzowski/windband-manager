@@ -2763,6 +2763,82 @@ body.filter-pinned #uber-filter-container select:focus {
     pointer-events: none;
 }
 
+/* ============================ Biblioteka utworów — filter form ====================
+   Compose 4 fields (Tytuł, Kompozytor, Aranżer, Status) horizontally on wide
+   screens and wrap onto a grid on narrow viewports. Uses PicoCSS v2 CSS vars
+   for dark mode consistency and zero hardcoded hex. */
+.composition-filter-form {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-end;
+    gap: 0.5rem 0.9rem;
+    margin-bottom: 1.25rem;
+    padding: 0.75rem 1rem;
+    background-color: var(--pico-card-background-color, #fff);
+    border: 1px solid var(--pico-card-border-color, hsl(0 0% 85% / 0.25));
+    border-radius: 0.75rem;
+}
+.composition-filter-form .filter-fields {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(140px, max-content));
+    gap: 0.4rem 0.9rem;
+    flex: 1 1 auto;
+    min-width: 0;
+}
+.composition-filter-form label {
+    display: block;
+    font-size: 0.82rem;
+    font-weight: 500;
+    color: var(--pico-color);
+    opacity: 0.9;
+    white-space: nowrap;
+}
+.composition-filter-form label input,
+.composition-filter-form label select {
+    display: block;
+    width: 100%;
+    min-width: 8rem;
+    margin-top: 0.25rem;
+    background-color: var(--pico-form-element-background-color);
+    border: 1px solid var(--pico-form-element-border-color, hsl(0 0% 65% / 0.35));
+    border-radius: var(--pico-border-radius);
+    padding: 0.4rem 0.65rem;
+    font-size: 0.9rem;
+    color: var(--pico-color);
+}
+.composition-filter-form label input:focus,
+.composition-filter-form label select:focus {
+    outline: none;
+    border-color: var(--pico-primary);
+    box-shadow: 0 0 0 3px var(--pico-primary-transparent-50, hsl(210 90% 50% / 0.25));
+}
+.composition-filter-form .primary,
+.composition-filter-form .secondary {
+    margin-top: auto;
+}
+
+/* Empty-state article for "no compositions with the active filter set" */
+#compositions-content article p {
+    font-weight: 600;
+    display: block;
+}
+
+
+/* Mobile: stack the actions under the fields, full width */
+@media (max-width: 640px) {
+    .composition-filter-form {
+        align-items: stretch;
+    }
+    .composition-filter-form .filter-fields {
+        grid-template-columns: 1fr 1fr;
+    }
+    .composition-filter-form > button,
+    .composition-filter-form > a {
+        flex: 1 1 auto;
+        text-align: center;
+        padding-left: 0.75rem;
+        padding-right: 0.75rem;
+    }
 /* ============================ Composition detail — US-7 redesign (Phase B) ====================
    Dark mode safe — all colors from Pico v2 custom properties. New sections:
      - .score-hero-pick   : the big "Kliknij tutaj, aby wybrać plik PDF" dropzone
@@ -2879,4 +2955,3 @@ body.filter-pinned #uber-filter-container select:focus {
     border-top: 1px solid var(--pico-muted-border-color);
     margin: 0.8rem 0;
 }
-

@@ -368,7 +368,7 @@
 })();
 </script>
 
-<!-- US-7.9 — Upload section: file input + "Wgraj nuty (PDF)" button.
+<!-- US-7.9 — Upload section: file input + "Pliki nut (PDF)" button.
      Client-side validation mirrors UploadValidator: PDF only, max 50 MB.
      Server responds 413/415 with a JSON error body (handled by GlobalExceptionHandler);
      on success ScoreFileDto is rendered inline below the section and a success toast fires.
@@ -628,7 +628,7 @@
 })();
 </script>
 
-<!-- US-7.1 — "Oznacz głosy na stronach nut" panel: one table listing all saved part-mappings for
+<!-- US-7.1 — "Głosy w nutach" panel: one table listing all saved part-mappings for
      this score (instrument + role + page range), plus a form to add a new one. All data comes
      from the `parts` and `bandInstruments` model attributes — pre-loaded inside a service
      transaction in CompositionPageController, so we never touch the lazy `composition.parts`
@@ -640,13 +640,14 @@
     </header>
 
     <table id="existing-parts" class="data-table">
-        <thead><tr><th>Instrument</th><th>Rola</th><th>Strona od</th><th>Strona do</th><th>Akcje</th></tr></thead>
+        <thead><tr><th>Instrument</th><th>Rola</th><th>Plik nut</th><th>Strona od</th><th>Strona do</th><th>Akcje</th></tr></thead>
         <tbody>
-            <tr th:if="${parts == null or parts.size() == 0}" class="empty-row"><td colspan="5">Brak oznaczonych głosów — dodaj poniżej.</td></tr>
+            <tr th:if="${parts == null or parts.size() == 0}" class="empty-row"><td colspan="6">Brak oznaczonych głosów — dodaj poniżej.</td></tr>
             <tr th:each="p : ${parts}"
                 th:attr="data-part-id=${p.id}, data-instrument-name=${p.instrument != null ? p.instrument.name : ''}, data-role=${p.instrumentRole != null and !#strings.isEmpty(p.instrumentRole) ? p.instrumentRole : '—'}, data-page-from=${p.pageFrom}, data-page-to=${p.pageTo}">
                 <td th:text="${p.instrument != null ? p.instrument.name : ''}">Instrument</td>
                 <td th:text="${p.instrumentRole != null and !#strings.isEmpty(p.instrumentRole) ? p.instrumentRole : '—'}">Rola</td>
+                <td><span th:if="${p.scoreFileName}"><span th:text="${p.scoreFileName}" class="text-secondary">Polonez (głosy).pdf</span></span><span th:unless="${p.scoreFileName}" class="text-muted">(dowolny plik)</span></td>
                 <td th:text="${p.pageFrom}">1</td>
                 <td th:text="${p.pageTo}">2</td>
                 <td><button type="button" class="secondary part-share-btn"
@@ -677,6 +678,14 @@
             </div>
             <div class="form-row">
                 <label>Strona od: <input type="number" name="pageFrom" id="part-page-from" min="1" value="1" required="" class="form-input"></label>
+            </div>
+            <div class="form-row">
+                <label>Plik nut:
+                    <select name="scoreFileId" id="part-score-file-picker" class="form-element-secondary">
+                        <option value="">— wybierz plik (nieobowiązkowo) —</option>
+                        <th:block th:each="sf : ${scoreFiles}"><option th:value="${sf.fileId}" th:text="${sf.originalName + ' • ' + sf.pageCount + ' stron'}"/></th:block>
+                    </select>
+                </label>
             </div>
 
             <div class="form-row">
@@ -893,6 +902,37 @@
     });
 
     // Range validation — runs before submit.
+    var filePicker = document.getElementById('part-score-file-picker');
+    // ── US-7.14 — Plik nut picker (max enforcement) ─────────────────────────
+    // Pre-select on load: pick the largest file by pageCount (best default).
+    if (filePicker) {
+        var opts = Array.prototype.slice.call(filePicker.options);
+        var best = null;
+        for (var i = 1; i < opts.length; i++) {
+            var m = String(opts[i].textContent).match(/(\d+)\s*stron/);
+            if (!m) continue;
+            var n = parseInt(m[1], 10);
+            if (best === null || n > best.n) best = { opt: opts[i], n: n, v: String(opts[i].value) };
+        }
+        if (best && best.v !== '') filePicker.value = best.v;
+    }
+    function selectedMax() {
+        if (!filePicker) return null;
+        var selectedValue = String(filePicker.value);
+        var opts = Array.prototype.slice.call(filePicker.options);
+        for (var i=0; i<opts.length; i++) {
+            if (String(opts[i].value) === selectedValue) {
+                var m = String(opts[i].textContent).match(/(\d+)\s*stron/);
+                return m ? parseInt(m[1], 10) : null;
+            }
+        }
+        // Legacy fallback: no per-file count parsed — defer to the form-level max.
+        if (typeof window !== 'undefined' && window.__serverMaxPageCount != null) {
+            return Math.min(window.__serverMaxPageCount, 999);
+        }
+        return null;
+    }
+
     var form     = document.getElementById('add-part-form');
     var fromInp  = document.getElementById('part-page-from');
     var toInp    = document.getElementById('part-page-to');
@@ -914,7 +954,7 @@
             return;
         }
         // Rule 2: if we know the real server-side max page count, enforce it.
-        var serverMax = parseInt(toInp && toInp.getAttribute('max'), 10);
+        var smax = selectedMax(); var serverMax = (smax != null) ? smax : parseInt(toInp && toInp.getAttribute("max"), 10);
         if (serverMax && !isNaN(serverMax) && toVal > serverMax) {
             ev.preventDefault();
             showError('Strona do nie może przekroczyć ' + serverMax + ' (to liczbę stron PDF-a).');

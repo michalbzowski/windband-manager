@@ -70,7 +70,7 @@ class AddPartEndpointTest {
 
         // then — the domain service is invoked with EXACTLY the form values
         // (confidence=null on the manual entry path).
-        verify(commandService).addPart(eq(42L), eq(7L), eq("Partytura"), eq(1), eq(22), isNull(), eq(1L));
+        verify(commandService).addPart(eq(42L), eq(7L), eq("Partytura"), eq(1), eq(22), isNull(), isNull(), eq(1L));
     }
 
     @Test
@@ -90,6 +90,7 @@ class AddPartEndpointTest {
                 org.mockito.ArgumentMatchers.any(), org.mockito.ArgumentMatchers.any(),
                 org.mockito.ArgumentMatchers.any(Integer.class),
                 org.mockito.ArgumentMatchers.any(Integer.class),
+                org.mockito.ArgumentMatchers.any(),
                 org.mockito.ArgumentMatchers.any(),
                 org.mockito.ArgumentMatchers.any());
     }

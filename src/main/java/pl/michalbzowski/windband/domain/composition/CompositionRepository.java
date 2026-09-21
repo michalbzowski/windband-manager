@@ -28,6 +28,9 @@ public interface CompositionRepository {
     /** Paginated version filtered by status. */
     Page<Composition> findAllByBandAndStatus(Band band, CompositionStatus status, Pageable pageable);
 
+    /** All rows of the band matching one status (newest update first). */
+    List<Composition> listAllByBandAndStatus(Band band, CompositionStatus status);
+
     /** US-1.02: case-insensitive search across title, composer and arranger within one band. */
     List<Composition> search(Long bandId, String term);
 

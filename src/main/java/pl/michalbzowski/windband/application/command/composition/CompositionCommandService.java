@@ -10,6 +10,8 @@ import pl.michalbzowski.windband.domain.composition.CompositionInstrument;
 import pl.michalbzowski.windband.domain.composition.CompositionInstrumentRepository;
 import pl.michalbzowski.windband.domain.composition.CompositionRepository;
 import pl.michalbzowski.windband.domain.composition.PartSource;
+import pl.michalbzowski.windband.domain.composition.ScoreFile;
+import pl.michalbzowski.windband.domain.composition.ScoreFileRepository;
 import pl.michalbzowski.windband.domain.member.InstrumentRepository;
 
 import java.time.Instant;
@@ -43,6 +45,7 @@ public class CompositionCommandService {
     private final BandQueryService bandQueryService;
     private final CompositionInstrumentRepository instrumentRepository;
     private final InstrumentRepository memberInstrumentRepository;
+    private final ScoreFileRepository scoreFileRepository;
 
     // ---- create ----------------------------------------------------------
 
@@ -113,6 +116,7 @@ public class CompositionCommandService {
                                          int pageFrom,
                                          int pageTo,
                                          Double confidence,
+                                       Long scoreFileId,
                                          Long bandId) {
         Objects.requireNonNull(instrumentId, "instrumentId");
         Objects.requireNonNull(bandId, "bandId");
@@ -133,9 +137,10 @@ public class CompositionCommandService {
 
         double score = confidence == null ? 1.0 : confidence;
 
+        ScoreFile boundScoreFile = (scoreFileId == null) ? null : resolveBoundScoreFile(scoreFileId, compositionId);
+
         var part = CompositionInstrument.forComposition(
-                composition, instrument, cleanRole, pageFrom, pageTo, null,
-                PartSource.MANUAL, score);
+                composition, instrument, cleanRole, pageFrom, pageTo, null, boundScoreFile, PartSource.MANUAL, score);
         return instrumentRepository.save(part);
     }
 
@@ -202,5 +207,15 @@ public class CompositionCommandService {
         return repository.findByIdAndBandId(id, bandId)
                 .orElseThrow(() -> new IllegalStateException(
                         "Composition " + id + " does not belong to band " + bandId));
+    }
+
+    /** US-7.14 — loads the ScoreFile referenced by scoreFileId and asserts it belongs to compositionId. */
+    private pl.michalbzowski.windband.domain.composition.ScoreFile resolveBoundScoreFile(Long sc, Long cid) {
+        var sf = scoreFileRepository.findById(sc)
+                .orElseThrow(() -> new IllegalArgumentException("Wybrany plik nut nie istnieje w tym zespole"));
+        if (sf.getComposition() == null || !cid.equals(sf.getComposition().getId())) {
+            throw new IllegalArgumentException("Wybrany plik nut nie należy do tego utworu");
+        }
+        return sf;
     }
 }

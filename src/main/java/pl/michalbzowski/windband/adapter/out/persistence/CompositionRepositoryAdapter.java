@@ -51,6 +51,11 @@ public class CompositionRepositoryAdapter implements CompositionRepository {
     }
 
     @Override
+    public List<Composition> listAllByBandAndStatus(Band band, CompositionStatus status) {
+        return springData.listAllByBandAndStatus(band, status);
+    }
+
+    @Override
     public List<Composition> search(Long bandId, String term) {
         if (term == null || term.isBlank()) {
             return List.of();

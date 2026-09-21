@@ -13,6 +13,8 @@ import pl.michalbzowski.windband.domain.composition.CompositionRepository;
 import pl.michalbzowski.windband.domain.composition.CompositionStatus;
 import pl.michalbzowski.windband.domain.composition.PartSource;
 import pl.michalbzowski.windband.domain.member.Instrument;
+import pl.michalbzowski.windband.domain.composition.ScoreFile;
+import pl.michalbzowski.windband.domain.composition.ScoreFileRepository;
 import pl.michalbzowski.windband.domain.member.InstrumentRepository;
 
 import java.time.Instant;
@@ -54,6 +56,9 @@ class CompositionCommandServiceTest extends BaseIntegrationTest {
 
     @Autowired
     private InstrumentRepository instrumentRepository;
+
+    @Autowired
+    private ScoreFileRepository scoreFileRepository;
 
     /**
      * The Testcontainers PostgreSQL is shared across test classes in the same
@@ -335,6 +340,19 @@ class CompositionCommandServiceTest extends BaseIntegrationTest {
                     assertThat(p.getVerifiedBy()).isEqualTo("second@example.com");
                     assertThat(p.getVerifiedAt()).isNotNull();
                 });
+    }
+
+
+
+    @Test
+    void addPart_withNullScoreFileId_shouldLeaveTheColumnUnset() {
+        Long bandId = 1L;
+        var comp = seedComposition(bandId, "Legacy manual add (no explicit file)");
+        Instrument insp = instrumentInBand(bandId, "Sax II");
+        var result = commandService.addPart(comp.getId(), insp.getId(), "Sax II", 1, 4, null, null, bandId);
+        assertThat(result.getScoreFile()).isNull();
+        ScoreFile inDb = compositionInstrumentRepository.findById(result.getId()).orElseThrow().getScoreFile();
+        assertThat(inDb).isNull();
     }
 
     // helper ---------------------------------------------------------------

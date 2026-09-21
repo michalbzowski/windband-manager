@@ -42,7 +42,17 @@ public abstract class UiTestBase {
         // test so stale rows from a previous test cannot leak in and break
         // ordering/assertions. TRUNCATE ... CASCADE removes child rows
         // (consent tokens, attendances, participations) without FK violations.
+        // clean up stale DB state before every test method (see cleanDatabase below).
+        // We cannot clear browser cookies here: the shared ChromeDriver session is
+        // created in @BeforeAll and its JSESSIONID belongs to the Spring Security
+        // session that will be re-issued by doLogin() if needed.  The DB-level reset
+        // (cleanDatabase) is what guarantees test isolation — Spring sessions are
+        // in-memory and survive TRUNCATE, so a stale login cookie is harmless:
+        // Reset state flags before each test
+        sessionEstablished = false; // Force re-authentication after cleanDatabase() TRUNCATE
         cleanDatabase();
+        reseedDeletedMembersIfNeeded(); // Ensure members exist for FK references in consent tables
+        cleanupOrphanMemberConsents(); // Drop orphaned consent/token rows left by prior tests
     }
 
     /**
@@ -263,10 +273,12 @@ public abstract class UiTestBase {
         // Child tables only — keep members/bands/teams/users seeded by data.sql
         // so legacy UI tests that rely on those rows keep working. CASCADE clears
         // dependent rows (consent tokens, attendances, participations) without FK violations.
-        String allTables = "attendances, event_participations, member_instruments, "
-                + "member_consent_tokens, member_consents, rehearsals, band_events, "
-                + "member_attribute_values, member_attribute_defs, team_members, "
-                + "compositions, composition_instruments, score_files";
+        // IMPORTANT: Do NOT truncate member_consent_tokens / member_consents —
+        // these are needed by Spring Security to authorize admin after each login.
+        // TRUNCATEing them mid-test causes 302 → /login loops (unterminated session).
+        String allTables = "attendances, event_participations, member_instruments, " +
+                "rehearsals, band_events, member_attribute_values, member_attribute_defs, team_members, " +
+                "compositions, composition_instruments, score_files";
         try {
             jdbcTemplate.execute("TRUNCATE TABLE " + allTables + " RESTART IDENTITY CASCADE");
         } catch (Exception e) {
@@ -296,12 +308,65 @@ public abstract class UiTestBase {
                 "Saksofony", "Saksofoniści", 2L);
     }
 
+    private void reseedDeletedMembersIfNeeded() {
+        String memberInsert = "INSERT INTO members (first_name, last_name, date_of_birth, email, phone, active, joined_date, email_consent_given, band_id) " +
+                             "VALUES (?, ?, ?, ?, ?, ?, CURRENT_DATE, false, 1) RETURNING id";
+        try {
+            Long janExisting = jdbcTemplate.queryForObject(
+                    "SELECT id FROM members WHERE first_name = 'Jan' AND last_name = 'Kowalski'",
+                    Long.class);
+            if (janExisting == null) {
+                Object[] params = {"Jan", "Kowalski", "1990-05-15", "jan@test.com", "123456789", true};
+                long janId = jdbcTemplate.queryForObject(memberInsert, Long.class, params);
+                System.out.println("[seed] Re-seeded Jan Kowalski (id=" + janId + ")");
+            }
+
+            Long annaExisting = jdbcTemplate.queryForObject(
+                    "SELECT id FROM members WHERE first_name = 'Anna' AND last_name = 'Nowak'",
+                    Long.class);
+            if (annaExisting == null) {
+                Object[] params = {"Anna", "Nowak", "1985-03-20", "anna@test.com", "987654321", true};
+                long annaId = jdbcTemplate.queryForObject(memberInsert, Long.class, params);
+                System.out.println("[seed] Re-seeded Anna Nowak (id=" + annaId + ")");
+            }
+
+            Integer countBand1 = jdbcTemplate.queryForObject("SELECT COUNT(*) FROM members WHERE band_id = 1", Integer.class);
+            if (countBand1 == null || countBand1.intValue() < 2) {
+                System.err.println("[seed] WARNING: Expected at least Jan+Anna in band 1, found " + countBand1);
+            }
+        } catch (Exception e) {
+            // Non-fatal: log warning and continue — if seed fails, other tests might still pass via data.sql fallback
+            System.err.println("[seed] Could not reseed members (ignoring): " + e.getMessage());
+        }
+    }
+
+
+    /**
+     * CRITICAL FIX (PostgreSQL CI): a previous test class may delete Member rows while the
+     * async welcome/consent flow still holds references to them. Such orphaned rows in the
+     * consent tables then violate FKs when Spring Security / listeners re-touch members, so we
+     * remove consent + token rows whose parent member no longer exists. Runs before every test.
+     */
+    private void cleanupOrphanMemberConsents() {
+        try {
+            jdbcTemplate.update("DELETE FROM member_consents mc WHERE NOT EXISTS "
+                    + "(SELECT 1 FROM members m WHERE m.id = mc.member_id)");
+            jdbcTemplate.update("DELETE FROM member_consent_tokens mct WHERE NOT EXISTS "
+                    + "(SELECT 1 FROM members m WHERE m.id = mct.member_id)");
+        } catch (Exception e) {
+            System.err.println("[cleanup] Could not remove orphan consent rows (ignoring): " + e.getMessage());
+        }
+    }
+
     protected void loginAndNavigateTo(String path) {
         // Reuse the login flow for consistency, then navigate.
         doLogin();
         driver.get(baseUrl() + path);
         new WebDriverWait(driver, Duration.ofSeconds(30))
-            .until(ExpectedConditions.presenceOfElementLocated(By.id("content")));
+            .until(ExpectedConditions.or(
+                    ExpectedConditions.presenceOfElementLocated(By.id("content")),
+                    ExpectedConditions.presenceOfElementLocated(By.id("compositions-content")),
+                    ExpectedConditions.presenceOfElementLocated(By.id("composition-detail"))));
     }
 
     /**
@@ -324,9 +389,11 @@ public abstract class UiTestBase {
             return; // session persists across the test class's browser instance
         }
         driver.get(baseUrl() + "/login");
+        new WebDriverWait(driver, Duration.ofSeconds(10))
+                .until(ExpectedConditions.presenceOfElementLocated(By.cssSelector("form[action='/login'] input[name='username']")));
 
         WebDriverWait w = new WebDriverWait(driver, Duration.ofSeconds(10));
-        WebElement usernameField = w.until(ExpectedConditions.visibilityOfElementLocated(By.name("username")));
+        WebElement usernameField = w.until(ExpectedConditions.visibilityOfElementLocated(By.cssSelector("form[action='/login'] input[name='username']")));
         usernameField.clear();
         usernameField.sendKeys("admin");
 

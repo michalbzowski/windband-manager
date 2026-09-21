@@ -15,8 +15,30 @@
                     'plus', 'add-composition-btn', '#compositions-content',
                     null, null, null, null)}"></nav>
 
+            <!-- Filtr — GET form; page/size preserved on pagination links. -->
+            <form method="get" class="composition-filter-form" role="search" aria-label="Filtr biblioteki utworów">
+                <div class="filter-fields">
+                    <label for="filter-title">Tytuł<input type="text" id="filter-title" name="title"
+                                                       th:value="${filterTitle}" placeholder="np. Oda"></label>
+                    <label for="filter-composer">Kompozytor<input type="text" id="filter-composer" name="composer"
+                                                      th:value="${filterComposer}" placeholder="np. Mozart"></label>
+                    <label for="filter-arranger">Aranżer<input type="text" id="filter-arranger" name="arranger"
+                                                     th:value="${filterArranger}" placeholder="np. Kowalski"></label>
+                    <label for="filter-status">Status<select id="filter-status" name="status">
+                            <option value="" th:selected="${filterStatus == null or (filterStatus != null and filterStatus eq '')}">Wszystkie</option>
+                            <option value=...[truncated]
+                </div>
+                <button type="submit" class="primary small">Filtruj</button>
+                <a class="secondary small" th:href="@{/bands/{bandId}/compositions(bandId=${bandId})}">Wyczyść</a>
+            </form>
+
             <article th:if="${#lists.isEmpty(compositions)}">
-                <p>Biblioteka utworów jest pusta.</p>
+                <p th:if="${!#strings.isEmpty(filterTitle) or !#strings.isEmpty(filterComposer)
+                             or !#strings.isEmpty(filterArranger) or !#strings.isEmpty(filterStatus)}">
+                    Brak utworów spełniających filtry.</p>
+                <p th:unless="${!#strings.isEmpty(filterTitle) or !#strings.isEmpty(filterComposer)
+                                 or !#strings.isEmpty(filterArranger) or !#strings.isEmpty(filterStatus)}">
+                    Biblioteka utworów jest pusta.</p>
                 <small>Dodaj pierwszy utwór, aby rozpocząć katalogowanie nut.</small>
             </article>
 
@@ -53,7 +75,11 @@
                 <!-- Pagination -->
                 <nav class="pagination" th:if="${page != null and page.totalPages > 1}" aria-label="Pagination">
                     <a th:if="${page.number > 0}"
-                       th:href="@{/bands/{bandId}/compositions(bandId=${bandId}, page=${page.number - 1}, size=${page.size})}"
+                       th:href="@{/bands/{bandId}/compositions(bandId=${bandId}, page=${page.number - 1}, size=${page.size},
+                                   title=${filterTitle != null and !#strings.isEmpty(filterTitle) ? filterTitle : null},
+                                   composer=${filterComposer != null and !#strings.isEmpty(filterComposer) ? filterComposer : null},
+                                   arranger=${filterArranger != null and !#strings.isEmpty(filterArranger) ? filterArranger : null},
+                                   status=${filterStatus != null and !#strings.isEmpty(filterStatus) ? filterStatus : null})}"
                        th:classappend="${page.number == 0 ? 'disabled' : ''}"
                        aria-label="Previous page">&laquo; Poprzednia</a>
                     <span th:if="${page.number == 0}" class="disabled" aria-hidden="true">&laquo; Poprzednia</span>
@@ -62,13 +88,21 @@
                           th:if="${pageNum >= page.number - 2 and pageNum <= page.number + 2}"
                           class="pagination-item">
                         <a th:if="${pageNum != page.number}"
-                           th:href="@{/bands/{bandId}/compositions(bandId=${bandId}, page=${pageNum}, size=${page.size})}"
+                           th:href="@{/bands/{bandId}/compositions(bandId=${bandId}, page=${pageNum}, size=${page.size},
+                                     title=${filterTitle != null and !#strings.isEmpty(filterTitle) ? filterTitle : null},
+                                     composer=${filterComposer != null and !#strings.isEmpty(filterComposer) ? filterComposer : null},
+                                     arranger=${filterArranger != null and !#strings.isEmpty(filterArranger) ? filterArranger : null},
+                                     status=${filterStatus != null and !#strings.isEmpty(filterStatus) ? filterStatus : null})}"
                            th:text="${pageNum + 1}">1</a>
                         <span th:if="${pageNum == page.number}" class="current" th:text="${pageNum + 1}">1</span>
                     </span>
 
                     <a th:if="${page.number < page.totalPages - 1}"
-                       th:href="@{/bands/{bandId}/compositions(bandId=${bandId}, page=${page.number + 1}, size=${page.size})}"
+                       th:href="@{/bands/{bandId}/compositions(bandId=${bandId}, page=${page.number + 1}, size=${page.size},
+                                   title=${filterTitle != null and !#strings.isEmpty(filterTitle) ? filterTitle : null},
+                                   composer=${filterComposer != null and !#strings.isEmpty(filterComposer) ? filterComposer : null},
+                                   arranger=${filterArranger != null and !#strings.isEmpty(filterArranger) ? filterArranger : null},
+                                   status=${filterStatus != null and !#strings.isEmpty(filterStatus) ? filterStatus : null})}"
                        th:classappend="${page.number == page.totalPages - 1 ? 'disabled' : ''}"
                        aria-label="Next page">Następna &raquo;</a>
                     <span th:if="${page.number >= page.totalPages - 1}" class="disabled" aria-hidden="true">Następna &raquo;</span>
