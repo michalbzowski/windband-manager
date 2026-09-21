@@ -48,7 +48,8 @@ public abstract class UiTestBase {
         // session that will be re-issued by doLogin() if needed.  The DB-level reset
         // (cleanDatabase) is what guarantees test isolation — Spring sessions are
         // in-memory and survive TRUNCATE, so a stale login cookie is harmless:
-        // it just carries the same admin principal.
+        // Reset state flags before each test
+        sessionEstablished = false; // Force re-authentication after cleanDatabase() TRUNCATE
         cleanDatabase();
     }
 
