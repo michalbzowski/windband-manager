@@ -261,7 +261,7 @@ class CompositionPageUiTest extends UiTestBase {
         // (remote Postgres, cold HTTP cache) the browser can otherwise reuse a stale
         // cached HTML and time out while waiting for titles that already exist in the DB.
         driver.navigate().refresh();
-        WebDriverWait wait = new WebDriverWait(driver, Duration.ofSeconds(30));
+        WebDriverWait wait = new WebDriverWait(driver, Duration.ofSeconds(40));
         try {
             wait.until(drv -> {
                 String text = drv.findElement(By.id("compositions-content")).getText();
