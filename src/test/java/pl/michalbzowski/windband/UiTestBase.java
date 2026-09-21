@@ -51,6 +51,7 @@ public abstract class UiTestBase {
         // Reset state flags before each test
         sessionEstablished = false; // Force re-authentication after cleanDatabase() TRUNCATE
         cleanDatabase();
+        reseedDeletedMembersIfNeeded(); // Ensure members exist for FK references in consent tables
     }
 
     /**
@@ -305,6 +306,39 @@ public abstract class UiTestBase {
                 "INSERT INTO member_groups (name, description, band_id) VALUES (?, ?, ?)",
                 "Saksofony", "Saksofoniści", 2L);
     }
+
+    private void reseedDeletedMembersIfNeeded() {
+        String memberInsert = "INSERT INTO members (first_name, last_name, date_of_birth, email, phone, active, joined_date, email_consent_given, band_id) " +
+                             "VALUES (?, ?, ?, ?, ?, ?, CURRENT_DATE, false, 1) RETURNING id";
+        try {
+            Long janExisting = jdbcTemplate.queryForObject(
+                    "SELECT id FROM members WHERE first_name = 'Jan' AND last_name = 'Kowalski'",
+                    Long.class);
+            if (janExisting == null) {
+                Object[] params = {"Jan", "Kowalski", "1990-05-15", "jan@test.com", "123456789", true};
+                long janId = jdbcTemplate.queryForObject(memberInsert, Long.class, params);
+                System.out.println("[seed] Re-seeded Jan Kowalski (id=" + janId + ")");
+            }
+
+            Long annaExisting = jdbcTemplate.queryForObject(
+                    "SELECT id FROM members WHERE first_name = 'Anna' AND last_name = 'Nowak'",
+                    Long.class);
+            if (annaExisting == null) {
+                Object[] params = {"Anna", "Nowak", "1985-03-20", "anna@test.com", "987654321", true};
+                long annaId = jdbcTemplate.queryForObject(memberInsert, Long.class, params);
+                System.out.println("[seed] Re-seeded Anna Nowak (id=" + annaId + ")");
+            }
+
+            Integer countBand1 = jdbcTemplate.queryForObject("SELECT COUNT(*) FROM members WHERE band_id = 1", Integer.class);
+            if (countBand1 == null || countBand1.intValue() < 2) {
+                System.err.println("[seed] WARNING: Expected at least Jan+Anna in band 1, found " + countBand1);
+            }
+        } catch (Exception e) {
+            // Non-fatal: log warning and continue — if seed fails, other tests might still pass via data.sql fallback
+            System.err.println("[seed] Could not reseed members (ignoring): " + e.getMessage());
+        }
+    }
+
 
     protected void loginAndNavigateTo(String path) {
         // Reuse the login flow for consistency, then navigate.
