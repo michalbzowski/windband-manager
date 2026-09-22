@@ -2755,6 +2755,32 @@ body.filter-pinned #uber-filter-container select:focus {
     flex-wrap: wrap;
 }
 
+/* "Szczegóły utworu" mockup — actions are split into TWO visual groups: the primary
+   next-step ("Analizuj utwór") sits flush left, the status cluster (Archiwizuj /
+   Przywróć / Usuń) is pushed to the right edge. margin-left:auto degenerates safely
+   on narrow viewports because the parent already flex-wraps. */
+.composition-status-actions .status-cluster {
+    margin-left: auto;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+}
+
+/* Danger action (red) — composition "Usuń bezpowrotnie" and the per-file "Usuń".
+   Reuses the red already approved in .overflow-item.danger, so both themes get a
+   recognisably destructive control without leaking a second palette. */
+button.secondary.danger {
+    color: #dc3545;
+}
+
+button.secondary.danger:hover,
+button.secondary.danger:focus-visible {
+    background-color: #fdecec;
+    border-color: #dc3545;
+    color: #b02a37;
+}
+
 /* Pagination for compositions list */
 .pagination {
     display: flex;

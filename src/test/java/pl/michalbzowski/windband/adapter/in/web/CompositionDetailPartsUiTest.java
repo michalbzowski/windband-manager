@@ -90,7 +90,9 @@ class CompositionDetailPartsUiTest extends UiTestBase {
         // The page shell (header fragment) — present on every layout page.
         wait.until(ExpectedConditions.presenceOfElementLocated(By.cssSelector(".menu-btn")));
 
-        // ── Bug 3: the row must render ALL SIX cells with the real stored values. ─────────────
+        // ── Bug 3: the row must render ALL FIVE cells with the real stored values. ───────────
+        // (Mockup: „Strona od" + „Strona do" merged into one „Strony" range column, so the
+        // table is now Instrument | Rola | Plik nut | Strony | Akcje — five columns.)
         wait.until(ExpectedConditions.presenceOfElementLocated(
                 By.cssSelector("#existing-parts tbody tr:not(.empty-row)")));
 
@@ -99,7 +101,7 @@ class CompositionDetailPartsUiTest extends UiTestBase {
 
         WebElement row = rows.get(0);
         List<WebElement> cells = row.findElements(By.tagName("td"));
-        assertThat(cells).as("the parts row has all six columns (Instrument…Akcje)").hasSize(6);
+        assertThat(cells).as("the parts row has all five columns (Instrument…Akcje)").hasSize(5);
 
         assertThat(cells.get(0).getText()).as("Instrument cell").containsIgnoringCase("Trąbka");
         assertThat(cells.get(1).getText()).as("Rola cell").isEqualToIgnoringWhitespace("Partytura");
@@ -108,11 +110,12 @@ class CompositionDetailPartsUiTest extends UiTestBase {
                 .isNotBlank();
         assertThat(cells.get(2).getText().contains("(dowolny plik)")).as("a bound score file shows " +
                 "its name, not the '(dowolny plik)' fallback").isFalse();
-        assertThat(cells.get(3).getText()).as("Strona od cell").isEqualToIgnoringWhitespace("1");
-        assertThat(cells.get(4).getText()).as("Strona do cell").isEqualToIgnoringWhitespace("5");
+        // page_range() DTO method: pageFrom=1, pageTo=5 → "1–5" (en-dash per the UI copybook).
+        assertThat(cells.get(3).getText()).as("Strony cell (merged page range 1–5)")
+                .isEqualToIgnoringWhitespace("1–5");
 
         // ── Bug 3b: the Akcje cell carries the 📤 Udostępnij button (it was cut off before). ──
-        WebElement shareBtn = cells.get(5).findElement(By.cssSelector(".part-share-btn"));
+        WebElement shareBtn = cells.get(4).findElement(By.cssSelector(".part-share-btn"));
         assertThat(shareBtn.getText()).as("Udostępnij action in the row").contains("Udostępnij");
 
         // ── Bug 2: "＋ Dodaj głos" exists AFTER a saved row — it can be repeated, not one-shot. ─
