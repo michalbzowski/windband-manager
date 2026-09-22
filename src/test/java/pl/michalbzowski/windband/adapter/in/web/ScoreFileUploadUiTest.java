@@ -11,6 +11,7 @@ import pl.michalbzowski.windband.UiTestBase;
 import java.time.Duration;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.List;
 import org.openqa.selenium.Dimension;
 import org.openqa.selenium.WebElement;
 
@@ -137,6 +138,108 @@ class ScoreFileUploadUiTest extends UiTestBase {
         Files.deleteIfExists(pdf);
     }
 
+    /**
+     * US-7.9 — step 4 (mobile ≥360 px) + step 3 (graceful preview fallback).
+     *
+     * <p>Seeds a score file with a known page count, then at a 360-px viewport asserts the
+     * header-preview panel renders per file: one thumbnail cell for each of the first pages
+     * (max 3), each cell carrying the "Brak podglądu" fallback (hidden until the image load
+     * fails), and the "Pokaż cały PDF" escape-hatch link pointing at the full download URL.
+     * Nothing may overflow the viewport — no horizontal scroll is allowed on a phone.
+     */
+    @Test
+    void previewPanel_rendersForFileWithPages_withinMobile360Viewport() throws Exception {
+        // Seed a REAL 5-page PDF on disk -> the endpoint can render pages 1-3 to JPEG, so all
+        // three thumbnails return HTTP 200 (deterministic happy path; no fallback race).
+        Path realPdf = generateTempPdf(5);
+        long realSize = Files.size(realPdf);
+        String shaOfRealPdf = sha256Hex(realPdf);
+        jdbcTemplate.update(
+                "INSERT INTO score_files " +
+                "(composition_id, mime_type, size_bytes, sha256, storage_path, original_name, page_count, created_at) " +
+                "VALUES (?, 'application/pdf', ?, ?, ?, 'polka-glowna.pdf', 5, CURRENT_TIMESTAMP)",
+                compositionId,
+                realSize,
+                shaOfRealPdf,
+                realPdf.toString());
+
+        driver.manage().window().setSize(new Dimension(360, 800));
+
+        loginAndNavigateTo("/bands/1/compositions");
+        driver.get(baseUrl() + "/bands/1/compositions/" + compositionId);
+        WebDriverWait wait = new WebDriverWait(driver, Duration.ofSeconds(20));
+        wait.until(ExpectedConditions.presenceOfElementLocated(By.id("composition-detail")));
+
+        // The per-file preview panel is rendered (pageCount > 0) inside the file row.
+        WebElement preview = wait.until(ExpectedConditions.elementToBeClickable(
+                By.cssSelector(".file-preview")));
+        assertThat(preview).as("header preview panel (.file-preview)").isNotNull();
+        String title = preview.findElement(By.tagName("small")).getText();
+        assertThat(title).describedAs("preview cap label mentions the page range")
+                .containsIgnoringCase("podgląd stron");
+
+        // Deterministic render proof (AC): min(pageCount, 3) = 3 thumbnail cells. The actual
+        // JPEG-ness of the endpoint is proven end-to-end elsewhere (ScoreFileThumbRestControllerTest
+        // asserts FF D8 FF for a valid multi-page PDF), so here we pin stable DOM, not image
+        // decode timing: each cell keeps its <img class="file-thumb"> with the per-page contract
+        // and has an (initially hidden) "Brak podgląd" fallback. Because the seed points at a
+        // REAL 5-page PDF, /thumb returns 200 and the graceful-degradation branch never fires —
+        // no async race, deterministic on any machine.
+        List<WebElement> cells = preview.findElements(By.cssSelector(".preview-grid .thumb-cell"));
+        assertThat(cells).as("thumbnail cells for pages 1-3").hasSize(3);
+        for (int page = 1; page <= 3; page++) {
+            WebElement img = cells.get(page - 1).findElement(By.cssSelector("img.file-thumb"));
+            assertThat(img.getAttribute("src"))
+                    .as("thumbnail %d requests the /thumb endpoint at width=400", page)
+                    .endsWith("/thumb?page=" + page + "&width=400");
+        }
+        for (WebElement cell : cells) {
+            WebElement fb = cell.findElement(By.cssSelector(".thumb-fallback"));
+            assertThat(fb).as("'Brak podgląd' fallback present in each cell").isNotNull();
+            // Native [hidden] attribute on first paint -> the label is hidden, not the cell.
+            assertThat(fb.isDisplayed()).as("fallback label hidden on successful render").isFalse();
+        }
+        // The thumb src URLs must carry the per-page endpoint contract.
+        List<WebElement> thumbs = preview.findElements(By.cssSelector(".preview-grid .file-thumb"));
+        assertThat(thumbs.get(2).getAttribute("src")).endsWith("/thumb?page=3&width=400").withFailMessage(
+                "third thumbnail must request page 3 at width 400");
+
+        // The escape hatch: "Pokaż cały PDF" -> full download endpoint, new tab.
+        WebElement fullPdf = preview.findElement(By.cssSelector(".show-full-pdf-link"));
+        assertThat(fullPdf.getText()).containsIgnoringCase("pokaż cały pdf");
+        assertThat(fullPdf.getAttribute("target")).isEqualTo("_blank");
+        String href = fullPdf.getAttribute("href");
+        assertThat(href).describedAs("full-PDF link must hit the US-2.4 download endpoint")
+                .contains("/bands/1/compositions/" + compositionId + "/files/")
+                .doesNotContain("/thumb");
+
+        // Mobile usability (AC step 4): the acceptance criterion is that a 360-px mobile
+        // viewport shows the preview without horizontal page scroll. Assert on LAYOUT
+        // geometry (offsetWidth — unaffected by any pan/scroll) rather than getRect().
+        Object pageOverflowPx = ((org.openqa.selenium.JavascriptExecutor) driver).executeScript(
+                "var d = document.documentElement;" +
+                "return d.scrollWidth - d.clientWidth;");
+        int overflowPx = ((Number) pageOverflowPx).intValue();
+        assertThat(overflowPx).as("no horizontal page overflow at a 360 px viewport")
+                .isEqualTo(0);
+
+        // The preview panel fits its parent section in layout width (panel is block content,
+        // so offsetWidth caps to the content box), and every thumbnail cell fits the panel.
+        WebElement section = preview.findElement(By.xpath("ancestor::section"));
+        int previewW = preview.getSize().getWidth();
+        int sectionW = section.getSize().getWidth();
+        assertThat(previewW).as("preview panel width <= section width").isLessThanOrEqualTo(sectionW);
+        int cellMaxW = 0;
+        for (WebElement cell : preview.findElements(By.cssSelector(".preview-grid > *"))) {
+            cellMaxW = Math.max(cellMaxW, cell.getSize().getWidth());
+        }
+        assertThat(previewW).as("at least one thumbnail cell renders at sane mobile width")
+                .isGreaterThanOrEqualTo(60);
+        assertThat(cellMaxW).as("widest thumbnail cell <= panel width").isLessThanOrEqualTo(previewW);
+
+        driver.manage().window().setSize(new Dimension(1280, 900));
+    }
+
     // ---- helpers --------------------------------------------------------------------
 
     private Path generateTempPdf(int pages) throws Exception {
@@ -149,6 +252,17 @@ class ScoreFileUploadUiTest extends UiTestBase {
         doc.save(tmp.toFile());
         doc.close();
         return tmp;
+    }
+
+    /** Lower-case hex SHA-256 of the file's content — used to seed the score_files row. */
+    private static String sha256Hex(Path file) throws Exception {
+        byte[] digest = java.security.MessageDigest.getInstance("SHA-256")
+                .digest(Files.readAllBytes(file));
+        StringBuilder out = new StringBuilder(digest.length * 2);
+        for (byte b : digest) {
+            out.append(Integer.toHexString((b >> 4) & 0xF)).append(Integer.toHexString(b & 0xF));
+        }
+        return out.toString();
     }
 
     /**
