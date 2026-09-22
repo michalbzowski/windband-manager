@@ -213,6 +213,7 @@
      * #compositions-content does not drop the binding.
      */
     var state = { phase: null, fileId: null, runnerRef: null, pollTimer: null };
+    var startBtn = document.getElementById('analyze-start-btn');
 
     function openAnalyzeModal() {
         var dlg = document.getElementById('analyze-dialog');
@@ -684,8 +685,8 @@
         <tbody>
             <tr th:if="${parts == null or parts.size() == 0}" class="empty-row"><td colspan="6">Brak oznaczonych głosów — dodaj poniżej.</td></tr>
             <tr th:each="p : ${parts}"
-                th:attr="data-part-id=${p.id}, data-instrument-name=${p.instrument != null ? p.instrument.name : ''}, data-role=${p.instrumentRole != null and !#strings.isEmpty(p.instrumentRole) ? p.instrumentRole : '—'}, data-page-from=${p.pageFrom}, data-page-to=${p.pageTo}">
-                <td th:text="${p.instrument != null ? p.instrument.name : ''}">Instrument</td>
+                th:attr="data-part-id=${p.id}, data-instrument-name=${p.instrumentName != null ? p.instrumentName : ''}, data-role=${p.instrumentRole != null and !#strings.isEmpty(p.instrumentRole) ? p.instrumentRole : '—'}, data-page-from=${p.pageFrom}, data-page-to=${p.pageTo}">
+                <td th:text="${p.instrumentName != null ? p.instrumentName : ''}">Instrument</td>
                 <td th:text="${p.instrumentRole != null and !#strings.isEmpty(p.instrumentRole) ? p.instrumentRole : '—'}">Rola</td>
                 <td><span th:if="${p.scoreFileName}"><span th:text="${p.scoreFileName}" class="text-secondary">Polonez (głosy).pdf</span></span><span th:unless="${p.scoreFileName}" class="text-muted">(dowolny plik)</span></td>
                 <td th:text="${p.pageFrom}">1</td>

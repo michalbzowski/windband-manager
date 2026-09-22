@@ -2,6 +2,7 @@ package pl.michalbzowski.windband.application.query.composition;
 
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import pl.michalbzowski.windband.application.dto.composition.CompositionInstrumentDto;
 import pl.michalbzowski.windband.domain.composition.CompositionInstrument;
 import pl.michalbzowski.windband.domain.composition.CompositionInstrumentRepository;
 import pl.michalbzowski.windband.domain.composition.CompositionRepository;
@@ -62,31 +63,56 @@ public class ScoreFileListQueryService {
      * + page range) for a given composition, scoped to the band. Mirrors {@link #listByComposition}
      * scope semantics: throws {@link CompositionNotFoundException} when the composition
      * does not belong to the caller's band, refuses on cross-band enumeration.
+     *
+     * <p><b>Shape C (DTO projection):</b> returns {@link CompositionInstrumentDto}s, never raw JPA
+     * entities. The {@code detail.html#existing-parts} table renders {@code p.scoreFileName} and
+     * {@code p.instrumentName}, which exist only on the DTO; projecting entities made Thymeleaf
+     * fail mid-row (EL1008E on line 690) and cut the response off before the "Dodaj głos" button
+     * and the layout footer-scripts — every bug after the failing cell was a symptom of the same
+     * error. Lazy {@code instrument} / {@code scoreFile} associations are resolved INSIDE this
+     * {@code @Transactional(readOnly = true)} boundary, so only scalars survive into the template.
      */
     @Transactional(readOnly = true)
-    public List<CompositionInstrument> partsFor(Long compositionId, Long bandId) {
+    public List<CompositionInstrumentDto> partsFor(Long compositionId, Long bandId) {
         Objects.requireNonNull(compositionId, "compositionId");
         Objects.requireNonNull(bandId, "bandId");
         var composition = compositionRepository.findByIdAndBandId(compositionId, bandId)
                 .orElseThrow(() -> new CompositionNotFoundException(compositionId));
         var parts = compositionInstrumentRepository.findAllByComposition(composition);
-        // p.instrument is a lazy ManyToOne proxy; resolve it inside this transaction so
-        // the Thymeleaf template (rendered outside any transaction) can read
-        // p.instrument.name without triggering LazyInitializationException. Reading the
-        // name triggers the proxy fetch AND clears the SpotBugs
-        // RV_RETURN_VALUE_IGNORED_NO_SIDE_EFFECT false-positive, because the return
-        // value is now inspected for null (a real observable effect).
-        for (var part : parts) {
-            String name = part.getInstrument().getName();
-            if (name == null) {
-                // Defensive: instrument exists but has no name — surface now rather than
-                // in template rendering where it would NRE.
-                throw new IllegalStateException(
-                        "CompositionInstrument with id=" + part.getId()
-                                + " has an instrument without a name");
+
+        // Resolve the ScoreFile name per id in the SAME open session — part.getScoreFile() is a
+        // lazy proxy; dereferencing it here (while attached) is what makes it safe for rendering.
+        java.util.Map<Long, String> fileNamesById = new java.util.HashMap<>();
+        for (ScoreFile file : listByComposition(compositionId, bandId)) {
+            if (file.getId() != null && file.getOriginalName() != null) {
+                fileNamesById.put(file.getId(), file.getOriginalName());
             }
         }
-        return parts;
+
+        return parts.stream()
+                .map(part -> toPartDto(part, fileNamesById))
+                .toList();
+    }
+
+    private CompositionInstrumentDto toPartDto(CompositionInstrument part,
+                                                java.util.Map<Long, String> fileNamesById) {
+        String instrumentName = part.getInstrument() != null ? part.getInstrument().getName() : null;
+        Long scoreFileId = part.getScoreFile() == null ? null : part.getScoreFile().getId();
+        String scoreFileName = (scoreFileId == null) ? null : fileNamesById.get(scoreFileId);
+        return new CompositionInstrumentDto(
+                part.getId(),
+                part.getComposition() != null ? part.getComposition().getId() : null,
+                part.getInstrumentRole(),
+                instrumentName,
+                part.getPageFrom(),
+                part.getPageTo(),
+                part.getFileRef(),
+                scoreFileId,
+                scoreFileName,
+                part.getSource(),
+                part.getConfidenceScore(),
+                part.getVerifiedBy(),
+                part.getVerifiedAt());
     }
 
     /** 404 mirror of the repository contract (a file that is not on the disk or does not belong to the comp). */
