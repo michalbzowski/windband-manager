@@ -2927,9 +2927,12 @@ body.filter-pinned #uber-filter-container select:focus {
 /* File rows in #score-files-list */
 #score-files-list { list-style: none; padding: 0.5rem 0; margin: 0 0 0.75rem; }
 
+/* Responsive file row — flex + wrap so it degrades gracefully at narrow viewports
+   (mobile ≥360px requirement, US-7.9 step 4). Desktop keeps name+meta on one line;
+   mobile (≤640px) stacks name / meta / actions full-width. */
 .file-list-row {
-    display: grid;
-    grid-template-columns: 1.25rem minmax(8rem, 1fr) auto auto;
+    display: flex;
+    flex-wrap: wrap;
     align-items: center;
     gap: 0.25rem 0.75rem;
     padding: 0.45rem 0.25rem;
@@ -2938,6 +2941,27 @@ body.filter-pinned #uber-filter-container select:focus {
 
 .file-list-row:not(:first-child) { margin-top: 0; }
 .file-list-row:last-child { border-bottom: none; }
+
+@media (max-width: 640px) {
+    .file-list-row .file-name,
+    .file-list-row .file-meta,
+    .file-list-row .file-actions { flex-basis: 100%; max-width: 100%;}
+}
+
+/* Preview panel (US-7.9) must never force horizontal page scroll — cap it to the
+   available width regardless of the intrinsic size of rendered thumbnail images,
+   and keep it on its own line under the file-meta/actions row (flex-basis 100%). */
+.file-preview {
+    flex: 1 1 100%;
+    min-width: 0;
+    max-width: 100%;
+    box-sizing: border-box;
+    overflow-x: hidden;
+}
+
+.file-preview .preview-grid { min-width: 0; }
+.file-preview .thumb-cell { min-width: 0; }
+.file-preview .file-thumb { max-width: 100%; height: auto; }
 
 .file-icon { font-size: 1.1rem; line-height: 1; }
 

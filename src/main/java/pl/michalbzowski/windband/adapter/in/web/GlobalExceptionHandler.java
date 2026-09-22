@@ -75,6 +75,18 @@ public class GlobalExceptionHandler {
         return ResponseEntity.status(HttpStatus.GONE).body(errorBody(ex.getMessage()));
     }
 
+    @ExceptionHandler(pl.michalbzowski.windband.application.query.composition.ScoreFileThumbQueryService.UnknownPageException.class)
+    public ResponseEntity<Map<String, Object>> handleThumbUnknownPage(
+            pl.michalbzowski.windband.application.query.composition.ScoreFileThumbQueryService.UnknownPageException ex) {
+        return ResponseEntity.status(HttpStatus.NOT_FOUND).body(errorBody(ex.getMessage()));
+    }
+
+    @ExceptionHandler(pl.michalbzowski.windband.application.query.composition.ScoreFileThumbQueryService.NotAPdfException.class)
+    public ResponseEntity<Map<String, Object>> handleThumbNotAPdf(
+            pl.michalbzowski.windband.application.query.composition.ScoreFileThumbQueryService.NotAPdfException ex) {
+        return ResponseEntity.status(HttpStatus.UNPROCESSABLE_ENTITY).body(errorBody(ex.getMessage()));
+    }
+
     @ExceptionHandler(pl.michalbzowski.windband.application.command.scoreanalysis.AiAnalysisRunner.RunnerNotConfiguredException.class)
     public ResponseEntity<Map<String, Object>> handleAiRunnerNotConfigured(
             pl.michalbzowski.windband.application.command.scoreanalysis.AiAnalysisRunner.RunnerNotConfiguredException ex) {

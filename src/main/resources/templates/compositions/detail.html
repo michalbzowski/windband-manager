@@ -417,7 +417,7 @@
             <!-- Filename — primary affordance, ellipsized on overflow (see .file-name { text-overflow: ellipsis; } in app.css) -->
             <a class="file-name" target="_blank" rel="noopener"
                th:href="@{/bands/{bandId}/compositions/{compId}/files/{fileId}(bandId=${bandId}, compId=${composition.id}, fileId=${f.id})}"
-               th:aria-label="Otwórz PDF ${f.originalName} w nowej karcie"
+               th:aria-label="'Otwórz PDF ' + ${f.originalName} + ' w nowej karcie'"
                th:text="${f.originalName}">placeholder.pdf</a>
 
 
@@ -428,29 +428,58 @@
                 <span th:if="${f.createdAt != null}" class="meta-date"> · <span th:text="${#temporals.format(f.createdAt, 'dd.MM.yyyy')}"></span></span>
             </span>
 
-            <!-- Actions — Otwórz (primary), Pobierz (download), Usuń (hidden; no backend endpoint yet). -->
+            <!-- Actions — Otwórz (primary), Pobierz (download). -->
             <span class="file-actions" role="toolbar" aria-label="Akcje pliku">
                 <a class="btn secondary" target="_blank" rel="noopener"
                    th:href="@{/bands/{bandId}/compositions/{compId}/files/{fileId}(bandId=${bandId}, compId=${composition.id}, fileId=${f.id})}"
-                   th:title="Otwórz ${f.originalName} w nowej karcie">📄 Otwórz</a>
+                   th:title="'Otwórz ' + ${f.originalName} + ' w nowej karcie'">📄 Otwórz</a>
                 <a class="btn secondary" download
                    th:href="@{/bands/{bandId}/compositions/{compId}/files/{fileId}(bandId=${bandId}, compId=${composition.id}, fileId=${f.id})}"
-                   th:title="Pobierz ${f.originalName} na dysk">⬇️</a>
+                   th:title="'Pobierz ' + ${f.originalName} + ' na dysk'">⬇️</a>
             </span>
-        </li>
-            <!-- US-7.9 header preview: show first 3 pages thumbnails for PDFs with pageCount -->
+
+            <!-- US-7.9 header preview — must be scoped to the same th:each iteration it describes,
+                 so it sits INSIDE this <li>; each cell degrades to "Brak podglądu" if its thumb
+                 fails to render and the panel ends with the "Pokaż cały PDF" escape hatch (AC). -->
             <div th:if="${f != null and f.pageCount != null and f.pageCount > 0}" class="file-preview" role="group" aria-label="Podgląd nagłówków" style="margin-top:.5rem;">
                 <small class="text-muted" th:text="'Podgląd stron 1–'+${(f.pageCount &lt; 3) ? f.pageCount : 3}">Podgląd</small>
                 <div class="preview-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(80px,1fr));gap:.5rem;margin-top:.25rem;">
-                    <img th:each="p : ${#numbers.sequence(1, (f.pageCount &lt; 3) ? f.pageCount : 3)}"
-                         th:src="@{/bands/{bandId}/compositions/{compId}/files/{fileId}/thumb(page=${p},width=400)(bandId=${bandId},compId=${composition.id},fileId=${f.id})}"
-                         th:alt="'Strona ' + ${p} + ' pliku ' + ${f.originalName}"
-                         loading="lazy"
-                         style="width:100%;height:auto;border:1px solid var(--pico-muted-border-color);border-radius:4px;"/>
+                    <span th:each="p : ${#numbers.sequence(1, (f.pageCount &lt; 3) ? f.pageCount : 3)}" class="thumb-cell">
+                        <img class="file-thumb"
+                             th:src="@{/bands/{bandId}/compositions/{compId}/files/{fileId}/thumb(bandId=${bandId}, compId=${composition.id}, fileId=${f.id}, page=${p}, width=400)}"
+                             th:alt="'Strona ' + ${p} + ' pliku ' + ${f.originalName}"
+                             loading="lazy"
+                             style="width:100%;height:auto;border:1px solid var(--pico-muted-border-color);border-radius:4px;"/>
+                        <span class="thumb-fallback" hidden role="status"
+                              style="min-height:60px;font-size:.75rem;color:var(--pico-muted-color);text-align:center;padding:.25rem;">Brak podglądu</span>
+                    </span>
                 </div>
+                <a class="btn secondary show-full-pdf-link" target="_blank" rel="noopener"
+                   style="margin-top:.5rem;display:inline-block;"
+                   th:href="@{/bands/{bandId}/compositions/{compId}/files/{fileId}(bandId=${bandId},compId=${composition.id},fileId=${f.id})}"
+                   th:title="'Otwórz pełny plik ' + ${f.originalName} + ' w nowej karcie (natywny odtwarzacz PDF)'">📄 Pokaż cały PDF</a>
             </div>
+        </li>
     </ul>
 </section>
+
+<script>
+// US-7.9 step 3 - graceful per-thumbnail fallback. When a rendered thumb fails to load
+// (render error, oversized page, transient failure), hide the broken <img> and reveal
+// its sibling "Brak podglądu" cell instead of leaving a broken-image icon behind.
+(function () {
+    'use strict';
+    document.querySelectorAll('.preview-grid .file-thumb').forEach(function (img) {
+        img.addEventListener('error', function () {
+            var cell = img.closest ? img.closest('.thumb-cell') : null;
+            if (!cell) return;
+            img.remove();
+            var fb = cell.querySelector('.thumb-fallback');
+            if (fb) { fb.removeAttribute('hidden'); }
+        }, { once: true });
+    });
+})();
+</script>
 
 <script th:inline="javascript">
 (function () {
@@ -694,7 +723,7 @@
                 <label>Plik nut:
                     <select name="scoreFileId" id="part-score-file-picker" class="form-element-secondary">
                         <option value="">— wybierz plik (nieobowiązkowo) —</option>
-                        <th:block th:each="sf : ${scoreFiles}"><option th:value="${sf.fileId}" th:text="${sf.originalName + ' • ' + sf.pageCount + ' stron'}"/></th:block>
+                        <th:block th:each="sf : ${scoreFiles}"><option th:value="${sf.id}" th:text="${sf.originalName + ' • ' + (sf.pageCount != null ? sf.pageCount.toString() + ' stron' : '—')}"/></th:block>
                     </select>
                 </label>
             </div>
