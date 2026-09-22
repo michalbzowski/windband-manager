@@ -33,24 +33,33 @@
      below via window.openLifecycleDialog(action); the form's action is rewritten to the
      matching endpoint (archive | restore | delete). -->
 <div class="composition-status-actions">
-    <button type="button" id="archive-composition-btn" class="secondary"
-            th:if="${composition.status.name() != 'ARCHIVED'}"
-            onclick="openLifecycleDialog('archive')">📦 Archiwizuj</button>
-    <button type="button" id="restore-composition-btn" class="primary"
-            th:if="${composition.status.name() == 'ARCHIVED'}"
-            onclick="openLifecycleDialog('restore')">↩️ Przywróć</button>
-
-    <button type="button" id="delete-composition-btn" class="secondary danger"
-            onclick="openLifecycleDialog('delete')">🗑 Usuń bezpowrotnie</button>
-
     <!-- US-4.3 — "Analizuj utwór" opens the AI analysis modal (file picker + progress panel).
          Only visible when this composition actually has at least one uploaded score file;
          otherwise the user would see a disabled submit button, which is worse than hiding
          the entry entirely. The dropdown inside the modal lists the same files this
-         condition guards over — single source of truth, no second fetch. -->
+         condition guards over — single source of truth, no second fetch.
+         MOCKUP: primary next-step action sits flush left (the "do something now" affordance),
+         separated from the lifecycle controls on the right. -->
     <button type="button" id="analyze-composition-btn" class="primary"
             th:if="${scoreFiles != null and !scoreFiles.isEmpty()}"
             onclick="openAnalyzeModal()">🎼 Analizuj utwór</button>
+
+    <!-- Status cluster: archive / restore (status-dependent) and the always-visible
+         hard-delete red button. All three open the same shared <dialog id="lifecycle-dialog">
+         below via window.openLifecycleDialog(action); the form's action is rewritten to the
+         matching endpoint (archive | restore | delete). Grouped on the right edge as in the
+         mockup — the pinned IDs and click behaviour are unchanged, only the DOM nesting. -->
+    <span class="status-cluster" role="group" aria-label="Zmiana statusu utworu">
+        <button type="button" id="archive-composition-btn" class="secondary"
+                th:if="${composition.status.name() != 'ARCHIVED'}"
+                onclick="openLifecycleDialog('archive')">📦 Archiwizuj</button>
+        <button type="button" id="restore-composition-btn" class="primary"
+                th:if="${composition.status.name() == 'ARCHIVED'}"
+                onclick="openLifecycleDialog('restore')">↩️ Przywróć</button>
+
+        <button type="button" id="delete-composition-btn" class="secondary danger"
+                onclick="openLifecycleDialog('delete')">🗑 Usuń bezpowrotnie</button>
+    </span>
 </div>
 
 </article>
@@ -213,6 +222,7 @@
      * #compositions-content does not drop the binding.
      */
     var state = { phase: null, fileId: null, runnerRef: null, pollTimer: null };
+    var startBtn = document.getElementById('analyze-start-btn');
 
     function openAnalyzeModal() {
         var dlg = document.getElementById('analyze-dialog');
@@ -421,21 +431,29 @@
                th:text="${f.originalName}">placeholder.pdf</a>
 
 
-            <!-- Meta: size · pages · date — separate spans each guarded by th:if for missing fields. -->
+            <!-- Meta: size · pages · date — separate spans each guarded by th:if for missing fields.
+                 Size is human-readable via ByteSizeFormatter (mockup: "1.4 MB", not "1431911 B"). -->
             <span class="file-meta">
-                <span th:text="${#numbers.formatDecimal(f.sizeBytes, 1, 'COMMA', 0, 'POINT')} + ' B'">1431911 B</span>
+                <span th:text="${T(pl.michalbzowski.windband.util.ByteSizeFormatter).human(f.sizeBytes)}">1.4 MB</span>
                 <span th:if="${f.pageCount != null}" class="meta-pages"> · <span th:text="${f.pageCount}"></span> stron</span>
                 <span th:if="${f.createdAt != null}" class="meta-date"> · <span th:text="${#temporals.format(f.createdAt, 'dd.MM.yyyy')}"></span></span>
             </span>
 
-            <!-- Actions — Otwórz (primary), Pobierz (download). -->
+            <!-- Actions — Otwórz (primary), Pobierz (download), Usuń (danger; mockup: Otwórz / Pobierz / Usuń).
+                 Usuń uses a plain DELETE to the existing US-2.5 endpoint; the confirm() gate and
+                 event delegation are wired in the script at the bottom of this file, so the button
+                 itself stays static markup (works on HTMX-swamped rows too — no per-row bindings). -->
             <span class="file-actions" role="toolbar" aria-label="Akcje pliku">
-                <a class="btn secondary" target="_blank" rel="noopener"
+                <a class="secondary" target="_blank" rel="noopener"
                    th:href="@{/bands/{bandId}/compositions/{compId}/files/{fileId}(bandId=${bandId}, compId=${composition.id}, fileId=${f.id})}"
                    th:title="'Otwórz ' + ${f.originalName} + ' w nowej karcie'">📄 Otwórz</a>
-                <a class="btn secondary" download
+                <a class="secondary" download
                    th:href="@{/bands/{bandId}/compositions/{compId}/files/{fileId}(bandId=${bandId}, compId=${composition.id}, fileId=${f.id})}"
                    th:title="'Pobierz ' + ${f.originalName} + ' na dysk'">⬇️</a>
+                <button type="button" class="secondary danger file-delete-btn"
+                        th:data-url="@{/bands/{bandId}/compositions/{compId}/files/{fileId}(bandId=${bandId}, compId=${composition.id}, fileId=${f.id})}"
+                        th:data-file-name="${f.originalName}"
+                        th:title="'Usuń ' + ${f.originalName} + ' z utworu'">🗑 Usuń</button>
             </span>
 
             <!-- US-7.9 header preview — must be scoped to the same th:each iteration it describes,
@@ -634,14 +652,76 @@
         }
         if (emptyRow) { list.removeChild(emptyRow); }
 
+        // MOCKUP parity with the server-rendered rows: name (ellipsized link) + meta
+        // (human size · pages · date) + "Otwórz / Pobierz / Usuń" — the delegated
+        // document-level .file-delete-btn handler (bottom of this file) wires the new
+        // button automatically because it reads everything from data-* attributes.
+        var name = dto.originalName || 'plik';
+        var url  = '/bands/' + bandId + '/compositions/' + compId + '/files/' + dto.fileId;
+
         var li = document.createElement('li');
+        li.className = 'file-list-row';
+
+        var icon = document.createElement('span');
+        icon.className = 'file-icon';
+        icon.setAttribute('aria-hidden', 'true');
+        icon.textContent = '📄';
+        li.appendChild(icon);
+
         var a  = document.createElement('a');
-        a.href  = '/bands/' + bandId + '/compositions/' + compId + '/files/' + dto.fileId;
+        a.href = url;
         a.target = '_blank';
-        a.rel    = 'noopener';
-        var pageLabel = dto.pageCount != null ? ' — ' + dto.pageCount + ' stron' : '';
-        a.textContent = (dto.originalName || 'plik') + ' (' + formatBytes(dto.sizeBytes) + ')' + pageLabel;
+        a.rel = 'noopener';
+        a.className = 'file-name';
+        a.title = name;
+        a.textContent = name;
         li.appendChild(a);
+
+        var meta = document.createElement('span');
+        meta.className = 'file-meta';
+        var sizeSpan = document.createElement('span');
+        sizeSpan.textContent = formatBytes(dto.sizeBytes || 0);
+        meta.appendChild(sizeSpan);
+        if (dto.pageCount != null) {
+            var pages = document.createElement('span');
+            pages.className = 'meta-pages';
+            pages.textContent = ' · ' + dto.pageCount + ' stron';
+            meta.appendChild(pages);
+        }
+        li.appendChild(meta);
+
+        var actions = document.createElement('span');
+        actions.className = 'file-actions';
+        actions.setAttribute('role', 'toolbar');
+        actions.setAttribute('aria-label', 'Akcje pliku');
+
+        var open = document.createElement('a');
+        open.href = url;
+        open.target = '_blank';
+        open.rel = 'noopener';
+        open.className = 'secondary';
+        open.title = 'Otwórz ' + name + ' w nowej karcie';
+        open.textContent = '📄 Otwórz';
+        actions.appendChild(open);
+
+        var dl = document.createElement('a');
+        dl.href = url;
+        dl.setAttribute('download', '');
+        dl.className = 'secondary';
+        dl.title = 'Pobierz ' + name + ' na dysk';
+        dl.textContent = '⬇️';
+        actions.appendChild(dl);
+
+        var del = document.createElement('button');
+        del.type = 'button';
+        del.className = 'secondary danger file-delete-btn';
+        del.setAttribute('data-url', url);
+        del.setAttribute('data-file-name', name);
+        del.title = 'Usuń ' + name + ' z utworu';
+        del.textContent = '🗑 Usuń';
+        actions.appendChild(del);
+
+        li.appendChild(actions);
         list.insertBefore(li, list.firstChild);
     }
 
@@ -680,16 +760,17 @@
     </header>
 
     <table id="existing-parts" class="data-table">
-        <thead><tr><th>Instrument</th><th>Rola</th><th>Plik nut</th><th>Strona od</th><th>Strona do</th><th>Akcje</th></tr></thead>
+        <!-- MOCKUP: "Strona od / Strona do" merged into ONE range column ("Strony 1–22"),
+             rendered by CompositionInstrumentDto.pageRange() so bound/legacy rows share the rule. -->
+        <thead><tr><th>Instrument</th><th>Rola</th><th>Plik nut</th><th>Strony</th><th>Akcje</th></tr></thead>
         <tbody>
-            <tr th:if="${parts == null or parts.size() == 0}" class="empty-row"><td colspan="6">Brak oznaczonych głosów — dodaj poniżej.</td></tr>
+            <tr th:if="${parts == null or parts.size() == 0}" class="empty-row"><td colspan="5">Brak oznaczonych głosów — dodaj poniżej.</td></tr>
             <tr th:each="p : ${parts}"
-                th:attr="data-part-id=${p.id}, data-instrument-name=${p.instrument != null ? p.instrument.name : ''}, data-role=${p.instrumentRole != null and !#strings.isEmpty(p.instrumentRole) ? p.instrumentRole : '—'}, data-page-from=${p.pageFrom}, data-page-to=${p.pageTo}">
-                <td th:text="${p.instrument != null ? p.instrument.name : ''}">Instrument</td>
+                th:attr="data-part-id=${p.id}, data-instrument-name=${p.instrumentName != null ? p.instrumentName : ''}, data-role=${p.instrumentRole != null and !#strings.isEmpty(p.instrumentRole) ? p.instrumentRole : '—'}, data-page-from=${p.pageFrom}, data-page-to=${p.pageTo}">
+                <td th:text="${p.instrumentName != null ? p.instrumentName : ''}">Instrument</td>
                 <td th:text="${p.instrumentRole != null and !#strings.isEmpty(p.instrumentRole) ? p.instrumentRole : '—'}">Rola</td>
                 <td><span th:if="${p.scoreFileName}"><span th:text="${p.scoreFileName}" class="text-secondary">Polonez (głosy).pdf</span></span><span th:unless="${p.scoreFileName}" class="text-muted">(dowolny plik)</span></td>
-                <td th:text="${p.pageFrom}">1</td>
-                <td th:text="${p.pageTo}">2</td>
+                <td th:text="${p.pageRange()}">1–5</td>
                 <td><button type="button" class="secondary part-share-btn"
                         title="Udostępnij ten głos (link do PDF-a + opcjonalnie e-mail do wielu odbiorców)">📤 Udostępnij</button></td>
             </tr>
@@ -1015,6 +1096,60 @@
         });
     });
 
+})();
+</script>
+
+<!-- MOCKUP: per-file "Usuń" action. The endpoint already exists (US-2.5, DELETE .../files/{fileId})
+     and is tested; only the UI affordance was missing. Document-level delegation means the handler
+     survives HTMX fragment swaps of #compositions-content (no per-row rebinding to forget), and the
+     button's data-url keeps the wiring stateless — safe even on rows appended client-side. -->
+<script>
+(function () {
+    'use strict';
+
+    function restoreEmptyRow() {
+        var list = document.getElementById('score-files-list');
+        if (!list) { return; }
+        var realRows = Array.prototype.filter.call(list.children, function (el) {
+            return el.tagName === 'LI' && !el.classList.contains('empty-row');
+        });
+        if (realRows.length > 0) { return; }
+        if (!list.querySelector('.empty-row')) {
+            var empty = document.createElement('li');
+            empty.className = 'empty-row';
+            empty.textContent = 'Brak wgranych plików. Wgrany PDF odblokuje analize i podział na głosy.';
+            list.appendChild(empty);
+        }
+    }
+
+    function deleteFile(btn) {
+        var url = btn.getAttribute('data-url');
+        if (!url || btn.disabled) { return; }
+        var name = btn.getAttribute('data-file-name') || 'pliku';
+        var msg = 'Usunąć plik „' + name + '”? Tej operacji nie można cofnąć — plik zostanie ' +
+                  'usunięty również z przypisań stron w sekcji „Głosy w nutach”.';
+        if (!window.confirm(msg)) { return; }
+
+        btn.disabled = true;
+        // fetchWithToast (windband-utils.js) adds the XSRF header, shows a success/error toast with
+        // the HTTP status on failure and re-throws after the catch-chain renders nothing new.
+        fetchWithToast(url, { method: 'DELETE', toastMessage: 'Plik usunięty' })
+            .then(function (resp) {
+                if (!resp.ok) { return; }
+                var row = btn.closest('li');
+                if (row && row.parentNode) { row.parentNode.removeChild(row); }
+                restoreEmptyRow();
+            })
+            .catch(function () { /* network/transport error — toast already shown */ })
+            .then(function () { btn.disabled = false; });
+    }
+
+    document.addEventListener('click', function (event) {
+        var target = event.target;
+        if (!target || typeof target.closest !== 'function') { return; }
+        var btn = target.closest('.file-delete-btn');
+        if (btn) { deleteFile(btn); }
+    });
 })();
 </script>
 

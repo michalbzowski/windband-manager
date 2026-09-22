@@ -25,4 +25,19 @@ public record CompositionInstrumentDto(
         Double confidenceScore,
         String verifiedBy,
         Instant verifiedAt) {
+
+    /**
+     * US- detail-page cleanup — mockup shows the page range as ONE column ("Strony 1–22")
+     * instead of two bare integers. Kept on the DTO (not in the template) so the rendering rule
+     * is unit-testable and both bound/legacy rows share it; a single page renders "7", not "7–7".
+     */
+    public String pageRange() {
+        if (pageFrom == null || pageTo == null) {
+            return "—";
+        }
+        if (pageFrom.equals(pageTo)) {
+            return String.valueOf(pageFrom);
+        }
+        return pageFrom + "–" + pageTo;
+    }
 }
