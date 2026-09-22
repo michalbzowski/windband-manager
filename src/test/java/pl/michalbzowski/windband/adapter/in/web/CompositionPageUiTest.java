@@ -40,6 +40,10 @@ class CompositionPageUiTest extends UiTestBase {
         driver.get(baseUrl() + "/bands/1/compositions/" + id);
         WebDriverWait wait = new WebDriverWait(driver, Duration.ofSeconds(10));
 
+        // Ensure the detail page is rendered and the archive button is present before interacting.
+        wait.until(ExpectedConditions.presenceOfElementLocated(By.id("composition-detail")));
+        wait.until(ExpectedConditions.elementToBeClickable(By.id("archive-composition-btn")));
+
         // Click archive via the shared lifecycle dialog (the button's inline onclick
         // routes through the window.openLifecycleDialog helper defined in detail.html).
         driver.findElement(By.id("archive-composition-btn")).click();
@@ -345,6 +349,7 @@ class CompositionPageUiTest extends UiTestBase {
 
         // Expect a redirect back to the detail page (/bands/1/compositions/{id}).
         wait.until(ExpectedConditions.urlMatches(".*/bands/1/compositions/\\d+$"));
+        wait.until(ExpectedConditions.presenceOfElementLocated(By.id("composition-detail")));
         wait.until(ExpectedConditions.textToBePresentInElementLocated(
                 By.id("composition-detail"), "Polka Zaktualizowana UI"));
 
