@@ -3,7 +3,6 @@ package pl.michalbzowski.windband.adapter.out.persistence;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
-import pl.michalbzowski.windband.domain.composition.Composition;
 import pl.michalbzowski.windband.domain.composition.ScoreFile;
 
 import java.util.List;
@@ -21,11 +20,10 @@ import java.util.Optional;
  */
 public interface SpringDataScoreFileRepository extends JpaRepository<ScoreFile, Long> {
 
-    @Query("SELECT sf FROM ScoreFile sf JOIN FETCH sf.composition WHERE sf.composition = :composition ORDER BY sf.id DESC")
-    List<ScoreFile> findAllByComposition(@Param("composition") Composition composition);
+    @Query("SELECT sf FROM ScoreFile sf JOIN FETCH sf.composition WHERE sf.composition.id = :compositionId ORDER BY sf.id DESC")
+    List<ScoreFile> listAllByCompositionId(@Param("compositionId") Long compositionId);
 
-    @Query("SELECT sf FROM ScoreFile sf JOIN FETCH sf.composition WHERE sf.composition = :composition ORDER BY sf.id DESC LIMIT 1")
-    Optional<ScoreFile> findLatestByComposition(@Param("composition") Composition composition);
+    Optional<ScoreFile> findFirstByCompositionIdOrderByIdDesc(Long compositionId);
 
     boolean existsByCompositionId(Long compositionId);
 
