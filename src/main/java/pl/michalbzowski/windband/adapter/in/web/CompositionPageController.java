@@ -265,10 +265,11 @@ public class CompositionPageController {
         // uploaded score files (one must be picked before the analyze button enables).
         // Reading files() INSIDE the service transaction avoids LazyInitializationException on
         // render after Hibernate closes the session.
-        model.addAttribute("scoreFiles", scoreFileListQueryService.listByComposition(id, bandId));
+        var scoreFiles = scoreFileListQueryService.listByComposition(id, bandId);
+        model.addAttribute("scoreFiles", scoreFiles);
         // US-7.9 — max page count across this composition's score files, used to validate
         // the part-form's "strona do" field against the actual PDF bounds.
-        Integer serverMaxPageCount = scoreFileListQueryService.listByComposition(id, bandId)
+        Integer serverMaxPageCount = scoreFiles
                 .stream().map(ScoreFile::getPageCount).filter(Objects::nonNull).max(Integer::compareTo).orElse(null);
         model.addAttribute("serverMaxPageCount", serverMaxPageCount);
         var latest = analysisQueryService.latestFor(id, bandId);
