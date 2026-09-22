@@ -438,6 +438,17 @@
                    th:title="Pobierz ${f.originalName} na dysk">⬇️</a>
             </span>
         </li>
+            <!-- US-7.9 header preview: show first 3 pages thumbnails for PDFs with pageCount -->
+            <div th:if="${f.pageCount != null and f.pageCount > 0}" class="file-preview" role="group" aria-label="Podgląd nagłówków" style="margin-top:.5rem;">
+                <small class="text-muted" th:text="'Podgląd stron 1–'+${f.pageCount < 3 ? f.pageCount : 3}"'>Podgląd</small>
+                <div class="preview-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(80px,1fr));gap:.5rem;margin-top:.25rem;">
+                    <img th:each="p : ${#numbers.sequence(1, f.pageCount < 3 ? f.pageCount : 3)}"
+                         th:src="@{/bands/{bandId}/compositions/{compId}/files/{fileId}/thumb(page=${p},width=400)(bandId=${bandId},compId=${composition.id},fileId=${f.id})}"
+                         th:alt="'Strona '+ ${p} + ' pliku '+ ${f.originalName}"'
+                         loading="lazy"
+                         style="width:100%;height:auto;border:1px solid var(--pico-muted-border-color);border-radius:4px;"/>
+                </div>
+            </div>
     </ul>
 </section>
 
