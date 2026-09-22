@@ -6,6 +6,7 @@ import pl.michalbzowski.windband.domain.composition.ScoreFile;
 import pl.michalbzowski.windband.domain.composition.ScoreFileRepository;
 
 import java.util.List;
+import java.util.Objects;
 import java.util.Optional;
 
 /**
@@ -38,12 +39,22 @@ public class ScoreFileRepositoryAdapter implements ScoreFileRepository {
 
     @Override
     public List<ScoreFile> findAllByComposition(Composition composition) {
-        return springData.findAllByComposition(composition);
+        Objects.requireNonNull(composition, "composition");
+        Long id = composition.getId();
+        if (id == null) {
+            throw new IllegalArgumentException("composition must be managed (non-null id) before calling findAllByComposition");
+        }
+        return springData.listAllByCompositionId(id);
     }
 
     @Override
     public Optional<ScoreFile> findLatestByComposition(Composition composition) {
-        return springData.findLatestByComposition(composition);
+        Objects.requireNonNull(composition, "composition");
+        Long id = composition.getId();
+        if (id == null) {
+            throw new IllegalArgumentException("composition must be managed (non-null id) before calling findLatestByComposition");
+        }
+        return springData.findFirstByCompositionIdOrderByIdDesc(id);
     }
 
     @Override
