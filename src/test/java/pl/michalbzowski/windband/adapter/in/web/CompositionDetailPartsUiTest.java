@@ -129,6 +129,18 @@ class CompositionDetailPartsUiTest extends UiTestBase {
                 "return !!document.getElementById('add-part-dialog');"));
         assertThat(dialogPresent).as("#add-part-dialog is on the page").isTrue();
 
+        // ── Regression (2026-09-23): clicking "＋ Dodaj głos" must actually OPEN the dialog.
+        // The click binding was accidentally dropped in ac90648, so on mobile (and desktop)
+        // the button looked inert — no dialog, no feedback.
+        addBtn.click();
+        Boolean addPartOpen = ((Boolean) ((JavascriptExecutor) driver).executeScript(
+                "var d = document.getElementById('add-part-dialog');" +
+                "if (!d) { return false; }" +
+                "return d.open === true || d.hasAttribute('open');"));
+        assertThat(addPartOpen).as("#add-part-dialog opens on Dodaj glos click").isTrue();
+        ((JavascriptExecutor) driver).executeScript(
+                "var d = document.getElementById('add-part-dialog'); if (d && d.close) { d.close(); }");
+
         //.onclick="openAppModal('menu-modal')" — openAppModal() is defined in the layout
         // footer-scripts; if those never arrived (truncated response) this click throws and the
         // modal stays closed. Asserting the OPEN attribute is what the user actually observed.
