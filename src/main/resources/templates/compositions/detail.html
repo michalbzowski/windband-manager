@@ -10,60 +10,144 @@
         <header th:replace="~{fragments/layout :: dashboard-header}"></header>
 
         <div id="compositions-content">
-            <h2>Szczegóły utworu</h2>
+            <div id="composition-detail">
+            
+            <!-- ============================================================
+                 ARTICLE 1: Composition Header + Meta + Actions
+                 ============================================================ -->
+            <article class="composition-header-article">
+                <header class="composition-header">
+                    <div class="composition-title-row">
+                        <strong class="composition-title" th:text="${composition.title}">Tytuł utworu</strong>
+                        <span th:replace="~{compositions/fragments/status-badge :: status(${composition.status})}"></span>
+                    </div>
+                    
+                    <div class="composition-meta">
+                        <span class="composition-composer">
+                            <span class="meta-label">Kompozytor:</span>
+                            <span th:text="${composition.composer != null and !composition.composer.isBlank() ? composition.composer : '—'}">—</span>
+                        </span>
+                        <span class="composition-arranger">
+                            <span class="meta-label">Aranżer:</span>
+                            <span th:text="${composition.arranger != null and !composition.arranger.isBlank() ? composition.arranger : '—'}">—</span>
+                        </span>
+                        <span class="composition-description-inline">
+                            <span class="meta-label">Opis:</span>
+                            <span th:text="${composition.description != null and !composition.description.isBlank() ? composition.description : 'Brak opisu'}">Brak opisu</span>
+                        </span>
+                    </div>
 
-            <article id="composition-detail">
-                <header>
-                    <strong th:text="${composition.title}">Tytuł utworu</strong>
-                    <span th:replace="~{compositions/fragments/status-badge :: status(${composition.status})}"></span>
+                    <div class="composition-actions">
+                        <button type="button" id="analyze-composition-btn" class="primary"
+                                th:if="${scoreFiles != null and !scoreFiles.isEmpty()}"
+                                onclick="openAnalyzeModal()">🎼 Analizuj</button>
+                        
+                        <span class="status-cluster" role="group" aria-label="Zmiana statusu utworu">
+                            <button type="button" id="archive-composition-btn" class="secondary icon-btn"
+                                    th:if="${composition.status.name() != 'ARCHIVED'}"
+                                    onclick="openLifecycleDialog('archive')" title="Archiwizuj">📦</button>
+                            <button type="button" id="restore-composition-btn" class="primary icon-btn"
+                                    th:if="${composition.status.name() == 'ARCHIVED'}"
+                                    onclick="openLifecycleDialog('restore')" title="Przywróć">↩️</button>
+
+                            <button type="button" id="delete-composition-btn" class="secondary danger icon-btn"
+                                    onclick="openLifecycleDialog('delete')" title="Usuń bezpowrotnie">🗑</button>
+                        </span>
+                    </div>
+                </header>
+            </article>
+
+            <!-- ============================================================
+                 ARTICLE 2: Score Files Section
+                 ============================================================ -->
+            <article class="score-files-article">
+                <header class="section-header">
+                    <h3>Pliki nut</h3>
+                    <small>Przeciągnij PDF lub kliknij, aby dodać (maks. 50 MB)</small>
                 </header>
 
-                <dl>
-                    <dt>Kompozytor</dt>
-                    <dd th:text="${composition.composer != null and !composition.composer.isBlank() ? composition.composer : '—'}">—</dd>
-                    <dt>Aranżer</dt>
-                    <dd th:text="${composition.arranger != null and !composition.arranger.isBlank() ? composition.arranger : '—'}">—</dd>
-                    <dt>Opis</dt>
-                    <dd class="composition-description"
-                        th:text="${composition.description != null and !composition.description.isBlank() ? composition.description : 'Brak opisu'}">Brak opisu</dd>
-                </dl>
+                <!-- Dropzone Area -->
+                <div class="dropzone score-file-picker" id="score-upload-panel" role="button" tabindex="0" aria-label="Obszar do przesyłania plików nut">
+                    <input type="file" id="score-file-input" name="file" accept="application/pdf,.pdf" class="visually-hidden" multiple>
+                    <div class="dropzone-content">
+                        <span class="dropzone-icon" aria-hidden="true">📄</span>
+                        <span class="dropzone-text">Dodaj nuty do tego utworu</span>
+                        <span class="dropzone-hint">(kliknij tu lub przeciągnij PDF, maks. 50 MB)</span>
+                    </div>
+                </div>
 
-<!-- US-3.5 lifecycle actions: archive / restore (status-dependent) and the always-visible
-     hard-delete red button. All three open the same shared <dialog id="lifecycle-dialog">
-     below via window.openLifecycleDialog(action); the form's action is rewritten to the
-     matching endpoint (archive | restore | delete). -->
-<div class="composition-status-actions">
-    <!-- US-4.3 — "Analizuj utwór" opens the AI analysis modal (file picker + progress panel).
-         Only visible when this composition actually has at least one uploaded score file;
-         otherwise the user would see a disabled submit button, which is worse than hiding
-         the entry entirely. The dropdown inside the modal lists the same files this
-         condition guards over — single source of truth, no second fetch.
-         MOCKUP: primary next-step action sits flush left (the "do something now" affordance),
-         separated from the lifecycle controls on the right. -->
-    <button type="button" id="analyze-composition-btn" class="primary"
-            th:if="${scoreFiles != null and !scoreFiles.isEmpty()}"
-            onclick="openAnalyzeModal()">🎼 Analizuj utwór</button>
+                <!-- Upload Queue - shows pending uploads with status icons -->
+                <div id="upload-queue" class="upload-queue hidden">
+                    <div class="upload-queue-header">Pliki do wgrania</div>
+                    <ul id="upload-queue-list" class="upload-queue-list"></ul>
+                    
+                    <div class="upload-queue-actions">
+                        <button type="button" id="cancel-all-uploads" class="secondary" disabled>Anuluj</button>
+                        <button type="button" id="confirm-uploads" class="primary" disabled>Wgraj</button>
+                    </div>
+                </div>
 
-    <!-- Status cluster: archive / restore (status-dependent) and the always-visible
-         hard-delete red button. All three open the same shared <dialog id="lifecycle-dialog">
-         below via window.openLifecycleDialog(action); the form's action is rewritten to the
-         matching endpoint (archive | restore | delete). Grouped on the right edge as in the
-         mockup — the pinned IDs and click behaviour are unchanged, only the DOM nesting. -->
-    <span class="status-cluster" role="group" aria-label="Zmiana statusu utworu">
-        <button type="button" id="archive-composition-btn" class="secondary"
-                th:if="${composition.status.name() != 'ARCHIVED'}"
-                onclick="openLifecycleDialog('archive')">📦 Archiwizuj</button>
-        <button type="button" id="restore-composition-btn" class="primary"
-                th:if="${composition.status.name() == 'ARCHIVED'}"
-                onclick="openLifecycleDialog('restore')">↩️ Przywróć</button>
+                <!-- Existing Files List -->
+                <div class="existing-files-section">
+                    <h4>Pliki nut</h4>
+                    <ul id="score-files-list" class="composition-file-list">
+                        <li th:if="${scoreFiles == null or scoreFiles.isEmpty()}" class="empty-row">Brak wgranych plików. Wgrany PDF odblokuje analize i podział na głosy.</li>
 
-        <button type="button" id="delete-composition-btn" class="secondary danger"
-                onclick="openLifecycleDialog('delete')">🗑 Usuń bezpowrotnie</button>
-    </span>
-</div>
+                        <li th:each="f : ${scoreFiles}" class="file-list-row" th:data-file-id="${f.id}">
+                            <span class="file-icon" aria-hidden="true">📄</span>
 
-</article>
+                            <a class="file-name" target="_blank" rel="noopener"
+                               th:href="@{/bands/{bandId}/compositions/{compId}/files/{fileId}(bandId=${bandId}, compId=${composition.id}, fileId=${f.id})}"
+                               th:aria-label="'Otwórz PDF ' + ${f.originalName} + ' w nowej karcie'"
+                               th:text="${f.originalName}">placeholder.pdf</a>
 
+                            <span class="file-meta">
+                                <span th:text="${T(pl.michalbzowski.windband.util.ByteSizeFormatter).human(f.sizeBytes)}">1.4 MB</span>
+                                <span th:if="${f.pageCount != null}" class="meta-pages"> · <span th:text="${f.pageCount}"></span> stron</span>
+                                <span th:if="${f.createdAt != null}" class="meta-date"> · <span th:text="${#temporals.format(f.createdAt, 'dd.MM.yyyy')}"></span></span>
+                            </span>
+
+                            <span class="file-actions" role="toolbar" aria-label="Akcje pliku">
+                                <a class="secondary" target="_blank" rel="noopener"
+                                   th:href="@{/bands/{bandId}/compositions/{compId}/files/{fileId}(bandId=${bandId}, compId=${composition.id}, fileId=${f.id})}"
+                                   th:title="'Otwórz ' + ${f.originalName} + ' w nowej karcie'">📄 Otwórz</a>
+                                <a class="secondary" download
+                                   th:href="@{/bands/{bandId}/compositions/{compId}/files/{fileId}(bandId=${bandId}, compId=${composition.id}, fileId=${f.id})}"
+                                   th:title="'Pobierz ' + ${f.originalName} + ' na dysk'">⬇️</a>
+                                <button type="button" class="secondary danger file-delete-btn"
+                                        th:data-url="@{/bands/{bandId}/compositions/{compId}/files/{fileId}(bandId=${bandId}, compId=${composition.id}, fileId=${f.id})}"
+                                        th:data-file-name="${f.originalName}"
+                                        th:title="'Usuń ' + ${f.originalName} + ' z utworu'">🗑 Usuń</button>
+                            </span>
+
+                            <div th:if="${f != null and f.pageCount != null and f.pageCount > 0}" class="file-preview" role="group" aria-label="Podgląd nagłówków" style="margin-top:.5rem;">
+                                <small class="text-muted" th:text="'Podgląd stron 1–'+${(f.pageCount < 3) ? f.pageCount : 3}">Podgląd</small>
+                                <div class="preview-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(80px,1fr));gap:.5rem;margin-top:.25rem;">
+                                    <span th:each="p : ${#numbers.sequence(1, (f.pageCount < 3) ? f.pageCount : 3)}" class="thumb-cell">
+                                        <img class="file-thumb"
+                                             th:src="@{/bands/{bandId}/compositions/{compId}/files/{fileId}/thumb(bandId=${bandId}, compId=${composition.id}, fileId=${f.id}, page=${p}, width=400)}"
+                                             th:alt="'Strona ' + ${p} + ' pliku ' + ${f.originalName}"
+                                             loading="lazy"
+                                             style="width:100%;height:auto;border:1px solid var(--pico-muted-border-color);border-radius:4px;"/>
+                                        <span class="thumb-fallback" hidden role="status"
+                                              style="min-height:60px;font-size:.75rem;color:var(--pico-muted-color);text-align:center;padding:.25rem;">Brak podglądu</span>
+                                    </span>
+                                </div>
+                                <a class="btn secondary show-full-pdf-link" target="_blank" rel="noopener"
+                                   style="margin-top:.5rem;display:inline-block;"
+                                   th:href="@{/bands/{bandId}/compositions/{compId}/files/{fileId}(bandId=${bandId},compId=${composition.id},fileId=${f.id})}"
+                                   th:title="'Otwórz pełny plik ' + ${f.originalName} + ' w nowej karcie (natywny odtwarzacz PDF)'">📄 Pokaż cały PDF</a>
+                            </div>
+                        </li>
+                    </ul>
+                </div>
+            </article>
+
+        </div>
+    </section>
+</main>
+
+<!-- Lifecycle Dialog (Archive/Restore/Delete) -->
 <dialog id="lifecycle-dialog" class="app-modal">
     <div class="app-modal-content">
         <header class="app-modal-header">
@@ -83,14 +167,7 @@
     </div>
 </dialog>
 
-<!-- US-4.3 — single modal that: (1) lets the user pick one of the composition's uploaded
-     score files, (2) starts the analysis via POST .../score-files/{fileId}/analyze, and
-     (3) swaps in a progress panel that auto-polls GET .../analysis/latest every 2 s until
-     the row reaches SUCCEEDED or FAILED. The terminal panel lists the artefacts
-     (arrangement.json / .musicxml / .mid / validation.txt) with their download URLs so
-     the user can inspect the result immediately without leaving the page. This dialog is
-     a distinct element from #lifecycle-dialog on purpose — two different flows, two
-     different confirmation buttons, no cross-talk in the [data-close] delegation below. -->
+<!-- Analyze Dialog (AI Analysis) -->
 <dialog id="analyze-dialog" class="app-modal">
     <div class="app-modal-content">
         <header class="app-modal-header">
@@ -102,7 +179,6 @@
         </header>
         <div class="app-modal-body">
 
-            <!-- (1) Start panel — file picker + submit. Hidden once a run is in progress. -->
             <section id="analyze-start-panel">
                 <label for="score-file-picker" class="secondary">Plik nut do analizy</label>
                 <select id="score-file-picker" class="form-element-secondary">
@@ -119,20 +195,17 @@
                 </div>
             </section>
 
-            <!-- (2) Progress panel — hidden until a run starts. Phase badge updates on every poll. -->
             <section id="analyze-progress-panel" class="hidden" role="status" aria-live="polite">
                 <p>Analizuje plik <strong id="analyze-file-name"></strong> …</p>
                 <p id="analyze-phase-badge" class="badge badge-secondary">PENDING</p>
                 <p id="analyze-progress-note" class="form-note">Śledzę postęp — zamknięcie okna nie przerywa analizy.</p>
             </section>
 
-            <!-- (3) Result panel — appears on SUCCEEDED or FAILED. Download links for artefacts, error text on FAILED. -->
             <section id="analyze-result-panel" class="hidden">
                 <p id="analyze-result-phase" class="badge badge-primary"></p>
                 <div th:if="${latestPhase != null and latestPhase == 'SUCCEEDED'}">
                     <h3>Wyniki analizy</h3>
                     <ul id="artifact-links">
-                        <!-- artefact rows appended/updated by JS on poll SUCCEEDED -->
                         <li><a th:href="@{/bands/{bandId}/compositions/{compId}/files(arrangementJson=${latestArrangementJsonPath})}">arrangement.json</a></li>
                     </ul>
                 </div>
@@ -172,21 +245,12 @@
         document.getElementById('lifecycle-confirm-btn').textContent = plan.confirm;
         document.getElementById('lifecycle-form').action = plan.url;
 
-        // Open the dialog. openAppModal / closeAppModal are injected by layout.html's
-        // footer-scripts — they also wire backdrop-click and [data-close] handlers.
-        // Fallback to raw showModal for browsers that lack the helper (or a race where
-        // footer-scripts has not yet executed around this inline script).
         var dlg = document.getElementById('lifecycle-dialog');
         if (typeof openAppModal === 'function') { openAppModal('lifecycle-dialog'); }
         else if (dlg && typeof dlg.showModal === 'function') { dlg.showModal(); }
         else if (dlg) { dlg.setAttribute('open', ''); }
     };
 
-    // "Anuluj" sits inside <form id="lifecycle-form"> (see the modal body). It is a
-    // type=button so it never submits, but the project-wide [data-close] delegation
-    // (fragments/layout.html → bindModalCloseHandlers) only fires for clicks on *that
-    // specific element*, and "Anuluj" has no [data-close]. Events/detail.html uses the
-    // same escape hatch (a per-button closeAppModal binding) — follow that pattern.
     function bindCancel() {
         var cancelBtn = document.getElementById('lifecycle-cancel-btn');
         if (!cancelBtn || cancelBtn.dataset.bound === '1') { return; }
@@ -199,42 +263,20 @@
         });
     }
     bindCancel();
-
-    // Keep the cancel handler alive across HTMX swaps — same rebind hook layout.html
-    // uses for its own modal wiring (fragments/layout.html: htmx:afterSettle handler).
     document.addEventListener('htmx:afterSettle', bindCancel);
 
-    /*
-     * US-4.3 — AI analysis modal logic (file picker → POST analyze → poll latest → render artefacts).
-     *
-     * The three panels inside #analyze-dialog (#analyze-start-panel / #analyze-progress-panel /
-     * #analyze-result-panel) are mutually exclusive views of the SAME pipeline state, surfaced
-     * by toggling their 'hidden' class. The single source of state is `state.phase` (PENDING /
-     * RUNNING / SUCCEEDED / FAILED), updated on every poll iteration; the render step then maps
-     * that value to either panel 1, 2 or 3 and repaints only the elements whose content actually
-     * changed. Keeping the DOM write loop inside `render()` makes the state machine the single
-     * point of mutation — easy to read, easy to test, no race when a poll lands mid-render.
-     *
-     * The cancel button (#analyze-cancel-btn) follows the same convention as the lifecycle
-     * modal above: per-button addEventListener (NOT [data-close]) because it sits inside the
-     * submit group and should not double-fire through the layout-wide delegation. The
-     * htmx:afterSettle re-bind below mirrors bindCancel so an HTMX swap that replaces
-     * #compositions-content does not drop the binding.
-     */
     var state = { phase: null, fileId: null, runnerRef: null, pollTimer: null };
     var startBtn = document.getElementById('analyze-start-btn');
 
     function openAnalyzeModal() {
         var dlg = document.getElementById('analyze-dialog');
-        // Reset to the start panel so a re-open after a previous FAILED run does not show
-        // stale artefacts from the prior run — the user re-pick, re-analyze.
         hideAllPanels();
         state.phase = null;
         state.fileId = null;
         showStartPanel();
         var picker = document.getElementById('score-file-picker');
         if (picker) {
-            startBtn.disabled = !picker.value;    // single file auto-selected → button ready
+            startBtn.disabled = !picker.value;
             picker.addEventListener('change', enableStartOnValue);
         }
         if (typeof openAppModal === 'function') { openAppModal(dlg); }
@@ -269,7 +311,6 @@
         var progress = document.getElementById('analyze-progress-panel');
         if (progress) { progress.classList.remove('hidden'); }
         setPhaseBadge('PENDING');
-        // Fire-and-forget POST — the UI stays responsive while the pipeline runs.
         fetch('/bands/' + bandId + '/compositions/' + compId + '/score-files/' + state.fileId + '/analyze', { method: 'POST' })
             .then(function (resp) {
                 if (!resp.ok) {
@@ -293,7 +334,7 @@
         fetch('/bands/' + bandId + '/compositions/' + compId + '/analysis/latest' + '?t=' + t, { cache: 'no-store' })
             .then(function (resp) {
                 if (!resp.ok) {
-                    setTimeout(function () { pollNext(); }, 2000);    // transient? retry
+                    setTimeout(function () { pollNext(); }, 2000);
                     return;
                 }
                 return resp.json();
@@ -313,7 +354,6 @@
             })
             .catch(function (err) {
                 setPhaseBadge('PENDING');
-                // On fetch error, re-arm the poll so a transient network drop does not kill the UI.
             });
         if (state.pollTimer === null) { state.pollTimer = setInterval(pollNext, 2000); }
     }
@@ -329,7 +369,6 @@
         var panel = document.getElementById('analyze-result-panel');
         if (!panel) { return; }
         panel.classList.remove('hidden');
-        // Build artefact list from the DTO (arrangement paths + validation report).
         var ul = document.querySelector('#artifact-links');
         if (ul) {
             ul.innerHTML = '';
@@ -357,7 +396,6 @@
 
     function closeAnalyzeModal() {
         var dlg = document.getElementById('analyze-dialog');
-        // Stop the poll on the way out — no work after the user closes the modal.
         if (state.pollTimer) { clearInterval(state.pollTimer); state.pollTimer = null; }
         if (typeof closeAppModal === 'function') { closeAppModal(dlg); }
         else if (dlg) { dlg.removeAttribute('open'); }
@@ -373,294 +411,296 @@
         });
     }
     bindAnalyzeCancel();
-    // Re-bind after every HTMX swap (same hook layout.html uses for its own modal wiring).
     document.addEventListener('htmx:afterSettle', bindAnalyzeCancel);
-})();
-</script>
-
-<!-- US-7.9 — Upload section: file input + "Pliki nut (PDF)" button.
-     Client-side validation mirrors UploadValidator: PDF only, max 50 MB.
-     Server responds 413/415 with a JSON error body (handled by GlobalExceptionHandler);
-     on success ScoreFileDto is rendered inline below the section and a success toast fires.
-     The existing scoreFiles model attribute (from US-4.3) is the single source of truth
-     for currently attached files — we do NOT double-render it here. -->
-<section id="score-upload-panel" class="composition-parts score-upload-clickable" role="group" aria-label="Pliki nut (PDF)">
-    <header class="section-header">
-        <h3>Pliki nut</h3>
-        <small>Kliknij w dowolne miejsce poniższego pola, aby wybrać plik PDF (maks. 50 MB). Po wgraniu plik pojawi się na liście — jego strony stają się dostępne dla "Analizuj utwór" i "Udostępnij głos".</small>
-    </header>
-
-    <form id="score-upload-form" novalidate>
-        <div class="hero-empty score-hero">
-            <label class="file-input-label score-file-picker score-hero-pick" for="score-file-input">
-                <span aria-hidden="true">📄</span>
-                <span>Kliknij tutaj, aby wybrać plik PDF…</span>
-            </label>
-            <input type="file" id="score-file-input" name="file" accept="application/pdf,.pdf" class="visually-hidden">
-        </div>
-
-        <p id="score-upload-error" class="danger hidden" role="alert"></p>
-
-        <div class="form-actions">
-            <button type="submit" id="upload-score-btn" class="primary" disabled aria-describedby="score-upload-helper">📎 Wgraj nuty</button>
-            <button type="button" id="cancel-score-upload-btn" class="secondary" title="Anuluj wybranie pliku" hidden>Anuluj</button>
-        </div>
-        <p id="score-upload-helper" hidden class="form-note">Najpierw wybierz plik PDF, aby włączyć przycisk wysyłki.</p>
-    </form>
-
-    <!-- Uploaded-file confirmation row (populated by JS after a successful POST). 
-         Kept for backward-compat with pinned tests; the "Otwórz" action is ALSO on the new row below,
-         so users always see a persistent affordance even after refresh. -->
-    <div id="score-upload-result" class="hidden">
-        <p class="toast success" role="status"></p>
-        <a id="score-download-link" target="_blank" rel="noopener" href="#">📄 Pobierz pełny PDF</a>
-    </div>
-
-    <!-- LIST ROWS: filename (primary affordance, ellipsized) + meta (size · pages · date) + Otwórz/Pobierz/Usuń -->
-    <h4>Lista plików</h4>
-    <ul id="score-files-list" class="composition-file-list">
-        <li th:if="${scoreFiles == null or scoreFiles.isEmpty()}" class="empty-row">Brak wgranych plików. Wgrany PDF odblokuje analize i podział na głosy.</li>
-
-        <li th:each="f : ${scoreFiles}" class="file-list-row">
-            <span class="file-icon" aria-hidden="true">📄</span>
-
-            <!-- Filename — primary affordance, ellipsized on overflow (see .file-name { text-overflow: ellipsis; } in app.css) -->
-            <a class="file-name" target="_blank" rel="noopener"
-               th:href="@{/bands/{bandId}/compositions/{compId}/files/{fileId}(bandId=${bandId}, compId=${composition.id}, fileId=${f.id})}"
-               th:aria-label="'Otwórz PDF ' + ${f.originalName} + ' w nowej karcie'"
-               th:text="${f.originalName}">placeholder.pdf</a>
-
-
-            <!-- Meta: size · pages · date — separate spans each guarded by th:if for missing fields.
-                 Size is human-readable via ByteSizeFormatter (mockup: "1.4 MB", not "1431911 B"). -->
-            <span class="file-meta">
-                <span th:text="${T(pl.michalbzowski.windband.util.ByteSizeFormatter).human(f.sizeBytes)}">1.4 MB</span>
-                <span th:if="${f.pageCount != null}" class="meta-pages"> · <span th:text="${f.pageCount}"></span> stron</span>
-                <span th:if="${f.createdAt != null}" class="meta-date"> · <span th:text="${#temporals.format(f.createdAt, 'dd.MM.yyyy')}"></span></span>
-            </span>
-
-            <!-- Actions — Otwórz (primary), Pobierz (download), Usuń (danger; mockup: Otwórz / Pobierz / Usuń).
-                 Usuń uses a plain DELETE to the existing US-2.5 endpoint; the confirm() gate and
-                 event delegation are wired in the script at the bottom of this file, so the button
-                 itself stays static markup (works on HTMX-swamped rows too — no per-row bindings). -->
-            <span class="file-actions" role="toolbar" aria-label="Akcje pliku">
-                <a class="secondary" target="_blank" rel="noopener"
-                   th:href="@{/bands/{bandId}/compositions/{compId}/files/{fileId}(bandId=${bandId}, compId=${composition.id}, fileId=${f.id})}"
-                   th:title="'Otwórz ' + ${f.originalName} + ' w nowej karcie'">📄 Otwórz</a>
-                <a class="secondary" download
-                   th:href="@{/bands/{bandId}/compositions/{compId}/files/{fileId}(bandId=${bandId}, compId=${composition.id}, fileId=${f.id})}"
-                   th:title="'Pobierz ' + ${f.originalName} + ' na dysk'">⬇️</a>
-                <button type="button" class="secondary danger file-delete-btn"
-                        th:data-url="@{/bands/{bandId}/compositions/{compId}/files/{fileId}(bandId=${bandId}, compId=${composition.id}, fileId=${f.id})}"
-                        th:data-file-name="${f.originalName}"
-                        th:title="'Usuń ' + ${f.originalName} + ' z utworu'">🗑 Usuń</button>
-            </span>
-
-            <!-- US-7.9 header preview — must be scoped to the same th:each iteration it describes,
-                 so it sits INSIDE this <li>; each cell degrades to "Brak podglądu" if its thumb
-                 fails to render and the panel ends with the "Pokaż cały PDF" escape hatch (AC). -->
-            <div th:if="${f != null and f.pageCount != null and f.pageCount > 0}" class="file-preview" role="group" aria-label="Podgląd nagłówków" style="margin-top:.5rem;">
-                <small class="text-muted" th:text="'Podgląd stron 1–'+${(f.pageCount &lt; 3) ? f.pageCount : 3}">Podgląd</small>
-                <div class="preview-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(80px,1fr));gap:.5rem;margin-top:.25rem;">
-                    <span th:each="p : ${#numbers.sequence(1, (f.pageCount &lt; 3) ? f.pageCount : 3)}" class="thumb-cell">
-                        <img class="file-thumb"
-                             th:src="@{/bands/{bandId}/compositions/{compId}/files/{fileId}/thumb(bandId=${bandId}, compId=${composition.id}, fileId=${f.id}, page=${p}, width=400)}"
-                             th:alt="'Strona ' + ${p} + ' pliku ' + ${f.originalName}"
-                             loading="lazy"
-                             style="width:100%;height:auto;border:1px solid var(--pico-muted-border-color);border-radius:4px;"/>
-                        <span class="thumb-fallback" hidden role="status"
-                              style="min-height:60px;font-size:.75rem;color:var(--pico-muted-color);text-align:center;padding:.25rem;">Brak podglądu</span>
-                    </span>
-                </div>
-                <a class="btn secondary show-full-pdf-link" target="_blank" rel="noopener"
-                   style="margin-top:.5rem;display:inline-block;"
-                   th:href="@{/bands/{bandId}/compositions/{compId}/files/{fileId}(bandId=${bandId},compId=${composition.id},fileId=${f.id})}"
-                   th:title="'Otwórz pełny plik ' + ${f.originalName} + ' w nowej karcie (natywny odtwarzacz PDF)'">📄 Pokaż cały PDF</a>
-            </div>
-        </li>
-    </ul>
-</section>
-
-<script>
-// US-7.9 step 3 - graceful per-thumbnail fallback. When a rendered thumb fails to load
-// (render error, oversized page, transient failure), hide the broken <img> and reveal
-// its sibling "Brak podglądu" cell instead of leaving a broken-image icon behind.
-(function () {
-    'use strict';
-    document.querySelectorAll('.preview-grid .file-thumb').forEach(function (img) {
-        img.addEventListener('error', function () {
-            var cell = img.closest ? img.closest('.thumb-cell') : null;
-            if (!cell) return;
-            img.remove();
-            var fb = cell.querySelector('.thumb-fallback');
-            if (fb) { fb.removeAttribute('hidden'); }
-        }, { once: true });
-    });
 })();
 </script>
 
 <script th:inline="javascript">
 (function () {
     'use strict';
-    var MAX_PDF_BYTES = 50 * 1024 * 1024;   // mirrors ScoresConfig.DEFAULT_MAX_FILE_BYTES / application.yml
+    var MAX_PDF_BYTES = 50 * 1024 * 1024;
     var bandId = /*[[${bandId}]]*/ 0;
     var compId = /*[[${composition.id}]]*/ 0;
 
     var input       = document.getElementById('score-file-input');
-    var picker      = document.querySelector('.score-file-picker');
-    var pickerText  = picker ? picker.querySelector('span') : null;
-    var panel       = document.getElementById('score-upload-panel');
-    var form        = document.getElementById('score-upload-form');
-    var submitBtn   = document.getElementById('upload-score-btn');
-    var cancelBtn   = document.getElementById('cancel-score-upload-btn');
-    var errorEl     = document.getElementById('score-upload-error');
-    var resultEl    = document.getElementById('score-upload-result');
-    var helperEl    = document.getElementById('score-upload-helper');
-    var resultToast = resultEl ? resultEl.querySelector('.toast') : null;
+    var dropzone    = document.getElementById('score-upload-panel');
+    var uploadQueue = document.getElementById('upload-queue');
+    var queueList   = document.getElementById('upload-queue-list');
+    var cancelAllBtn = document.getElementById('cancel-all-uploads');
+    var confirmBtn   = document.getElementById('confirm-uploads');
+    var scoreFilesList = document.getElementById('score-files-list');
 
-    if (!input || !form) return;
+    // State for pending uploads
+    var pendingFiles = [];
+    var uploadStates = new Map(); // fileId -> {status: 'pending'|'uploading'|'success'|'error', xhr, file, dto}
 
-    // ---- helpers: state display -------------------------------------------
-    function setPicker(text) { if (pickerText) pickerText.textContent = text; }
-    function showHelper(show) {
-        if (!helperEl) return;
-        helperEl.hidden = !show;
+    if (!input || !dropzone) return;
+
+    // ---- helpers ------------------------------------------------------------
+    function formatBytes(n) {
+        if (n < 1024) return n + ' B';
+        if (n < 1024 * 1024) return (n / 1024).toFixed(1) + ' KB';
+        return (n / 1024 / 1024).toFixed(1) + ' MB';
+    }
+    function getCookieLocal(name) {
+        var m = document.cookie.match(new RegExp('(^|;\\s*)' + name + '=([^;]*)'));
+        return m ? m[2] : null;
+    }
+    function createFileId(file) {
+        return file.name + '-' + file.size + '-' + file.lastModified;
+    }
+    function getStatusIcon(status) {
+        switch (status) {
+            case 'pending': return '<span class="status-icon pending" aria-label="Oczekuje">⏳</span>';
+            case 'uploading': return '<span class="status-icon uploading" aria-label="Wgrywanie...">⏳</span>';
+            case 'success': return '<span class="status-icon success" aria-label="Wgrano na serwer">✅</span>';
+            case 'error': return '<span class="status-icon error" aria-label="Błąd wgrywania">❌</span>';
+            default: return '';
+        }
     }
 
-    // ---- file selection ----------------------------------------------------
-    input.addEventListener('change', function () {
-        var f = input.files[0];
-        showHelper(false);
-        if (!f) {
-            setPicker('📄 Kliknij tutaj, aby wybrać plik PDF…');
-            submitBtn.textContent = '📎 Wgraj nuty';
-            submitBtn.disabled = true;
-            if (cancelBtn) cancelBtn.hidden = true;
-            hideError();
+    // ---- Render upload queue ------------------------------------------------
+    function renderQueue() {
+        if (pendingFiles.length === 0) {
+            uploadQueue.classList.add('hidden');
             return;
         }
+        uploadQueue.classList.remove('hidden');
+        queueList.innerHTML = '';
+        pendingFiles.forEach(function(file, idx) {
+            var fileId = createFileId(file);
+            var state = uploadStates.get(fileId) || {status: 'pending'};
+            var li = document.createElement('li');
+            li.className = 'upload-queue-item';
+            li.dataset.fileId = fileId;
+            li.innerHTML = 
+                getStatusIcon(state.status) +
+                '<div class="upload-file-info">' +
+                '  <span class="upload-file-name" title="' + file.name + '">' + file.name + '</span>' +
+                '  <span class="upload-file-size">' + formatBytes(file.size) + '</span>' +
+                '</div>' +
+                '<button type="button" class="upload-remove-btn" aria-label="Usuń plik z kolejki" title="Usuń">🗑</button>';
+            queueList.appendChild(li);
 
-        // Client-side validation: type + size (mirrors UploadValidator).
-        if (f.type !== 'application/pdf' && !/\.pdf$/i.test(f.name)) {
-            showError('Wybierz plik PDF (type="application/pdf").');
-            setPicker(f.name + ' (' + formatBytes(f.size) + ')');
-            submitBtn.textContent = '📎 Wgraj nuty';
-            submitBtn.disabled = true;
-            if (cancelBtn) cancelBtn.hidden = false;
-            return;
+            // Bind remove button
+            li.querySelector('.upload-remove-btn').addEventListener('click', function(e) {
+                e.stopPropagation();
+                removeFromQueue(idx);
+            });
+        });
+        updateActionButtons();
+    }
+
+    function updateActionButtons() {
+        var hasPending = pendingFiles.some(function(f) {
+            var state = uploadStates.get(createFileId(f));
+            return !state || state.status === 'pending' || state.status === 'error';
+        });
+        var hasUploading = pendingFiles.some(function(f) {
+            var state = uploadStates.get(createFileId(f));
+            return state && state.status === 'uploading';
+        });
+        var allSuccess = pendingFiles.length > 0 && pendingFiles.every(function(f) {
+            var state = uploadStates.get(createFileId(f));
+            return state && state.status === 'success';
+        });
+
+        cancelAllBtn.disabled = pendingFiles.length === 0;
+        confirmBtn.disabled = !hasPending || hasUploading;
+        if (allSuccess) {
+            confirmBtn.textContent = 'Wgraj';
+        } else if (hasUploading) {
+            confirmBtn.textContent = 'Wgrywanie…';
+        } else {
+            confirmBtn.textContent = 'Wgraj (' + pendingFiles.filter(function(f) {
+                var s = uploadStates.get(createFileId(f));
+                return !s || s.status === 'pending' || s.status === 'error';
+            }).length + ')';
         }
-        if (f.size > MAX_PDF_BYTES) {
-            showError('Plik jest większy niż 50 MB. Dozwolony rozmiar: maks. 50 MB.');
-            setPicker(f.name + ' (' + formatBytes(f.size) + ')');
-            submitBtn.textContent = '📎 Wgraj nuty';
-            submitBtn.disabled = true;
-            if (cancelBtn) cancelBtn.hidden = false;
-            return;
+    }
+
+    function addToQueue(files) {
+        Array.from(files).forEach(function(file) {
+            // Validate
+            if (file.type !== 'application/pdf' && !/\.pdf$/i.test(file.name)) {
+                showToast('Pomiń ' + file.name + ': tylko pliki PDF.', 'error');
+                return;
+            }
+            if (file.size > MAX_PDF_BYTES) {
+                showToast('Pomiń ' + file.name + ': plik większy niż 50 MB.', 'error');
+                return;
+            }
+            // Check duplicate
+            var fileId = createFileId(file);
+            if (pendingFiles.some(function(f) { return createFileId(f) === fileId; })) {
+                showToast(file.name + ' jest już w kolejce.', 'info');
+                return;
+            }
+            pendingFiles.push(file);
+            uploadStates.set(fileId, {status: 'pending', file: file});
+        });
+        renderQueue();
+    }
+
+    function removeFromQueue(idx) {
+        var file = pendingFiles[idx];
+        var fileId = createFileId(file);
+        // If uploading, abort
+        var state = uploadStates.get(fileId);
+        if (state && state.xhr) {
+            state.xhr.abort();
         }
+        pendingFiles.splice(idx, 1);
+        uploadStates.delete(fileId);
+        renderQueue();
+    }
 
-        hideError();
-        setPicker('✅ ' + f.name + ' (' + formatBytes(f.size) + ')');
-        // Make the big button echo the selected file — zero ambiguity.
-        submitBtn.textContent = '📎 Wgraj: ' + f.name;
-        submitBtn.disabled = false;
-        if (cancelBtn) cancelBtn.hidden = false;
-    });
+    function clearQueue() {
+        pendingFiles.forEach(function(file) {
+            var fileId = createFileId(file);
+            var state = uploadStates.get(fileId);
+            if (state && state.xhr) {
+                state.xhr.abort();
+            }
+        });
+        pendingFiles = [];
+        uploadStates.clear();
+        renderQueue();
+    }
 
-    cancelBtn.addEventListener('click', function (e) {
+    // ---- Drag & Drop --------------------------------------------------------
+    function handleDragOver(e) {
         e.preventDefault();
-        input.value = '';
-        setPicker('📄 Kliknij tutaj, aby wybrać plik PDF…');
-        submitBtn.textContent = '📎 Wgraj nuty';
-        submitBtn.disabled = true;
-        cancelBtn.hidden = true;
-        hideError();
-    });
-
-    // ---- submit ------------------------------------------------------------
-    form.addEventListener('submit', function (e) {
+        e.stopPropagation();
+        dropzone.classList.add('drag-over');
+    }
+    function handleDragLeave(e) {
         e.preventDefault();
-        var f = input.files[0];
-        if (!f) return;
+        e.stopPropagation();
+        // Only remove if leaving the dropzone entirely
+        if (!dropzone.contains(e.relatedTarget)) {
+            dropzone.classList.remove('drag-over');
+        }
+    }
+    function handleDrop(e) {
+        e.preventDefault();
+        e.stopPropagation();
+        dropzone.classList.remove('drag-over');
+        var files = e.dataTransfer.files;
+        if (files.length) addToQueue(files);
+    }
+    function handleClick(e) {
+        // Click on dropzone opens file picker
+        if (e.target === dropzone || dropzone.contains(e.target)) {
+            if (e.target.tagName !== 'INPUT') {
+                input.click();
+            }
+        }
+    }
+    function handleInputChange(e) {
+        if (input.files.length) {
+            addToQueue(input.files);
+            input.value = '';
+        }
+    }
 
-        submitBtn.disabled = true;
-        submitBtn.textContent = 'Wgrywanie…';
+    dropzone.addEventListener('dragover', handleDragOver);
+    dropzone.addEventListener('dragleave', handleDragLeave);
+    dropzone.addEventListener('drop', handleDrop);
+    dropzone.addEventListener('click', handleClick);
+    dropzone.addEventListener('keydown', function(e) {
+        if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault();
+            input.click();
+        }
+    });
+    input.addEventListener('change', handleInputChange);
+
+    // ---- Upload -------------------------------------------------------------
+    async function uploadFile(file, fileId) {
+        var state = uploadStates.get(fileId);
+        if (!state) return;
+        state.status = 'uploading';
+        renderQueue();
 
         var csrfToken = getCookieLocal('XSRF-TOKEN');
         var headers = {};
         if (csrfToken) { headers['X-XSRF-TOKEN'] = decodeURIComponent(csrfToken); }
 
-        fetch('/bands/' + bandId + '/compositions/' + compId + '/files', {
-            method:  'POST',
-            body:    (function(){ var fd = new FormData(); fd.append('file', f); return fd; })(),
-            headers: headers,
-            credentials: 'same-origin'
-        })
-        .then(handleResponse)
-        .catch(function (err) {
-            showError('Błąd połączenia: ' + (err && err.message ? err.message : 'spróbuj ponownie'));
-            resetButton();
-        });
-    });
+        var fd = new FormData();
+        fd.append('file', file);
 
-    function handleResponse(resp) {
-        return resp.json().then(function (dto) {
+        try {
+            var resp = await fetch('/bands/' + bandId + '/compositions/' + compId + '/files', {
+                method: 'POST',
+                body: fd,
+                headers: headers,
+                credentials: 'same-origin'
+            });
+            var dto = await resp.json();
             if (!resp.ok) {
-                // Server error body may contain { message: "..." } or plain string.
                 var msg = (dto && (dto.message || dto.error)) || 'HTTP ' + resp.status;
-                showError(msg);
-                resetButton();
-                return;
+                throw new Error(msg);
             }
+            state.status = 'success';
+            state.dto = dto;
+            if (window.Toast) Toast.success('Wgrano na serwer: ' + (dto.originalName || file.name));
+        } catch (err) {
+            state.status = 'error';
+            state.error = err.message;
+            if (window.Toast) Toast.error('Błąd wgrywania ' + file.name + ': ' + err.message);
+        }
+        renderQueue();
+    }
 
-            // Success — render confirmation + add to file list.
-            if (resultToast) {
-                var pageLabel = dto.pageCount != null ? ' — ' + dto.pageCount + ' stron' : '';
-                resultToast.textContent = '✓ Wgrano: ' + (dto.originalName || f.name) + pageLabel;
+    async function uploadAllPending() {
+        for (var i = 0; i < pendingFiles.length; i++) {
+            var file = pendingFiles[i];
+            var fileId = createFileId(file);
+            var state = uploadStates.get(fileId);
+            if (state && (state.status === 'pending' || state.status === 'error')) {
+                await uploadFile(file, fileId);
             }
-            if (resultEl) {
-                var link = document.getElementById('score-download-link');
-                if (link) {
-                    link.href = '/bands/' + bandId + '/compositions/' + compId + '/files/' + dto.fileId;
-                }
-                resultEl.classList.remove('hidden');
-            }
-            appendFileToList(dto);
-            input.value = '';
-            setPicker('📄 Kliknij tutaj, aby wybrać plik PDF…');
-            if (cancelBtn) cancelBtn.hidden = true;
-            submitBtn.textContent = '📎 Wgraj nuty';
-            submitBtn.disabled = false;
-            resetButton();
-            if (window.Toast) Toast.success('Wgrano plik: ' + (dto.originalName || f.name));
+        }
+        // After all uploads, move successful ones to the main list
+        moveSuccessfulToList();
+    }
 
-        }).catch(function () {
-            // Non-JSON error body (e.g. HTML error page).
-            showError('Nie udało się wgrać pliku (HTTP ' + resp.status + ').');
-            resetButton();
+    function moveSuccessfulToList() {
+        var moved = 0;
+        pendingFiles = pendingFiles.filter(function(file) {
+            var fileId = createFileId(file);
+            var state = uploadStates.get(fileId);
+            if (state && state.status === 'success' && state.dto) {
+                appendFileToList(state.dto);
+                moved++;
+                return false; // remove from pending
+            }
+            return true; // keep in pending (error or still uploading)
         });
+        uploadStates.forEach(function(state, key) {
+            if (state.status !== 'success') return;
+            // Check if file still in pending
+            var stillPending = pendingFiles.some(function(f) { return createFileId(f) === key; });
+            if (!stillPending) uploadStates.delete(key);
+        });
+        renderQueue();
+        if (moved > 0 && window.Toast) Toast.success('Dodano ' + moved + ' plik(ów) do utworu');
     }
 
     function appendFileToList(dto) {
-        var list = document.getElementById('score-files-list');
+        var list = scoreFilesList;
         if (!list) return;
-        // Remove "Brak wgranych plików." row if present.
-        var emptyRow = null;
-        for (var i = 0; i < list.children.length; i++) {
-            if (list.children[i].textContent.indexOf('Brak wgranych') === 0) {
-                emptyRow = list.children[i];
-            }
-        }
-        if (emptyRow) { list.removeChild(emptyRow); }
+        // Remove empty row if present
+        var emptyRow = list.querySelector('.empty-row');
+        if (emptyRow) list.removeChild(emptyRow);
 
-        // MOCKUP parity with the server-rendered rows: name (ellipsized link) + meta
-        // (human size · pages · date) + "Otwórz / Pobierz / Usuń" — the delegated
-        // document-level .file-delete-btn handler (bottom of this file) wires the new
-        // button automatically because it reads everything from data-* attributes.
         var name = dto.originalName || 'plik';
-        var url  = '/bands/' + bandId + '/compositions/' + compId + '/files/' + dto.fileId;
+        var url = '/bands/' + bandId + '/compositions/' + compId + '/files/' + dto.fileId;
 
         var li = document.createElement('li');
         li.className = 'file-list-row';
+        li.dataset.fileId = dto.fileId;
 
         var icon = document.createElement('span');
         icon.className = 'file-icon';
@@ -668,7 +708,7 @@
         icon.textContent = '📄';
         li.appendChild(icon);
 
-        var a  = document.createElement('a');
+        var a = document.createElement('a');
         a.href = url;
         a.target = '_blank';
         a.rel = 'noopener';
@@ -725,34 +765,82 @@
         list.insertBefore(li, list.firstChild);
     }
 
-    // ---- helpers -----------------------------------------------------------
-    function showError(msg) {
-        if (errorEl) { errorEl.textContent = msg; errorEl.classList.remove('hidden'); }
+    // ---- Action Buttons -----------------------------------------------------
+    cancelAllBtn.addEventListener('click', function() {
+        clearQueue();
+    });
+
+    confirmBtn.addEventListener('click', function() {
+        if (confirmBtn.disabled) return;
+        uploadAllPending();
+    });
+
+    // ---- Toast helper -------------------------------------------------------
+    function showToast(msg, type) {
+        if (window.Toast && Toast[type]) {
+            Toast[type](msg);
+        } else {
+            console.log(type + ': ' + msg);
+        }
     }
-    function hideError() {
-        if (errorEl) { errorEl.textContent = ''; errorEl.classList.add('hidden'); }
+
+    // ---- Per-file delete (delegated) ----------------------------------------
+    function restoreEmptyRow() {
+        var list = scoreFilesList;
+        if (!list) return;
+        var realRows = Array.from(list.children).filter(function(el) {
+            return el.tagName === 'LI' && !el.classList.contains('empty-row');
+        });
+        if (realRows.length > 0) return;
+        if (!list.querySelector('.empty-row')) {
+            var empty = document.createElement('li');
+            empty.className = 'empty-row';
+            empty.textContent = 'Brak wgranych plików. Wgrany PDF odblokuje analize i podział na głosy.';
+            list.appendChild(empty);
+        }
     }
-    function resetButton() {
-        submitBtn.disabled = false;
-        submitBtn.textContent = '📎 Wgraj nuty';
+
+    function deleteFile(btn) {
+        var url = btn.getAttribute('data-url');
+        if (!url || btn.disabled) return;
+        var name = btn.getAttribute('data-file-name') || 'pliku';
+        var msg = 'Usunąć plik „' + name + '”? Tej operacji nie można cofnąć — plik zostanie ' +
+                  'usunięty również z przypisań stron w sekcji „Głosy w nutach”.';
+        if (!window.confirm(msg)) return;
+
+        btn.disabled = true;
+        fetchWithToast(url, { method: 'DELETE', toastMessage: 'Plik usunięty' })
+            .then(function (resp) {
+                if (!resp.ok) return;
+                var row = btn.closest('li');
+                if (row && row.parentNode) row.parentNode.removeChild(row);
+                restoreEmptyRow();
+            })
+            .catch(function () {})
+            .then(function () { btn.disabled = false; });
     }
-    function formatBytes(n) {
-        if (n < 1024) return n + ' B';
-        if (n < 1024 * 1024) return (n / 1024).toFixed(1) + ' KB';
-        return (n / 1024 / 1024).toFixed(1) + ' MB';
-    }
-    function getCookieLocal(name) {
-        var m = document.cookie.match(new RegExp('(^|;\\s*)' + name + '=([^;]*)'));
-        return m ? m[2] : null;
-    }
+
+    document.addEventListener('click', function(event) {
+        var target = event.target;
+        if (!target || typeof target.closest !== 'function') return;
+        var btn = target.closest('.file-delete-btn');
+        if (btn) deleteFile(btn);
+    });
+
+    // ---- Thumbnail fallback -------------------------------------------------
+    document.querySelectorAll('.preview-grid .file-thumb').forEach(function(img) {
+        img.addEventListener('error', function() {
+            var cell = img.closest ? img.closest('.thumb-cell') : null;
+            if (!cell) return;
+            img.remove();
+            var fb = cell.querySelector('.thumb-fallback');
+            if (fb) fb.removeAttribute('hidden');
+        }, { once: true });
+    });
 })();
 </script>
 
-<!-- US-7.1 — "Głosy w nutach" panel: one table listing all saved part-mappings for
-     this score (instrument + role + page range), plus a form to add a new one. All data comes
-     from the `parts` and `bandInstruments` model attributes — pre-loaded inside a service
-     transaction in CompositionPageController, so we never touch the lazy `composition.parts`
-     collection here (that would LazyInitializationException outside a session). -->
+<!-- Parts Panel (unchanged) -->
 <section id="parts-panel" class="composition-parts">
     <header>
         <h3>Głosy w nutach</h3>
@@ -760,8 +848,6 @@
     </header>
 
     <table id="existing-parts" class="data-table">
-        <!-- MOCKUP: "Strona od / Strona do" merged into ONE range column ("Strony 1–22"),
-             rendered by CompositionInstrumentDto.pageRange() so bound/legacy rows share the rule. -->
         <thead><tr><th>Instrument</th><th>Rola</th><th>Plik nut</th><th>Strony</th><th>Akcje</th></tr></thead>
         <tbody>
             <tr th:if="${parts == null or parts.size() == 0}" class="empty-row"><td colspan="5">Brak oznaczonych głosów — dodaj poniżej.</td></tr>
@@ -777,10 +863,6 @@
         </tbody>
     </table>
 
-    <!-- ＋ Dodaj głos (US-7.9 redesign). Click opens a native <dialog>, not a full-width form.
-         Validation: strona od ≥ 1; strona do ≥ strona od; if serverMaxPageCount is known,
-         strona do ≤ that bound (the real PDF page count). All three rules are enforced client-side. -->
-
     <button type="button" id="open-add-part-modal-btn" class="primary">＋ Dodaj głos</button>
 
     <dialog id="add-part-dialog" class="app-modal">
@@ -790,15 +872,15 @@
         <form id="add-part-form" method="post" th:action="@{/bands/{bandId}/compositions/{compositionId}/parts(bandId=${bandId}, compositionId=${composition.id})}">
             <div class="form-row">
                 <label>Instrument:
-                    <select name="instrumentId" id="part-instrument-picker" class="form-element-secondary" required="">
-                        <option th:if="${bandInstruments == null or #lists.isEmpty(bandInstruments)}" disabled="" selected="" value="">Brak instrumentów w zespole — dodaj je najpierw w Członkach</option>
+                    <select name="instrumentId" id="part-instrument-picker" class="form-element-secondary" required>
+                        <option th:if="${bandInstruments == null or #lists.isEmpty(bandInstruments)}" disabled selected value="">Brak instrumentów w zespole — dodaj je najpierw w Członkach</option>
                         <option th:each="instr : ${bandInstruments}" th:value="${instr.id}" th:text="${instr.name}"></option>
                     </select>
                 </label>
                 <label>Rola: <input type="text" name="role" class="form-input" placeholder="np. Flet 1, Saxofon II"></label>
             </div>
             <div class="form-row">
-                <label>Strona od: <input type="number" name="pageFrom" id="part-page-from" min="1" value="1" required="" class="form-input"></label>
+                <label>Strona od: <input type="number" name="pageFrom" id="part-page-from" min="1" value="1" required class="form-input"></label>
             </div>
             <div class="form-row">
                 <label>Plik nut:
@@ -808,9 +890,8 @@
                     </select>
                 </label>
             </div>
-
             <div class="form-row">
-                <label>Strona do: <input type="number" name="pageTo" id="part-page-to" min="2" value="2" required=""
+                <label>Strona do: <input type="number" name="pageTo" id="part-page-to" min="2" value="2" required
                         th:max="${serverMaxPageCount != null ? serverMaxPageCount : 999}" class="form-input"></label>
             </div>
             <p id="part-range-error" class="hidden text-danger" role="alert"></p>
@@ -820,10 +901,9 @@
             </footer>
         </form>
     </dialog>
-
 </section>
 
-<!-- US-7.10 — "Udostępnij głos" modal (one per page, dynamically filled by the part row's data-* attributes). -->
+<!-- Part Share Modal (unchanged) -->
 <section id="part-share-modal-section" style="margin-top: 1.2rem;">
     <dialog id="part-share-modal">
         <header>
@@ -836,8 +916,7 @@
         <div style="padding: 1rem 1.5rem 0.25rem;">
             <label for="share-link-input">Link do PDF-a (kliknij, aby wyklajrować):</label>
             <div class="row" style="gap: 0.5rem; margin-top: 4px;">
-                <input type="text" id="share-link-input" readonly="readonly"
-                       class="share-link-input" />
+                <input type="text" id="share-link-input" readonly class="share-link-input" />
                 <button type="button" class="secondary" id="copy-share-link-btn" title="Kopiuj link do schowka">📋 Kopiuj</button>
                 <a id="open-share-link-btn" target="_blank" rel="noopener"><button type="button" class="secondary" onclick="window.open(this.parentElement.href,'_blank','noopener');return false;" title="Otwórz PDF w nowej karcie">Otwórz</button></a>
             </div>
@@ -859,8 +938,7 @@
     </dialog>
 </section>
 </div>
-    </section>
-</main>
+</section>
 
 <script th:inline="none">
 (function () {
@@ -868,7 +946,7 @@
   var compId = /*[[${composition.id}]]*/ 0;
 
   var modal      = document.getElementById('part-share-modal');
-  if (!modal) { return; }           // defensive: template missing
+  if (!modal) { return; }
 
   var voiceLabel = document.getElementById('share-modal-voice-label');
   var pagesEl    = document.getElementById('share-modal-pages');
@@ -886,7 +964,6 @@
   function openFor(row) {
     currentPartId = row.getAttribute('data-part-id');
     if (!currentPartId) return;
-    // Reset UI state.
     resEl.textContent = ''; resEl.classList.add('hidden');
     errEl.textContent = ''; errEl.classList.add('hidden');
     recIp.value = '';
@@ -963,7 +1040,7 @@
       try {
         var j = await resp.json();
         if (j && j.error) msg = j.error;
-            else if (j && j.message) msg = j.message;
+        else if (j && j.message) msg = j.message;
       } catch (_) { /* fall back to status code */ }
       errEl.textContent = 'Błąd ' + msg;
       errEl.classList.remove('hidden');
@@ -980,7 +1057,6 @@
     }
   });
 
-  // ESC-close the dialog without firing form submit (no <form> here, just safety).
   modal.addEventListener('keydown', function (ev) {
     if (ev.key === 'Escape') { ev.preventDefault(); closeSelf(); }
   });
@@ -991,7 +1067,6 @@
 (function () {
     var form = document.getElementById('add-part-form');
     if (form) {
-        // "Wyczyść" button — reset the fields back to their defaults.
         var clearBtn = document.getElementById('clear-part-form-btn');
         if (clearBtn) {
             clearBtn.addEventListener('click', function () { form.reset(); });
@@ -1000,32 +1075,11 @@
 })();
 </script>
 
-<script th:inline="none">
+<script>
 (function () {
     'use strict';
-    // 「Dodaj głos」 modal — native <dialog>, opened via the ＋ button above.
-    var openBtn  = document.getElementById('open-add-part-modal-btn');
-    var dlg      = document.getElementById('add-part-dialog');
-    if (!openBtn || !dlg) return;
 
-    openBtn.addEventListener('click', function () {
-        window.openAppModal && window.openAppModal('add-part-dialog');
-        dlg.showModal();
-    });
-
-    // Close on ESC — handled by native <dialog>, but keep it explicit for clarity.
-    // Close on backdrop click (outside the dialog box).
-    dlg.addEventListener('click', function (ev) {
-        var rect = dlg.getBoundingClientRect();
-        var inDialog = ev.clientX >= rect.left && ev.clientX <= rect.right &&
-                       ev.clientY >= rect.top  && ev.clientY <= rect.bottom;
-        if (!inDialog) { closeAppModal(dlg); }
-    });
-
-    // Range validation — runs before submit.
     var filePicker = document.getElementById('part-score-file-picker');
-    // ── US-7.14 — Plik nut picker (max enforcement) ─────────────────────────
-    // Pre-select on load: pick the largest file by pageCount (best default).
     if (filePicker) {
         var opts = Array.prototype.slice.call(filePicker.options);
         var best = null;
@@ -1047,7 +1101,6 @@
                 return m ? parseInt(m[1], 10) : null;
             }
         }
-        // Legacy fallback: no per-file count parsed — defer to the form-level max.
         if (typeof window !== 'undefined' && window.__serverMaxPageCount != null) {
             return Math.min(window.__serverMaxPageCount, 999);
         }
@@ -1060,21 +1113,17 @@
     var errEl    = document.getElementById('part-range-error');
     if (!form) return;
 
-    function showError(msg) {
-        if (errEl) { errEl.textContent = msg; errEl.classList.remove('hidden'); }
-    }
+    function showError(msg) { if (errEl) { errEl.textContent = msg; errEl.classList.remove('hidden'); } }
     function clearError() { if (errEl) errEl.classList.add('hidden'); }
 
     form.addEventListener('submit', function (ev) {
         var fromVal = parseInt(fromInp && fromInp.value, 10) || 1;
         var toVal   = parseInt(toInp   && toInp.value,   10) || 2;
-        // Rule 1: strona do must be ≥ strona od.
         if (toVal < fromVal) {
             ev.preventDefault();
             showError('Strona do musi być większa lub równa stronie od.');
             return;
         }
-        // Rule 2: if we know the real server-side max page count, enforce it.
         var smax = selectedMax(); var serverMax = (smax != null) ? smax : parseInt(toInp && toInp.getAttribute("max"), 10);
         if (serverMax && !isNaN(serverMax) && toVal > serverMax) {
             ev.preventDefault();
@@ -1084,7 +1133,6 @@
         clearError();
     });
 
-    // Live feedback while typing — re-check on input so users see errors fix as they type.
     [fromInp, toInp].forEach(function (inp) {
         if (inp) inp.addEventListener('input', function () {
             var f = parseInt(fromInp && fromInp.value, 10);
@@ -1095,61 +1143,6 @@
             }
         });
     });
-
-})();
-</script>
-
-<!-- MOCKUP: per-file "Usuń" action. The endpoint already exists (US-2.5, DELETE .../files/{fileId})
-     and is tested; only the UI affordance was missing. Document-level delegation means the handler
-     survives HTMX fragment swaps of #compositions-content (no per-row rebinding to forget), and the
-     button's data-url keeps the wiring stateless — safe even on rows appended client-side. -->
-<script>
-(function () {
-    'use strict';
-
-    function restoreEmptyRow() {
-        var list = document.getElementById('score-files-list');
-        if (!list) { return; }
-        var realRows = Array.prototype.filter.call(list.children, function (el) {
-            return el.tagName === 'LI' && !el.classList.contains('empty-row');
-        });
-        if (realRows.length > 0) { return; }
-        if (!list.querySelector('.empty-row')) {
-            var empty = document.createElement('li');
-            empty.className = 'empty-row';
-            empty.textContent = 'Brak wgranych plików. Wgrany PDF odblokuje analize i podział na głosy.';
-            list.appendChild(empty);
-        }
-    }
-
-    function deleteFile(btn) {
-        var url = btn.getAttribute('data-url');
-        if (!url || btn.disabled) { return; }
-        var name = btn.getAttribute('data-file-name') || 'pliku';
-        var msg = 'Usunąć plik „' + name + '”? Tej operacji nie można cofnąć — plik zostanie ' +
-                  'usunięty również z przypisań stron w sekcji „Głosy w nutach”.';
-        if (!window.confirm(msg)) { return; }
-
-        btn.disabled = true;
-        // fetchWithToast (windband-utils.js) adds the XSRF header, shows a success/error toast with
-        // the HTTP status on failure and re-throws after the catch-chain renders nothing new.
-        fetchWithToast(url, { method: 'DELETE', toastMessage: 'Plik usunięty' })
-            .then(function (resp) {
-                if (!resp.ok) { return; }
-                var row = btn.closest('li');
-                if (row && row.parentNode) { row.parentNode.removeChild(row); }
-                restoreEmptyRow();
-            })
-            .catch(function () { /* network/transport error — toast already shown */ })
-            .then(function () { btn.disabled = false; });
-    }
-
-    document.addEventListener('click', function (event) {
-        var target = event.target;
-        if (!target || typeof target.closest !== 'function') { return; }
-        var btn = target.closest('.file-delete-btn');
-        if (btn) { deleteFile(btn); }
-    });
 })();
 </script>
 
@@ -1158,5 +1151,6 @@
 <div th:insert="~{fragments/layout :: footer-scripts}"></div>
 <div th:insert="~{fragments/layout :: dashboard-header-morph}"></div>
 
+</div>
 </body>
 </html>
