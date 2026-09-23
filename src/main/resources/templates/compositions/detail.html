@@ -1001,8 +1001,11 @@
     <button type="button" id="open-add-part-modal-btn" class="primary">＋ Dodaj głos</button>
 
     <dialog id="add-part-dialog" class="app-modal">
-        <header>
-            <h3 id="add-part-dialog-title">Dodaj głos (strony w nutach)</h3>
+        <header class="app-modal-header">
+            <div class="app-modal-header-text">
+                <h3 id="add-part-dialog-title">Dodaj głos (strony w nutach)</h3>
+            </div>
+            <button type="button" class="app-modal-close" aria-label="Zamknij" data-close>×</button>
         </header>
         <form id="add-part-form" method="post" th:action="@{/bands/{bandId}/compositions/{compositionId}/parts(bandId=${bandId}, compositionId=${composition.id})}">
             <div class="form-row">
@@ -1177,6 +1180,18 @@
 <script>
 (function () {
     'use strict';
+
+    // 「Dodaj głos」 modal — native <dialog>, opened via the ＋ button.
+    // (Binding was accidentally dropped in ac90648; without it the button did nothing.)
+    var openBtn = document.getElementById('open-add-part-modal-btn');
+    var addPartDlg = document.getElementById('add-part-dialog');
+    if (openBtn && addPartDlg) {
+        openBtn.addEventListener('click', function () {
+            if (typeof openAppModal === 'function') { openAppModal('add-part-dialog'); }
+            else if (typeof addPartDlg.showModal === 'function') { addPartDlg.showModal(); }
+            else { addPartDlg.setAttribute('open', ''); }
+        });
+    }
 
     var filePicker = document.getElementById('part-score-file-picker');
     if (filePicker) {
