@@ -35,6 +35,13 @@ class CompositionQueryIT extends BaseIntegrationTest {
     @BeforeEach
     void truncateCompositions() {
         // Isolate this test class from leftover rows of other tests in the shared container.
+        // Children first → parent: sibling suites commit score_files / instrument rows that
+        // FK-block a bare DELETE FROM compositions (test DDL is Hibernate-generated, so the
+        // Flyway ON DELETE CASCADE does not apply here).
+        jdbcTemplate.execute("DELETE FROM event_compositions");
+        jdbcTemplate.execute("DELETE FROM composition_instruments");
+        jdbcTemplate.execute("DELETE FROM score_analysis");
+        jdbcTemplate.execute("DELETE FROM score_files");
         jdbcTemplate.execute("DELETE FROM compositions");
     }
 
@@ -44,6 +51,11 @@ class CompositionQueryIT extends BaseIntegrationTest {
             repository.findByIdAndBandId(id, 1L).ifPresent(repository::delete);
         }
         createdCompositionIds.clear();
+        // Same child→parent wipe as the preceding hook — a failed test leaves its seed rows.
+        jdbcTemplate.execute("DELETE FROM event_compositions");
+        jdbcTemplate.execute("DELETE FROM composition_instruments");
+        jdbcTemplate.execute("DELETE FROM score_analysis");
+        jdbcTemplate.execute("DELETE FROM score_files");
         jdbcTemplate.execute("DELETE FROM compositions");
     }
 

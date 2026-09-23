@@ -2745,43 +2745,484 @@ body.filter-pinned #uber-filter-container select:focus {
     line-height: 1.6;
 }
 
-/* US-3.5 — lifecycle action bar (archive / restore buttons). Pico's .primary /
-   .secondary already give the right contrast in both light and dark themes, so we
-   only need a little container rhythm to separate the actions from the <dl>. */
-.composition-status-actions {
+/* ====================== Composition Detail — New Layout ====================== */
+/* Two articles stacked: header + score files */
+
+.composition-header-article,
+.score-files-article {
+    background: var(--pico-card-background-color);
+    border: 1px solid var(--pico-card-border-color);
+    border-radius: var(--pico-border-radius);
+    padding: 1.25rem;
+    margin-bottom: 1rem;
+}
+
+/* Article 1: Composition Header */
+.composition-header {
     display: flex;
-    gap: 0.5rem;
-    margin-top: 1.25rem;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+
+.composition-title-row {
+    display: flex;
+    align-items: baseline;
+    gap: 0.75rem;
     flex-wrap: wrap;
 }
 
-/* "Szczegóły utworu" mockup — actions are split into TWO visual groups: the primary
-   next-step ("Analizuj utwór") sits flush left, the status cluster (Archiwizuj /
-   Przywróć / Usuń) is pushed to the right edge. margin-left:auto degenerates safely
-   on narrow viewports because the parent already flex-wraps. */
-.composition-status-actions .status-cluster {
-    margin-left: auto;
+.composition-title {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: var(--pico-color);
+}
+
+.composition-title-row .badge {
+    font-size: 0.75rem;
+    padding: 0.25rem 0.5rem;
+    flex-shrink: 0;
+}
+
+.composition-meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1.5rem;
+    font-size: 0.875rem;
+    color: var(--pico-color);
+    opacity: 0.85;
+}
+
+.composition-meta .meta-label {
+    font-weight: 600;
+    margin-right: 0.35rem;
+    opacity: 0.7;
+}
+
+.composition-description-inline {
+    flex-basis: 100%;
+    max-width: 100%;
+}
+
+.composition-actions {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+    margin-top: 0.5rem;
+    padding-top: 0.75rem;
+    border-top: 1px solid var(--pico-muted-border-color);
+}
+
+.composition-actions .primary {
+    font-size: 1rem;
+    font-weight: 600;
+    padding: 0.625rem 1.25rem;
+}
+
+.status-cluster {
+    display: inline-flex;
+    gap: 0.375rem;
+    flex-wrap: wrap;
+}
+
+.icon-btn {
+    width: 40px;
+    height: 40px;
     display: inline-flex;
     align-items: center;
+    justify-content: center;
+    font-size: 1.125rem;
+    padding: 0;
+    border-radius: var(--pico-border-radius);
+}
+
+.icon-btn:hover,
+.icon-btn:focus-visible {
+    background: var(--pico-primary-background);
+    border-color: var(--pico-primary-border);
+}
+
+.icon-btn.danger:hover,
+.icon-btn.danger:focus-visible {
+    background: color-mix(in srgb, var(--pico-secondary) 15%, var(--pico-card-background-color));
+    border-color: var(--pico-secondary-border);
+    color: var(--pico-secondary);
+}
+
+/* Article 2: Score Files */
+.score-files-article .section-header {
+    margin-bottom: 1rem;
+}
+
+.score-files-article .section-header h3 {
+    margin: 0 0 0.25rem;
+    font-size: 1.125rem;
+}
+
+.score-files-article .section-header small {
+    color: var(--pico-muted-color);
+    font-size: 0.8rem;
+}
+
+/* Dropzone */
+.dropzone {
+    position: relative;
+    border: 2px dashed var(--pico-muted-border-color);
+    border-radius: var(--pico-border-radius);
+    background: var(--pico-card-background-color);
+    min-height: 120px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: border-color 0.15s ease, background 0.15s ease, box-shadow 0.15s ease;
+    margin-bottom: 1rem;
+}
+
+.dropzone:hover,
+.dropzone.drag-over {
+    border-color: var(--pico-primary-border);
+    background: color-mix(in srgb, var(--pico-primary) 8%, var(--pico-card-background-color));
+    box-shadow: 0 0 0 3px var(--pico-primary-transparent-25, hsl(210 90% 50% / 0.15));
+}
+
+.dropzone:focus-visible {
+    outline: none;
+    border-color: var(--pico-primary);
+    box-shadow: 0 0 0 3px var(--pico-primary-transparent-50, hsl(210 90% 50% / 0.25));
+}
+
+.dropzone-content {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.375rem;
+    text-align: center;
+    padding: 1.5rem;
+    pointer-events: none;
+}
+
+.dropzone-icon {
+    font-size: 2.5rem;
+    line-height: 1;
+    opacity: 0.6;
+}
+
+.dropzone-text {
+    font-size: 1.125rem;
+    font-weight: 600;
+    color: var(--pico-color);
+}
+
+.dropzone-hint {
+    font-size: 0.8rem;
+    color: var(--pico-muted-color);
+}
+
+/* Upload Queue */
+.upload-queue {
+    border: 1px solid var(--pico-card-border-color);
+    border-radius: var(--pico-border-radius);
+    background: var(--pico-card-background-color);
+    padding: 1rem;
+    margin-bottom: 1rem;
+}
+
+.upload-queue-header {
+    font-weight: 600;
+    font-size: 0.875rem;
+    margin-bottom: 0.75rem;
+    color: var(--pico-color);
+}
+
+.upload-queue-list {
+    list-style: none;
+    padding: 0;
+    margin: 0 0 1rem;
+}
+
+.upload-queue-item {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.5rem 0.75rem;
+    background: var(--pico-card-background-color);
+    border: 1px solid var(--pico-muted-border-color);
+    border-radius: var(--pico-border-radius);
+    margin-bottom: 0.5rem;
+    transition: all 0.15s ease;
+}
+
+.upload-queue-item:last-child {
+    margin-bottom: 0;
+}
+
+.upload-queue-item.uploading {
+    border-color: var(--pico-primary-border);
+}
+
+.upload-queue-item.success {
+    border-color: var(--pico-primary-border);
+}
+
+.upload-queue-item.error {
+    border-color: var(--pico-secondary-border);
+}
+
+.status-icon {
+    font-size: 1.25rem;
+    line-height: 1;
+    flex-shrink: 0;
+    width: 28px;
+    text-align: center;
+}
+
+.status-icon.pending { opacity: 0.6; }
+.status-icon.uploading { animation: spin 1s linear infinite; }
+.status-icon.success { color: var(--pico-primary); }
+.status-icon.error { color: var(--pico-secondary); }
+
+@keyframes spin {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+}
+
+.upload-file-info {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0.125rem;
+}
+
+.upload-file-name {
+    font-weight: 500;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    color: var(--pico-color);
+}
+
+.upload-file-size {
+    font-size: 0.75rem;
+    color: var(--pico-muted-color);
+}
+
+.upload-remove-btn {
+    width: 32px;
+    height: 32px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    background: transparent;
+    border: 1px solid var(--pico-muted-border-color);
+    border-radius: var(--pico-border-radius);
+    font-size: 0.875rem;
+    color: var(--pico-muted-color);
+    cursor: pointer;
+    flex-shrink: 0;
+    transition: all 0.15s ease;
+}
+
+.upload-remove-btn:hover,
+.upload-remove-btn:focus-visible {
+    background: color-mix(in srgb, var(--pico-secondary) 15%, var(--pico-card-background-color));
+    border-color: var(--pico-secondary-border);
+    color: var(--pico-secondary);
+}
+
+.upload-queue-actions {
+    display: flex;
+    justify-content: flex-end;
     gap: 0.5rem;
+    padding-top: 0.75rem;
+    border-top: 1px solid var(--pico-muted-border-color);
+}
+
+.upload-queue-actions .primary,
+.upload-queue-actions .secondary {
+    padding: 0.5rem 1rem;
+    font-size: 0.875rem;
+}
+
+/* Existing Files Section */
+.existing-files-section {
+    margin-top: 0.5rem;
+}
+
+.existing-files-section h4 {
+    font-size: 0.875rem;
+    font-weight: 600;
+    margin: 0 0 0.75rem;
+    color: var(--pico-muted-color);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+.composition-file-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+
+.file-list-row {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.5rem 1rem;
+    padding: 0.625rem 0.5rem;
+    border-bottom: 1px solid var(--pico-muted-border-color);
+    transition: background 0.15s ease;
+}
+
+.file-list-row:hover {
+    background: var(--pico-card-background-hover, color-mix(in srgb, var(--pico-primary) 5%, var(--pico-card-background-color)));
+}
+
+.file-list-row:last-child {
+    border-bottom: none;
+}
+
+.file-icon {
+    font-size: 1.25rem;
+    line-height: 1;
+    flex-shrink: 0;
+    width: 28px;
+    text-align: center;
+}
+
+.file-name {
+    color: var(--pico-primary);
+    font-weight: 500;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 28rem;
+    text-decoration: none;
+    flex: 1 1 auto;
+    min-width: 120px;
+}
+
+.file-name:hover {
+    text-decoration: underline;
+}
+
+.file-meta {
+    color: var(--pico-color);
+    opacity: 0.7;
+    font-size: 0.75rem;
+    white-space: nowrap;
+    flex: 0 0 auto;
+}
+
+.file-actions {
+    display: flex;
+    gap: 0.375rem;
+    align-items: center;
+    flex: 0 0 auto;
     flex-wrap: wrap;
 }
 
-/* Danger action (red) — composition "Usuń bezpowrotnie" and the per-file "Usuń".
-   Reuses the red already approved in .overflow-item.danger, so both themes get a
-   recognisably destructive control without leaking a second palette. */
-button.secondary.danger {
-    color: #dc3545;
+.file-actions .secondary {
+    padding: 0.375rem 0.625rem;
+    font-size: 0.75rem;
+    line-height: 1.3;
 }
 
-button.secondary.danger:hover,
-button.secondary.danger:focus-visible {
-    background-color: #fdecec;
-    border-color: #dc3545;
-    color: #b02a37;
+/* Mobile: stack to column */
+@media (max-width: 640px) {
+    .composition-title-row {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 0.375rem;
+    }
+    
+    .composition-title {
+        font-size: 1.25rem;
+    }
+    
+    .composition-meta {
+        flex-direction: column;
+        gap: 0.375rem;
+    }
+    
+    .composition-description-inline {
+        flex-basis: auto;
+    }
+    
+    .composition-actions {
+        flex-direction: column;
+        align-items: stretch;
+    }
+    
+    .composition-actions .primary {
+        width: 100%;
+        text-align: center;
+    }
+    
+    .status-cluster {
+        justify-content: center;
+        width: 100%;
+    }
+    
+    .icon-btn {
+        flex: 1;
+        min-width: 0;
+    }
+    
+    .dropzone {
+        min-height: 100px;
+    }
+    
+    .dropzone-content {
+        padding: 1rem;
+    }
+    
+    .dropzone-icon {
+        font-size: 2rem;
+    }
+    
+    .dropzone-text {
+        font-size: 1rem;
+    }
+    
+    .file-list-row {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 0.375rem;
+    }
+    
+    .file-icon {
+        width: auto;
+    }
+    
+    .file-name {
+        max-width: 100%;
+        width: 100%;
+    }
+    
+    .file-meta {
+        width: 100%;
+    }
+    
+    .file-actions {
+        width: 100%;
+        justify-content: flex-start;
+    }
+    
+    .upload-queue-actions {
+        flex-direction: column;
+    }
+    
+    .upload-queue-actions .primary,
+    .upload-queue-actions .secondary {
+        width: 100%;
+        text-align: center;
+    }
 }
 
-/* Pagination for compositions list */
+/* ============================ Pagination for compositions list ==================== */
 .pagination {
     display: flex;
     align-items: center;
@@ -2823,6 +3264,20 @@ button.secondary.danger:focus-visible {
 .pagination .disabled {
     opacity: 0.5;
     pointer-events: none;
+}
+
+/* Danger action (red) — composition "Usuń bezpowrotnie" and the per-file "Usuń".
+   Reuses the red already approved in .overflow-item.danger, so both themes get a
+   recognisably destructive control without leaking a second palette. */
+button.secondary.danger {
+    color: #dc3545;
+}
+
+button.secondary.danger:hover,
+button.secondary.danger:focus-visible {
+    background-color: #fdecec;
+    border-color: #dc3545;
+    color: #b02a37;
 }
 
 /* ============================ Biblioteka utworów — filter form ====================
@@ -2901,143 +3356,6 @@ button.secondary.danger:focus-visible {
         padding-left: 0.75rem;
         padding-right: 0.75rem;
     }
-/* ============================ Composition detail — US-7 redesign (Phase B) ====================
-   Dark mode safe — all colors from Pico v2 custom properties. New sections:
-     - .score-hero-pick   : the big "Kliknij tutaj, aby wybrać plik PDF" dropzone
-     - .file-list-row     : one uploaded file row (icon | name+meta | actions)
-     - .file-name        : ellipsized filename, primary affordance
-     - .file-meta        : size · pages · date line
-     - .form-notes       : helper text below form
-   ========================================================================== */
 
-.score-hero { margin-bottom: 0.75rem; }
-
-.score-hero-pick {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 0.5rem;
-    min-height: 64px;
-    padding: 14px 20px;
-    border-radius: var(--pico-border-radius, 6px);
-    background: var(--pico-card-background-color);
-    color: var(--pico-color);
-    border: 2px dashed var(--pico-muted-border-color);
-    cursor: pointer;
-    font-weight: 600;
-    user-select: none;
-    transition: border-color 0.15s ease, background 0.15s ease;
 }
 
-.score-hero-pick:hover,
-.score-file-picker:hover {
-
-    background: var(--pico-card-background-hover, color-mix(in srgb, var(--pico-primary) 8%, var(--pico-card-background-color)));
-    border-color: var(--pico-primary-border);
-}
-
-/* Selected state — user has picked a file; highlight the picker and disable it. */
-.score-file-picker:has(input:checked),
-.score-file-picker.is-selected {
-    background: color-mix(in srgb, var(--pico-primary) 12%, var(--pico-card-background-color));
-    border-color: var(--pico-primary-border);
-    cursor: default;
-}
-
-/* Error state — one line to the right of the picker, not a "stack". */
-.score-file-picker.has-error {
-    border-color: var(--pico-secondary-border);
-    background: color-mix(in srgb, var(--pico-secondary) 8%, var(--pico-card-background-color));
-}
-
-/* File rows in #score-files-list */
-#score-files-list { list-style: none; padding: 0.5rem 0; margin: 0 0 0.75rem; }
-
-/* Responsive file row — flex + wrap so it degrades gracefully at narrow viewports
-   (mobile ≥360px requirement, US-7.9 step 4). Desktop keeps name+meta on one line;
-   mobile (≤640px) stacks name / meta / actions full-width. */
-.file-list-row {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    gap: 0.25rem 0.75rem;
-    padding: 0.45rem 0.25rem;
-    border-bottom: 1px solid var(--pico-muted-border-color);
-}
-
-.file-list-row:not(:first-child) { margin-top: 0; }
-.file-list-row:last-child { border-bottom: none; }
-
-@media (max-width: 640px) {
-    .file-list-row .file-name,
-    .file-list-row .file-meta,
-    .file-list-row .file-actions { flex-basis: 100%; max-width: 100%;}
-}
-
-/* Preview panel (US-7.9) must never force horizontal page scroll — cap it to the
-   available width regardless of the intrinsic size of rendered thumbnail images,
-   and keep it on its own line under the file-meta/actions row (flex-basis 100%). */
-.file-preview {
-    flex: 1 1 100%;
-    min-width: 0;
-    max-width: 100%;
-    box-sizing: border-box;
-    overflow-x: hidden;
-}
-
-.file-preview .preview-grid { min-width: 0; }
-.file-preview .thumb-cell { min-width: 0; }
-.file-preview .file-thumb { max-width: 100%; height: auto; }
-
-.file-icon { font-size: 1.1rem; line-height: 1; }
-
-.file-name {
-    color: var(--pico-primary);
-    font-weight: 500;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    max-width: 24rem;              /* ~384px ceiling keeps meta + actions on same row */
-    text-decoration: none;
-}
-
-.file-meta {
-    color: var(--pico-color);
-    opacity: 0.75;
-    font-size: 0.82rem;
-    white-space: nowrap;
-}
-
-.file-actions { display: flex; gap: 0.25rem; align-items: center; }
-
-.file-actions .btn {
-    padding: 0.25rem 0.5rem;
-    font-size: 0.8rem;
-    line-height: 1.3;
-}
-
-/* Mobile — stack to a column */
-@media (max-width: 480px) {
-    .file-list-row { grid-template-columns: 1.25rem minmax(6rem, 1fr); }
-
-    .file-meta, .file-actions { grid-column: 1 / -1; }
-    .file-name { max-width: 100%; }
-}
-
-
-/* Share modal — link input + separator (replaces inline hex values) */
-.share-link-input {
-    flex: 1;
-    font-family: monospace;
-    background: var(--pico-card-background-color);
-    color: var(--pico-color);
-    border: 1px solid var(--pico-muted-border-color);
-    border-radius: var(--pico-border-radius, 6px);
-    padding: 0.35rem 0.6rem;
-}
-
-.modal-separator {
-    border: none;
-    border-top: 1px solid var(--pico-muted-border-color);
-    margin: 0.8rem 0;
-}

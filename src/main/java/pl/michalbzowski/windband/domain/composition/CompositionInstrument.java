@@ -16,6 +16,8 @@ import jakarta.persistence.Table;
 import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
+import org.hibernate.annotations.OnDelete;
+import org.hibernate.annotations.OnDeleteAction;
 import pl.michalbzowski.windband.domain.member.Instrument;
 
 import java.time.Instant;
@@ -58,6 +60,7 @@ public class CompositionInstrument {
 
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "composition_id", nullable = false)
+    @OnDelete(action = OnDeleteAction.CASCADE)
     private Composition composition;
 
     @ManyToOne(fetch = FetchType.LAZY, optional = false)

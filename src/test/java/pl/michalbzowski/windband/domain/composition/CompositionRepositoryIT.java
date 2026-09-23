@@ -1,6 +1,7 @@
 package pl.michalbzowski.windband.domain.composition;
 
 import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import pl.michalbzowski.windband.BaseIntegrationTest;
@@ -27,10 +28,31 @@ class CompositionRepositoryIT extends BaseIntegrationTest {
     @Autowired
     private org.springframework.jdbc.core.JdbcTemplate jdbcTemplate;
 
+    @BeforeEach
+    void truncateCompositions() {
+        // Clean slate BEFORE each test: sibling suites (upload / analysis ITs) commit
+        // rows through the real HTTP stack and share this Postgres JVM — without a
+        // pre-wipe the first test here sees their leftover compositions
+        // (CI run 683: "expected size: 1 but was: 10").
+        // Children first → parent; test DDL is Hibernate-generated so Flyway's
+        // ON DELETE CASCADE does not apply here.
+        jdbcTemplate.execute("DELETE FROM event_compositions");
+        jdbcTemplate.execute("DELETE FROM composition_instruments");
+        jdbcTemplate.execute("DELETE FROM score_analysis");
+        jdbcTemplate.execute("DELETE FROM score_files");
+        jdbcTemplate.execute("DELETE FROM compositions");
+    }
+
     @AfterEach
     void cleanup() {
         // Self-contained: tests here seed rows and must remove them, so the shared
         // Testcontainers DB never leaks data across test classes.
+        // Children first → parent (surefire reuses one JVM/DB; other suites commit
+        // score_files rows that block a bare DELETE FROM compositions on the FK).
+        jdbcTemplate.execute("DELETE FROM event_compositions");
+        jdbcTemplate.execute("DELETE FROM composition_instruments");
+        jdbcTemplate.execute("DELETE FROM score_analysis");
+        jdbcTemplate.execute("DELETE FROM score_files");
         jdbcTemplate.execute("DELETE FROM compositions");
     }
 
