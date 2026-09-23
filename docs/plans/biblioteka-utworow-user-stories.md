@@ -631,7 +631,49 @@ Not yet implemented. The persistence layer is ready (US-1.4: entity, repository,
 | 4 | Mobile pass: verify at 360 px; `CompositionDetailPageUiTest` mobile-viewport assertion for upload section + preview grid. |
 | 5 | Integration test: `ScoreFileThumbRestControllerIT` — 200 + JPEG byte header for a generated multi-page PDF; 422 for ZIP parent; 409 cross-band; 404 for unknown page number. |
 
+### **US-7.10: Shareable voice link (per part row)** ✅ shipped 2026-09-23, superseded by US-7.11 for distribution
+> **As a** band librarian
+> **I want** a link per defined voice ("Flet 1, strony 23–24") that I can copy or e-mail to a musician
+
+**Real implementation** (`PartLinkRestController` + `PartLinkQueryService` + `PartShareByEmailCommandService`):
+- `GET /bands/{bandId}/compositions/{compositionId}/parts/{partId}` — streams the bound score file with `Content-Disposition` filename `<utwor>-<rola>_ss-<from>-<to>.pdf`.
+- `POST .../parts/{partId}/share` `{"recipientsCsv": "..."}` → e-mails the link via the shared `EmailSender`.
+- Two-layer band isolation (unknown band → 400; cross-band probe → 409); "largest covering file" selection when a part's range spans one of several uploaded PDFs.
+
+**Gaps found in the 2026-09-23 audit (all fixed by → US-7.11):**
+1. ⚠️ **No physical page split** — the endpoint streams the WHOLE score PDF; `pageFrom`/`pageTo` only decorate the filename. A musician downloading "strony 23–24" receives the entire book.
+2. ⚠️ **Enumeration leak** — the URL embeds sequential numeric `bandId`/`compositionId`/`partId`; anyone with one link can iterate neighbours (`/bands/2/compositions/5/parts/1`…).
+3. ⚠️ **Link is not actually public** — the route falls under `anyRequest().authenticated()`, so an external musician clicking the e-mailed link is bounced to Keycloak login; sharing only "works" for logged-in team members.
+
+---
+
+### **US-7.11: Public tokenized voice link + real PDF page split** ⬜ Not started (added 2026-09-23 per team request)
+> **As a** band librarian
+> **I want** the shared voice link to be a public URL containing an opaque random token (UUIDv4) — and to serve ONLY the pages defined as that voice
+> **So that** musicians get exactly their 2 pages without an account, and a leaked link cannot be used to enumerate other bands' scores
+
+**Acceptance criteria:**
+
+- [ ] **AC1 — Physical PDF split.** New `PdfPageExtractor.extractPages(byte[] source, int from, int to)` in the application layer (PDFBox 3.x — already a dependency via US-2.2; mirrors `PdfPageCounter`'s defensive style: never throws on corrupt input, returns `null`). The share endpoint returns a NEW PDF containing exactly `pageFrom…pageTo` pages. Unit test: generate a 5-page PDF via `TestPdfBuilder`, extract 2–3, assert `pageCount == 2` and page order/content.
+- [ ] **AC2 — Token mapping.** Migration **V44__create_part_share_tokens.sql**: `part_share_tokens(token UUID PRIMARY KEY, part_id BIGINT NOT NULL UNIQUE REFERENCES composition_instruments(id) ON DELETE CASCADE, created_at, created_by)`. Token generated app-side (`UUID.randomUUID()`, UUIDv4 — 122 bits of entropy, unguessable, sequential-ID-free). V44 also backfills one token per existing part row (`INSERT ... SELECT gen_random_uuid(), id FROM composition_instruments`). The token is STABLE per part — editing the page range does NOT rotate the link; the next GET simply serves the new range (range is resolved live through the part FK).
+- [ ] **AC3 — Public API.** `GET /public/parts/{token}` → 200 + split PDF (`inline` for PDF), 404 for unknown token, 410 when the part/composition was deleted (FK cascade removes the token → indistinguishable from 404, which is fine — fail closed, no existence oracle). Add the route to `SecurityConfig`'s `permitAll` list (the `/public/**` prefix is already public — putting the endpoint under it costs zero config churn). No authentication, no session cookie set on this path.
+- [ ] **AC4 — Deprecate the enumerable URL.** The share modal + e-mail body switch to `{app.base-url}/public/parts/{token}`; the UI never shows a `/bands/…/parts/…` URL again. Delete the old authenticated GET from `PartLinkRestController` (it has no other consumer — the "Otwórz" button points at the same link; verify with a repo-wide grep before removal). Keep the `POST .../share` e-mail endpoint authenticated as today.
+- [ ] **AC5 — Revocation (cheap, do it).** Modal "Zresetuj link" button → rotates the token (new UUID row, old one 404s from then on). Covers "I pasted the link in a wrong group chat". Column-wise this is just an UPDATE of `token` for the part.
+- [ ] **AC6 — Scope guard.** ZIP-backed parts (no single covering PDF, `NoCoveringFileException` path) keep returning 409 with the same message; token links inherit it.
+
+**Design notes:**
+- Token in path, not query string → doesn't leak into referrer headers or access logs as "just a parameter"; treat the full URL as a bearer credential and say so in the modal hint ("Każdy z tym linkiem widzi głos — nie udostępniaj dalej").
+- Rate-limit / abuse: MVP — none beyond 404-on-guess (122-bit space makes online guessing impractical); revisit if access logs show probing.
+- Filename stays `slug(title)-slug(role)_ss-from-to.pdf` (already RFC-6266-safe helpers in `PartLinkRestController`); reuse, don't rewrite.
+
+**Tests:** `PdfPageExtractorTest` (unit, TestPdfBuilder); `PartShareTokenIT` (token issued on part create; backfilled for pre-existing; cascade on part delete → 404); `PublicPartLinkRestControllerTest` (web-slice: 200 + PDF magic bytes without auth; 404 unknown/garbage token; split contains exactly N pages); update `CompositionDetailPartsUiTest` to assert the copied link matches `/public/parts/<uuid>` and contains NO `/bands/` segment.
+
+**Story points:** 5. **Dependencies:** US-2.2 (PDFBox), US-7.1 (part rows), US-7.10 (link semantics). **Blocks:** honest US-6.3 e-mail distribution (same token URL becomes the e-mail payload).
+
+---
+
 ### US-7.4 / 7.5 / 7.6 / 7.7 / 7.8 (remainder) ⬜ Not started
+
 Not planned in the original US list; listed here only to keep the "Epic 7" section honest about what has and hasn't landed:
 
 - **US-7.4** — Bulk actions on the composition list (archive many at once, filter by status). No code; would extend `CompositionPageController#list` with a multi-select + batch POST through the existing `CompositionCommandService`.
@@ -650,12 +692,15 @@ Not planned in the original US list; listed here only to keep the "Epic 7" secti
 | US-7.1 parts panel | ✅ done | Manual page→instrument mapping from the detail page; `addPart` command service method; Selenium test pins happy + 2 failure paths |
 | US-7.3 role-map admin UI | ⬜ not started | Persistence ready (US-1.4); page + service not written |
 | US-7.9 upload + header preview | ⬜ not started (added 2026-09-19) | Upload UI for the existing US-2.1 endpoint; server-side PDFBox thumbnail endpoint (pages 1–3); mobile pass |
+| US-7.10 shareable voice link | ✅ shipped 2026-09-23 | Streams the FULL pdf under an enumerable `/bands/…/parts/N` URL that still requires login — see gaps + replacement below |
+| US-7.11 public tokenized link + real page split | ⬜ not started (added 2026-09-23) | UUIDv4 link, public unauthenticated GET, PDFBox page extraction — supersedes US-7.10's URL scheme |
 | US-7.4 – 7.8 | ⬜ not started | No code; see per-story notes above |
 
 ---
 
 ## 📌 Open work, in priority order (team decision needed)
 
+0. **US-7.11 — Public tokenized voice link + real PDF page split.** Team decision 2026-09-23: the current share link leaks the whole book under an enumerable, login-required URL. Split the PDF to exactly the voice's page range and serve it at `/public/parts/{uuid}` (unauthenticated). Prerequisite for any real US-6.3 e-mail distribution.
 1. **US-7.9 — PDF upload button + header preview on detail page.** The upload REST endpoint (US-2.1) and `pageCount` (US-2.2) both already exist; what's missing is the UI for uploading from the detail page + a lightweight per-page preview. Highest immediate user pain point per team request (2026-09-19). No new migration needed for MVP; one new server-side thumbnail endpoint (PDFBox `PDFRenderer.createImageAtIndex`) + two template sections + mobile pass. Story points: 7. **This is next in line.**
 2. **US-7.3 — InstrumentRoleMap admin UI.** Persistence has been sitting idle since US-1.4 (PR #199 merged); every other story that consumes it is blocked on manual SQL or hand-written test fixtures. Highest ROI relative to effort, fully in the "UI + thin service" pattern already proven by US-3.x and US-7.1.
 3. **US-5.1 — alias resolution read path.** US-1.2's `aliasOf` hierarchy is written but never walked by any read model yet. Once this lands, US-7.1's parts panel can auto-suggest roles from a member's tag (instead of requiring the manager to type "Trąbka 1"), and US-6.2's distribution list gets its primary input.
