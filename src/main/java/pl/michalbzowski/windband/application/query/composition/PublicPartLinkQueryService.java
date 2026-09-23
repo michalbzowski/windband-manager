@@ -88,8 +88,15 @@ public class PublicPartLinkQueryService {
                                     + " utworu o id=" + part.getComposition().getId()));
         }
 
+        // A DB row with a NULL storage path cannot be served — fail closed as a uniform 404
+        // (like vanished bytes below) instead of Path.of(null) → NPE → 500. Nothing leaks.
+        String storagePath = best.getStoragePath();
+        if (storagePath == null) {
+            throw new TokenNotFoundException();
+        }
+
         byte[] full;
-        Path path = Path.of(best.getStoragePath());
+        Path path = Path.of(storagePath);
         if (!Files.exists(path) || !Files.isReadable(path)) {
             // A stale DB row pointing at vanished bytes is indistinguishable from a revoked
             // link from the recipient's point of view — same 404, nothing leaks about band state.
@@ -103,8 +110,12 @@ public class PublicPartLinkQueryService {
 
         byte[] slice = pageExtractor.extractPages(full, from, to);
         if (slice == null) {
-            // Corrupt PDF / range beyond real page count — fail closed the same way.
-            throw new TokenNotFoundException();
+            // The file that passed the covering gate does not actually cover the requested range
+            // (stale pageCount / corrupt bytes). That is a COVERING failure → 409, per this class's
+            // contract and the US-7.10 path — the recipient learns "not covered right now", not
+            // that their link expired (a misleading 404).
+            throw new PartLinkQueryService.NoCoveringFileException(
+                    "Wgrany plik nie obejmuje już stron " + from + "–" + to);
         }
 
         String role = (part.getInstrumentRole() == null || part.getInstrumentRole().isBlank())

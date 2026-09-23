@@ -142,6 +142,23 @@ class PartShareTokenIT extends BaseIntegrationTest {
     }
 
     @Test
+    @DisplayName("file passes the covering gate by pageCount but bytes cannot be sliced → 409 (NoCoveringFile), not a misleading 404")
+    void slicesToNull_isConflictNotNotFound() throws Exception {
+        // US-7.11 regression guard: metadata says the file covers pages 2–3 (pageCount=5), so it
+        // clears the covering gate — but the on-disk bytes are not a PDF, so the slice comes back
+        // null. The recipient should learn "not covered right now" (409), not a false "link
+        // expired" (404) that would suggest re-sharing fixes it, when nothing they can resend helps.
+        CompositionInstrument part = seedPart();
+        UUID token = tokenService.tokenFor(part.getId(), "it@test");
+
+        // Overwrite the served file in place; the DB pageCount=5 is untouched, so the gate passes.
+        Files.writeString(tempDir.resolve("score.pdf"), "garbage — not a PDF");
+
+        assertThatThrownBy(() -> publicService.openByToken(token))
+                .isInstanceOf(PartLinkQueryService.NoCoveringFileException.class);
+    }
+
+    @Test
     @DisplayName("deleting the part cascades its token away (DB ON DELETE CASCADE)")
     void partDelete_cascadesToken() throws Exception {
         CompositionInstrument part = seedPart();
