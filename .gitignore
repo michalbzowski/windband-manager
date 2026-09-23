@@ -17,3 +17,6 @@
 
 # --- Keycloak theme build output ---
 themes/bandmanager/target/
+
+# --- Editor/tooling backup files ---
+*.bak
