@@ -30,7 +30,12 @@
                     <input type="text" id="share-link-input" readonly class="share-link-input" />
                     <button type="button" class="secondary" id="copy-share-link-btn" title="Kopiuj link do schowka">📋 Kopiuj</button>
                     <a id="open-share-link-btn" target="_blank" rel="noopener"><button type="button" class="secondary" onclick="window.open(this.parentElement.href,'_blank','noopener');return false;" title="Otwórz PDF w nowej karcie">Otwórz</button></a>
+                    <button type="button" class="secondary" id="rotate-share-link-btn" title="Unieważnij dotychczasowy link i wygeneruj nowy">🔄 Zresetuj link</button>
                 </div>
+                <p class="muted" style="font-size: 0.8em; margin: 4px 0 0;">
+                    Publiczny link (bez logowania) z dokładnymi stronami głosu. Każdy, kto go zna,
+                    może pobrać ten głos — reset unieważnia stare kopie.
+                </p>
 
                 <hr class="modal-separator">
 
@@ -1060,8 +1065,43 @@
   var errEl      = document.getElementById('share-error-el');
   var sendBtn    = document.getElementById('share-send-btn');
   var cancelBtn  = document.getElementById('share-cancel-btn');
+  var rotateBtn  = document.getElementById('rotate-share-link-btn');
 
   var currentPartId = null;
+
+  function setShareLink(token) {
+    var url = window.location.origin + '/public/parts/' + token;
+    linkInput.value = url;
+    openLnk.href    = url;
+  }
+
+  function fetchTokenAndShow(partId, rotate) {
+    // US-7.11 — the link must be the PUBLIC token URL, never an enumerable
+    // /bands/{id}/compositions/{id}/parts/{id} path.
+    var base = '/bands/' + bandId + '/compositions/' + compId + '/parts/' + partId + '/token';
+    var opts = rotate
+      ? { method: 'POST', headers: { 'Content-Type': 'application/json' } }
+      : { method: 'GET' };
+    errEl.textContent = ''; errEl.classList.add('hidden');
+    fetch(base, opts)
+      .then(function (resp) {
+        if (!resp.ok) throw new Error('HTTP ' + resp.status);
+        return resp.json();
+      })
+      .then(function (j) {
+        if (!j || !j.token) throw new Error('brak tokenu w odpowiedzi');
+        setShareLink(j.token);
+        if (rotate) {
+          resEl.textContent = 'Nowy link wygenerowany — stary przestał działać ✓';
+          resEl.classList.remove('hidden');
+          setTimeout(function(){ resEl.classList.add('hidden'); }, 4000);
+        }
+      })
+      .catch(function (e) {
+        errEl.textContent = 'Nie udało się pobrać linku (' + e.message + ') — odśwież stronę i spróbuj ponownie.';
+        errEl.classList.remove('hidden');
+      });
+  }
 
   function openFor(row) {
     currentPartId = row.getAttribute('data-part-id');
@@ -1070,6 +1110,8 @@
     errEl.textContent = ''; errEl.classList.add('hidden');
     recIp.value = '';
     sendBtn.disabled = false;
+    linkInput.value = '';
+    openLnk.href    = '#';
 
     var instr = row.getAttribute('data-instrument-name') || '—';
     var role  = row.getAttribute('data-role')            || '—';
@@ -1078,9 +1120,7 @@
     voiceLabel.textContent = '[' + instr + ' · ' + role + ']';
     pagesEl.textContent    = 'strony ' + pf + '–' + pt;
 
-    var url = '/bands/' + bandId + '/compositions/' + compId + '/parts/' + currentPartId;
-    linkInput.value  = window.location.origin + url;
-    openLnk.href     = window.location.origin + url;
+    fetchTokenAndShow(currentPartId, false);
 
     if (typeof modal.showModal === 'function') { modal.showModal(); } else { modal.setAttribute('open',''); }
   }
@@ -1098,6 +1138,13 @@
   });
 
   cancelBtn.addEventListener('click', closeSelf);
+
+  if (rotateBtn) {
+    rotateBtn.addEventListener('click', function () {
+      if (!currentPartId) return;
+      fetchTokenAndShow(currentPartId, true);
+    });
+  }
   modal.addEventListener('cancel', function () { closeSelf(); });
 
   copyBtn.addEventListener('click', async function () {
