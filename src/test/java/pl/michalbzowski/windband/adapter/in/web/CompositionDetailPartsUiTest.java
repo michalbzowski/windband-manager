@@ -59,12 +59,13 @@ class CompositionDetailPartsUiTest extends UiTestBase {
                 Long.class);
 
         // One uploaded score file (metadata row; binary not needed by the table render path).
+        // page_count=5 so the part's 1–5 range resolves through the US-7.11 covering-file gate.
         jdbcTemplate.update("""
                 INSERT INTO score_files
-                    (composition_id, mime_type, size_bytes, sha256, storage_path, original_name, created_at)
+                    (composition_id, mime_type, size_bytes, sha256, storage_path, original_name, page_count, created_at)
                 VALUES (%s, 'application/pdf', 1431911,
                         'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',
-                        'polonez/test-polonez-glosy.pdf', 'Polonez (glosy).pdf', CURRENT_TIMESTAMP)
+                        'polonez/test-polonez-glosy.pdf', 'Polonez (glosy).pdf', 5, CURRENT_TIMESTAMP)
                 """.formatted(String.valueOf(compositionId)));
         Long fileId = jdbcTemplate.queryForObject(
                 "SELECT id FROM score_files WHERE original_name = 'Polonez (glosy).pdf' " +
@@ -118,9 +119,9 @@ class CompositionDetailPartsUiTest extends UiTestBase {
         WebElement shareBtn = cells.get(4).findElement(By.cssSelector(".part-share-btn"));
         assertThat(shareBtn.getText()).as("Udostępnij action in the row").contains("Udostępnij");
 
-        // ── Regression (2026-09-23): the share link must embed the REAL band/composition ids.
-        // The share-modal script ran with th:inline="none", so /*[[${bandId}]]*/ was never
-        // evaluated and every link was /bands/0/compositions/0/parts/N (404 on click).
+        // ── US-7.11 regression: the share link must be the PUBLIC TOKENIZED URL — a 122-bit
+        // random path segment that carries no band/composition/part id (iterable-URL leak was
+        // the reported vulnerability) and resolves without login.
         shareBtn.click();
         wait.until(driver -> {
             Boolean open = ((Boolean) ((JavascriptExecutor) driver).executeScript(
@@ -128,10 +129,14 @@ class CompositionDetailPartsUiTest extends UiTestBase {
                     "return d && (d.open === true || d.hasAttribute('open'));"));
             return Boolean.TRUE.equals(open);
         });
-        String shareLink = driver.findElement(By.id("share-link-input")).getAttribute("value");
-        assertThat(shareLink).as("share link uses the real band/composition ids, not the 0 fallbacks")
-                .contains("/bands/1/compositions/" + compositionId + "/parts/")
-                .doesNotContain("/bands/0/").doesNotContain("/compositions/0/");
+        // The link is fetched asynchronously via GET .../token — wait for the input to fill.
+        String shareLink = wait.until(driver -> {
+            String v = driver.findElement(By.id("share-link-input")).getAttribute("value");
+            return (v != null && !v.isEmpty()) ? v : null;
+        });
+        assertThat(shareLink).as("share link is /public/parts/<uuid>, leaking no ids")
+                .matches(".*/public/parts/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$");
+        assertThat(shareLink).doesNotContain("/bands/").doesNotContain("/compositions/");
         ((JavascriptExecutor) driver).executeScript(
                 "var d = document.getElementById('part-share-modal'); if (d && d.close) { d.close(); }");
 

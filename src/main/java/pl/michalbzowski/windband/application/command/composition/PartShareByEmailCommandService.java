@@ -28,17 +28,20 @@ public class PartShareByEmailCommandService {
     private final SpringTemplateEngine templateEngine;
     private final PartLinkQueryService partLinkQueryService;
     private final BandQueryService bandQueryService;
+    private final PartShareTokenCommandService tokenService;
     private final String baseUrl;
 
     public PartShareByEmailCommandService(EmailSender emailSender,
                                           SpringTemplateEngine templateEngine,
                                           PartLinkQueryService partLinkQueryService,
                                           BandQueryService bandQueryService,
+                                          PartShareTokenCommandService tokenService,
                                           @Value("${app.base-url:http://localhost:8080}") String baseUrl) {
         this.emailSender          = emailSender;
         this.templateEngine       = templateEngine;
         this.partLinkQueryService = partLinkQueryService;
         this.bandQueryService     = bandQueryService;
+        this.tokenService         = tokenService;
         this.baseUrl              = (baseUrl == null) ? "" : baseUrl.replaceAll("/+$", "");
     }
 
@@ -60,9 +63,10 @@ public class PartShareByEmailCommandService {
                 partLinkQueryService.open(partId, compositionId, bandId);
         var band = bandQueryService.getRequiredBand(bandId);
 
-        String partLink = baseUrl + "/bands/" + bandId
-                        + "/compositions/" + compositionId
-                        + "/parts/" + partId;
+        // US-7.11 — the e-mail carries the PUBLIC token link only. No band/composition/part
+        // ids leave the system, so the recipient cannot derive the old enumerable URL either.
+        java.util.UUID token = tokenService.tokenFor(partId, "band:" + bandId);
+        String partLink = baseUrl + "/public/parts/" + token;
 
         // Render the Thymeleaf email body ONCE — it has no per-recipient variable (fromEmail, subject
         // are sender-side and identical for all recipients).

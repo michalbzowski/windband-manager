@@ -1,5 +1,7 @@
 package pl.michalbzowski.windband.adapter.in.web;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.ControllerAdvice;
@@ -15,6 +17,8 @@ import java.util.Map;
 
 @ControllerAdvice
 public class GlobalExceptionHandler {
+
+    private static final Logger log = LoggerFactory.getLogger(GlobalExceptionHandler.class);
 
     @ExceptionHandler(MemberNotFoundException.class)
     public ResponseEntity<Map<String, Object>> handleNotFound(MemberNotFoundException ex) {
@@ -36,6 +40,14 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(InventoryItemNotFoundException.class)
     public ResponseEntity<Map<String, Object>> handleNotFound(InventoryItemNotFoundException ex) {
+        return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                .body(errorBody(ex.getMessage()));
+    }
+
+    /** US-7.11 — the public voice link: unknown / garbage / rotated token → uniform 404. */
+    @ExceptionHandler(pl.michalbzowski.windband.application.query.composition.PublicPartLinkQueryService.TokenNotFoundException.class)
+    public ResponseEntity<Map<String, Object>> handlePartTokenNotFound(
+            pl.michalbzowski.windband.application.query.composition.PublicPartLinkQueryService.TokenNotFoundException ex) {
         return ResponseEntity.status(HttpStatus.NOT_FOUND)
                 .body(errorBody(ex.getMessage()));
     }
@@ -95,6 +107,9 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(Exception.class)
     public ResponseEntity<Map<String, Object>> handleGeneral(Exception ex) {
+        // A 500 with no log was unreadable in production (US-7.11 debugging); every unexpected
+        // failure now leaves a stack trace behind.
+        log.error("Unhandled exception surfaced to the client as 500", ex);
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                 .body(errorBody(ex.getMessage()));
     }

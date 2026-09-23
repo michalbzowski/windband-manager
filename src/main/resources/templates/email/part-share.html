@@ -12,7 +12,8 @@
         </p>
         <ul style="margin: 0.4em 0 0.8em 1.6em;">
             <li><strong>Instrument/ro&lstrok;a:</strong> <span th:text="${voiceLabel}">głos</span></li>
-            <li><strong>Strony PDF-a:</strong> <strong th:style="font-size:1.05em" th:text="${pageFrom} + "–" + ${pageTo}">1–2</strong></li>
+            <li><strong>Strony PDF-a:</strong> <strong th:style="font-size:1.05em" th:text="${pageFrom} + "–" + ${pageTo}">1–2</strong>
+                <em>(dostajesz osobny plik PDF zawierający wyłącznie te strony)</em></li>
             <li><strong>Plik:</strong> <span th:text="${originalName}">score.pdf</span>
                 (<span th:text="(${sizeBytes} div 1048576) &lt; 1 ? ((${sizeBytes} div 1024) + ' KB') : ((${sizeBytes} div 1048576.0) + ' MB')">…</span>)</li>
         </ul>

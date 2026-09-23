@@ -102,4 +102,19 @@ public class PartLinkQueryService {
                 part.getPageFrom(),
                 part.getPageTo());
     }
+
+    /**
+     * US-7.11 — same ownership + covering-file validation as {@link #open} but throws the result
+     * away; the token endpoints use it so a share link is never minted for a part that would
+     * immediately 404/409 when opened.
+     *
+     * <p>Carries the SAME transactional boundary as {@link #open}: the self-invocation below
+     * bypasses the proxy, so without its own {@code @Transactional} the lazy
+     * {@code composition.band} chain would explode with LazyInitializationException outside
+     * any session (caught by the Selenium regression in CompositionDetailPartsUiTest).
+     */
+    @Transactional(propagation = Propagation.REQUIRES_NEW, readOnly = true)
+    public void requireOpenable(long partId, long compositionId, long bandId) {
+        open(partId, compositionId, bandId);
+    }
 }
