@@ -118,6 +118,23 @@ class CompositionDetailPartsUiTest extends UiTestBase {
         WebElement shareBtn = cells.get(4).findElement(By.cssSelector(".part-share-btn"));
         assertThat(shareBtn.getText()).as("Udostępnij action in the row").contains("Udostępnij");
 
+        // ── Regression (2026-09-23): the share link must embed the REAL band/composition ids.
+        // The share-modal script ran with th:inline="none", so /*[[${bandId}]]*/ was never
+        // evaluated and every link was /bands/0/compositions/0/parts/N (404 on click).
+        shareBtn.click();
+        wait.until(driver -> {
+            Boolean open = ((Boolean) ((JavascriptExecutor) driver).executeScript(
+                    "var d = document.getElementById('part-share-modal');" +
+                    "return d && (d.open === true || d.hasAttribute('open'));"));
+            return Boolean.TRUE.equals(open);
+        });
+        String shareLink = driver.findElement(By.id("share-link-input")).getAttribute("value");
+        assertThat(shareLink).as("share link uses the real band/composition ids, not the 0 fallbacks")
+                .contains("/bands/1/compositions/" + compositionId + "/parts/")
+                .doesNotContain("/bands/0/").doesNotContain("/compositions/0/");
+        ((JavascriptExecutor) driver).executeScript(
+                "var d = document.getElementById('part-share-modal'); if (d && d.close) { d.close(); }");
+
         // ── Bug 2: "＋ Dodaj głos" exists AFTER a saved row — it can be repeated, not one-shot. ─
         WebElement addBtn = wait.until(ExpectedConditions.visibilityOfElementLocated(
                 By.id("open-add-part-modal-btn")));
