@@ -58,7 +58,7 @@ class ScoreFileUploadUiTest extends UiTestBase {
         WebDriverWait wait = new WebDriverWait(driver, Duration.ofSeconds(15));
         // The page must render without a Thymeleaf JS error first.
         wait.until(ExpectedConditions.presenceOfElementLocated(By.id("composition-detail")));
-        // The upload section must be visible on the detail page.
+        // The upload section (dropzone) must be visible on the detail page.
         wait.until(ExpectedConditions.visibilityOfElementLocated(By.id("score-upload-panel")));
 
         assertThat(driver.findElement(By.id("score-file-input")))
@@ -66,16 +66,15 @@ class ScoreFileUploadUiTest extends UiTestBase {
                 .isNotNull();
         String accept = driver.findElement(By.id("score-file-input")).getAttribute("accept");
         assertThat(accept).containsIgnoringCase("pdf");
-        assertThat(driver.findElement(By.id("upload-score-btn")))
-                .as("'Wgraj nuty' button")
-                .isNotNull();
 
-        // Clicking the file label opens the file picker (Selenium cannot read hidden
-        // <input type="file"> .files directly). Verify the surrounding UI elements
-        // are present and correctly wired: cancel button, result div starts hidden.
-        assertThat(driver.findElement(By.id("cancel-score-upload-btn"))).isNotNull();
-        String resultDivClass = driver.findElement(By.id("score-upload-result")).getAttribute("class");
-        assertThat(resultDivClass).contains("hidden");
+        // New UI: the dropzone is clickable and shows a hint text
+        WebElement dropzone = driver.findElement(By.id("score-upload-panel"));
+        assertThat(dropzone.isDisplayed()).as("dropzone visible").isTrue();
+        assertThat(dropzone.getText()).containsIgnoringCase("dodaj");
+
+        // Upload queue starts hidden
+        String queueClass = driver.findElement(By.id("upload-queue")).getAttribute("class");
+        assertThat(queueClass).contains("hidden");
     }
 
     @Test
@@ -266,8 +265,8 @@ class ScoreFileUploadUiTest extends UiTestBase {
     }
 
     /**
-     * Mobile viewport (360 × 780) — the upload section must not overflow horizontally,
-     * all form controls must be reachable without panning, and the file label + buttons
+     * Mobile viewport (360 × 780) — the upload section (dropzone) must not overflow horizontally,
+     * all form controls must be reachable without panning, and the dropzone + queue
      * must be fully visible within the viewport.
      */
     @Test
@@ -282,7 +281,7 @@ class ScoreFileUploadUiTest extends UiTestBase {
         wait.until(ExpectedConditions.presenceOfElementLocated(By.id("composition-detail")));
         wait.until(ExpectedConditions.visibilityOfElementLocated(By.id("score-upload-panel")));
 
-        // 1. The upload section is visible and fits inside the viewport width.
+        // 1. The upload section (dropzone) is visible and fits inside the viewport width.
         org.openqa.selenium.Rectangle panelRect = driver.findElement(By.id("score-upload-panel")).getRect();
         assertThat(panelRect.getX()).as("upload panel starts at x >= 0").isGreaterThanOrEqualTo(0);
         int viewportWidth = driver.manage().window().getSize().getWidth();
@@ -291,32 +290,18 @@ class ScoreFileUploadUiTest extends UiTestBase {
                 .describedAs("upload panel right edge (viewport=" + viewportWidth + "px)")
                 .isLessThanOrEqualTo(viewportWidth + 12);
 
-        // The submit button and file label must be visible within the viewport.
-        org.openqa.selenium.Rectangle btnRect = driver.findElement(By.id("upload-score-btn")).getRect();
-        assertThat(btnRect.getX() + btnRect.getWidth())
-                .describedAs("upload button right edge within viewport on mobile")
-                .isLessThanOrEqualTo(viewportWidth + 12);
-
-        // 3. All key controls are visible (not display:none, not outside the section).
-        assertThat(driver.findElement(By.id("score-file-input")).getAttribute("accept"))
-                .containsIgnoringCase("pdf");
-        assertThat(driver.findElement(By.id("upload-score-btn")).isEnabled())
-                .as("submit button is enabled after file selection").isFalse(); // starts disabled
-
-        // 4. The big "choose file" area (the picker label) is visible and invites
-        //    a click — clicking anywhere in the panel drives it.
-        WebElement label = driver.findElement(By.cssSelector(".score-file-picker"));
-        assertThat(label.isDisplayed()).as("file-picker label visible").isTrue();
-        assertThat(label.getText()).containsIgnoringCase("kliknij");
+        // The dropzone must be visible and clickable
+        WebElement dropzone = driver.findElement(By.id("score-upload-panel"));
+        assertThat(dropzone.isDisplayed()).as("file-picker dropzone visible").isTrue();
+        assertThat(dropzone.getText()).containsIgnoringCase("dodaj");
 
         // Restore a sensible viewport size for other tests in this class.
         driver.manage().window().setSize(new Dimension(1280, 900));
     }
 
     /**
-     * After uploading a valid PDF via the UI flow (file input + submit button),
-     * the success panel (#score-upload-result) must become visible with the
-     * uploaded file name and page count in the toast text.
+     * After uploading a valid PDF via the UI flow (drag&drop or file input + confirm button),
+     * the uploaded file must appear in the file list (#score-files-list) with correct metadata.
      */
     @Test
     void shouldShowSuccessPanel_afterUpload_withPageCount() throws Exception {
@@ -329,9 +314,7 @@ class ScoreFileUploadUiTest extends UiTestBase {
         wait.until(ExpectedConditions.presenceOfElementLocated(By.id("composition-detail")));
         wait.until(ExpectedConditions.visibilityOfElementLocated(By.id("score-upload-panel")));
 
-        // Drive the real UI: set files on the hidden file input via JS (Selenium's
-        // sendKeys on a file input sets .files via the browser's file picker path;
-        // here we use Object.defineProperty to bypass the picker in headless mode).
+        // Drive the real UI: set files on the hidden file input via JS
         String b64 = java.util.Base64.getEncoder().encodeToString(Files.readAllBytes(pdf));
         ((org.openqa.selenium.JavascriptExecutor) driver).executeScript(
                 "var input = document.getElementById('score-file-input');" +
@@ -345,21 +328,25 @@ class ScoreFileUploadUiTest extends UiTestBase {
                 "input.dispatchEvent(new Event('change', { bubbles: true }));",
                 b64);
 
-        // The submit button should now be enabled.
-        wait.until(ExpectedConditions.elementToBeClickable(By.id("upload-score-btn")));
-        driver.findElement(By.id("upload-score-btn")).click();
+        // Wait for upload queue to appear with pending file
+        wait.until(ExpectedConditions.visibilityOfElementLocated(By.id("upload-queue")));
 
-        WebDriverWait successWait = new WebDriverWait(driver, Duration.ofSeconds(15));
-        successWait.until(ExpectedConditions.visibilityOfElementLocated(By.id("score-upload-result")));
+        // Click the confirm upload button (Wgraj)
+        WebElement confirmBtn = wait.until(ExpectedConditions.elementToBeClickable(By.id("confirm-uploads")));
+        confirmBtn.click();
 
-        // The toast text must show the file name and page count.
-        String toastText = driver.findElement(By.cssSelector("#score-upload-result .toast")).getText();
-        assertThat(toastText).containsIgnoringCase("test.pdf");
-        assertThat(toastText).contains("2 stron");
+        // Wait for file to appear in the list
+        WebDriverWait successWait = new WebDriverWait(driver, Duration.ofSeconds(20));
+        successWait.until(ExpectedConditions.presenceOfElementLocated(
+                By.xpath("//ul[@id='score-files-list']//a[contains(text(),'test.pdf')]")));
 
-        // The download link must point to the correct endpoint.
-        String href = driver.findElement(By.id("score-download-link")).getAttribute("href");
-        assertThat(href).contains("/files/");
+        // The file should be in the list with correct metadata
+        WebElement fileRow = driver.findElement(By.xpath("//ul[@id='score-files-list']//a[contains(text(),'test.pdf')]"));
+        assertThat(fileRow).isNotNull();
+
+        // Verify meta shows 2 pages
+        WebElement meta = fileRow.findElement(By.xpath("following-sibling::span[contains(@class,'file-meta')]"));
+        assertThat(meta.getText()).contains("2 stron");
 
         Files.deleteIfExists(pdf);
     }
