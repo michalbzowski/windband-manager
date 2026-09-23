@@ -1014,6 +1014,14 @@
         </header>
         <form id="add-part-form" method="post" th:action="@{/bands/{bandId}/compositions/{compositionId}/parts(bandId=${bandId}, compositionId=${composition.id})}">
             <div class="form-row">
+                <label>Plik nut:
+                    <select name="scoreFileId" id="part-score-file-picker" class="form-element-secondary">
+                        <option value="">— wybierz plik (nieobowiązkowo) —</option>
+                        <th:block th:each="sf : ${scoreFiles}"><option th:value="${sf.id}" th:text="${sf.originalName + ' • ' + (sf.pageCount != null ? sf.pageCount.toString() + ' stron' : '—')}"/></th:block>
+                    </select>
+                </label>
+            </div>
+            <div class="form-row">
                 <label>Instrument:
                     <select name="instrumentId" id="part-instrument-picker" class="form-element-secondary" required>
                         <option th:if="${bandInstruments == null or #lists.isEmpty(bandInstruments)}" disabled selected value="">Brak instrumentów w zespole — dodaj je najpierw w Członkach</option>
@@ -1024,14 +1032,6 @@
             </div>
             <div class="form-row">
                 <label>Strona od: <input type="number" name="pageFrom" id="part-page-from" min="1" value="1" required class="form-input"></label>
-            </div>
-            <div class="form-row">
-                <label>Plik nut:
-                    <select name="scoreFileId" id="part-score-file-picker" class="form-element-secondary">
-                        <option value="">— wybierz plik (nieobowiązkowo) —</option>
-                        <th:block th:each="sf : ${scoreFiles}"><option th:value="${sf.id}" th:text="${sf.originalName + ' • ' + (sf.pageCount != null ? sf.pageCount.toString() + ' stron' : '—')}"/></th:block>
-                    </select>
-                </label>
             </div>
             <div class="form-row">
                 <label>Strona do: <input type="number" name="pageTo" id="part-page-to" min="2" value="2" required
@@ -1295,7 +1295,13 @@
     });
 
     [fromInp, toInp].forEach(function (inp) {
-        if (inp) inp.addEventListener('input', function () {
+        if (!inp) return;
+        // UX improvement: focussing the field (click, mouse or Tab) selects the
+        // current value, so typing new digits overwrites it directly — no need to
+        // clear the old value by hand first.
+        inp.addEventListener('focus', function () { inp.select(); });
+        inp.addEventListener('click', function () { inp.select(); });
+        inp.addEventListener('input', function () {
             var f = parseInt(fromInp && fromInp.value, 10);
             var t = parseInt(toInp   && toInp.value,   10);
             if (!isNaN(f) && !isNaN(t)) {
