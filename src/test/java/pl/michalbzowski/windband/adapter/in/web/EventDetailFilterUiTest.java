@@ -28,47 +28,23 @@ class EventDetailFilterUiTest extends UiTestBase {
     private JdbcTemplate jdbcTemplate;
 
     @Test
-    void textFilterShouldFilterByFirstName() throws Exception {
+    void textFilterShouldFilterByFirstName() {
         WebDriverWait wait = new WebDriverWait(driver, Duration.ofSeconds(10));
         String uid = UUID.randomUUID().toString().substring(0, 8);
         String firstName = "FilterFirst" + uid;
         String lastName = "Test" + uid;
 
-        // --- Create members via UI ---
-        createMember(firstName, lastName, wait);
-        createMember("OtherFirst" + uid, "OtherLast" + uid, wait);
+        // --- Create members via direct SQL (fast path) — the member form is NOT
+        // --- a goal of this test. Same row shape as createMember() produced.
+        Long memberId1 = createTestBand1Member(firstName, lastName, null);
+        Long memberId2 = createTestBand1Member("OtherFirst" + uid, "OtherLast" + uid, null);
 
-        // --- Create an event via UI ---
-        loginAndNavigateTo("/events");
-        driver.findElement(By.xpath("//button[contains(., 'Dodaj wydarzenie')]")).click();
-        wait.until(ExpectedConditions.presenceOfElementLocated(By.cssSelector("#event-form")));
-
-        String today = LocalDate.now().toString();
-        ((JavascriptExecutor) driver).executeScript(
-                "document.querySelector(\"input[name='name']\").value = arguments[0];" +
-                "document.querySelector(\"input[name='date']\").value = arguments[1];" +
-                "document.querySelector(\"input[name='startTime']\").value = '18:00';" +
-                "document.querySelector(\"input[name='location']\").value = 'Sala koncertowa';",
-                "Filter Test Event " + uid, today);
-        driver.findElement(By.cssSelector("#event-form button[type='submit'].primary")).click();
-        wait.until(ExpectedConditions.urlContains("/events"));
-        wait.until(ExpectedConditions.not(ExpectedConditions.urlContains("/new")));
-
-        // Wait for event to be persisted
+        // --- Create the event via the application API (fast path) ---
+        loginAndNavigateTo("/events"); // ensure same-origin page before XHR
+        Long eventId = createEventViaApi("Filter Test Event " + uid, LocalDate.now());
         Awaitility.await().atMost(Duration.ofSeconds(10)).until(() ->
                 jdbcTemplate.queryForObject(
-                        "SELECT COUNT(*) FROM band_events WHERE name = ?", Long.class,
-                        "Filter Test Event " + uid) > 0);
-
-        Long eventId = jdbcTemplate.queryForObject(
-                "SELECT MAX(id) FROM band_events WHERE name = ?", Long.class,
-                "Filter Test Event " + uid);
-
-        Long memberId1 = jdbcTemplate.queryForObject(
-                "SELECT MAX(id) FROM members WHERE first_name = ?", Long.class, firstName);
-
-        Long memberId2 = jdbcTemplate.queryForObject(
-                "SELECT MAX(id) FROM members WHERE first_name = ?", Long.class, "OtherFirst" + uid);
+                        "SELECT COUNT(*) FROM band_events WHERE id = ?", Long.class, eventId) == 1);
 
         assertThat(eventId).isNotNull();
         assertThat(memberId1).isNotNull();
@@ -105,47 +81,22 @@ class EventDetailFilterUiTest extends UiTestBase {
     }
 
     @Test
-    void textFilterShouldFilterByLastName() throws Exception {
+    void textFilterShouldFilterByLastName() {
         WebDriverWait wait = new WebDriverWait(driver, Duration.ofSeconds(10));
         String uid = UUID.randomUUID().toString().substring(0, 8);
         String firstName = "Test" + uid;
         String lastName = "FilterLast" + uid;
 
-        // --- Create members via UI ---
-        createMember(firstName, lastName, wait);
-        createMember("Test" + uid, "OtherLast" + uid, wait);
+        // --- Create members via direct SQL (fast path) — the member form is NOT a goal.
+        Long memberId1 = createTestBand1Member(firstName, lastName, null);
+        Long memberId2 = createTestBand1Member("Test" + uid, "OtherLast" + uid, null);
 
-        // --- Create an event via UI ---
-        loginAndNavigateTo("/events");
-        driver.findElement(By.xpath("//button[contains(., 'Dodaj wydarzenie')]")).click();
-        wait.until(ExpectedConditions.presenceOfElementLocated(By.cssSelector("#event-form")));
-
-        String today = LocalDate.now().toString();
-        ((JavascriptExecutor) driver).executeScript(
-                "document.querySelector(\"input[name='name']\").value = arguments[0];" +
-                "document.querySelector(\"input[name='date']\").value = arguments[1];" +
-                "document.querySelector(\"input[name='startTime']\").value = '18:00';" +
-                "document.querySelector(\"input[name='location']\").value = 'Sala koncertowa';",
-                "Filter Test Event " + uid, today);
-        driver.findElement(By.cssSelector("#event-form button[type='submit'].primary")).click();
-        wait.until(ExpectedConditions.urlContains("/events"));
-        wait.until(ExpectedConditions.not(ExpectedConditions.urlContains("/new")));
-
-        // Wait for event to be persisted
+        // --- Create the event via the application API (fast path) ---
+        loginAndNavigateTo("/events"); // ensure same-origin page before XHR
+        Long eventId = createEventViaApi("Filter Test Event " + uid, LocalDate.now());
         Awaitility.await().atMost(Duration.ofSeconds(10)).until(() ->
                 jdbcTemplate.queryForObject(
-                        "SELECT COUNT(*) FROM band_events WHERE name = ?", Long.class,
-                        "Filter Test Event " + uid) > 0);
-
-        Long eventId = jdbcTemplate.queryForObject(
-                "SELECT MAX(id) FROM band_events WHERE name = ?", Long.class,
-                "Filter Test Event " + uid);
-
-        Long memberId1 = jdbcTemplate.queryForObject(
-                "SELECT MAX(id) FROM members WHERE last_name = ?", Long.class, lastName);
-
-        Long memberId2 = jdbcTemplate.queryForObject(
-                "SELECT MAX(id) FROM members WHERE last_name = ?", Long.class, "OtherLast" + uid);
+                        "SELECT COUNT(*) FROM band_events WHERE id = ?", Long.class, eventId) == 1);
 
         assertThat(eventId).isNotNull();
         assertThat(memberId1).isNotNull();
@@ -182,42 +133,23 @@ class EventDetailFilterUiTest extends UiTestBase {
     }
 
     @Test
-    void responseFilterShouldFilterByConfirmed() throws Exception {
+    void responseFilterShouldFilterByConfirmed() {
         WebDriverWait wait = new WebDriverWait(driver, Duration.ofSeconds(10));
         String uid = UUID.randomUUID().toString().substring(0, 8);
         String firstName = "RespFilter" + uid;
         String lastName = "Test" + uid;
 
-        // --- Create members via UI ---
-        createMember(firstName + "1", lastName, wait);
-        createMember(firstName + "2", lastName, wait);
-        createMember(firstName + "3", lastName, wait);
+        // --- Create members via direct SQL (fast path) — the member form is NOT a goal.
+        for (int i = 1; i <= 3; i++) {
+            createTestBand1Member(firstName + i, lastName, null);
+        }
 
-        // --- Create an event via UI ---
-        loginAndNavigateTo("/events");
-        driver.findElement(By.xpath("//button[contains(., 'Dodaj wydarzenie')]")).click();
-        wait.until(ExpectedConditions.presenceOfElementLocated(By.cssSelector("#event-form")));
-
-        String today = LocalDate.now().toString();
-        ((JavascriptExecutor) driver).executeScript(
-                "document.querySelector(\"input[name='name']\").value = arguments[0];" +
-                "document.querySelector(\"input[name='date']\").value = arguments[1];" +
-                "document.querySelector(\"input[name='startTime']\").value = '18:00';" +
-                "document.querySelector(\"input[name='location']\").value = 'Sala koncertowa';",
-                "Response Filter Test " + uid, today);
-        driver.findElement(By.cssSelector("#event-form button[type='submit'].primary")).click();
-        wait.until(ExpectedConditions.urlContains("/events"));
-        wait.until(ExpectedConditions.not(ExpectedConditions.urlContains("/new")));
-
-        // Wait for event to be persisted
+        // --- Create the event via the application API (fast path) ---
+        loginAndNavigateTo("/events"); // ensure same-origin page before XHR
+        Long eventId = createEventViaApi("Response Filter Test " + uid, LocalDate.now());
         Awaitility.await().atMost(Duration.ofSeconds(10)).until(() ->
                 jdbcTemplate.queryForObject(
-                        "SELECT COUNT(*) FROM band_events WHERE name = ?", Long.class,
-                        "Response Filter Test " + uid) > 0);
-
-        Long eventId = jdbcTemplate.queryForObject(
-                "SELECT MAX(id) FROM band_events WHERE name = ?", Long.class,
-                "Response Filter Test " + uid);
+                        "SELECT COUNT(*) FROM band_events WHERE id = ?", Long.class, eventId) == 1);
 
         List<Long> memberIds = jdbcTemplate.query(
                 "SELECT id FROM members WHERE first_name LIKE ? ORDER BY id",
@@ -420,42 +352,23 @@ class EventDetailFilterUiTest extends UiTestBase {
     }
 
     @Test
-    void combinedTextAndResponseFilterShouldWork() throws Exception {
+    void combinedTextAndResponseFilterShouldWork() {
         WebDriverWait wait = new WebDriverWait(driver, Duration.ofSeconds(10));
         String uid = UUID.randomUUID().toString().substring(0, 8);
         String firstName = "Combined" + uid;
         String lastName = "Filter" + uid;
 
-        // --- Create members via UI ---
-        createMember(firstName + "1", lastName + "A", wait);
-        createMember(firstName + "2", lastName + "B", wait);
-        createMember("Other" + uid, "Person" + uid, wait);
+        // --- Create members via direct SQL (fast path) — the member form is NOT a goal.
+        createTestBand1Member(firstName + "1", lastName + "A", null);
+        createTestBand1Member(firstName + "2", lastName + "B", null);
+        createTestBand1Member("Other" + uid, "Person" + uid, null);
 
-        // --- Create an event via UI ---
-        loginAndNavigateTo("/events");
-        driver.findElement(By.xpath("//button[contains(., 'Dodaj wydarzenie')]")).click();
-        wait.until(ExpectedConditions.presenceOfElementLocated(By.cssSelector("#event-form")));
-
-        String today = LocalDate.now().toString();
-        ((JavascriptExecutor) driver).executeScript(
-                "document.querySelector(\"input[name='name']\").value = arguments[0];" +
-                "document.querySelector(\"input[name='date']\").value = arguments[1];" +
-                "document.querySelector(\"input[name='startTime']\").value = '18:00';" +
-                "document.querySelector(\"input[name='location']\").value = 'Sala koncertowa';",
-                "Combined Filter Test " + uid, today);
-        driver.findElement(By.cssSelector("#event-form button[type='submit'].primary")).click();
-        wait.until(ExpectedConditions.urlContains("/events"));
-        wait.until(ExpectedConditions.not(ExpectedConditions.urlContains("/new")));
-
-        // Wait for event to be persisted
+        // --- Create the event via the application API (fast path) ---
+        loginAndNavigateTo("/events"); // ensure same-origin page before XHR
+        Long eventId = createEventViaApi("Combined Filter Test " + uid, LocalDate.now());
         Awaitility.await().atMost(Duration.ofSeconds(10)).until(() ->
                 jdbcTemplate.queryForObject(
-                        "SELECT COUNT(*) FROM band_events WHERE name = ?", Long.class,
-                        "Combined Filter Test " + uid) > 0);
-
-        Long eventId = jdbcTemplate.queryForObject(
-                "SELECT MAX(id) FROM band_events WHERE name = ?", Long.class,
-                "Combined Filter Test " + uid);
+                        "SELECT COUNT(*) FROM band_events WHERE id = ?", Long.class, eventId) == 1);
 
         List<Long> memberIds = jdbcTemplate.query(
                 "SELECT id FROM members WHERE first_name LIKE ? ORDER BY id",
@@ -523,35 +436,23 @@ class EventDetailFilterUiTest extends UiTestBase {
      * resets the status buttons, silently discarding the user's active filter.
      */
     @Test
-    void textAndResponseFilterShouldSurviveResponseChangeReload() throws Exception {
+    void textAndResponseFilterShouldSurviveResponseChangeReload() {
         WebDriverWait wait = new WebDriverWait(driver, Duration.ofSeconds(10));
         String uid = UUID.randomUUID().toString().substring(0, 8);
         String firstNameA = "Keep" + uid;
         String firstNameB = "Other" + uid;
         String lastName = "Test" + uid;
 
-        createMember(firstNameA, lastName, wait);
-        createMember(firstNameB, lastName, wait);
+        // --- Create members via direct SQL (fast path) — the member form is NOT a goal.
+        createTestBand1Member(firstNameA, lastName, null);
+        createTestBand1Member(firstNameB, lastName, null);
 
-        loginAndNavigateTo("/events");
-        driver.findElement(By.xpath("//button[contains(., 'Dodaj wydarzenie')]")).click();
-        wait.until(ExpectedConditions.presenceOfElementLocated(By.cssSelector("#event-form")));
-        ((JavascriptExecutor) driver).executeScript(
-                "document.querySelector(\"input[name='name']\").value = arguments[0];" +
-                "document.querySelector(\"input[name='date']\").value = arguments[1];" +
-                "document.querySelector(\"input[name='startTime']\").value = '18:00';" +
-                "document.querySelector(\"input[name='location']\").value = 'Sala koncertowa';",
-                "Persist Filter Test " + uid, LocalDate.now().toString());
-        driver.findElement(By.cssSelector("#event-form button[type='submit'].primary")).click();
-        wait.until(ExpectedConditions.urlContains("/events"));
-        wait.until(ExpectedConditions.not(ExpectedConditions.urlContains("/new")));
-
+        // --- Create the event via the application API (fast path) ---
+        loginAndNavigateTo("/events"); // ensure same-origin page before XHR
+        Long eventId = createEventViaApi("Persist Filter Test " + uid, LocalDate.now());
         Awaitility.await().atMost(Duration.ofSeconds(10)).until(() ->
                 jdbcTemplate.queryForObject(
-                        "SELECT COUNT(*) FROM band_events WHERE name = ?", Long.class,
-                        "Persist Filter Test " + uid) > 0);
-        Long eventId = jdbcTemplate.queryForObject(
-                "SELECT id FROM band_events WHERE name = ?", Long.class, "Persist Filter Test " + uid);
+                        "SELECT COUNT(*) FROM band_events WHERE id = ?", Long.class, eventId) == 1);
         Long memberIdA = jdbcTemplate.queryForObject(
                 "SELECT id FROM members WHERE first_name = ?", Long.class, firstNameA);
         Long memberIdB = jdbcTemplate.queryForObject(
@@ -609,7 +510,7 @@ class EventDetailFilterUiTest extends UiTestBase {
      * previously destroyed listeners + state.
      */
     @Test
-    void textFilterShouldSurviveTwoSuccessiveResponseSaves() throws Exception {
+    void textFilterShouldSurviveTwoSuccessiveResponseSaves() {
         WebDriverWait wait = new WebDriverWait(driver, Duration.ofSeconds(10));
         String uid = UUID.randomUUID().toString().substring(0, 8);
         String firstNameA = "Survive2" + uid;
@@ -617,29 +518,17 @@ class EventDetailFilterUiTest extends UiTestBase {
         String firstNameC = "GhostB" + uid;
         String lastName = "Test" + uid;
 
-        createMember(firstNameA, lastName, wait);
-        createMember(firstNameB, lastName, wait);
-        createMember(firstNameC, lastName, wait);
+        // --- Create members via direct SQL (fast path) — the member form is NOT a goal.
+        createTestBand1Member(firstNameA, lastName, null);
+        createTestBand1Member(firstNameB, lastName, null);
+        createTestBand1Member(firstNameC, lastName, null);
 
-        loginAndNavigateTo("/events");
-        driver.findElement(By.xpath("//button[contains(., 'Dodaj wydarzenie')]")).click();
-        wait.until(ExpectedConditions.presenceOfElementLocated(By.cssSelector("#event-form")));
-        ((JavascriptExecutor) driver).executeScript(
-                "document.querySelector(\"input[name='name']\").value = arguments[0];" +
-                "document.querySelector(\"input[name='date']\").value = arguments[1];" +
-                "document.querySelector(\"input[name='startTime']\").value = '18:00';" +
-                "document.querySelector(\"input[name='location']\").value = 'Sala';",
-                "Successive Saves Test " + uid, LocalDate.now().toString());
-        driver.findElement(By.cssSelector("#event-form button[type='submit'].primary")).click();
-        wait.until(ExpectedConditions.urlContains("/events"));
-        wait.until(ExpectedConditions.not(ExpectedConditions.urlContains("/new")));
-
+        // --- Create the event via the application API (fast path) ---
+        loginAndNavigateTo("/events"); // ensure same-origin page before XHR
+        Long eventId = createEventViaApi("Successive Saves Test " + uid, LocalDate.now());
         Awaitility.await().atMost(Duration.ofSeconds(10)).until(() ->
                 jdbcTemplate.queryForObject(
-                        "SELECT COUNT(*) FROM band_events WHERE name = ?", Long.class,
-                        "Successive Saves Test " + uid) > 0);
-        Long eventId = jdbcTemplate.queryForObject(
-                "SELECT id FROM band_events WHERE name = ?", Long.class, "Successive Saves Test " + uid);
+                        "SELECT COUNT(*) FROM band_events WHERE id = ?", Long.class, eventId) == 1);
         Long memberIdA = lookupFirst("first_name", firstNameA);
         Long memberIdB = lookupFirst("first_name", firstNameB);
         Long memberIdC = lookupFirst("first_name", firstNameC);
@@ -685,34 +574,22 @@ class EventDetailFilterUiTest extends UiTestBase {
      * surname). Confirms persistence is not tied to first names only.
      */
     @Test
-    void lastNameFilterShouldSurviveResponseSave() throws Exception {
+    void lastNameFilterShouldSurviveResponseSave() {
         WebDriverWait wait = new WebDriverWait(driver, Duration.ofSeconds(10));
         String uid = UUID.randomUUID().toString().substring(0, 8);
         String lastNameA = "KeepLast" + uid;
         String lastNameB = "OtherLast" + uid;
 
-        createMember("Alpha" + uid, lastNameA, wait);
-        createMember("Beta" + uid, lastNameB, wait);
+        // --- Create members via direct SQL (fast path) — the member form is NOT a goal.
+        createTestBand1Member("Alpha" + uid, lastNameA, null);
+        createTestBand1Member("Beta" + uid, lastNameB, null);
 
-        loginAndNavigateTo("/events");
-        driver.findElement(By.xpath("//button[contains(., 'Dodaj wydarzenie')]")).click();
-        wait.until(ExpectedConditions.presenceOfElementLocated(By.cssSelector("#event-form")));
-        ((JavascriptExecutor) driver).executeScript(
-                "document.querySelector(\"input[name='name']\").value = arguments[0];" +
-                "document.querySelector(\"input[name='date']\").value = arguments[1];" +
-                "document.querySelector(\"input[name='startTime']\").value = '18:00';" +
-                "document.querySelector(\"input[name='location']\").value = 'Sala';",
-                "Last Name Persist Test " + uid, LocalDate.now().toString());
-        driver.findElement(By.cssSelector("#event-form button[type='submit'].primary")).click();
-        wait.until(ExpectedConditions.urlContains("/events"));
-        wait.until(ExpectedConditions.not(ExpectedConditions.urlContains("/new")));
-
+        // --- Create the event via the application API (fast path) ---
+        loginAndNavigateTo("/events"); // ensure same-origin page before XHR
+        Long eventId = createEventViaApi("Last Name Persist Test " + uid, LocalDate.now());
         Awaitility.await().atMost(Duration.ofSeconds(10)).until(() ->
                 jdbcTemplate.queryForObject(
-                        "SELECT COUNT(*) FROM band_events WHERE name = ?", Long.class,
-                        "Last Name Persist Test " + uid) > 0);
-        Long eventId = jdbcTemplate.queryForObject(
-                "SELECT id FROM band_events WHERE name = ?", Long.class, "Last Name Persist Test " + uid);
+                        "SELECT COUNT(*) FROM band_events WHERE id = ?", Long.class, eventId) == 1);
         Long memberIdA = lookupFirst("last_name", lastNameA);
         Long memberIdB = lookupFirst("last_name", lastNameB);
 
@@ -747,35 +624,20 @@ class EventDetailFilterUiTest extends UiTestBase {
      * the one row that carries the Trąbka tag; typing nonsense by name hides both.
      */
     @Test
-    void tagFilterShouldMatchInstrumentTagAccentAware() throws Exception {
+    void tagFilterShouldMatchInstrumentTagAccentAware() {
         WebDriverWait wait = new WebDriverWait(driver, Duration.ofSeconds(10));
         String uid = UUID.randomUUID().toString().substring(0, 8);
         String lastName = "Test" + uid;
 
         // Member A tagged "Trąbka" (Polish diacritic — exercises the accent-aware fold).
-        createMemberWithInstrument("TrumpetGuy" + uid, lastName, "Trąbka", wait);
+        createTestBand1Member("TrumpetGuy" + uid, lastName, null);
+        ensureInstrumentMembership(jdbcTemplate.queryForObject(
+                "SELECT id FROM members WHERE first_name = ?", Long.class, "TrumpetGuy" + uid),
+                "Trąbka");
         // Member B untagged — a name-only match must never happen via this tag.
-        createMember("NoTag" + uid, lastName, wait);
+        createTestBand1Member("NoTag" + uid, lastName, null);
 
-        loginAndNavigateTo("/events");
-        driver.findElement(By.xpath("//button[contains(., 'Dodaj wydarzenie')]")).click();
-        wait.until(ExpectedConditions.presenceOfElementLocated(By.cssSelector("#event-form")));
-        ((JavascriptExecutor) driver).executeScript(
-                "document.querySelector(\"input[name='name']\").value = arguments[0];" +
-                "document.querySelector(\"input[name='date']\").value = arguments[1];" +
-                "document.querySelector(\"input[name='startTime']\").value = '18:00';" +
-                "document.querySelector(\"input[name='location']\").value = 'Sala';",
-                "Tag Acc Test " + uid, LocalDate.now().toString());
-        driver.findElement(By.cssSelector("#event-form button[type='submit'].primary")).click();
-        wait.until(ExpectedConditions.urlContains("/events"));
-        wait.until(ExpectedConditions.not(ExpectedConditions.urlContains("/new")));
-
-        Awaitility.await().atMost(Duration.ofSeconds(10)).until(() ->
-                jdbcTemplate.queryForObject(
-                        "SELECT COUNT(*) FROM band_events WHERE name = ?", Long.class,
-                        "Tag Acc Test " + uid) > 0);
-        Long eventId = jdbcTemplate.queryForObject(
-                "SELECT id FROM band_events WHERE name = ?", Long.class, "Tag Acc Test " + uid);
+        Long eventId = createEventViaApi("Tag Acc Test " + uid, LocalDate.now());
         Long taggedId = lookupFirst("first_name", "TrumpetGuy" + uid);
         Long untaggedId = lookupFirst("first_name", "NoTag" + uid);
 
@@ -834,35 +696,21 @@ class EventDetailFilterUiTest extends UiTestBase {
      * silently assuming "reset".
      */
     @Test
-    void filterStateAfterNavigationAwayAndBackIsConsistent() throws Exception {
+    void filterStateAfterNavigationAwayAndBackIsConsistent() {
         WebDriverWait wait = new WebDriverWait(driver, Duration.ofSeconds(10));
         String uid = UUID.randomUUID().toString().substring(0, 8);
         String firstNameA = "ResetKeep" + uid;
         String firstNameB = "ResetOther" + uid;
         String lastName = "Test" + uid;
 
-        createMember(firstNameA, lastName, wait);
-        createMember(firstNameB, lastName, wait);
+        createTestBand1Member(firstNameA, lastName, null);
+        createTestBand1Member(firstNameB, lastName, null);
 
-        loginAndNavigateTo("/events");
-        driver.findElement(By.xpath("//button[contains(., 'Dodaj wydarzenie')]")).click();
-        wait.until(ExpectedConditions.presenceOfElementLocated(By.cssSelector("#event-form")));
-        ((JavascriptExecutor) driver).executeScript(
-                "document.querySelector(\"input[name='name']\").value = arguments[0];" +
-                "document.querySelector(\"input[name='date']\").value = arguments[1];" +
-                "document.querySelector(\"input[name='startTime']\").value = '18:00';" +
-                "document.querySelector(\"input[name='location']\").value = 'Sala';",
-                "Reset Nav Test " + uid, LocalDate.now().toString());
-        driver.findElement(By.cssSelector("#event-form button[type='submit'].primary")).click();
-        wait.until(ExpectedConditions.urlContains("/events"));
-        wait.until(ExpectedConditions.not(ExpectedConditions.urlContains("/new")));
-
+        loginAndNavigateTo("/events"); // ensure same-origin page before XHR
+        Long eventId = createEventViaApi("Reset Nav Test " + uid, LocalDate.now());
         Awaitility.await().atMost(Duration.ofSeconds(10)).until(() ->
                 jdbcTemplate.queryForObject(
-                        "SELECT COUNT(*) FROM band_events WHERE name = ?", Long.class,
-                        "Reset Nav Test " + uid) > 0);
-        Long eventId = jdbcTemplate.queryForObject(
-                "SELECT id FROM band_events WHERE name = ?", Long.class, "Reset Nav Test " + uid);
+                        "SELECT COUNT(*) FROM band_events WHERE id = ?", Long.class, eventId) == 1);
         Long memberIdA = lookupFirst("first_name", firstNameA);
         Long memberIdB = lookupFirst("first_name", firstNameB);
 
@@ -951,67 +799,25 @@ class EventDetailFilterUiTest extends UiTestBase {
         return rows.get(0).findElement(By.cssSelector("td:first-child")).getText();
     }
 
-    private void createMember(String firstName, String lastName, WebDriverWait wait) throws Exception {
-        loginAndNavigateTo("/members");
-        driver.findElement(By.xpath("//button[contains(., 'Dodaj członka')]")).click();
-        wait.until(ExpectedConditions.presenceOfElementLocated(By.cssSelector("#member-form")));
-        fill("firstName", firstName);
-        fill("lastName", lastName);
-        ((JavascriptExecutor) driver).executeScript(
-                "document.querySelector(\"input[name='dateOfBirth']\").value = '1990-05-15';");
-        driver.findElement(By.cssSelector("#member-form button[type='submit'].primary")).click();
-        wait.until(ExpectedConditions.presenceOfElementLocated(By.cssSelector("#members-content table")));
-
-        // Wait for the new member to be persisted in the DB
-        Awaitility.await().atMost(Duration.ofSeconds(10)).until(() ->
-                jdbcTemplate.queryForObject(
-                        "SELECT COUNT(*) FROM members WHERE first_name = ?", Long.class, firstName) > 0);
-    }
-
-    private void fill(String name, String value) {
-        WebElement el = driver.findElement(By.cssSelector("input[name='" + name + "']"));
-        el.clear();
-        el.sendKeys(value);
-    }
-
     /**
-     * Create a member and assign them a specific instrument (their "tag") — the row's
-     * INSTRUMENT is what the tag-filter match relies on.  Direct-DB path mirrors the
-     * pattern inviteMemberToEvent() already uses for participation rows: fast, stable,
-     * no extra browser round-trips.
+     * Fast-path equivalent of the DB tail of {@code createMemberWithInstrument}:
+     * makes sure the named instrument exists for band 1 and links it as primary
+     * to the given member. No UI round-trips.
      */
-    private void createMemberWithInstrument(String firstName, String lastName,
-                                            String instrument, WebDriverWait wait) throws Exception {
-        loginAndNavigateTo("/members");
-        driver.findElement(By.xpath("//button[contains(., 'Dodaj członka')]")).click();
-        wait.until(ExpectedConditions.presenceOfElementLocated(By.cssSelector("#member-form")));
-        fill("firstName", firstName);
-        fill("lastName", lastName);
-        ((JavascriptExecutor) driver).executeScript(
-                "document.querySelector(\"input[name='dateOfBirth']\").value = '1990-05-15';");
-        driver.findElement(By.cssSelector("#member-form button[type='submit'].primary")).click();
-        wait.until(ExpectedConditions.presenceOfElementLocated(By.cssSelector("#members-content table")));
-        Awaitility.await().atMost(Duration.ofSeconds(10)).until(() ->
-                jdbcTemplate.queryForObject(
-                        "SELECT COUNT(*) FROM members WHERE first_name = ?", Long.class, firstName) > 0);
-
-        // Ensure the requested instrument exists in the band.
-        try {
-            Integer count = jdbcTemplate.queryForObject(
-                    "SELECT COUNT(*) FROM instruments WHERE name = ?", Integer.class, instrument);
-            if (count == null || count == 0) {
-                jdbcTemplate.update("INSERT INTO instruments (name) VALUES (?)", instrument);
-            }
-        } catch (Exception ignored) { /* a unique-constraint hit is fine */ }
-
-        // Link the member to the instrument as primary (what p.instrumentName in the
-        // detail row reads — see ParticipationDto / EventQueryService).  H2 supports
-        // MERGE INTO; we use it because a second createMemberWithInstrument for the
-        // same member would otherwise trip UNIQUE(member_id, instrument_id).
-        Long memberId = jdbcTemplate.queryForObject(
-                "SELECT id FROM members WHERE first_name = ?", Long.class, firstName);
+    private void ensureInstrumentMembership(Long memberId, String instrument) {
         Long instrumentId = jdbcTemplate.queryForObject(
                 "SELECT id FROM instruments WHERE name = ?", Long.class, instrument);
+        if (instrumentId == null) {
+            var kh = new org.springframework.jdbc.support.GeneratedKeyHolder();
+            jdbcTemplate.update(con -> {
+                var ps = con.prepareStatement(
+                        "INSERT INTO instruments (name, description, sort_priority, band_id) VALUES (?, 'test fixture', 0, 1)",
+                        java.sql.Statement.RETURN_GENERATED_KEYS);
+                ps.setString(1, instrument);
+                return ps;
+            }, kh);
+            instrumentId = kh.getKey().longValue();
+        }
         jdbcTemplate.update(
                 "MERGE INTO member_instruments (member_id, instrument_id, is_primary) KEY(member_id, instrument_id) " +
                 "VALUES (?, ?, TRUE)",
