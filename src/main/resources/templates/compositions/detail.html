@@ -1024,12 +1024,17 @@
 
                 <!-- Requirement 2-7: header strip of the selected PDF's current page.
                      The <img> shows only the TOP ~20% of the rendered page (CSS crop),
-                     so the instrument name at the top-left/right corner is always visible. -->
-                <div id="part-preview" class="add-part-preview" hidden>
+                     so the instrument name at the top-left/right corner is always visible.
+                     The "Strona N z M" badge sits DEAD CENTRE — clear of either top corner —
+                     and a single click/tap on the preview hides badge + arrows (class
+                     .ap-calm, fully transparent, click-through) so bare sheet music shows;
+                     clicking again brings them back. -->
+                <div id="part-preview" class="add-part-preview" role="button" tabindex="0"
+                     aria-label="Podgląd góry strony PDF — kliknij, aby ukryć lub przywołać strzałki i etykietę strony" hidden>
                     <img id="part-preview-img" alt="Podgląd góry strony PDF (nazwa instrumentu)">
                     <span id="part-preview-badge" role="status">Strona —</span>
-                    <button type="button" id="part-preview-prev" class="ap-preview-btn" aria-label="Poprzednia strona" disabled>‹</button>
-                    <button type="button" id="part-preview-next" class="ap-preview-btn ap-preview-btn-right" aria-label="Następna strona" disabled>›</button>
+                    <button type="button" id="part-preview-prev" class="ap-preview-btn ap-overlay" aria-label="Poprzednia strona" disabled>‹</button>
+                    <button type="button" id="part-preview-next" class="ap-preview-btn ap-preview-btn-right ap-overlay" aria-label="Następna strona" disabled>›</button>
                 </div>
 
                 <!-- Role + instrument on one compact grid; page range fields share ONE row -->
@@ -1440,7 +1445,11 @@
 
     function hidePreview() {
         previewVisible = false;
-        if (previewBox) previewBox.hidden = true;
+        if (previewBox) {
+            previewBox.hidden = true;
+            previewBox.classList.remove('ap-calm');     // never carry the overlay state into a later open
+            previewBox.setAttribute('aria-pressed', 'false');
+        }
         previewPage = 1;
         previewTotal = null;
         if (previewImg) previewImg.removeAttribute('src');
@@ -1478,10 +1487,38 @@
     if (btnPrev) btnPrev.addEventListener('click', function () { setPreviewPage(previewPage - 1); });
     if (btnNext) btnNext.addEventListener('click', function () { setPreviewPage(previewPage + 1); });
 
-    // Optional: page number jumps via keyboard while the preview is focused.
+    // Overlay CALM mode (user request, 2026-09-24): ONE click/tap anywhere on the
+    // preview — except on the ‹/› arrows, which must keep navigating — switches the
+    // overlay calm: badge + arrows fade out completely and stop capturing touches
+    // (.ap-calm → opacity: 0 + pointer-events: none), leaving bare sheet music.
+    // Clicking (or tapping) again restores them. Enter/Space do the same when the
+    // box itself is keyboard-focused.
+    function toggleCalm() {
+        if (!previewBox) return;
+        previewBox.classList.toggle('ap-calm');
+        // role="button" + aria-pressed keep screen readers in sync with the overlay state.
+        previewBox.setAttribute('aria-pressed',
+            previewBox.classList.contains('ap-calm') ? 'true' : 'false');
+    }
+
+    if (previewBox) {
+        [btnPrev, btnNext].forEach(function (b) {
+            if (!b) return;
+            // Arrows keep their own behaviour; swallow the event so it does NOT
+            // bubble up to the box's toggle below.
+            b.addEventListener('click', function (ev) { ev.stopPropagation(); });
+        });
+        previewBox.addEventListener('click', toggleCalm);
+    }
+
+    // Keyboard on the preview: ←/→ always navigate (the classic behaviour, even when
+    // an arrow button itself has focus); Enter/Space toggle the overlays ONLY when the
+    // box (not an arrow) is focused — a focused arrow must keep its native activation.
     if (previewBox) previewBox.addEventListener('keydown', function (ev) {
+        var onArrow = !!(ev.target && ev.target.classList && ev.target.classList.contains('ap-preview-btn'));
         if (ev.key === 'ArrowLeft')  { ev.preventDefault(); setPreviewPage(previewPage - 1); }
-        if (ev.key === 'ArrowRight') { ev.preventDefault(); setPreviewPage(previewPage + 1); }
+        else if (ev.key === 'ArrowRight') { ev.preventDefault(); setPreviewPage(previewPage + 1); }
+        else if (!onArrow && (ev.key === 'Enter' || ev.key === ' ')) { ev.preventDefault(); toggleCalm(); }
     });
 
     // Initialize once: the page render pre-selects the file with the most pages —
@@ -1601,6 +1638,11 @@
     function resetOnClose() {
         if (!form) return;
         form.reset();
+        // The overlay state (calm/visible) never survives a close — every open starts fresh.
+        if (previewBox) {
+            previewBox.classList.remove('ap-calm');
+            previewBox.setAttribute('aria-pressed', 'false');
+        }
         if (roleInp) roleInp.value = '';
         clearError(); hideStatus();
 

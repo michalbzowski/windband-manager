@@ -4,6 +4,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.openqa.selenium.By;
 import org.openqa.selenium.JavascriptExecutor;
+import org.openqa.selenium.Keys;
 import org.openqa.selenium.WebElement;
 import org.openqa.selenium.support.ui.ExpectedConditions;
 import org.openqa.selenium.support.ui.WebDriverWait;
@@ -16,6 +17,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.Duration;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -438,6 +440,112 @@ class CompositionDetailPartsUiTest extends UiTestBase {
     }
 
     /**
+     * User request (2026-09-24) — the page badge used to be pinned TOP-RIGHT of the
+     * preview strip, exactly over the instrument name on score sheets, and the ‹/›
+     * overlays blocked a clean look at the music. Two fixes guarded here:
+     *
+     * <ol>
+     *   <li>The "Strona N z M" badge is centred in the middle of the preview —
+     *       geometrically clear of both top corners where the instrument name sits.</li>
+     *   <li>ONE click/tap anywhere on the preview (or Space/Enter when the box is
+     *       focused) puts it into CALM mode: badge + arrows fade out completely AND
+     *       stop capturing touches (bare sheet music, no dead zones). Clicking or
+     *       tapping ANYWHERE again — even exactly where an arrow used to sit — brings
+     *       them back. Enabled arrows keep navigating instead of toggling; a disabled
+     *       arrow must not be a dead zone either.</li>
+     * </ol>
+     */
+    @Test
+    void addPartModal_previewBadgeCentredAndClickTogglesOverlayVisibility() {
+        loginAndNavigateTo("/bands/1/compositions/" + compositionId);
+        WebDriverWait wait = new WebDriverWait(driver, WAIT);
+        JavascriptExecutor js = (JavascriptExecutor) driver;
+
+        // Open the modal; the page render pre-selected the 5-page seed file and primed
+        // the page-1 bitmap.
+        driver.findElement(By.id("open-add-part-modal-btn")).click();
+        wait.until(wd -> {
+            Boolean open = (Boolean) js.executeScript(
+                    "var d = document.getElementById('add-part-dialog');" +
+                    "return d && (d.open === true || d.hasAttribute('open'));");
+            return Boolean.TRUE.equals(open);
+        });
+        wait.until(wd -> {
+            Boolean loaded = (Boolean) js.executeScript(
+                    "var i = document.getElementById('part-preview-img');" +
+                    "return !!(i && i.getAttribute('src') && i.naturalWidth > 0);");
+            return Boolean.TRUE.equals(loaded);
+        });
+
+        // ── 1) Badge is centred in the strip — clear of the top corners ──────────────
+        Map<String, Object> geo = (Map<String, Object>) js.executeScript(
+                "var b = document.getElementById('part-preview-badge').getBoundingClientRect();" +
+                "var bp = document.getElementById('part-preview').getBoundingClientRect();" +
+                "return {" +
+                "  cx: b.left + b.width / 2, cy: b.top + b.height / 2," +
+                "  pcx: bp.left + bp.width / 2, pcy: bp.top + bp.height / 2," +
+                "  topOffset: b.top - bp.top, bHeight: b.height" +
+                "};");
+        double cx = ((Number) geo.get("cx")).doubleValue();
+        double cy = ((Number) geo.get("cy")).doubleValue();
+        double pcx = ((Number) geo.get("pcx")).doubleValue();
+        double pcy = ((Number) geo.get("pcy")).doubleValue();
+        double topOffset = ((Number) geo.get("topOffset")).doubleValue();
+        double bHeight = ((Number) geo.get("bHeight")).doubleValue();
+
+        assertThat(Math.abs(cx - pcx))
+                .as("badge is horizontally centred (was pinned top-right, hiding the instrument name)")
+                .isLessThan(6.0);
+        assertThat(Math.abs(cy - pcy))
+                .as("badge is vertically centred in the preview strip")
+                .isLessThan(6.0);
+        // The old pin sat ~7px from the top edge; a centred badge must sit at/below the middle.
+        assertThat(topOffset)
+                .as("badge is clear of the top edge (instrument-name zone)")
+                .isGreaterThan(bHeight / 2 - 8.0);
+
+        // ── 2) One click anywhere on the preview → calm mode; a second one restores it
+        assertThat(previewCalm(js)).as("overlays are visible before any click").isFalse();
+
+        String hitBody = clickInsidePreviewAt(js, 0.5, 0.2);
+        assertThat(hitBody).as("the tap lands inside the preview strip").isEqualTo("part-preview-img");
+        assertThat(previewCalm(js)).as("ONE click on the preview switches to calm mode").isTrue();
+        for (String id : OVERLAY_IDS) {
+            requireOverlayIdle(js, id);
+        }
+
+        // Tapping EXACTLY where a disabled '‹' used to sit must still reach the sheet
+        // music (no dead zone) and toggle the overlays back on.
+        String hitArrowSpot = clickInsidePreviewAt(js, 0.04, 0.5);
+        assertThat(hitArrowSpot).as("disabled arrow is not a dead zone — tap reaches the image")
+                .isEqualTo("part-preview-img");
+        assertThat(previewCalm(js))
+                .as("the second tap — even over a former arrow spot — restores overlays").isFalse();
+        for (String id : OVERLAY_IDS) {
+            requireOverlayVisible(js, id);
+        }
+
+        // ── 3) Enabled arrows keep navigating — they never toggle calm mode
+        driver.findElement(By.id("part-preview-next")).click();
+        wait.until(wd -> "Strona 2 z 5".equals(previewBadgeText(js)));
+        assertThat(previewCalm(js)).as("'›' navigates (page 1→2) without toggling").isFalse();
+
+        driver.findElement(By.id("part-preview-prev")).click();
+        wait.until(wd -> "Strona 1 z 5".equals(previewBadgeText(js)));
+        assertThat(previewCalm(js)).as("'‹' navigates (page 2→1) without toggling").isFalse();
+
+        // ── 4) Keyboard parity: Space / Enter on the focused box toggle the overlays
+        js.executeScript("document.getElementById('part-preview').focus();");
+        driver.switchTo().activeElement().sendKeys(Keys.SPACE);
+        assertThat(previewCalm(js)).as("Space on the focused preview enters calm mode").isTrue();
+        requireOverlayIdle(js, "part-preview-badge");
+
+        driver.switchTo().activeElement().sendKeys(Keys.ENTER);
+        assertThat(previewCalm(js)).as("Enter restores badge + arrows").isFalse();
+        requireOverlayVisible(js, "part-preview-badge");
+    }
+
+    /**
      * Requirement 8 — the "Strona do" bump rule in both directions: typing a HIGHER
      * "Strona od" drags "Strona do" up (live validation error while to &lt; from);
      * typing a LOWER "Strona od" must NOT drag "Strona do" down (the user-extended
@@ -643,4 +751,96 @@ class CompositionDetailPartsUiTest extends UiTestBase {
                 "return !document.getElementById('clear-part-form-btn');");
         assertThat(clearGone).as("Requirement 10 — Wyczyść button no longer exists").isTrue();
     }
+    // ── add-part preview calm-mode helpers (shared by the UI tests above/below) ──────
+
+    private static final List<String> OVERLAY_IDS =
+            List.of("part-preview-badge", "part-preview-prev", "part-preview-next");
+
+    private static Boolean previewCalm(JavascriptExecutor js) {
+        return (Boolean) js.executeScript(
+                "return document.getElementById('part-preview').classList.contains('ap-calm');");
+    }
+
+    private static String previewBadgeText(JavascriptExecutor js) {
+        return (String) js.executeScript(
+                "return document.getElementById('part-preview-badge').textContent;");
+    }
+
+    /**
+     * Mirrors a finger tap at fractional coordinates inside #part-preview: dispatches a
+     * BUBBLING 'click' on whatever top element sits at that point — the sheet-music
+     * &lt;img&gt; unless an overlay is still capturing there — exactly as a real
+     * mouse/touch hit-test would resolve. Returns the id of the element that received it.
+     */
+    private static String clickInsidePreviewAt(JavascriptExecutor js, double fracX, double fracY) {
+        List<?> rect = (List<?>) js.executeScript(
+                "var b = document.getElementById('part-preview').getBoundingClientRect();" +
+                        "return [b.left, b.top, b.width, b.height];");
+        double x = ((Number) rect.get(0)).doubleValue() + ((Number) rect.get(2)).doubleValue() * fracX;
+        double y = ((Number) rect.get(1)).doubleValue() + ((Number) rect.get(3)).doubleValue() * fracY;
+        return (String) js.executeScript(
+                "var el = document.elementFromPoint(Math.round(arguments[0]), Math.round(arguments[1]));" +
+                        "el.dispatchEvent(new MouseEvent('click', {bubbles: true, cancelable: true, view: window}));" +
+                        "return el.id;", x, y);
+    }
+
+    /**
+     * Waits for the ~140ms opacity CSS transition to settle and reads the final value.
+     * (Browser JSON-ifies integral numbers as Longs — never cast straight to Double.)
+     */
+    private static double settledOpacity(JavascriptExecutor js, String id) {
+        Number a = null;
+        Number b = null;
+        long deadline = System.currentTimeMillis() + 2_500;
+        while (System.currentTimeMillis() < deadline) {
+            Number now = (Number) js.executeScript(
+                    "return parseFloat(getComputedStyle(document.getElementById(arguments[0])).opacity);", id);
+            if (a != null && b != null && Math.abs(now.doubleValue() - a.doubleValue()) < 0.01) {
+                break;
+            }
+            b = a;
+            a = now;
+            try {
+                Thread.sleep(45);
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+                break;
+            }
+        }
+        return ((Number) js.executeScript(
+                "return parseFloat(getComputedStyle(document.getElementById(arguments[0])).opacity);", id)).doubleValue();
+    }
+
+    /** In CALM mode every overlay must be fully transparent AND out of the hit path. */
+    private static void requireOverlayIdle(JavascriptExecutor js, String id) {
+        assertThat(settledOpacity(js, id))
+                .as("%s — fully transparent in calm mode", id)
+                .isLessThan(0.02);
+        assertThat((String) js.executeScript(
+                        "return getComputedStyle(document.getElementById(arguments[0])).pointerEvents;", id))
+                .as("%s — captures no touches in calm mode", id)
+                .isEqualTo("none");
+    }
+
+    /**
+     * After restore: overlays must be "present" again — fully opaque when enabled, or at
+     * least their intentional disabled-dimming (~0.35, pre-existing look). CALM mode is
+     * opacity 0, so anything above the disabled floor proves the restore happened.
+     */
+    private static void requireOverlayVisible(JavascriptExecutor js, String id) {
+        Boolean enabled = (Boolean) js.executeScript(
+                "return !document.getElementById(arguments[0]).disabled;", id);
+        final double floor = enabled ? 0.95 : 0.20;
+        assertThat(settledOpacity(js, id))
+                .as("%s — visible again after restore", id)
+                .isGreaterThan(floor);
+        if (enabled) {
+            assertThat((String) js.executeScript(
+                            "return getComputedStyle(document.getElementById(arguments[0])).pointerEvents;", id))
+                    .as("%s — enabled overlay captures touches again", id)
+                    .isNotEqualTo("none");
+        }
+    }
+
+
 }

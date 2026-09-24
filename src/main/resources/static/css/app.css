@@ -3487,11 +3487,15 @@ button.secondary.danger:focus-visible {
 #part-preview-prev { left: 0.5rem; }
 #part-preview-next { right: 0.5rem; }
 
-/* Requirement 6 — page number badge, unmissable (top-right) */
+/* Requirement 6 — page number badge, unmissable.
+   User request (2026-09-24): centred dead in the middle of the preview strip
+   instead of top-right — on score sheets the instrument name occupies exactly
+   that corner, and the old position covered it. */
 #part-preview-badge {
     position: absolute;
-    top: 0.45rem;
-    right: 0.55rem;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
     z-index: 1;
     display: inline-flex;
     align-items: center;
@@ -3505,6 +3509,27 @@ button.secondary.danger:focus-visible {
     background: var(--pico-primary-background, #3b82f6);
     color: #fff;
     box-shadow: 0 1px 5px rgba(0, 0, 0, 0.35);
+}
+
+/* CALM mode — ONE click/tap anywhere on the preview (or Enter/Space while it is
+   focused) toggles .ap-calm on the box: badge + arrows fade out completely AND
+   stop capturing touches, leaving the bare sheet-music strip. Clicking again
+   (anywhere, including where an arrow used to be) brings the overlays back. */
+.add-part-preview .ap-overlay,
+.add-part-preview #part-preview-badge {
+    transition: opacity 140ms ease;   /* animated both for hover and calm toggling */
+}
+
+.add-part-preview.ap-calm #part-preview-badge,
+.add-part-preview.ap-calm .ap-overlay {
+    opacity: 0 !important;           /* beats :hover repaint and the disabled 0.35 state */
+    pointer-events: none;            /* clicks pass to the <img> — no dead zones */
+}
+
+/* A DISABLED arrow must not be a dead zone either — let the click fall through
+   to the preview box so it still toggles calm mode (an enabled arrow navigates). */
+.add-part-preview .ap-preview-btn:disabled {
+    pointer-events: none;
 }
 
 /* Requirement 13 — Rola | Instrument / Strona od | Strona do in a tight 2×2 grid */
