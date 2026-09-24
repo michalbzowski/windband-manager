@@ -8,9 +8,15 @@ import org.openqa.selenium.WebElement;
 import org.openqa.selenium.support.ui.ExpectedConditions;
 import org.openqa.selenium.support.ui.WebDriverWait;
 import pl.michalbzowski.windband.UiTestBase;
+import org.apache.pdfbox.pdmodel.PDDocument;
+import org.apache.pdfbox.pdmodel.PDPage;
+import org.apache.pdfbox.pdmodel.common.PDRectangle;
 
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.time.Duration;
 import java.util.List;
+import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -45,7 +51,7 @@ class CompositionDetailPartsUiTest extends UiTestBase {
     private Long compositionId;
 
     @BeforeEach
-    void seedCompositionWithOnePartAndOneScoreFile() {
+    void seedCompositionWithOnePartAndOneScoreFile() throws Exception {
         // cleanDatabase() (UiTestBase) already truncated compositions / score_files /
         // composition_instruments. Re-insert a complete band-1 row set.
         // NOTE: use a UNIQUE title per test instance — H2's shared TRUNCATE ... CASCADE has been
@@ -60,15 +66,21 @@ class CompositionDetailPartsUiTest extends UiTestBase {
                 "SELECT id FROM compositions WHERE band_id = 1 AND title = ?",
                 Long.class, title);
 
-        // One uploaded score file (metadata row; binary not needed by the table render path).
-        // page_count=5 so the part's 1–5 range resolves through the US-7.11 covering-file gate.
+        // One uploaded score file — metadata row PLUS a REAL on-disk 5-page PDF, so the
+        // /thumb preview endpoint returns genuine JPEGs (the modal's header crop renders).
+        Path scoresRoot = Files.createDirectories(
+                Path.of(System.getProperty("java.io.tmpdir"), "windband-ui-scores"));
+        Path pdfPath = scoresRoot.resolve(UUID.randomUUID() + "_Polonez_UI-glosy.pdf");
+        byte[] pdf = build5PagePdfWithHeader();
+        Files.write(pdfPath, pdf);
+
         jdbcTemplate.update("""
                 INSERT INTO score_files
                     (composition_id, mime_type, size_bytes, sha256, storage_path, original_name, page_count, created_at)
-                VALUES (%s, 'application/pdf', 1431911,
+                VALUES (%s, 'application/pdf', %d,
                         'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',
-                        'polonez/test-polonez-glosy.pdf', 'Polonez (glosy).pdf', 5, CURRENT_TIMESTAMP)
-                """.formatted(String.valueOf(compositionId)));
+                        '%s', 'Polonez (glosy).pdf', 5, CURRENT_TIMESTAMP)
+                """.formatted(String.valueOf(compositionId), pdf.length, pdfPath.toString()));
         Long fileId = jdbcTemplate.queryForObject(
                 "SELECT id FROM score_files WHERE original_name = 'Polonez (glosy).pdf' " +
                         "AND composition_id = ?", Long.class, compositionId);
@@ -83,6 +95,38 @@ class CompositionDetailPartsUiTest extends UiTestBase {
                         " page_from, page_to, score_file_id, source, confidence_score, created_at, updated_at) VALUES " +
                         "(?, ?, 'Partytura', 1, 5, ?, 'MANUAL', 1.0, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)",
                 compositionId, instrumentId, fileId);
+    }
+
+    /**
+     * A realistic 5-page A4 "score": each page carries a bold header line in the TOP-LEFT
+     * corner (the exact strip the new modal preview crops out) and a page marker in the body.
+     */
+    private static byte[] build5PagePdfWithHeader() throws Exception {
+        try (PDDocument doc = new PDDocument();
+             java.io.ByteArrayOutputStream out = new java.io.ByteArrayOutputStream()) {
+            for (int i = 1; i <= 5; i++) {
+                PDPage page = new PDPage(PDRectangle.A4);
+                doc.addPage(page);
+                try (org.apache.pdfbox.pdmodel.PDPageContentStream cs =
+                             new org.apache.pdfbox.pdmodel.PDPageContentStream(doc, page)) {
+                    cs.beginText();
+                    cs.setFont(new org.apache.pdfbox.pdmodel.font.PDType1Font(
+                            org.apache.pdfbox.pdmodel.font.Standard14Fonts.FontName.HELVETICA_BOLD), 28);
+                    cs.newLineAtOffset(72, 760);   // A4 top-left corner — instrument name
+                    cs.showText("Flet / strona " + i);
+                    cs.endText();
+
+                    cs.beginText();
+                    cs.setFont(new org.apache.pdfbox.pdmodel.font.PDType1Font(
+                            org.apache.pdfbox.pdmodel.font.Standard14Fonts.FontName.HELVETICA), 12);
+                    cs.newLineAtOffset(72, 300);
+                    cs.showText("body page " + i);
+                    cs.endText();
+                }
+            }
+            doc.save(out);
+            return out.toByteArray();
+        }
     }
 
     @Test
@@ -273,5 +317,330 @@ class CompositionDetailPartsUiTest extends UiTestBase {
                 Integer.class, compositionId);
         assertThat(pageFrom).as("page_from saved").isEqualTo(4);
         assertThat(pageTo).as("page_to auto-synced to page_from").isEqualTo(4);
+    }
+
+    /**
+     * Requirement 2–7 — the modal shows a live PREVIEW of the selected PDF: only the
+     * TOP strip of the current page (the instrument name sits top-left/top-right), ‹/›
+     * navigation, an unmissable "Strona N z M" badge, and the shown page is auto-written
+     * into "Strona od". The seed supplies a REAL 5-page PDF whose top-left header is
+     * "Flet / strona N" — exactly what must be visible in the crop.
+     */
+    @Test
+    void addPartModal_previewShowsTopStrip_navigationFlowsIntoPageFrom() {
+        loginAndNavigateTo("/bands/1/compositions/" + compositionId);
+        WebDriverWait wait = new WebDriverWait(driver, WAIT);
+        JavascriptExecutor js = (JavascriptExecutor) driver;
+
+        // Open the modal — page render already auto-selected the 5-page file and
+        // primed the preview with page 1 (browser-cached JPEG).
+        driver.findElement(By.id("open-add-part-modal-btn")).click();
+        wait.until(driver -> {
+            Boolean open = (Boolean) js.executeScript(
+                    "var d = document.getElementById('add-part-dialog');" +
+                    "return d && (d.open === true || d.hasAttribute('open'));");
+            return Boolean.TRUE.equals(open);
+        });
+
+        // Requirement 2: the preview block exists below "Plik nut" and is visible.
+        Boolean previewVisible = (Boolean) js.executeScript(
+                "var p = document.getElementById('part-preview');" +
+                "return !!(p && !p.hasAttribute('hidden'));");
+        assertThat(previewVisible).as("PDF preview block is shown").isTrue();
+
+        // The <img> is pointed at the thumb URL only after a confirmed fetch 200, so any
+        // load failure surfaces as dataset.lastFail + an inline status line. Poll for the
+        // decoded bitmap; on timeout rethrow with whatever diagnostics the page recorded —
+        // raw TimeoutException hides the real cause (HTTP status / 409 gate / auth 401 …).
+        long deadline = System.currentTimeMillis() + WAIT.toMillis();
+        String lastFail = "";
+        String srcObserved = "";
+        Boolean loaded = Boolean.FALSE;
+        while (System.currentTimeMillis() < deadline) {
+            Object lf = js.executeScript("return document.getElementById('part-preview').dataset.lastFail || '';");
+            if (lf != null && !"".equals(String.valueOf(lf))) lastFail = String.valueOf(lf);
+            srcObserved = String.valueOf(js.executeScript(
+                    "var i = document.getElementById('part-preview-img'); return i.getAttribute('src') || '';"));
+            loaded = (Boolean) js.executeScript(
+                    "var i = document.getElementById('part-preview-img');" +
+                    "return !!(i && i.getAttribute('src') && i.naturalWidth > 0);");
+            if (Boolean.TRUE.equals(loaded)) break;
+        }
+        String statusLine = (String) js.executeScript(
+                "var s = document.getElementById('add-part-status'); return s ? s.textContent : '';");
+        String formAction = (String) js.executeScript(
+                "var f = document.getElementById('add-part-form'); return f ? String(f.action) : '(no form)';");
+        assertThat(Boolean.TRUE.equals(loaded))
+                .as("preview bitmap decoded (form.action=[%s], src=[%s], lastFail=[%s], status=[%s])",
+                        formAction, srcObserved, lastFail, statusLine)
+                .isTrue();
+
+        String src = (String) js.executeScript(
+                "return document.getElementById('part-preview-img').getAttribute('src');");
+        assertThat(src).as("preview img points at the thumb endpoint")
+                .contains("/files/").contains("/thumb?page=1");
+
+        // Requirement 6: prominent page badge "Strona 1 z 5".
+        String badge = (String) js.executeScript(
+                "return document.getElementById('part-preview-badge').textContent;");
+        assertThat(badge).as("page badge").isEqualTo("Strona 1 z 5");
+
+        // Requirement 7: the shown page drove "Strona od" automatically.
+        assertThat((String) js.executeScript(
+                "return document.getElementById('part-page-from').value;")).isEqualTo("1");
+
+        // Requirement 5: ‹ disabled on page 1, › enabled (total 5 known).
+        Boolean prevDisabledAtOne = (Boolean) js.executeScript(
+                "return document.getElementById('part-preview-prev').disabled;");
+        assertThat(prevDisabledAtOne).as("'‹' is disabled on the first page").isTrue();
+
+        // Navigate forward: badge, image and "Strona od" must all move to page 2.
+        driver.findElement(By.id("part-preview-next")).click();
+        wait.until(driver ->
+                "Strona 2 z 5".equals((String) js.executeScript(
+                        "return document.getElementById('part-preview-badge').textContent;")));
+        assertThat((String) js.executeScript(
+                "return document.getElementById('part-page-from').value;"))
+                .as("Requirement 7 — navigating to page 2 wrote '2' into Strona od")
+                .isEqualTo("2");
+        // img.src flips only AFTER the page-2 thumbnail download is confirmed (fetch-first),
+        // so poll for it instead of asserting immediately.
+        wait.until(driver -> {
+            String srcNow = (String) js.executeScript(
+                    "return document.getElementById('part-preview-img').getAttribute('src') || '';");
+            return srcNow.contains("/thumb?page=2");
+        });
+
+        // Requirement 5b: mid-navigation — one more '›' lands on page 3 and the image
+        // re-points (src flips only after that page's thumbnail download is confirmed).
+        driver.findElement(By.id("part-preview-next")).click();
+        wait.until(driver ->
+                "Strona 3 z 5".equals((String) js.executeScript(
+                        "return document.getElementById('part-preview-badge').textContent;")));
+        wait.until(driver -> {
+            String srcP3 = (String) js.executeScript(
+                    "return document.getElementById('part-preview-img').getAttribute('src') || '';");
+            return srcP3.contains("/thumb?page=3");
+        });
+
+        // Requirement 5c: on the LAST page (5 of 5) '›' is disabled and '‹' enabled.
+        driver.findElement(By.id("part-preview-next")).click();
+        driver.findElement(By.id("part-preview-next")).click();
+        wait.until(driver ->
+                "Strona 5 z 5".equals((String) js.executeScript(
+                        "return document.getElementById('part-preview-badge').textContent;")));
+        Boolean nextDisabledAtLast = (Boolean) js.executeScript(
+                "return document.getElementById('part-preview-next').disabled;");
+        Boolean prevEnabledAtLast = !(Boolean) js.executeScript(
+                "return document.getElementById('part-preview-prev').disabled;");
+        assertThat(nextDisabledAtLast).as("'›' is disabled on the last page").isTrue();
+        assertThat(prevEnabledAtLast).as("'‹' stays enabled until the first page").isTrue();
+    }
+
+    /**
+     * Requirement 8 — the "Strona do" bump rule in both directions: typing a HIGHER
+     * "Strona od" drags "Strona do" up (live validation error while to &lt; from);
+     * typing a LOWER "Strona od" must NOT drag "Strona do" down (the user-extended
+     * range survives) and clears the inline error.
+     */
+    @Test
+    void addPartModal_pageToBumpsUpButNeverDown() {
+        loginAndNavigateTo("/bands/1/compositions/" + compositionId);
+        WebDriverWait wait = new WebDriverWait(driver, WAIT);
+        JavascriptExecutor js = (JavascriptExecutor) driver;
+
+        driver.findElement(By.id("open-add-part-modal-btn")).click();
+        wait.until(driver -> {
+            Boolean open = (Boolean) js.executeScript(
+                    "var d = document.getElementById('add-part-dialog');" +
+                    "return d && (d.open === true || d.hasAttribute('open'));");
+            return Boolean.TRUE.equals(open);
+        });
+
+        // Fresh defaults: from=1, to=2.
+        // Type 5 into "Strona od" (click selects all → replaces): "Strona do" must bump 2 → 5.
+        WebElement from = driver.findElement(By.id("part-page-from"));
+        from.click();
+        from.sendKeys("5");
+        wait.until(driver ->
+                "5".equals((String) js.executeScript(
+                        "return document.getElementById('part-page-to').value;")));
+
+        // Now deliberately shrink "Strona do" below "Strona od": 3 < 5 → inline error visible.
+        WebElement to = driver.findElement(By.id("part-page-to"));
+        to.click();
+        to.sendKeys("3");
+        Boolean errorShown = (Boolean) js.executeScript(
+                "var e = document.getElementById('part-range-error');" +
+                "return !!(e && !e.classList.contains('hidden') && e.textContent.length > 0);");
+        assertThat(errorShown).as("to<from raises the inline range error").isTrue();
+
+        // Pull "Strona od" back DOWN to 2: the extended "do"=3 must STAY (not drag down),
+        // and the error clears because from <= do again.
+        from.click();
+        from.sendKeys("2");
+        wait.until(driver -> {
+            boolean ok = "2".equals((String) js.executeScript(
+                    "return document.getElementById('part-page-from').value;"))
+                    && "3".equals((String) js.executeScript(
+                    "return document.getElementById('part-page-to').value;"));
+            if (!ok) return false;
+            Boolean hidden = (Boolean) js.executeScript(
+                    "return document.getElementById('part-range-error').classList.contains('hidden');");
+            return ok && Boolean.TRUE.equals(hidden);
+        });
+        assertThat((String) js.executeScript(
+                "return document.getElementById('part-page-to').value;"))
+                .as("Requirement 8 — Strona do survives the Strona od decrease")
+                .isEqualTo("3");
+    }
+
+    /**
+     * Requirements 9 + 12 + layout — "Zapisz głos" saves WITHOUT closing the dialog
+     * (the next instrument can follow immediately), "Zamknij" closes it, and clicking a
+     * non-empty "Rola" select-all's its text so typing replaces it.
+     */
+    @Test
+    void addPartModal_saveKeepsDialogOpen_closeCloses_roleAutoselects() {
+        loginAndNavigateTo("/bands/1/compositions/" + compositionId);
+        WebDriverWait wait = new WebDriverWait(driver, WAIT);
+        JavascriptExecutor js = (JavascriptExecutor) driver;
+
+        driver.findElement(By.id("open-add-part-modal-btn")).click();
+        wait.until(driver -> {
+            Boolean open = (Boolean) js.executeScript(
+                    "var d = document.getElementById('add-part-dialog');" +
+                    "return d && (d.open === true || d.hasAttribute('open'));");
+            return Boolean.TRUE.equals(open);
+        });
+
+        Long saksofonId = jdbcTemplate.queryForObject(
+                "SELECT id FROM instruments WHERE band_id = 1 AND name = 'Saksofon'", Long.class);
+        js.executeScript("document.getElementById('part-instrument-picker').value = String(arguments[0]);",
+                saksofonId);
+        // Leave the default file + default pages (1 / 2) — a valid mapping.
+
+        // ── Requirement 12: clicking into a non-empty "Rola" selects ALL its text, ────
+        // so typing immediately replaces it wholesale instead of appending mid-word.
+        WebElement role = driver.findElement(By.id("part-role-input"));
+        // Non-empty value, set WITHOUT focus so the click below is a genuine user action.
+        js.executeScript("document.getElementById('part-role-input').value = 'Saksofon II';");
+        if ((Boolean) js.executeScript(
+                "return document.activeElement && document.activeElement.id === 'part-role-input';")) {
+            js.executeScript("document.activeElement.blur();");
+        }
+        role.click();   // must select-all the existing text (requirement 12)
+        Boolean selectionCoversWholeValue = (Boolean) js.executeScript(
+                "var el = document.getElementById('part-role-input');" +
+                "return el.selectionStart === 0 && el.selectionEnd === el.value.length && el.value.length > 0;");
+        assertThat(selectionCoversWholeValue)
+                .as("clicking the role field selects its entire current value").isTrue();
+
+        // And typing over that selection replaces it in one stroke.
+        role.sendKeys("Saksofon IIb");
+        assertThat((String) js.executeScript("return document.getElementById('part-role-input').value;"))
+                .as("typing immediately after the click replaces the old value (no manual delete)")
+                .isEqualTo("Saksofon IIb");
+
+        // ── Requirement 9: save succeeds and the dialog STAYS OPEN. ────────────────────
+        driver.findElement(By.id("save-part-btn")).click();
+        wait.until(wd -> {
+            Integer n = jdbcTemplate.queryForObject(
+                    "SELECT COUNT(*) FROM composition_instruments ci " +
+                            "JOIN instruments i ON i.id = ci.instrument_id " +
+                            "WHERE ci.composition_id = ? AND i.name = 'Saksofon'",
+                    Integer.class, compositionId);
+            return n != null && n > 0;
+        });
+
+        Boolean stillOpen = (Boolean) js.executeScript(
+                "var d = document.getElementById('add-part-dialog');" +
+                "return d && (d.open === true || d.hasAttribute('open'));");
+        assertThat(stillOpen).as("'Zapisz głos' keeps the modal open for the next part").isTrue();
+
+        // The just-saved row is already visible in the table (HTMX-free live swap) —
+        // and the form's fields usable state persists: picker still has a value.
+        String pickerValue = (String) js.executeScript(
+                "return document.getElementById('part-score-file-picker').value;");
+        assertThat(pickerValue).as("file picker keeps its selection after save").isNotBlank();
+
+        // ── Requirement 9b: "Zamknij" closes the dialog. ───────────────────────────────
+        WebElement closeBtn = driver.findElement(By.cssSelector(".add-part-close-btn"));
+        assertThat(closeBtn.isDisplayed()).as("'Zamknij' button is rendered next to 'Zapisz głos'").isTrue();
+        closeBtn.click();
+        wait.until(driver -> {
+            Boolean open = (Boolean) js.executeScript(
+                    "var d = document.getElementById('add-part-dialog');" +
+                    "return d && (d.open === true || d.hasAttribute('open'));");
+            return !Boolean.TRUE.equals(open);
+        });
+    }
+
+    /**
+     * Requirements 1, 13, 14 — modal LAYOUT: the title is a centred TOP row (not a
+     * left-side caption), "Strona od" and "Strona do" share ONE line, and the dialog
+     * box itself fits the viewport (the form body scrolls internally if ever needed).
+     */
+    @Test
+    void addPartModal_layout_titleOnTop_pageFieldsOneLine_fitsViewport() {
+        loginAndNavigateTo("/bands/1/compositions/" + compositionId);
+        WebDriverWait wait = new WebDriverWait(driver, WAIT);
+        JavascriptExecutor js = (JavascriptExecutor) driver;
+
+        driver.findElement(By.id("open-add-part-modal-btn")).click();
+        wait.until(driver -> {
+            Boolean open = (Boolean) js.executeScript(
+                    "var d = document.getElementById('add-part-dialog');" +
+                    "return d && (d.open === true || d.hasAttribute('open'));");
+            return Boolean.TRUE.equals(open);
+        });
+
+        // Requirement 1 — title row sits ABOVE the "Plik nut" field and is centred.
+        double titleTop = ((Number) js.executeScript(
+                "return document.getElementById('add-part-dialog-title').getBoundingClientRect().top;")).doubleValue();
+        double fileTop = ((Number) js.executeScript(
+                "return document.getElementById('part-score-file-picker').getBoundingClientRect().top;")).doubleValue();
+        assertThat(titleTop).as("Requirement 1 — the title is on top of the modal (above Plik nut)")
+                .isLessThan(fileTop);
+
+        double titleCenter = ((Number) js.executeScript(
+                "var r = document.getElementById('add-part-dialog-title').getBoundingClientRect();" +
+                "return r.left + r.width / 2;")).doubleValue();
+        double dialogCenter = ((Number) js.executeScript(
+                "var r = document.getElementById('add-part-dialog').getBoundingClientRect();" +
+                "return r.left + r.width / 2;")).doubleValue();
+        assertThat(Math.abs(titleCenter - dialogCenter))
+                .as("the title is horizontally centred across the modal")
+                .isLessThan(60.0);
+
+        // Requirement 13 — "Strona od" and "Strona do" live on the SAME line.
+        double fromTop = ((Number) js.executeScript(
+                "return document.getElementById('part-page-from').getBoundingClientRect().top;")).doubleValue();
+        double toTop = ((Number) js.executeScript(
+                "return document.getElementById('part-page-to').getBoundingClientRect().top;")).doubleValue();
+        assertThat(Math.abs(fromTop - toTop))
+                .as("Requirement 13 — Strona od and Strona do share one line")
+                .isLessThan(2.0);
+
+        // Requirement 14 — the dialog frame stays inside the viewport (height <= innerHeight).
+        double dialogHeight = ((Number) js.executeScript(
+                "return document.getElementById('add-part-dialog').getBoundingClientRect().height;")).doubleValue();
+        double innerHeight = ((Number) js.executeScript("return window.innerHeight;")).doubleValue();
+        assertThat(dialogHeight).as("Requirement 14 — modal fits one screen (height <= viewport)")
+                .isLessThanOrEqualTo(innerHeight + 2.0);
+
+        // The footer action pair ("Zapisz głos" + "Zamknij") is on ONE line.
+        double saveTop = ((Number) js.executeScript(
+                "return document.getElementById('save-part-btn').getBoundingClientRect().top;")).doubleValue();
+        double closeTop = ((Number) js.executeScript(
+                "return document.querySelector('.add-part-close-btn').getBoundingClientRect().top;")).doubleValue();
+        assertThat(Math.abs(saveTop - closeTop))
+                .as("Requirement 9 — Zapisz and Zamknij share one footer row")
+                .isLessThan(2.0);
+
+        // And the removed "Wyczyść" button is gone.
+        Boolean clearGone = (Boolean) js.executeScript(
+                "return !document.getElementById('clear-part-form-btn');");
+        assertThat(clearGone).as("Requirement 10 — Wyczyść button no longer exists").isTrue();
     }
 }

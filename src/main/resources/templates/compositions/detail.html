@@ -1005,43 +1005,56 @@
 
     <button type="button" id="open-add-part-modal-btn" class="primary">＋ Dodaj głos</button>
 
-    <dialog id="add-part-dialog" class="app-modal">
-        <header class="app-modal-header">
-            <div class="app-modal-header-text">
-                <h3 id="add-part-dialog-title">Dodaj głos (strony w nutach)</h3>
-            </div>
-            <button type="button" class="app-modal-close" aria-label="Zamknij" data-close>×</button>
-        </header>
+    <dialog id="add-part-dialog" class="app-modal add-part-modal">
         <form id="add-part-form" method="post" th:action="@{/bands/{bandId}/compositions/{compositionId}/parts(bandId=${bandId}, compositionId=${composition.id})}">
-            <div class="form-row">
-                <label>Plik nut:
+            <header class="app-modal-header ap-head">
+                <span aria-hidden="true"></span>
+                <h3 id="add-part-dialog-title" class="ap-head-title">Dodaj głos (strony w nutach)</h3>
+                <button type="button" class="app-modal-close" aria-label="Zamknij" data-close>×</button>
+            </header>
+
+            <div class="app-modal-body add-part-body">
+                <!-- Plik nut — selection drives the header preview below -->
+                <label class="ap-cell ap-file">Plik nut:
                     <select name="scoreFileId" id="part-score-file-picker" class="form-element-secondary">
                         <option value="">— wybierz plik (nieobowiązkowo) —</option>
                         <th:block th:each="sf : ${scoreFiles}"><option th:value="${sf.id}" th:text="${sf.originalName + ' • ' + (sf.pageCount != null ? sf.pageCount.toString() + ' stron' : '—')}"/></th:block>
                     </select>
                 </label>
+
+                <!-- Requirement 2-7: header strip of the selected PDF's current page.
+                     The <img> shows only the TOP ~20% of the rendered page (CSS crop),
+                     so the instrument name at the top-left/right corner is always visible. -->
+                <div id="part-preview" class="add-part-preview" hidden>
+                    <img id="part-preview-img" alt="Podgląd góry strony PDF (nazwa instrumentu)">
+                    <span id="part-preview-badge" role="status">Strona —</span>
+                    <button type="button" id="part-preview-prev" class="ap-preview-btn" aria-label="Poprzednia strona" disabled>‹</button>
+                    <button type="button" id="part-preview-next" class="ap-preview-btn ap-preview-btn-right" aria-label="Następna strona" disabled>›</button>
+                </div>
+
+                <!-- Role + instrument on one compact grid; page range fields share ONE row -->
+                <div class="add-part-grid">
+                    <label class="ap-cell ap-role">Rola: <input type="text" name="role" id="part-role-input" class="form-input" placeholder="np. Flet 1, Saxofon II"></label>
+                    <label class="ap-cell ap-instr">Instrument:
+                        <select name="instrumentId" id="part-instrument-picker" class="form-element-secondary" required>
+                            <option th:if="${bandInstruments == null or #lists.isEmpty(bandInstruments)}" disabled selected value="">Brak instrumentów w zespole — dodaj je najpierw w Członkach</option>
+                            <option th:each="instr : ${bandInstruments}" th:value="${instr.id}" th:text="${instr.name}"></option>
+                        </select>
+                    </label>
+                    <label class="ap-cell ap-page-field">Strona od: <input type="number" name="pageFrom" id="part-page-from" min="1" value="1" required class="form-input"></label>
+                    <label class="ap-cell ap-page-field">Strona do: <input type="number" name="pageTo" id="part-page-to" min="1" value="2" required
+                            th:max="${serverMaxPageCount != null ? serverMaxPageCount : 999}" class="form-input"></label>
+                </div>
+
+                <p id="part-range-error" class="hidden text-danger" role="alert"></p>
+                <p id="add-part-status" class="add-part-status hidden" role="status" aria-live="polite"></p>
+
+                <!-- "Zapisz głos" stays open after saving; "Zamknij" closes — both on ONE row -->
+                <footer class="modal-actions add-part-actions">
+                    <button type="submit" class="primary" id="save-part-btn">✓ Zapisz głos</button>
+                    <button type="button" class="secondary add-part-close-btn" data-close>Zamknij</button>
+                </footer>
             </div>
-            <div class="form-row">
-                <label>Instrument:
-                    <select name="instrumentId" id="part-instrument-picker" class="form-element-secondary" required>
-                        <option th:if="${bandInstruments == null or #lists.isEmpty(bandInstruments)}" disabled selected value="">Brak instrumentów w zespole — dodaj je najpierw w Członkach</option>
-                        <option th:each="instr : ${bandInstruments}" th:value="${instr.id}" th:text="${instr.name}"></option>
-                    </select>
-                </label>
-                <label>Rola: <input type="text" name="role" class="form-input" placeholder="np. Flet 1, Saxofon II"></label>
-            </div>
-            <div class="form-row">
-                <label>Strona od: <input type="number" name="pageFrom" id="part-page-from" min="1" value="1" required class="form-input"></label>
-            </div>
-            <div class="form-row">
-                <label>Strona do: <input type="number" name="pageTo" id="part-page-to" min="1" value="2" required
-                        th:max="${serverMaxPageCount != null ? serverMaxPageCount : 999}" class="form-input"></label>
-            </div>
-            <p id="part-range-error" class="hidden text-danger" role="alert"></p>
-            <footer class="modal-actions">
-                <button type="submit" class="primary">✓ Zapisz głos</button>
-                <button type="button" id="clear-part-form-btn" class="secondary">Wyczyść</button>
-            </footer>
         </form>
     </dialog>
 </section>
@@ -1130,11 +1143,17 @@
     sendBtn.disabled = false;
   }
 
-  Array.prototype.forEach.call(document.querySelectorAll('.part-share-btn'), function (btn) {
-    btn.addEventListener('click', function () {
+  // Delegated: the #parts-panel (incl. its rows) is REPLACED after every save —
+  // a document-level listener keeps 📤 working on freshly injected rows without
+  // needing to re-bind them.
+  document.addEventListener('click', function (ev) {
+    var target = ev.target;
+    if (!target || typeof target.closest !== 'function') return;
+    var btn = target.closest('.part-share-btn');
+    if (btn && btn.closest('#parts-panel')) {
       var row = btn.closest('tr');
       if (row) openFor(row);
-    });
+    }
   });
 
   cancelBtn.addEventListener('click', closeSelf);
@@ -1214,18 +1233,6 @@
 
 <script>
 (function () {
-    var form = document.getElementById('add-part-form');
-    if (form) {
-        var clearBtn = document.getElementById('clear-part-form-btn');
-        if (clearBtn) {
-            clearBtn.addEventListener('click', function () { form.reset(); });
-        }
-    }
-})();
-</script>
-
-<script>
-(function () {
     'use strict';
 
     // 「Dodaj głos」 modal — native <dialog>, opened via the ＋ button.
@@ -1241,19 +1248,12 @@
     }
 
     var filePicker = document.getElementById('part-score-file-picker');
-    if (filePicker) {
-        var opts = Array.prototype.slice.call(filePicker.options);
-        var best = null;
-        for (var i = 1; i < opts.length; i++) {
-            var m = String(opts[i].textContent).match(/(\d+)\s*stron/);
-            if (!m) continue;
-            var n = parseInt(m[1], 10);
-            if (best === null || n > best.n) best = { opt: opts[i], n: n, v: String(opts[i].value) };
-        }
-        if (best && best.v !== '') filePicker.value = best.v;
-    }
+    if (!filePicker || !addPartDlg) return;
+
+    // Remember the user's own selection so it survives close/reopen (see resetOnClose).
+    var lastUserFileId = String(filePicker.value);
+
     function selectedMax() {
-        if (!filePicker) return null;
         var selectedValue = String(filePicker.value);
         var opts = Array.prototype.slice.call(filePicker.options);
         for (var i=0; i<opts.length; i++) {
@@ -1268,58 +1268,348 @@
         return null;
     }
 
+    // Default to the file with the most pages ONLY on first render of the page —
+    // a user who deliberately picks another file must keep their choice after close/reopen.
+    (function autoPickLargest() {
+        var opts = Array.prototype.slice.call(filePicker.options);
+        var best = null;
+        for (var i = 1; i < opts.length; i++) {
+            var m = String(opts[i].textContent).match(/(\d+)\s*stron/);
+            if (!m) continue;
+            var n = parseInt(m[1], 10);
+            if (best === null || n > best.n) best = { n: n, v: String(opts[i].value) };
+        }
+        if (best && best.v !== '') {
+            filePicker.value = best.v;
+            lastUserFileId = best.v;
+        }
+    })();
+
     var form     = document.getElementById('add-part-form');
+    if (!form) { return; }   // the submit path anchors on form — nothing else to wire
     var fromInp  = document.getElementById('part-page-from');
     var toInp    = document.getElementById('part-page-to');
+    var roleInp  = document.getElementById('part-role-input');
     var errEl    = document.getElementById('part-range-error');
-    if (!form) return;
+    var statusEl = document.getElementById('add-part-status');
 
-    function showError(msg) { if (errEl) { errEl.textContent = msg; errEl.classList.remove('hidden'); } }
-    function clearError() { if (errEl) errEl.classList.add('hidden'); }
-
-    // UX: when "Strona od" is raised above the current "Strona do", auto-bump
-    // "Strona do" to match — a single-page mapping (N–N) must stay submittable.
-    if (fromInp && toInp) {
-        fromInp.addEventListener('input', function () {
-            var f  = parseInt(fromInp.value, 10);
-            var t  = parseInt(toInp.value, 10);
-            if (!isNaN(f) && !isNaN(t) && f > t) toInp.value = String(f);
-        });
+    // Inline status is only meaningful for a modal the user actually opened —
+    // the one-shot init (probe of page 1 on page load) must NOT flash errors
+    // through #add-part-status on every full-page refresh.
+    var statusElEverUsed = false;
+    function statusStatusVisible() {
+        if (!statusEl) return false;
+        var openNow = (typeof addPartDlg.open === 'boolean') ? addPartDlg.open : !!addPartDlg.hasAttribute('open');
+        if (openNow) { statusElEverUsed = true; return true; }
+        return statusElEverUsed;
     }
 
-    form.addEventListener('submit', function (ev) {
-        var fromVal = parseInt(fromInp && fromInp.value, 10) || 1;
-        var toVal   = parseInt(toInp   && toInp.value,   10) || 2;
-        if (toVal < fromVal) {
-            ev.preventDefault();
-            showError('Strona do musi być większa lub równa stronie od.');
-            return;
+    var previewBox  = document.getElementById('part-preview');
+    var previewImg  = document.getElementById('part-preview-img');
+    var previewBadge = document.getElementById('part-preview-badge');
+    var btnPrev     = document.getElementById('part-preview-prev');
+    var btnNext     = document.getElementById('part-preview-next');
+
+    function showError(msg) { if (errEl) { errEl.textContent = msg; errEl.classList.remove('hidden'); } showStatus('error', msg); }
+    function clearError() { if (errEl) errEl.classList.add('hidden'); hideStatus(); }
+
+    var statusTimer = null;
+    function showStatus(kind, text) {
+        if (!statusEl || !statusStatusVisible()) return;
+        statusEl.textContent = (kind === 'success' ? '✓ ' : '') + text;
+        statusEl.classList.remove('hidden', 'add-part-status-error');
+        if (kind === 'error') statusEl.classList.add('add-part-status-error');
+        if (statusTimer) clearTimeout(statusTimer);
+        if (kind === 'success') {
+            statusTimer = setTimeout(function () { hideStatus(); }, 4000);
         }
-        var smax = selectedMax(); var serverMax = (smax != null) ? smax : parseInt(toInp && toInp.getAttribute("max"), 10);
-        if (serverMax && !isNaN(serverMax) && toVal > serverMax) {
-            ev.preventDefault();
-            showError('Strona do nie może przekroczyć ' + serverMax + ' (to liczbę stron PDF-a).');
-            return;
+    }
+    function hideStatus() {
+        if (!statusEl) return;
+        statusEl.classList.add('hidden');
+        if (statusTimer) { clearTimeout(statusTimer); statusTimer = null; }
+    }
+
+    // ------------------------------------------------------------------
+    // PDF header preview (requirements 2–7): top ~20% strip of the current
+    // page, full modal width, ‹/› navigation, prominent page number that is
+    // also written into "Strona od" automatically.
+    // bandId / compId are parsed once from the form's own action URL, so this
+    // keeps working no matter which composition page hosts the modal.
+    // ------------------------------------------------------------------
+    var actionParts = /^\/bands\/([^/]+)\/compositions\/([^/]+)\/parts$/.exec(String(form.action).replace(/^[a-z][a-z0-9+.-]*:\/\/[^\/]+/,''));
+    var bandId  = actionParts ? actionParts[1] : '';
+    var compId  = actionParts ? actionParts[2] : '';
+
+    var basePath = '/bands/' + bandId + '/compositions/' + compId;   // page GET (HX-Request → fragment)
+
+    var previewPage = 1;
+    var previewTotal = null;
+    var previewVisible = false;
+    var previewToken = 0;
+
+    function thumbUrl(page, width) {
+        return '/bands/' + bandId + '/compositions/' + compId +
+               '/files/' + encodeURIComponent(filePicker.value) +
+               '/thumb?page=' + page + '&width=' + (width || 1000);
+    }
+
+    function setPreviewUi(page) {
+        var t = (previewTotal != null) ? previewTotal : 999;
+        if (previewBadge) previewBadge.textContent = 'Strona ' + page + ' z ' + (t > 900 ? '…' : t);
+        if (btnPrev) btnPrev.disabled = page <= 1;
+        if (btnNext) btnNext.disabled = (previewTotal != null) && page >= previewTotal;
+        // Requirement 7: the shown page flows straight into "Strona od".
+        if (fromInp) fromInp.value = String(page);
+        bumpTo(fromPage(), 'preview');
+    }
+
+    function setPreviewPage(page, totalOverride) {
+        if (!previewBox || !previewImg) return;
+        if (totalOverride != null) previewTotal = totalOverride;
+        previewVisible = true;
+        previewBox.hidden = false;
+        fitPreviewHeight();
+        if (page < 1) page = 1;
+        if (previewTotal != null && page > previewTotal) page = previewTotal;   // clamp only once the total is actually known
+        previewPage = page;
+        var myToken = ++previewToken;
+
+        // Optimistic UI update so the arrows/badge/Strona od never feel laggy.
+        setPreviewUi(page);
+
+        // Load path: fetch-first, not Image-first. A probe <img> used to die silently
+        // (onerror with an unreported status — and the inline banner is deliberately
+        // suppressed while the dialog is closed, so an init-time failure was invisible).
+        // Fetching gives us the exact HTTP status + server error text: surface them in
+        // #add-part-status AND park the reason on the preview box (dataset.lastFail)
+        // for diagnostics. Only after a confirmed 200 do we point the <img> at the URL;
+        // the warm browser cache makes that final hit local and fast.
+        var url = thumbUrl(page, 1000);
+        fetch(url, { credentials: 'same-origin' })
+            .then(function (resp) {
+                if (!resp.ok) {
+                    return resp.text().catch(function () { return ''; }).then(function (t) {
+                        var msg = 'HTTP ' + resp.status + (t ? ' — ' + String(t).slice(0, 140) : '');
+                        throw new Error(msg);
+                    });
+                }
+                return resp.arrayBuffer();   // force the full download so failures surface BEFORE <img> swap
+            })
+            .then(function () {
+                if (myToken !== previewToken) return;   // superseded by a newer navigation
+                if (!previewImg.getAttribute('src') || previewImg.getAttribute('src') !== url) {
+                    previewImg.src = url;
+                }
+                if (previewBox) delete previewBox.dataset.lastFail;
+            })
+            .catch(function (e) {
+                if (myToken !== previewToken) return;
+                if (previewBox) previewBox.dataset.lastFail = String(e && e.message);
+                showStatus('error', 'Nie udało się załadować podglądu strony ' + page + '. (' + (e && e.message ? e.message : e) + ')');
+            });
+    }
+
+    // Re-arm the preview load when the dialog is opened: if init-time load never landed a
+    // src (server was still warming, or the response failed), refresh it now that the user
+    // is looking at it — any failure lands visibly in #add-part-status.
+    function ensurePreviewLoaded() {
+        if (!previewBox || !filePicker) return;
+        if (String(filePicker.value) === '') return;            // no file selected → nothing to show
+        if (previewImg && previewImg.getAttribute('src')) return; // already queued/loaded
+        setPreviewPage((previewPage < 1) ? 1 : previewPage, null);
+    }
+
+    function fromPage() { return parseInt(fromInp && fromInp.value, 10); }
+
+    // Requirement 8: "Strona do" auto-bumps UP to "Strona od" when that is higher —
+    // but a lower "Strona od" NEVER drags "Strona do" down (the range the user already
+    // extended stays). Triggered by manual typing AND by preview navigation.
+    function bumpTo(f, source) {
+        if (!fromInp || !toInp) return;
+        var t = parseInt(toInp.value, 10);
+        if (isNaN(f)) return;
+        if (!isNaN(t) && f > t) {
+            toInp.value = String(f);
+            // The intermediate keystroke that raised "Strona od" above the old "Strona do"
+            // already surfaced a range error — the auto-bump resolves it, so drop the banner
+            // or it lingers (the programmatic .value set fires no 'input' event to clean up).
+            clearError();
         }
-        clearError();
+    }
+
+    function hidePreview() {
+        previewVisible = false;
+        if (previewBox) previewBox.hidden = true;
+        previewPage = 1;
+        previewTotal = null;
+        if (previewImg) previewImg.removeAttribute('src');
+    }
+
+    // Requirement 3+4 sizing: visible strip ≈ 20% of the sheet's rendered height
+    // (guarantees the top-corner instrument name is inside the crop) but capped so
+    // the whole modal still fits one screen (requirement 14). Computed live from
+    // the box width instead of viewport math — works at any zoom/width.
+    function fitPreviewHeight() {
+        if (!previewBox || previewBox.hidden) return;
+        var w = previewBox.clientWidth;
+        if (!w) return;
+        var pageH = w * 1.4142;   // A4 ratio (scores are A4/LETTER; LETTER ≈ 1.29 → still in the top 25%)
+        var cap = Math.min(window.innerHeight * 0.22, 220);
+        var h = Math.round(Math.min(pageH * 0.20, cap));
+        if (h < 64) h = 64;
+        previewBox.style.height = h + 'px';
+    }
+    window.addEventListener('resize', fitPreviewHeight);
+
+    filePicker.addEventListener('change', function () {
+        var v = String(filePicker.value);
+        if (v === '') { hidePreview(); return; }
+        lastUserFileId = v;
+        var max = selectedMax();
+        // Clamp "Strona do" to the chosen file's page count on switch.
+        if (max != null && toInp) {
+            var t = parseInt(toInp.value, 10);
+            if (!isNaN(t) && t > max) toInp.value = String(max);
+        }
+        setPreviewPage(1, max != null ? max : null);
     });
+
+    if (btnPrev) btnPrev.addEventListener('click', function () { setPreviewPage(previewPage - 1); });
+    if (btnNext) btnNext.addEventListener('click', function () { setPreviewPage(previewPage + 1); });
+
+    // Optional: page number jumps via keyboard while the preview is focused.
+    if (previewBox) previewBox.addEventListener('keydown', function (ev) {
+        if (ev.key === 'ArrowLeft')  { ev.preventDefault(); setPreviewPage(previewPage - 1); }
+        if (ev.key === 'ArrowRight') { ev.preventDefault(); setPreviewPage(previewPage + 1); }
+    });
+
+    // Initialize once: the page render pre-selects the file with the most pages —
+    // show its top-of-page-1 strip so the preview is ready the moment the user
+    // opens the dialog (no extra click needed, browser caches the JPEG afterwards).
+    if (filePicker.value !== '') { setPreviewPage(1, selectedMax()); }
+
+    // ------------------------------------------------------------------
+    // Requirement 12: clicking into a non-empty "Rola" selects all its text,
+    // so typing immediately replaces it instead of appending/inserting mid-word.
+    // ------------------------------------------------------------------
+    if (roleInp) {
+        roleInp.addEventListener('focus', function () { roleInp.select(); });
+        roleInp.addEventListener('click', function () { roleInp.select(); });
+    }
 
     [fromInp, toInp].forEach(function (inp) {
         if (!inp) return;
-        // UX improvement: focussing the field (click, mouse or Tab) selects the
-        // current value, so typing new digits overwrites it directly — no need to
-        // clear the old value by hand first.
         inp.addEventListener('focus', function () { inp.select(); });
         inp.addEventListener('click', function () { inp.select(); });
         inp.addEventListener('input', function () {
-            var f = parseInt(fromInp && fromInp.value, 10);
-            var t = parseInt(toInp   && toInp.value,   10);
+            var f = fromPage();
+            var t = parseInt(toInp && toInp.value, 10);
             if (!isNaN(f) && !isNaN(t)) {
                 if (t < f) showError('Strona do musi być większa lub równa stronie od.');
                 else clearError();
             }
         });
     });
+
+    // Typing a higher "Strona od" bumps "Strona do" up (kept behaviour from 2026-09-24).
+    if (fromInp) {
+        fromInp.addEventListener('input', function () { bumpTo(fromPage(), 'manual'); });
+    }
+
+    // ------------------------------------------------------------------
+    // Requirement 9: "Zapisz głos" submits WITHOUT closing the dialog, so the
+    // user can map the next instrument right away (the preview + page fields
+    // stay). A separate "Zamknij" button (data-close) closes it.
+    // Validation stays client-side first; server errors surface inline.
+    // ------------------------------------------------------------------
+    var saveBtn = document.getElementById('save-part-btn');
+
+    form.addEventListener('submit', function (ev) {
+        ev.preventDefault();          // never let a native POST navigate away
+        var fromVal = parseInt(fromInp && fromInp.value, 10) || 1;
+        var toVal   = parseInt(toInp   && toInp.value,   10) || 2;
+        if (toVal < fromVal) {
+            showError('Strona do musi być większa lub równa stronie od.');
+            return;
+        }
+        var smax = selectedMax();
+        var serverMax = (smax != null) ? smax : parseInt(toInp && toInp.getAttribute('max'), 10);
+        if (serverMax && !isNaN(serverMax) && toVal > serverMax) {
+            showError('Strona do nie może przekroczyć ' + serverMax + ' (to liczbę stron PDF-a).');
+            return;
+        }
+        clearError();
+
+        if (!saveBtn) return;
+        var action = String(form.action);
+        saveBtn.disabled = true;
+        showStatus('saving', 'Zapisywanie…');
+
+        var payload = new FormData(form);   // native FormData → all fields incl. selects
+        fetch(action, { method: 'POST', body: payload })
+            .then(function (resp) {
+                if (!resp.ok) {
+                    return resp.json().catch(function () { return null; }).then(function (j) {
+                        throw new Error((j && (j.error || j.message)) || ('HTTP ' + resp.status));
+                    });
+                }
+                return null;
+            })
+            .then(function () {
+                hideStatus();
+                // Keep the modal OPEN (requirement 9). Reset role for the next instrument;
+                // the file picker keeps its selection so the preview stays usable, and the
+                // page fields stay where the user left them (bump rule already applied).
+                if (roleInp) { roleInp.value = ''; }
+                showStatus('success', 'Zapisano głos ✓ — możesz od razu dodać następny.');
+                refreshPartsPanelAfterSave();
+            })
+            .catch(function (e) {
+                showError('Nie udało się zapisać: ' + e.message);
+            })
+            .finally(function () { saveBtn.disabled = false; });
+    });
+
+    // ------------------------------------------------------------------
+    // After a successful save: refresh ONLY the "Głosy w nutach" table so the
+    // new row appears live while this dialog (form, preview, page fields) stays
+    // open. The dialog lives inside #parts-panel, so swapping that whole element
+    // would destroy the open <dialog> node — hence the targeted table swap. The
+    // server-rendered fragment still contains a fresh dialog copy; we discard it
+    // and keep only #existing-parts. 📤 on the new rows works via the document-
+    // level delegated listener (see the share-modal script above).
+    // ------------------------------------------------------------------
+    function refreshPartsPanelAfterSave() {
+        var table = document.getElementById('existing-parts');
+        if (!table || !bandId || !compId) return;
+        fetch(basePath, { headers: { 'HX-Request': 'true' } })
+            .then(function (r) { if (!r.ok) throw new Error('HTTP ' + r.status); return r.text(); })
+            .then(function (html) {
+                var tpl = document.createElement('template');
+                tpl.innerHTML = html;
+                var newTable = tpl.content.querySelector('#existing-parts');
+                if (!newTable) return;
+                table.parentNode.replaceChild(newTable, table);
+            })
+            .catch(function () { /* best-effort — closing and reopening the page shows the row */ });
+    }
+
+    // Reset on CLOSE only (never after a successful "Zapisz głos"): back to the
+    // first-rendered default file with a top-of-document preview and clean fields.
+    // ------------------------------------------------------------------
+    function resetOnClose() {
+        if (!form) return;
+        form.reset();
+        if (roleInp) roleInp.value = '';
+        clearError(); hideStatus();
+
+        var v = lastUserFileId !== '' ? lastUserFileId : (filePicker.value || '');
+        filePicker.value = v;
+        if (v === '') { hidePreview(); }
+        else { setPreviewPage(1, selectedMax()); }
+    }
+    addPartDlg.addEventListener('close', resetOnClose);
 })();
 </script>
 
