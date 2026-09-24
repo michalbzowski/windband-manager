@@ -32,9 +32,10 @@ class EventInviteGroupUiTest extends UiTestBase {
 
         String uid = "grp" + System.nanoTime();
         String groupName = "GrupaTest" + uid;
-        // Create two members via UI
-        createMemberViaUi(driver, wait, "Alpha" + uid, "Kowalski" + uid);
-        createMemberViaUi(driver, wait, "Beta" + uid, "Nowak" + uid);
+        // Create two members directly in the DB — they are fixtures (the modal under
+        // test invites them by id; the member form is not part of this test).
+        createTestBand1Member("Alpha" + uid, "Kowalski" + uid, null);
+        createTestBand1Member("Beta" + uid, "Nowak" + uid, null);
         Long alphaId = jdbcTemplate.queryForObject(
                 "SELECT MAX(id) FROM members WHERE first_name = ?", Long.class, "Alpha" + uid);
         Long betaId = jdbcTemplate.queryForObject(
@@ -114,18 +115,6 @@ class EventInviteGroupUiTest extends UiTestBase {
         });
     }
 
-    private void createMemberViaUi(WebDriver driver, WebDriverWait wait, String first, String last) {
-        loginAndNavigateTo("/members");
-        driver.findElement(By.xpath("//button[contains(., 'Dodaj członka')]")).click();
-        wait.until(ExpectedConditions.presenceOfElementLocated(By.id("member-form")));
-        fillField("firstName", first);
-        fillField("lastName", last);
-        ((JavascriptExecutor) driver).executeScript(
-                "document.querySelector(\"input[name='dateOfBirth']\").value = '1990-05-15';");
-        driver.findElement(By.cssSelector("#member-form button[type='submit'].primary")).click();
-        wait.until(ExpectedConditions.presenceOfElementLocated(By.cssSelector("#members-content table")));
-    }
-
     private void addMemberToGroupViaApi(WebDriver driver, Long groupId, Long memberId) {
         ((JavascriptExecutor) driver).executeScript(
                 "return fetch('/api/groups/' + arguments[0] + '/members/' + arguments[1], {" +
@@ -144,12 +133,6 @@ class EventInviteGroupUiTest extends UiTestBase {
         driver.findElement(org.openqa.selenium.By.cssSelector("button[type='submit']")).click();
         wait.until(ExpectedConditions.not(
                 ExpectedConditions.urlContains("/login")));
-    }
-
-    private void fillField(String name, String value) {
-        WebElement el = driver.findElement(By.name(name));
-        el.clear();
-        el.sendKeys(value);
     }
 
     private void jsClick(WebElement el) {

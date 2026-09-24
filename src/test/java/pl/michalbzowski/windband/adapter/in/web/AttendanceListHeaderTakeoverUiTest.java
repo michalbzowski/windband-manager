@@ -130,33 +130,6 @@ class AttendanceListHeaderTakeoverUiTest extends UiTestBase {
 
     // ───────────── fixtures: create a rehearsal + a team of members ─────────────
 
-    /**
-     * Creates a member via the UI flow (reuse the same pattern as {@code RehearsalDetailFilterUiTest})
-     * so the rehearsal/event fixtures have at least one inviteable row to scroll past.
-     * <p>Use standard Selenium DOM APIs (no raw JS injection into inputs).</p>
-     */
-    private void createMemberViaUi(WebDriverWait w, String fn) {
-        loginAndNavigateTo("/members");
-        driver.findElement(By.xpath("//button[contains(., 'Dodaj członka')]")).click();
-        w.until(ExpectedConditions.presenceOfElementLocated(By.cssSelector("#member-form")));
-
-        org.openqa.selenium.WebElement firstInp = driver.findElement(By.cssSelector("input[name='firstName']"));
-        firstInp.clear();
-        firstInp.sendKeys(fn);
-        org.openqa.selenium.WebElement lastInp  = driver.findElement(By.cssSelector("input[name='lastName']"));
-        lastInp.clear();
-        lastInp.sendKeys("Test" + UUID.randomUUID().toString().substring(0, 6));
-
-        // DOB is a <input type="date"> — Selenium `sendKeys` on date fields is unreliable in
-        // headless Chrome (value does not commit to DOM on every browser/driver version).
-        // The proven-working approach in this suite is a direct JS value assignment; we keep it.
-        exec("document.querySelector(\"input[name='dateOfBirth']\").value = '1992-03-04';");
-
-        driver.findElement(By.cssSelector("#member-form button[type='submit'].primary")).click();
-        w.until(ExpectedConditions.presenceOfElementLocated(By.cssSelector("#members-content table")));
-        sleep(350); // let the INSERT commit + be readable by subsequent lookups
-    }
-
     /** Looks up a member's database id by first name (test fixtures only). */
     private Long lookupMemberId(String firstName) {
         return jdbcTemplate.queryForObject(
@@ -174,10 +147,13 @@ class AttendanceListHeaderTakeoverUiTest extends UiTestBase {
         // physically travel under the sticky header and then past it out of the viewport).
         String uid = UUID.randomUUID().toString().substring(0, 8);
         String fn1 = "Tkr" + uid;
-        createMemberViaUi(wait, fn1);
+        createTestBand1Member(fn1, "Test" + uid, LocalDate.of(1992, 3, 4));
         Long mid1 = lookupMemberId(fn1);
 
         // Create a rehearsal dated in the future so it renders as "upcoming".
+        // (loginAndNavigateTo also establishes the same-origin page the synchronous
+        //  XHR helpers below require for their session/CSRF cookies.)
+        loginAndNavigateTo("/rehearsals");
         LocalDate date = LocalDate.now().plusDays(5).with(java.time.temporal.TemporalAdjusters.nextOrSame(java.time.DayOfWeek.MONDAY));
         Long rehearsalId = createRehearsalViaApi(uid + "-rehearsal", date);
         assertThat(rehearsalId).describedAs("createRehearsalViaApi should return an id").isNotNull();
@@ -334,10 +310,13 @@ class AttendanceListHeaderTakeoverUiTest extends UiTestBase {
 
         String uid = UUID.randomUUID().toString().substring(0, 8);
         String fn1 = "Evt" + uid;
-        createMemberViaUi(wait, fn1);
+        createTestBand1Member(fn1, "Test" + uid, LocalDate.of(1992, 3, 4));
         Long mid1 = lookupMemberId(fn1);
 
         Long eventId = insertEventRow("evt-takeover-" + uid, LocalDate.now().plusDays(5));
+
+        // Establish a logged-in same-origin page before the synchronous XHR invite below.
+        loginAndNavigateTo("/events");
         inviteMemberToEvent(eventId, mid1);
 
         driver.get(baseUrl() + "/events/" + eventId);
