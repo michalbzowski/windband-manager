@@ -48,15 +48,17 @@ class CompositionDetailPartsUiTest extends UiTestBase {
     void seedCompositionWithOnePartAndOneScoreFile() {
         // cleanDatabase() (UiTestBase) already truncated compositions / score_files /
         // composition_instruments. Re-insert a complete band-1 row set.
-        jdbcTemplate.update("""
-                INSERT INTO compositions
-                    (title, description, composer, arranger, status, band_id, created_at, updated_at)
-                VALUES ('Parts Table UI', 'regresja US-7.1 panel głosow', null, null,
-                        'DRAFT', 1, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
-                """);
+        // NOTE: use a UNIQUE title per test instance — H2's shared TRUNCATE ... CASCADE has been
+        // observed to silently no-op on some of these tables, so earlier tests' rows can still be
+        // present; a UUID title keeps "expected 1, actual N" lookup collisions impossible.
+        String title = "Parts Table UI-" + java.util.UUID.randomUUID();
+        jdbcTemplate.update(
+                "INSERT INTO compositions (title, description, composer, arranger, status, band_id, created_at, updated_at) " +
+                        "VALUES (?, 'regresja US-7.1 panel głosow', null, null, 'DRAFT', 1, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)",
+                title);
         compositionId = jdbcTemplate.queryForObject(
-                "SELECT id FROM compositions WHERE band_id = 1 AND title = 'Parts Table UI'",
-                Long.class);
+                "SELECT id FROM compositions WHERE band_id = 1 AND title = ?",
+                Long.class, title);
 
         // One uploaded score file (metadata row; binary not needed by the table render path).
         // page_count=5 so the part's 1–5 range resolves through the US-7.11 covering-file gate.
@@ -176,7 +178,100 @@ class CompositionDetailPartsUiTest extends UiTestBase {
 
         // Leave the UI clean: close the menu modal for any subsequent test in this browser.
         ((JavascriptExecutor) driver).executeScript(
-                "var m = document.getElementById('menu-modal');" +
-                "if (m && m.close) { m.close(); }");
+                "var m = document.getElementById('menu-modal'); if (m && m.close) { m.close(); }");
+    }
+
+    /**
+     * Regression — "Dodaj głos" modal (2026-09-24 request): when the user types a value into
+     * "Strona od:" that is HIGHER than the current "Strona do:", "Strona do:" must be auto-bumped
+     * to match. Two things were broken before:
+     * <ol>
+     *   <li>No auto-sync at all — the stale lower "do" value stayed and the submit guard
+     *       ("Strona do musi być większa lub równa stronie od.") blocked saving.</li>
+     *   <li>The field had {@code min="2"}, so even a correct single-page mapping like N–N failed
+     *       native HTML validation on submit.</li>
+     * </ol>
+     */
+    @Test
+    void addPartModal_typingHigherPageFromBumpsPageToAndSaveSucceeds() {
+        loginAndNavigateTo("/bands/1/compositions/" + compositionId);
+        WebDriverWait wait = new WebDriverWait(driver, WAIT);
+
+        wait.until(ExpectedConditions.visibilityOfElementLocated(By.id("open-add-part-modal-btn")));
+        driver.findElement(By.id("open-add-part-modal-btn")).click();
+        wait.until(driver -> {
+            Boolean open = (Boolean) ((JavascriptExecutor) driver).executeScript(
+                    "var d = document.getElementById('add-part-dialog');" +
+                    "return d && (d.open === true || d.hasAttribute('open'));");
+            return Boolean.TRUE.equals(open);
+        });
+
+        // The second seeded instrument — keeps the saved row's (instrument, role) distinct from
+        // the pre-existing "Trąbka / Partytura" seed row so row-count assertions stay deterministic.
+        Long bekId = jdbcTemplate.queryForObject(
+                "SELECT id FROM instruments WHERE band_id = 1 AND name = 'Bęben'", Long.class);
+
+        JavascriptExecutor js = (JavascriptExecutor) driver;
+        // Leave the optional file picker at its default (no binding → no page-count cross-check).
+        js.executeScript("document.getElementById('part-score-file-picker').value = ''");
+        // Pick Bęben among the band-1 instruments rendered by th:each="${bandInstruments}".
+        js.executeScript(
+                "var s = document.getElementById('part-instrument-picker'); s.value = String(arguments[0]);", bekId);
+        driver.findElement(By.cssSelector("#add-part-form input[name='role']")).clear();
+        driver.findElement(By.cssSelector("#add-part-form input[name='role']")).sendKeys("Bęben UI");
+
+        // Reproduce the user scenario: default form has from=1, to=2. Type 4 into "Strona od" —
+        // the auto-sync handler must bump "Strona do" from 2 straight to 4.
+        driver.findElement(By.id("part-page-from")).clear();
+        driver.findElement(By.id("part-page-from")).sendKeys("4");
+        wait.until(driver -> {
+            String v = (String) ((JavascriptExecutor) driver).executeScript(
+                    "return document.getElementById('part-page-to').value;");
+            return "4".equals(v);
+        });
+        assertThat((String) js.executeScript("return document.getElementById('part-page-from').value;"))
+                .as("Strona od keeps the typed value")
+                .isEqualTo("4");
+
+        // The error banner (rendered hidden by class="hidden") must not be visible after sync.
+        boolean bannerHidden = (Boolean) js.executeScript(
+                "var e = document.getElementById('part-range-error');" +
+                "return e && e.classList.contains('hidden');");
+        assertThat(bannerHidden).as("no range error after auto-bump").isTrue();
+
+        // Save — before the fix this was blocked either by the stale to<from guard or by
+        // min="2" native validation rejecting the 4–4 single-page range.
+        driver.findElement(By.cssSelector("#add-part-form button[type='submit']")).click();
+
+        // Wait for the round-trip: the row must land in the DB (real completion signal).
+        wait.until(wd -> {
+            Integer n = jdbcTemplate.queryForObject(
+                    "SELECT COUNT(*) FROM composition_instruments ci " +
+                            "JOIN instruments i ON i.id = ci.instrument_id " +
+                            "WHERE ci.composition_id = ? AND i.name = 'Bęben'",
+                    Integer.class, compositionId);
+            return n != null && n > 0;
+        });
+
+        // Exactly ONE new part row for Bęben with the auto-synced range 4–4.
+        Integer rows = jdbcTemplate.queryForObject(
+                "SELECT COUNT(*) FROM composition_instruments ci " +
+                        "JOIN instruments i ON i.id = ci.instrument_id " +
+                        "WHERE ci.composition_id = ? AND i.name = 'Bęben'",
+                Integer.class, compositionId);
+        assertThat(rows).as("one new part row for Bęben was saved").isEqualTo(1);
+
+        Integer pageFrom = jdbcTemplate.queryForObject(
+                "SELECT ci.page_from FROM composition_instruments ci " +
+                        "JOIN instruments i ON i.id = ci.instrument_id " +
+                        "WHERE ci.composition_id = ? AND i.name = 'Bęben'",
+                Integer.class, compositionId);
+        Integer pageTo = jdbcTemplate.queryForObject(
+                "SELECT ci.page_to FROM composition_instruments ci " +
+                        "JOIN instruments i ON i.id = ci.instrument_id " +
+                        "WHERE ci.composition_id = ? AND i.name = 'Bęben'",
+                Integer.class, compositionId);
+        assertThat(pageFrom).as("page_from saved").isEqualTo(4);
+        assertThat(pageTo).as("page_to auto-synced to page_from").isEqualTo(4);
     }
 }
