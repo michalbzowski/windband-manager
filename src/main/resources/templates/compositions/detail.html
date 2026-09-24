@@ -1030,11 +1030,26 @@
                      .ap-calm, fully transparent, click-through) so bare sheet music shows;
                      clicking again brings them back. -->
                 <div id="part-preview" class="add-part-preview" role="button" tabindex="0"
-                     aria-label="Podgląd góry strony PDF — kliknij, aby ukryć lub przywołać strzałki i etykietę strony" hidden>
+                     aria-label="Podgląd góry strony PDF — kliknij, aby ukryć lub przywołać pasek narzędzi" hidden>
                     <img id="part-preview-img" alt="Podgląd góry strony PDF (nazwa instrumentu)">
-                    <span id="part-preview-badge" role="status">Strona —</span>
-                    <button type="button" id="part-preview-prev" class="ap-preview-btn ap-overlay" aria-label="Poprzednia strona" disabled>‹</button>
-                    <button type="button" id="part-preview-next" class="ap-preview-btn ap-preview-btn-right ap-overlay" aria-label="Następna strona" disabled>›</button>
+                    <!-- User request (2026-09-24): arrows + page badge moved from the
+                         middle of the strip to a dedicated BOTTOM BAR inside the preview
+                         component. The bar carries two extra same-size buttons (⇤ / ⇥)
+                         that set the (now visually hidden) "Strona od" / "Strona do"
+                         fields to the currently previewed page. -->
+                    <div id="part-preview-bar" class="ap-bar">
+                        <span class="ap-bar-group">
+                            <button type="button" id="part-range-from" class="ap-preview-btn ap-overlay"
+                                    aria-label="Ustaw 'Strona od' na podglądaną stronę" title="Ustaw 'Strona od' na tę stronę">⇤</button>
+                            <button type="button" id="part-range-to" class="ap-preview-btn ap-overlay"
+                                    aria-label="Ustaw 'Strona do' na podglądaną stronę" title="Ustaw 'Strona do' na tę stronę">⇥</button>
+                        </span>
+                        <span id="part-preview-badge" class="ap-overlay" role="status">Strona —</span>
+                        <span class="ap-bar-group">
+                            <button type="button" id="part-preview-prev" class="ap-preview-btn ap-overlay" aria-label="Poprzednia strona" disabled>‹</button>
+                            <button type="button" id="part-preview-next" class="ap-preview-btn ap-preview-btn-right ap-overlay" aria-label="Następna strona" disabled>›</button>
+                        </span>
+                    </div>
                 </div>
 
                 <!-- Role + instrument on one compact grid; page range fields share ONE row -->
@@ -1046,8 +1061,12 @@
                             <option th:each="instr : ${bandInstruments}" th:value="${instr.id}" th:text="${instr.name}"></option>
                         </select>
                     </label>
-                    <label class="ap-cell ap-page-field">Strona od: <input type="number" name="pageFrom" id="part-page-from" min="1" value="1" required class="form-input"></label>
-                    <label class="ap-cell ap-page-field">Strona do: <input type="number" name="pageTo" id="part-page-to" min="1" value="2" required
+                    <!-- User request (2026-09-24): hidden, NOT removed — the inputs still
+                         submit with the form and stay synced by the preview (page → "Strona
+                         od", ⇤/⇥ buttons, bump rule). The freed grid row is reclaimed by
+                         the taller PDF preview (see .add-part-preview / fitPreviewHeight). -->
+                    <label class="ap-cell ap-page-field" hidden>Strona od: <input type="number" name="pageFrom" id="part-page-from" min="1" value="1" required class="form-input"></label>
+                    <label class="ap-cell ap-page-field" hidden>Strona do: <input type="number" name="pageTo" id="part-page-to" min="1" value="2" required
                             th:max="${serverMaxPageCount != null ? serverMaxPageCount : 999}" class="form-input"></label>
                 </div>
 
@@ -1314,6 +1333,10 @@
     var previewBadge = document.getElementById('part-preview-badge');
     var btnPrev     = document.getElementById('part-preview-prev');
     var btnNext     = document.getElementById('part-preview-next');
+    // User request (2026-09-24): two bar buttons (same size as ‹/›) that set the
+    // now-hidden "Strona od" / "Strona do" fields to the currently previewed page.
+    var btnRangeFrom = document.getElementById('part-range-from');
+    var btnRangeTo   = document.getElementById('part-range-to');
 
     function showError(msg) { if (errEl) { errEl.textContent = msg; errEl.classList.remove('hidden'); } showStatus('error', msg); }
     function clearError() { if (errEl) errEl.classList.add('hidden'); hideStatus(); }
@@ -1459,12 +1482,14 @@
     // (guarantees the top-corner instrument name is inside the crop) but capped so
     // the whole modal still fits one screen (requirement 14). Computed live from
     // the box width instead of viewport math — works at any zoom/width.
+    // Cap raised 220 → 280 (2026-09-24): hiding "Strona od/do" freed the space,
+    // which this preview now claims (user request #2).
     function fitPreviewHeight() {
         if (!previewBox || previewBox.hidden) return;
         var w = previewBox.clientWidth;
         if (!w) return;
         var pageH = w * 1.4142;   // A4 ratio (scores are A4/LETTER; LETTER ≈ 1.29 → still in the top 25%)
-        var cap = Math.min(window.innerHeight * 0.22, 220);
+        var cap = Math.min(window.innerHeight * 0.30, 280);
         var h = Math.round(Math.min(pageH * 0.20, cap));
         if (h < 64) h = 64;
         previewBox.style.height = h + 'px';
@@ -1487,6 +1512,29 @@
     if (btnPrev) btnPrev.addEventListener('click', function () { setPreviewPage(previewPage - 1); });
     if (btnNext) btnNext.addEventListener('click', function () { setPreviewPage(previewPage + 1); });
 
+    // ── ⇤ / ⇥ — the page-range setters (user request 2026-09-24) ──────────────────
+    // "Strona od" / "Strona do" are hidden, so the bar buttons are the manual way to
+    // pin each end of the range to the currently previewed page. Both reuse the
+    // established bump rule: raising the range start never leaves "do" below "od".
+    function setRangeEnd(which) {
+        var page = previewPage;
+        if (which === 'from') {
+            if (fromInp) fromInp.value = String(page);
+            bumpTo(page, 'range');
+            clearError();
+        } else if (toInp) {
+            var f = fromPage();
+            var v = (!isNaN(f) && page < f) ? f : page;   // "do" can never go below "od"
+            toInp.value = String(v);
+            clearError();
+        }
+        showStatus('success', which === 'from'
+            ? 'Strona od = ' + (fromInp ? fromInp.value : page)
+            : 'Strona do = ' + toInp.value);
+    }
+    if (btnRangeFrom) btnRangeFrom.addEventListener('click', function () { setRangeEnd('from'); });
+    if (btnRangeTo)   btnRangeTo.addEventListener('click', function () { setRangeEnd('to'); });
+
     // Overlay CALM mode (user request, 2026-09-24): ONE click/tap anywhere on the
     // preview — except on the ‹/› arrows, which must keep navigating — switches the
     // overlay calm: badge + arrows fade out completely and stop capturing touches
@@ -1502,9 +1550,9 @@
     }
 
     if (previewBox) {
-        [btnPrev, btnNext].forEach(function (b) {
+        [btnPrev, btnNext, btnRangeFrom, btnRangeTo].forEach(function (b) {
             if (!b) return;
-            // Arrows keep their own behaviour; swallow the event so it does NOT
+            // Bar buttons keep their own behaviour; swallow the event so it does NOT
             // bubble up to the box's toggle below.
             b.addEventListener('click', function (ev) { ev.stopPropagation(); });
         });
