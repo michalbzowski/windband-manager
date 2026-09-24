@@ -3513,6 +3513,16 @@ button.secondary.danger:focus-visible {
     cursor: default;
 }
 
+/* Range buttons display page NUMBERS (user request 2026-09-24, iteration 2) —
+   digits need a tighter cut than the 1.6rem arrow glyphs so two-digit pages
+   stay inside the same 42px circle without touching its edge. */
+.ap-range-btn {
+    font-size: 1.05rem;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+    letter-spacing: 0.02em;
+}
+
 /* Requirement 6 — page number badge, centred IN THE BAR between the two
    button groups (was: floating dead-centre over the music; 2026-09-24). */
 #part-preview-badge {

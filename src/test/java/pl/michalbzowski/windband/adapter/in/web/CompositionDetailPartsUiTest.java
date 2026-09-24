@@ -675,6 +675,114 @@ class CompositionDetailPartsUiTest extends UiTestBase {
     }
 
     /**
+     * User request (2026-09-24, iteration 2) — the two range buttons no longer show
+     * the ⇤ / ⇥ glyphs: each DISPLAYS the page number it holds, mirrored live from
+     * the hidden "Strona od" / "Strona do" inputs. Rules under test:
+     * <ul>
+     *   <li>a) pressing the left (⇤) button on page 1 leaves it showing "1";</li>
+     *   <li>b) pressing the right (⇥) button on page 1 makes it show "1";</li>
+     *   <li>c) same on any other page — the pressed button shows that page number;</li>
+     *   <li>d) the left digit never exceeds the right digit;</li>
+     *   <li>e) the hidden fields remain the form's source of truth (still submitted);</li>
+     *   <li>f) pressing the left button on a page HIGHER than the current right digit
+     *       drags the right digit (and the hidden "do") up to the same number.</li>
+     * </ul>
+     */
+    @Test
+    void addPartModal_rangeButtonsDisplayTheirPageNumbers() {
+        loginAndNavigateTo("/bands/1/compositions/" + compositionId);
+        WebDriverWait wait = new WebDriverWait(driver, WAIT);
+        JavascriptExecutor js = (JavascriptExecutor) driver;
+
+        driver.findElement(By.id("open-add-part-modal-btn")).click();
+        wait.until(wd -> {
+            Boolean open = (Boolean) js.executeScript(
+                    "var d = document.getElementById('add-part-dialog');" +
+                    "return d && (d.open === true || d.hasAttribute('open'));");
+            return Boolean.TRUE.equals(open);
+        });
+        wait.until(wd -> {
+            Boolean loaded = (Boolean) js.executeScript(
+                    "var i = document.getElementById('part-preview-img');" +
+                    "return !!(i && i.getAttribute('src') && i.naturalWidth > 0);");
+            return Boolean.TRUE.equals(loaded);
+        });
+
+        // ── initial state: labels mirror the fields' defaults (od=1, do=2) ───────────
+        assertThat(rangeButtonLabel(js, "part-range-from")).as("left button starts at 1").isEqualTo("1");
+        assertThat(rangeButtonLabel(js, "part-range-to")).as("right button starts at 2").isEqualTo("2");
+
+        // ── a) page 1, press LEFT → it shows 1; the right keeps its own number ──────
+        js.executeScript("document.getElementById('part-range-from').click();");
+        assertThat(rangeButtonLabel(js, "part-range-from")).as("(a) left shows 1 on page 1").isEqualTo("1");
+        assertThat(rangeButtonLabel(js, "part-range-to")).as("(d) right untouched by left press").isEqualTo("2");
+
+        // ── b) page 1, press RIGHT → it shows 1 (pinned to the previewed page) ───────
+        js.executeScript("document.getElementById('part-range-to').click();");
+        assertThat(rangeButtonLabel(js, "part-range-to")).as("(b) right shows 1 on page 1").isEqualTo("1");
+        assertLeftNotAfterRight(js);
+
+        // ── c) page 3: navigation drives 'od' → left label follows; pressing either
+        //     button on the previewed page pins it to 3 ─────────────────────────────────
+        driver.findElement(By.id("part-preview-next")).click();
+        wait.until(wd -> "Strona 2 z 5".equals(previewBadgeText(js)));
+        driver.findElement(By.id("part-preview-next")).click();
+        wait.until(wd -> "Strona 3 z 5".equals(previewBadgeText(js)));
+        assertThat(rangeButtonLabel(js, "part-range-from")).as("(c) left follows the previewed page 3").isEqualTo("3");
+        js.executeScript("document.getElementById('part-range-from').click();");
+        assertThat(rangeButtonLabel(js, "part-range-from")).as("(c) left press pins 3").isEqualTo("3");
+        assertThat(rangeButtonLabel(js, "part-range-to")).as("bump rule — right rose to 3 with it").isEqualTo("3");
+        js.executeScript("document.getElementById('part-range-to').click();");
+        assertThat(rangeButtonLabel(js, "part-range-to")).as("(c) right press pins 3").isEqualTo("3");
+        assertLeftNotAfterRight(js);
+
+        // ── e) the hidden fields still carry the SAME numbers → unchanged POST payload ─
+        assertThat((String) js.executeScript("return document.getElementById('part-page-from').value;"))
+                .as("hidden 'Strona od' still mirrors the left button").isEqualTo("3");
+        assertThat((String) js.executeScript("return document.getElementById('part-page-to').value;"))
+                .as("hidden 'Strona do' still mirrors the right button").isEqualTo("3");
+
+        // ── f) page 5 with a manually CLAMPED-DOWN range 2–3: press LEFT on page 5 ────
+        // The digits must be ordered, so first jump to page 5 (od/do → 5/5), then type
+        // a lower 2–3 range (req. 8 keeps 'do' from dragging down, typing is not nav),
+        // and finally press the left button WITHOUT navigating: it re-pins 'od' to the
+        // previewed page 5 > current right digit 3 → right must follow up to 5.
+        driver.findElement(By.id("part-preview-next")).click();
+        driver.findElement(By.id("part-preview-next")).click();
+        wait.until(wd -> "Strona 5 z 5".equals(previewBadgeText(js)));
+        typeIntoHiddenPageField(js, "part-page-from", "2");
+        typeIntoHiddenPageField(js, "part-page-to", "3");
+        assertThat(rangeButtonLabel(js, "part-range-from")).as("typed 2 echoed on the left button").isEqualTo("2");
+        assertThat(rangeButtonLabel(js, "part-range-to")).as("typed 3 echoed on the right button").isEqualTo("3");
+        js.executeScript("document.getElementById('part-range-from').click();");
+        assertThat(rangeButtonLabel(js, "part-range-from")).as("(f) left on page 5 shows 5").isEqualTo("5");
+        assertThat(rangeButtonLabel(js, "part-range-to")).as("(f) right is dragged up to 5 too").isEqualTo("5");
+        assertThat((String) js.executeScript("return document.getElementById('part-page-to').value;"))
+                .as("(f) hidden 'do' followed the bump").isEqualTo("5");
+        assertLeftNotAfterRight(js);
+
+        // The aria-labels carry the meaning the glyphs used to (which end is which).
+        assertThat((String) js.executeScript(
+                "return document.getElementById('part-range-from').getAttribute('aria-label');"))
+                .startsWith("Strona od: 5");
+        assertThat((String) js.executeScript(
+                "return document.getElementById('part-range-to').getAttribute('aria-label');"))
+                .startsWith("Strona do: 5");
+    }
+
+    /** (d) the left range digit must never sit past the right one. */
+    private static void assertLeftNotAfterRight(JavascriptExecutor js) {
+        int l = Integer.parseInt(rangeButtonLabel(js, "part-range-from"));
+        int r = Integer.parseInt(rangeButtonLabel(js, "part-range-to"));
+        assertThat(l).as("left button digit (%s) never exceeds right (%s)", l, r).isLessThanOrEqualTo(r);
+    }
+
+    private static String rangeButtonLabel(JavascriptExecutor js, String id) {
+        return ((String) js.executeScript(
+                "return document.getElementById(arguments[0]).textContent;", id)).trim();
+    }
+
+    /**
      * Requirement 8 — the "Strona do" bump rule in both directions: typing a HIGHER
      * "Strona od" drags "Strona do" up (live validation error while to &lt; from);
      * typing a LOWER "Strona od" must NOT drag "Strona do" down (the user-extended
