@@ -1034,7 +1034,7 @@
                 <label>Strona od: <input type="number" name="pageFrom" id="part-page-from" min="1" value="1" required class="form-input"></label>
             </div>
             <div class="form-row">
-                <label>Strona do: <input type="number" name="pageTo" id="part-page-to" min="2" value="2" required
+                <label>Strona do: <input type="number" name="pageTo" id="part-page-to" min="1" value="2" required
                         th:max="${serverMaxPageCount != null ? serverMaxPageCount : 999}" class="form-input"></label>
             </div>
             <p id="part-range-error" class="hidden text-danger" role="alert"></p>
@@ -1276,6 +1276,16 @@
 
     function showError(msg) { if (errEl) { errEl.textContent = msg; errEl.classList.remove('hidden'); } }
     function clearError() { if (errEl) errEl.classList.add('hidden'); }
+
+    // UX: when "Strona od" is raised above the current "Strona do", auto-bump
+    // "Strona do" to match — a single-page mapping (N–N) must stay submittable.
+    if (fromInp && toInp) {
+        fromInp.addEventListener('input', function () {
+            var f  = parseInt(fromInp.value, 10);
+            var t  = parseInt(toInp.value, 10);
+            if (!isNaN(f) && !isNaN(t) && f > t) toInp.value = String(f);
+        });
+    }
 
     form.addEventListener('submit', function (ev) {
         var fromVal = parseInt(fromInp && fromInp.value, 10) || 1;
