@@ -3359,3 +3359,209 @@ button.secondary.danger:focus-visible {
 
 }
 
+/* ============================================================
+   "DODAJ GŁOS" MODAL (compositions/detail.html) — 2026-09-24 rebuild
+   Layout contract: title across the TOP, PDF header strip under
+   "Plik nut", Rola/Instrument + Strona od/do in a compact 2×2 grid,
+   Zapisz+Zamknij on ONE bottom row. The whole dialog must fit on one
+   screen (body scrolls internally as the only overflow).
+   ============================================================ */
+
+/* The <form> is the real sheet: full-height flex column inside the transparent dialog */
+#add-part-dialog.add-part-modal form {
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+    height: 100%;
+    min-height: 0;
+    background: var(--pico-background-color);
+    color: var(--pico-color);
+}
+
+/* Requirement 1 — title moved to the top, centred across the header row.
+   The empty leading <span> + space-between keeps the close ✓ button pinned right
+   while the h3 stays visually "on top of" the modal instead of left-flushed. */
+#add-part-dialog .ap-head {
+    position: relative;
+}
+
+#add-part-dialog .ap-head-title {
+    margin: 0 auto;
+    font-size: 1.05rem;
+    text-align: center;
+    color: var(--pico-color);
+}
+
+[data-theme="dark"] #add-part-dialog .ap-head-title { color: #e8e8e8; }
+
+#add-part-dialog .ap-head .app-modal-close {
+    position: absolute;
+    top: 50%;
+    right: 0.6rem;
+    transform: translateY(-50%);
+}
+
+/* Scrollable middle — the ONLY scroll region (footer + header stay pinned) */
+#add-part-dialog .add-part-body {
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    display: flex;
+    flex-direction: column;
+    gap: 0.7rem;
+    padding: 0.9rem 0.75rem 1rem;
+}
+
+/* Requirement 4 — the preview is full modal width (the dialog spans the viewport) */
+#add-part-dialog .ap-file select {
+    max-width: 20rem;
+}
+
+/* ------------------------------------------------------------------
+   Requirements 2–6: JPEG strip of the TOP of the current PDF page.
+   The rendered image is ~1.294× its width (A4); the container clips it,
+   so only the header area (~top fifth of a desktop-wide sheet) shows —
+   exactly where the instrument name sits on score sheets. Bounded height:
+   `min(20vh, 220px)` keeps the rest of the form on one screen (req. 14).
+   ------------------------------------------------------------------ */
+.add-part-preview {
+    position: relative;
+    width: 100%;
+    height: min(20vh, 220px);
+    min-height: 84px;
+    overflow: hidden;
+    border-radius: 0.55rem;
+    border: 1px solid var(--pico-muted-border-color);
+    background: #fff;                      /* JPEG has no alpha — white base */
+    box-shadow: 0 1px 6px rgba(0, 0, 0, 0.12);
+}
+
+.add-part-preview img {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: auto;                          /* natural page ratio → CSS box crops the top */
+    display: block;
+    max-height: none;
+}
+
+/* Requirement 5 — ‹ / › page navigation, vertically centred on both edges */
+.ap-preview-btn {
+    position: absolute;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 42px;
+    height: 42px;
+    border-radius: 50%;
+    font-size: 1.6rem;
+    line-height: 1;
+    padding: 0;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(255, 255, 255, 0.92);
+    color: #1a1a1a;
+    border: 1px solid rgba(0, 0, 0, 0.18);
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.25);
+    cursor: pointer;
+}
+
+[data-theme="dark"] .ap-preview-btn {
+    background: rgba(20, 20, 20, 0.85);
+    color: #f2f2f2;
+    border-color: rgba(255, 255, 255, 0.25);
+}
+
+.ap-preview-btn:hover:not(:disabled) {
+    background: var(--pico-primary-background);
+    color: var(--pico-primary);
+}
+
+.ap-preview-btn:disabled {
+    opacity: 0.35;
+    cursor: default;
+}
+
+#part-preview-prev { left: 0.5rem; }
+#part-preview-next { right: 0.5rem; }
+
+/* Requirement 6 — page number badge, unmissable (top-right) */
+#part-preview-badge {
+    position: absolute;
+    top: 0.45rem;
+    right: 0.55rem;
+    z-index: 1;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.2rem;
+    padding: 0.28rem 0.7rem;
+    border-radius: 999px;
+    font-weight: 700;
+    font-size: 0.85rem;
+    line-height: 1;
+    white-space: nowrap;
+    background: var(--pico-primary-background, #3b82f6);
+    color: #fff;
+    box-shadow: 0 1px 5px rgba(0, 0, 0, 0.35);
+}
+
+/* Requirement 13 — Rola | Instrument / Strona od | Strona do in a tight 2×2 grid */
+.add-part-grid {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    gap: 0.5rem 1rem;
+}
+
+.add-part-grid .ap-cell {
+    margin: 0;
+    min-width: 0;
+}
+
+.add-part-grid .ap-page-field input[type="number"] {
+    width: 7rem;
+}
+
+@media (max-width: 640px) {
+    .add-part-grid {
+        grid-template-columns: 1fr;
+    }
+    .add-part-preview {
+        height: min(24vh, 150px);          /* smaller screen → shorter strip */
+    }
+}
+
+/* Inline status line under the fields (success/error of a save) */
+.add-part-status {
+    margin: 0;
+    font-size: 0.85rem;
+    color: var(--pico-positive, #16a34a);
+}
+
+.add-part-status-error {
+    color: var(--pico-negative, #dc2626) !important;
+}
+
+/* Requirement 9 — "Zapisz głos" + "Zamknij" share ONE bottom row, right-aligned.
+   display:flex is explicit: no base .modal-actions rule exists in this stylesheet,
+   and justify-content would be inert on a plain <footer>. PicoCSS gives its buttons
+   `flex: 1 1 auto` (fill-the-row), so opt both back out — content width only. */
+#add-part-dialog .add-part-actions {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 0.5rem;
+    margin-top: auto;
+    padding-top: 0.75rem;
+}
+
+/* Pico v2 buttons default to width:100% — force content width so BOTH fit one row */
+#add-part-dialog .add-part-actions button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex: 0 0 auto;
+    width: auto;
+}
+

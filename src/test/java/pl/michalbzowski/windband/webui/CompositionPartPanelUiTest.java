@@ -35,7 +35,10 @@ class CompositionPartPanelUiTest extends UiTestBase {
                 By.cssSelector("#add-part-form input[name=pageFrom]")));
         wait.until(ExpectedConditions.visibilityOfElementLocated(
                 By.cssSelector("#add-part-form input[name=pageTo]")));
+        // "Zapisz głos" + "Zamknij" on one footer row (the old "Wyczyść" button was removed).
         wait.until(ExpectedConditions.visibilityOfElementLocated(
-                By.cssSelector("#clear-part-form-btn")));
+                By.cssSelector("#save-part-btn")));
+        wait.until(ExpectedConditions.visibilityOfElementLocated(
+                By.cssSelector(".add-part-close-btn")));
     }
 }
