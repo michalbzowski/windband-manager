@@ -268,8 +268,10 @@ class CompositionDetailPartsUiTest extends UiTestBase {
 
         // Reproduce the user scenario: default form has from=1, to=2. Type 4 into "Strona od" —
         // the auto-sync handler must bump "Strona do" from 2 straight to 4.
-        driver.findElement(By.id("part-page-from")).clear();
-        driver.findElement(By.id("part-page-from")).sendKeys("4");
+        // 2026-09-24 redesign: "Strona od/do" are hidden (display:none) so Selenium cannot
+        // type into them — replicate the keystroke by setting the value + dispatching the
+        // same 'input' event a real keystroke fires (the bump handler is event-driven).
+        typeIntoHiddenPageField(js, "part-page-from", "4");
         wait.until(driver -> {
             String v = (String) ((JavascriptExecutor) driver).executeScript(
                     "return document.getElementById('part-page-to').value;");
@@ -494,21 +496,33 @@ class CompositionDetailPartsUiTest extends UiTestBase {
         double bHeight = ((Number) geo.get("bHeight")).doubleValue();
 
         assertThat(Math.abs(cx - pcx))
-                .as("badge is horizontally centred (was pinned top-right, hiding the instrument name)")
+                .as("badge is horizontally centred (still clear of the instrument name)")
                 .isLessThan(6.0);
-        assertThat(Math.abs(cy - pcy))
-                .as("badge is vertically centred in the preview strip")
-                .isLessThan(6.0);
-        // The old pin sat ~7px from the top edge; a centred badge must sit at/below the middle.
+        // 2026-09-24 redesign: the badge moved OUT of the middle of the strip into the
+        // preview's BOTTOM BAR — assert it sits inside the bar near the bottom edge.
+        Map<String, Object> barGeo = (Map<String, Object>) js.executeScript(
+                "var br = document.getElementById('part-preview-bar').getBoundingClientRect();" +
+                "var bp = document.getElementById('part-preview').getBoundingClientRect();" +
+                "return {barTop: br.top - bp.top, barBottom: br.bottom - bp.top, boxH: bp.height};");
+        double barTop = ((Number) barGeo.get("barTop")).doubleValue();
+        double barBottom = ((Number) barGeo.get("barBottom")).doubleValue();
+        // cy is viewport-absolute — convert to box-relative before comparing with the bar.
+        assertThat(cy - pcy + ((Number) barGeo.get("boxH")).doubleValue() / 2.0)
+                .as("badge is vertically inside the bottom bar (was floating mid-strip)")
+                .isBetween(barTop - 2.0, barBottom + 2.0);
+        assertThat(barBottom - barTop)
+                .as("the bottom bar is a compact toolbar, not a full-height overlay")
+                .isLessThan(90.0);
         assertThat(topOffset)
-                .as("badge is clear of the top edge (instrument-name zone)")
+                .as("badge sits at/below the middle of the strip")
                 .isGreaterThan(bHeight / 2 - 8.0);
 
         // ── 2) One click anywhere on the preview → calm mode; a second one restores it
         assertThat(previewCalm(js)).as("overlays are visible before any click").isFalse();
 
         String hitBody = clickInsidePreviewAt(js, 0.5, 0.2);
-        assertThat(hitBody).as("the tap lands inside the preview strip").isEqualTo("part-preview-img");
+        assertThat(hitBody).as("the tap lands inside the preview strip (img or the bar row — both bubble to the toggle)")
+                .isIn("part-preview-img", "part-preview-bar");
         assertThat(previewCalm(js)).as("ONE click on the preview switches to calm mode").isTrue();
         for (String id : OVERLAY_IDS) {
             requireOverlayIdle(js, id);
@@ -517,8 +531,8 @@ class CompositionDetailPartsUiTest extends UiTestBase {
         // Tapping EXACTLY where a disabled '‹' used to sit must still reach the sheet
         // music (no dead zone) and toggle the overlays back on.
         String hitArrowSpot = clickInsidePreviewAt(js, 0.04, 0.5);
-        assertThat(hitArrowSpot).as("disabled arrow is not a dead zone — tap reaches the image")
-                .isEqualTo("part-preview-img");
+        assertThat(hitArrowSpot).as("disabled arrow is not a dead zone — tap reaches the strip/bar")
+                .isIn("part-preview-img", "part-preview-bar");
         assertThat(previewCalm(js))
                 .as("the second tap — even over a former arrow spot — restores overlays").isFalse();
         for (String id : OVERLAY_IDS) {
@@ -546,6 +560,121 @@ class CompositionDetailPartsUiTest extends UiTestBase {
     }
 
     /**
+     * User request (2026-09-24) — the preview BOTTOM BAR: arrows + badge live in a bar
+     * pinned to the bottom edge of the preview component, next to two NEW same-size
+     * buttons ⇤ / ⇥. "Strona od" and "Strona do" are hidden (not removed), so these two
+     * buttons are the manual way to pin each end of the page range to the currently
+     * previewed page. They must not toggle calm mode and must respect the bump rule.
+     */
+    @Test
+    void addPartModal_bottomBar_buttonsSetHiddenPageRange() {
+        loginAndNavigateTo("/bands/1/compositions/" + compositionId);
+        WebDriverWait wait = new WebDriverWait(driver, WAIT);
+        JavascriptExecutor js = (JavascriptExecutor) driver;
+
+        driver.findElement(By.id("open-add-part-modal-btn")).click();
+        wait.until(wd -> {
+            Boolean open = (Boolean) js.executeScript(
+                    "var d = document.getElementById('add-part-dialog');" +
+                    "return d && (d.open === true || d.hasAttribute('open'));");
+            return Boolean.TRUE.equals(open);
+        });
+        wait.until(wd -> {
+            Boolean loaded = (Boolean) js.executeScript(
+                    "var i = document.getElementById('part-preview-img');" +
+                    "return !!(i && i.getAttribute('src') && i.naturalWidth > 0);");
+            return Boolean.TRUE.equals(loaded);
+        });
+
+        // ── 1) The bar is a bottom strip of the preview and carries ALL controls ────────
+        Map<String, Object> geo = (Map<String, Object>) js.executeScript(
+                "var bp = document.getElementById('part-preview').getBoundingClientRect();" +
+                "var br = document.getElementById('part-preview-bar').getBoundingClientRect();" +
+                "return {boxH: bp.height, gap: bp.bottom - br.bottom, barH: br.height};");
+        double boxH = ((Number) geo.get("boxH")).doubleValue();
+        double gap  = ((Number) geo.get("gap")).doubleValue();
+        double barH = ((Number) geo.get("barH")).doubleValue();
+        assertThat(gap).as("bar is pinned to the bottom edge of the preview").isBetween(-2.0, 2.0);
+        // Compact toolbar row: ~42px buttons + padding. Asserted absolutely because
+        // fitPreviewHeight may clamp the STRIP itself to its 84px min-height on small
+        // viewports (headless default 800x600), where "fraction of box" is meaningless.
+        assertThat(barH).as("bar is a compact toolbar row").isBetween(30.0, 90.0);
+        for (String id : List.of("part-preview-prev", "part-preview-next",
+                "part-preview-badge", "part-range-from", "part-range-to")) {
+            Boolean inBar = (Boolean) js.executeScript(
+                    "var c = document.getElementById(arguments[0]).getBoundingClientRect();" +
+                    "var b = document.getElementById('part-preview-bar').getBoundingClientRect();" +
+                    "return c.top >= b.top - 2 && c.bottom <= b.bottom + 2" +
+                    "    && c.left >= b.left - 2 && c.right <= b.right + 2;", id);
+            assertThat(inBar).as("%s sits inside the bottom bar", id).isTrue();
+        }
+
+        // ── 2) ⇤ / ⇥ are the SAME size as the arrows (user request: equal buttons) ──────
+        Map<String, Object> sizes = (Map<String, Object>) js.executeScript(
+                "var g = function(id){ var r = document.getElementById(id).getBoundingClientRect();" +
+                "  return [Math.round(r.width), Math.round(r.height)]; };" +
+                "return {arr: g('part-preview-prev'), from: g('part-range-from'), to: g('part-range-to')};");
+        assertThat(((List<Number>) sizes.get("from")).get(0).intValue())
+                .as("⇤ width equals ‹ width").isEqualTo(((List<Number>) sizes.get("arr")).get(0).intValue());
+        assertThat(((List<Number>) sizes.get("from")).get(1).intValue())
+                .as("⇤ height equals ‹ height").isEqualTo(((List<Number>) sizes.get("arr")).get(1).intValue());
+        assertThat(((List<Number>) sizes.get("to")).get(0).intValue())
+                .as("⇥ width equals ‹ width").isEqualTo(((List<Number>) sizes.get("arr")).get(0).intValue());
+
+        // ── 3) Hidden fields: present in the DOM but not rendered ───────────────────────
+        Boolean hiddenFields = (Boolean) js.executeScript(
+                "var f = document.getElementById('part-page-from');" +
+                "var t = document.getElementById('part-page-to');" +
+                "return !!(f && t && f.closest('[hidden]') && t.closest('[hidden]')" +
+                "    && !f.offsetParent && !t.offsetParent);");
+        assertThat(hiddenFields).as("Strona od/do are hidden, NOT removed").isTrue();
+
+        // ── 4) Navigate to page 3, then pin the range ends with ⇤ and ⇥ ─────────────────
+        driver.findElement(By.id("part-preview-next")).click();
+        wait.until(wd -> "Strona 2 z 5".equals(previewBadgeText(js)));
+        driver.findElement(By.id("part-preview-next")).click();
+        wait.until(wd -> "Strona 3 z 5".equals(previewBadgeText(js)));
+        assertThat(previewCalm(js)).as("bar buttons never toggle calm mode").isFalse();
+
+        js.executeScript("document.getElementById('part-range-from').click();");
+        assertThat((String) js.executeScript("return document.getElementById('part-page-from').value;"))
+                .as("⇤ pins hidden 'Strona od' to the previewed page 3").isEqualTo("3");
+        assertThat((String) js.executeScript("return document.getElementById('part-page-to').value;"))
+                .as("bump rule — 'Strona do' (default 2) rises to 3 with it").isEqualTo("3");
+
+        // Move back to page 2: navigation itself re-pins the hidden "od" to 2 (req. 7 —
+        // by design the previewed page drives 'od'), so ⇥ here sets a valid 2–2 range.
+        driver.findElement(By.id("part-preview-prev")).click();
+        wait.until(wd -> "Strona 2 z 5".equals(previewBadgeText(js)));
+        js.executeScript("document.getElementById('part-range-to').click();");
+        assertThat((String) js.executeScript("return document.getElementById('part-page-to').value;"))
+                .as("⇥ pins 'do' to the previewed page 2").isEqualTo("2");
+
+        // ⇤ on page 2 is a no-op re-pin; then jump to the last page and pin 'do' = 5.
+        js.executeScript("document.getElementById('part-range-from').click();");
+        assertThat((String) js.executeScript("return document.getElementById('part-page-from').value;"))
+                .as("⇤ keeps 'od' at page 2").isEqualTo("2");
+        driver.findElement(By.id("part-preview-next")).click();
+        driver.findElement(By.id("part-preview-next")).click();
+        driver.findElement(By.id("part-preview-next")).click();
+        wait.until(wd -> "Strona 5 z 5".equals(previewBadgeText(js)));
+        js.executeScript("document.getElementById('part-range-to').click();");
+        assertThat((String) js.executeScript("return document.getElementById('part-page-to').value;"))
+                .as("⇥ pins hidden 'Strona do' to the previewed last page").isEqualTo("5");
+
+        // ── 5) Badge + arrows + range buttons all share the ONE bar row (no wrap) ──────
+        Map<String, Object> rows = (Map<String, Object>) js.executeScript(
+                "var g = function(id){ return document.getElementById(id).getBoundingClientRect(); };" +
+                "var a = g('part-range-from'), n = g('part-preview-next');" +
+                "return {fromTop: a.top, fromBottom: a.bottom, nextTop: n.top, nextBottom: n.bottom};");
+        double fromTop = ((Number) rows.get("fromTop")).doubleValue();
+        double nextTop = ((Number) rows.get("nextTop")).doubleValue();
+        assertThat(Math.abs(fromTop - nextTop))
+                .as("⇤ and › sit on the same bar row (no wrap)")
+                .isLessThan(2.0);
+    }
+
+    /**
      * Requirement 8 — the "Strona do" bump rule in both directions: typing a HIGHER
      * "Strona od" drags "Strona do" up (live validation error while to &lt; from);
      * typing a LOWER "Strona od" must NOT drag "Strona do" down (the user-extended
@@ -567,17 +696,13 @@ class CompositionDetailPartsUiTest extends UiTestBase {
 
         // Fresh defaults: from=1, to=2.
         // Type 5 into "Strona od" (click selects all → replaces): "Strona do" must bump 2 → 5.
-        WebElement from = driver.findElement(By.id("part-page-from"));
-        from.click();
-        from.sendKeys("5");
+        typeIntoHiddenPageField(js, "part-page-from", "5");
         wait.until(driver ->
                 "5".equals((String) js.executeScript(
                         "return document.getElementById('part-page-to').value;")));
 
         // Now deliberately shrink "Strona do" below "Strona od": 3 < 5 → inline error visible.
-        WebElement to = driver.findElement(By.id("part-page-to"));
-        to.click();
-        to.sendKeys("3");
+        typeIntoHiddenPageField(js, "part-page-to", "3");
         Boolean errorShown = (Boolean) js.executeScript(
                 "var e = document.getElementById('part-range-error');" +
                 "return !!(e && !e.classList.contains('hidden') && e.textContent.length > 0);");
@@ -585,8 +710,7 @@ class CompositionDetailPartsUiTest extends UiTestBase {
 
         // Pull "Strona od" back DOWN to 2: the extended "do"=3 must STAY (not drag down),
         // and the error clears because from <= do again.
-        from.click();
-        from.sendKeys("2");
+        typeIntoHiddenPageField(js, "part-page-from", "2");
         wait.until(driver -> {
             boolean ok = "2".equals((String) js.executeScript(
                     "return document.getElementById('part-page-from').value;"))
@@ -754,7 +878,16 @@ class CompositionDetailPartsUiTest extends UiTestBase {
     // ── add-part preview calm-mode helpers (shared by the UI tests above/below) ──────
 
     private static final List<String> OVERLAY_IDS =
-            List.of("part-preview-badge", "part-preview-prev", "part-preview-next");
+            List.of("part-preview-badge", "part-preview-prev", "part-preview-next",
+                    "part-range-from", "part-range-to");
+
+    /** Hidden (display:none) number inputs cannot receive Selenium keystrokes —
+     *  set the value and fire the same bubbling 'input' event typing would trigger. */
+    private static void typeIntoHiddenPageField(JavascriptExecutor js, String id, String value) {
+        js.executeScript("var el = document.getElementById(arguments[0]);" +
+                "el.value = arguments[1];" +
+                "el.dispatchEvent(new Event('input', {bubbles: true}));", id, value);
+    }
 
     private static Boolean previewCalm(JavascriptExecutor js) {
         return (Boolean) js.executeScript(

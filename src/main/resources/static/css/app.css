@@ -3420,15 +3420,16 @@ button.secondary.danger:focus-visible {
 
 /* ------------------------------------------------------------------
    Requirements 2–6: JPEG strip of the TOP of the current PDF page.
-   The rendered image is ~1.294× its width (A4); the container clips it,
-   so only the header area (~top fifth of a desktop-wide sheet) shows —
-   exactly where the instrument name sits on score sheets. Bounded height:
-   `min(20vh, 220px)` keeps the rest of the form on one screen (req. 14).
+   The rendered image is ~1.414× its width (A4); the container clips it.
+   User request (2026-09-24): "Strona od/do" fields are hidden and the
+   reclaimed modal space GROWS this strip — cap raised 220 → 280 px.
+   The arrows + badge no longer float mid-image; they live in the
+   bottom toolbar (.ap-bar) pinned to the bottom edge of this box.
    ------------------------------------------------------------------ */
 .add-part-preview {
     position: relative;
     width: 100%;
-    height: min(20vh, 220px);
+    height: min(28vh, 280px);
     min-height: 84px;
     overflow: hidden;
     border-radius: 0.55rem;
@@ -3447,13 +3448,41 @@ button.secondary.danger:focus-visible {
     max-height: none;
 }
 
-/* Requirement 5 — ‹ / › page navigation, vertically centred on both edges */
-.ap-preview-btn {
+/* Toolbar row at the BOTTOM of the preview: ⇤ ⇥ | Strona N z M | ‹ ›   */
+#part-preview-bar {
     position: absolute;
-    top: 50%;
-    transform: translateY(-50%);
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 2;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+    padding: 0.35rem 0.6rem;
+    background: rgba(255, 255, 255, 0.82);
+    backdrop-filter: blur(2px);
+    border-top: 1px solid rgba(0, 0, 0, 0.10);
+    transition: opacity 140ms ease;   /* fades out as a whole in calm mode */
+}
+
+[data-theme="dark"] #part-preview-bar {
+    background: rgba(20, 20, 20, 0.78);
+    border-top-color: rgba(255, 255, 255, 0.18);
+}
+
+.ap-bar-group {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.45rem;
+}
+
+/* Requirement 5 — ‹ / › page navigation + the ⇤ / ⇥ range setters: identical
+   42px round buttons sitting in the bottom bar (user request 2026-09-24). */
+.ap-preview-btn {
     width: 42px;
     height: 42px;
+    flex: 0 0 auto;
     border-radius: 50%;
     font-size: 1.6rem;
     line-height: 1;
@@ -3484,18 +3513,9 @@ button.secondary.danger:focus-visible {
     cursor: default;
 }
 
-#part-preview-prev { left: 0.5rem; }
-#part-preview-next { right: 0.5rem; }
-
-/* Requirement 6 — page number badge, unmissable.
-   User request (2026-09-24): centred dead in the middle of the preview strip
-   instead of top-right — on score sheets the instrument name occupies exactly
-   that corner, and the old position covered it. */
+/* Requirement 6 — page number badge, centred IN THE BAR between the two
+   button groups (was: floating dead-centre over the music; 2026-09-24). */
 #part-preview-badge {
-    position: absolute;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%);
     z-index: 1;
     display: inline-flex;
     align-items: center;
@@ -3514,10 +3534,17 @@ button.secondary.danger:focus-visible {
 /* CALM mode — ONE click/tap anywhere on the preview (or Enter/Space while it is
    focused) toggles .ap-calm on the box: badge + arrows fade out completely AND
    stop capturing touches, leaving the bare sheet-music strip. Clicking again
-   (anywhere, including where an arrow used to be) brings the overlays back. */
+   (anywhere, including where an arrow used to be) brings them back. The whole
+   bar fades too so no translucent strip covers the music. */
 .add-part-preview .ap-overlay,
 .add-part-preview #part-preview-badge {
     transition: opacity 140ms ease;   /* animated both for hover and calm toggling */
+}
+
+
+.add-part-preview.ap-calm #part-preview-bar {
+    opacity: 0 !important;
+    pointer-events: none;
 }
 
 .add-part-preview.ap-calm #part-preview-badge,
@@ -3553,8 +3580,10 @@ button.secondary.danger:focus-visible {
         grid-template-columns: 1fr;
     }
     .add-part-preview {
-        height: min(24vh, 150px);          /* smaller screen → shorter strip */
+        height: min(32vh, 190px);          /* smaller screen → shorter strip */
     }
+    /* the badge is the least critical bar element on narrow screens */
+    #part-preview-badge { font-size: 0.75rem; padding: 0.2rem 0.5rem; }
 }
 
 /* Inline status line under the fields (success/error of a save) */
