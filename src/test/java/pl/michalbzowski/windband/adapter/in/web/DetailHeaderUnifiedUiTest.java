@@ -7,6 +7,7 @@ import org.openqa.selenium.Dimension;
 import org.openqa.selenium.WebDriver;
 import org.openqa.selenium.WebElement;
 import org.openqa.selenium.support.ui.ExpectedConditions;
+import org.openqa.selenium.support.ui.FluentWait;
 import org.openqa.selenium.support.ui.WebDriverWait;
 import org.springframework.beans.factory.annotation.Autowired;
 
@@ -40,7 +41,7 @@ class DetailHeaderUnifiedUiTest extends UiTestBase {
     @Autowired private RehearsalCommandService rehearsalCommandService;
 
     // ============================ helpers ============================
-    private Long createTestEvent(WebDriver driver, WebDriverWait wait) {
+    private Long createTestEvent(WebDriver driver, FluentWait<WebDriver> wait) {
         var cmd = new CreateEventCommand();
         cmd.setName("Ujedn " + System.nanoTime());
         cmd.setDate(LocalDate.now().plusDays(40));
@@ -79,19 +80,24 @@ class DetailHeaderUnifiedUiTest extends UiTestBase {
     // ============================ helper methods (per-test) ============================
     private WebDriver getDriver() { return driver; }
 
-    private void loginAsAdmin(WebDriver d, WebDriverWait w) {
-        d.get(baseUrl() + "/login");
-        d.findElement(By.name("username")).sendKeys("admin");
-        d.findElement(By.name("password")).sendKeys("admin");
-        d.findElement(By.cssSelector("button[type='submit']")).click();
-        w.until(ExpectedConditions.not(ExpectedConditions.urlContains("/login")));
+    /**
+     * The UiTestBase session is reset before every test (cleanDatabase TRUNCATE
+     * forces a fresh doLogin), so there is no "already logged in" state to reuse.
+     * The previous extra get("/login") + manual form fill duplicated doLogin()'s
+     * work for no reason — one full page render per test — and bypassed the
+     * visibility waits that guard the Chrome-151 CI timing race. The shared,
+     * idempotent doLogin() is both faster (skips the redundant nav once the
+     * session is up) and safer (visibility-gated field access).
+     */
+    private void loginAsAdmin(WebDriver d, FluentWait<WebDriver> w) {
+        loginOnly();
     }
 
     // ============================ events tests ============================
     @Test
     void events_backLinkIsIconOnly() {
         WebDriver driverLocal = getDriver();
-        WebDriverWait wait = new WebDriverWait(driverLocal, Duration.ofSeconds(10));
+        FluentWait<WebDriver> wait = new WebDriverWait(driverLocal, Duration.ofSeconds(10)).pollingEvery(Duration.ofMillis(100));
         loginAsAdmin(driverLocal, wait);
         Long id = createTestEvent(driverLocal, wait);
 
@@ -109,7 +115,7 @@ class DetailHeaderUnifiedUiTest extends UiTestBase {
     @Test
     void events_titleHasNoEmoji() {
         WebDriver driver = getDriver();
-        WebDriverWait wait = new WebDriverWait(driver, Duration.ofSeconds(10));
+        FluentWait<WebDriver> wait = new WebDriverWait(driver, Duration.ofSeconds(10)).pollingEvery(Duration.ofMillis(100));
         loginAsAdmin(driver, wait);
         Long id = createTestEvent(driver, wait);
 
@@ -126,7 +132,7 @@ class DetailHeaderUnifiedUiTest extends UiTestBase {
     @Test
     void events_barHasNoInlineStyle() {
         WebDriver driver = getDriver();
-        WebDriverWait wait = new WebDriverWait(driver, Duration.ofSeconds(10));
+        FluentWait<WebDriver> wait = new WebDriverWait(driver, Duration.ofSeconds(10)).pollingEvery(Duration.ofMillis(100));
         loginAsAdmin(driver, wait);
         Long id = createTestEvent(driver, wait);
 
@@ -141,7 +147,7 @@ class DetailHeaderUnifiedUiTest extends UiTestBase {
     @Test
     void events_editButtonIsVisibleSvgIcon() {
         WebDriver driver = getDriver();
-        WebDriverWait wait = new WebDriverWait(driver, Duration.ofSeconds(10));
+        FluentWait<WebDriver> wait = new WebDriverWait(driver, Duration.ofSeconds(10)).pollingEvery(Duration.ofMillis(100));
         loginAsAdmin(driver, wait);
         Long id = createTestEvent(driver, wait);
 
@@ -161,7 +167,7 @@ class DetailHeaderUnifiedUiTest extends UiTestBase {
     @Test
     void events_deleteIsInOverflowNotRow() {
         WebDriver driver = getDriver();
-        WebDriverWait wait = new WebDriverWait(driver, Duration.ofSeconds(10));
+        FluentWait<WebDriver> wait = new WebDriverWait(driver, Duration.ofSeconds(10)).pollingEvery(Duration.ofMillis(100));
         loginAsAdmin(driver, wait);
         Long id = createTestEvent(driver, wait);
 
@@ -178,7 +184,7 @@ class DetailHeaderUnifiedUiTest extends UiTestBase {
     @Test
     void events_rowFits375Viewport() {
         WebDriver driver = getDriver();
-        WebDriverWait wait = new WebDriverWait(driver, Duration.ofSeconds(10));
+        FluentWait<WebDriver> wait = new WebDriverWait(driver, Duration.ofSeconds(10)).pollingEvery(Duration.ofMillis(100));
         loginAsAdmin(driver, wait);
 
         // Force the mobile media-query branch.
@@ -209,7 +215,7 @@ class DetailHeaderUnifiedUiTest extends UiTestBase {
     @Test
     void rehearsals_backLinkIsIconOnly() {
         WebDriver driver = getDriver();
-        WebDriverWait wait = new WebDriverWait(driver, Duration.ofSeconds(10));
+        FluentWait<WebDriver> wait = new WebDriverWait(driver, Duration.ofSeconds(10)).pollingEvery(Duration.ofMillis(100));
         loginAsAdmin(driver, wait);
         Long id = createTestRehearsal();
 
@@ -226,7 +232,7 @@ class DetailHeaderUnifiedUiTest extends UiTestBase {
     @Test
     void rehearsals_titleHasNoEmoji() {
         WebDriver driver = getDriver();
-        WebDriverWait wait = new WebDriverWait(driver, Duration.ofSeconds(10));
+        FluentWait<WebDriver> wait = new WebDriverWait(driver, Duration.ofSeconds(10)).pollingEvery(Duration.ofMillis(100));
         loginAsAdmin(driver, wait);
         Long id = createTestRehearsal();
 
@@ -243,7 +249,7 @@ class DetailHeaderUnifiedUiTest extends UiTestBase {
     @Test
     void rehearsals_editButtonIsVisibleSvgIcon() {
         WebDriver driver = getDriver();
-        WebDriverWait wait = new WebDriverWait(driver, Duration.ofSeconds(10));
+        FluentWait<WebDriver> wait = new WebDriverWait(driver, Duration.ofSeconds(10)).pollingEvery(Duration.ofMillis(100));
         loginAsAdmin(driver, wait);
         Long id = createTestRehearsal();
 
@@ -262,7 +268,7 @@ class DetailHeaderUnifiedUiTest extends UiTestBase {
     @Test
     void rehearsals_rowFits375Viewport() {
         WebDriver driver = getDriver();
-        WebDriverWait wait = new WebDriverWait(driver, Duration.ofSeconds(10));
+        FluentWait<WebDriver> wait = new WebDriverWait(driver, Duration.ofSeconds(10)).pollingEvery(Duration.ofMillis(100));
         loginAsAdmin(driver, wait);
 
         driver.manage().window().setSize(new Dimension(375, 812));

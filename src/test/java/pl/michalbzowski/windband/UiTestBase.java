@@ -11,6 +11,7 @@ import org.openqa.selenium.WebElement;
 import org.openqa.selenium.chrome.ChromeDriver;
 import org.openqa.selenium.chrome.ChromeOptions;
 import org.openqa.selenium.support.ui.ExpectedConditions;
+import org.openqa.selenium.support.ui.FluentWait;
 import org.openqa.selenium.support.ui.WebDriverWait;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -232,7 +233,7 @@ public abstract class UiTestBase {
     protected void clickOverflowInnerButton(String innerButtonId) {
         driver.findElement(By.cssSelector(
                 ".detail-actions-bar .icon-btn[data-detail-action='toggle-more']")).click();
-        new WebDriverWait(driver, Duration.ofSeconds(5))
+        new WebDriverWait(driver, Duration.ofSeconds(5)).pollingEvery(Duration.ofMillis(100))
              .until(ExpectedConditions.visibilityOfElementLocated(By.id(innerButtonId)));
         driver.findElement(By.id(innerButtonId)).click();
     }
@@ -362,7 +363,7 @@ public abstract class UiTestBase {
         // Reuse the login flow for consistency, then navigate.
         doLogin();
         driver.get(baseUrl() + path);
-        new WebDriverWait(driver, Duration.ofSeconds(30))
+        new WebDriverWait(driver, Duration.ofSeconds(30)).pollingEvery(Duration.ofMillis(100))
             .until(ExpectedConditions.or(
                     ExpectedConditions.presenceOfElementLocated(By.id("content")),
                     ExpectedConditions.presenceOfElementLocated(By.id("compositions-content")),
@@ -382,6 +383,24 @@ public abstract class UiTestBase {
         driver.get(baseUrl() + "/");
     }
 
+    /**
+     * Establishes the authenticated session WITHOUT navigating to any
+     * destination page. After the login form submits, the browser already sits
+     * on a same-origin page (Spring's default success URL), which is all the
+     * synchronous XHR seed helpers ({@code createEventViaApi},
+     * {@code inviteMemberToEvent}, {@code setRehearsalAttendance}, …) need for
+     * their session + CSRF context. Use instead of
+     * {@code loginAndNavigateTo("/some/list")} whenever the list page is NOT
+     * the subject of the test — it skips one full server-rendered page load
+     * (~0.5 s per test method). Login itself stays per-test on purpose:
+     * {@code cleanDatabase()} TRUNCATEs shared tables, so the shared browser
+     * session must be re-established for every test (see the false-green trap
+     * documented in the spring-boot-selenium-tests skill).
+     */
+    protected void loginOnly() {
+        doLogin();
+    }
+
     private boolean sessionEstablished = false;
 
     private void doLogin() {
@@ -389,10 +408,10 @@ public abstract class UiTestBase {
             return; // session persists across the test class's browser instance
         }
         driver.get(baseUrl() + "/login");
-        new WebDriverWait(driver, Duration.ofSeconds(10))
+        new WebDriverWait(driver, Duration.ofSeconds(10)).pollingEvery(Duration.ofMillis(100))
                 .until(ExpectedConditions.presenceOfElementLocated(By.cssSelector("form[action='/login'] input[name='username']")));
 
-        WebDriverWait w = new WebDriverWait(driver, Duration.ofSeconds(10));
+        FluentWait<WebDriver> w = new WebDriverWait(driver, Duration.ofSeconds(10)).pollingEvery(Duration.ofMillis(100));
         WebElement usernameField = w.until(ExpectedConditions.visibilityOfElementLocated(By.cssSelector("form[action='/login'] input[name='username']")));
         usernameField.clear();
         usernameField.sendKeys("admin");

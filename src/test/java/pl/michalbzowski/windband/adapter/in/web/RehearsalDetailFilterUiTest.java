@@ -3,9 +3,11 @@ package pl.michalbzowski.windband.adapter.in.web;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.openqa.selenium.By;
+import org.openqa.selenium.WebDriver;
 import org.openqa.selenium.JavascriptExecutor;
 import org.openqa.selenium.WebElement;
 import org.openqa.selenium.support.ui.ExpectedConditions;
+import org.openqa.selenium.support.ui.FluentWait;
 import org.openqa.selenium.support.ui.Select;
 import org.openqa.selenium.support.ui.WebDriverWait;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -31,18 +33,20 @@ class RehearsalDetailFilterUiTest extends UiTestBase {
     private JdbcTemplate jdbcTemplate;
 
     /**
-     * Before each test, establish an authenticated browser session on a real page.
-     * This lets tests freely call {@code createRehearsalViaApi} / XHR helpers which
-     * issue an XMLHttpRequest that needs a valid origin + CSRF cookie context.
+     * Before each test, establish an authenticated session on a same-origin page.
+     * The login form's post-submit redirect already lands the browser on the app,
+     * which is all the synchronous XHR helpers ({@code createRehearsalViaApi},
+     * {@code inviteMemberToRehearsal}, {@code setRehearsalAttendance}) need for
+     * their session + CSRF context — no extra list-page render required.
      */
     @BeforeEach
     void ensureLoggedIn() throws Exception {
-        loginAndNavigateTo("/rehearsals");
+        loginOnly();
     }
 
     @Test
     void textFilterShouldFilterByFirstName() throws Exception {
-        WebDriverWait wait = new WebDriverWait(driver, Duration.ofSeconds(10));
+        FluentWait<WebDriver> wait = new WebDriverWait(driver, Duration.ofSeconds(10)).pollingEvery(Duration.ofMillis(100));
         String uid = UUID.randomUUID().toString().substring(0, 8);
         String firstName = "FilterFirst" + uid;
         String lastName = "Test" + uid;
@@ -97,7 +101,7 @@ class RehearsalDetailFilterUiTest extends UiTestBase {
 
     @Test
     void textFilterShouldFilterByLastName() throws Exception {
-        WebDriverWait wait = new WebDriverWait(driver, Duration.ofSeconds(10));
+        FluentWait<WebDriver> wait = new WebDriverWait(driver, Duration.ofSeconds(10)).pollingEvery(Duration.ofMillis(100));
         String uid = UUID.randomUUID().toString().substring(0, 8);
         String firstName = "Test" + uid;
         String lastName = "FilterLast" + uid;
@@ -152,7 +156,7 @@ class RehearsalDetailFilterUiTest extends UiTestBase {
 
     @Test
     void attendanceFilterShouldFilterByPresent() throws Exception {
-        WebDriverWait wait = new WebDriverWait(driver, Duration.ofSeconds(10));
+        FluentWait<WebDriver> wait = new WebDriverWait(driver, Duration.ofSeconds(10)).pollingEvery(Duration.ofMillis(100));
         String uid = UUID.randomUUID().toString().substring(0, 8);
         String firstName = "AttFilter" + uid;
         String lastName = "Test" + uid;
@@ -228,7 +232,7 @@ class RehearsalDetailFilterUiTest extends UiTestBase {
 
     @Test
     void attendanceFilterShouldFilterByMultipleStatuses() throws Exception {
-        WebDriverWait wait = new WebDriverWait(driver, Duration.ofSeconds(10));
+        FluentWait<WebDriver> wait = new WebDriverWait(driver, Duration.ofSeconds(10)).pollingEvery(Duration.ofMillis(100));
         String uid = UUID.randomUUID().toString().substring(0, 8);
         String firstName = "MultiAtt" + uid;
         String lastName = "Test" + uid;
@@ -300,7 +304,7 @@ class RehearsalDetailFilterUiTest extends UiTestBase {
 
     @Test
     void attendanceFilterCountsShouldUpdateAfterStatusChange() throws Exception {
-        WebDriverWait wait = new WebDriverWait(driver, Duration.ofSeconds(10));
+        FluentWait<WebDriver> wait = new WebDriverWait(driver, Duration.ofSeconds(10)).pollingEvery(Duration.ofMillis(100));
         String uid = UUID.randomUUID().toString().substring(0, 8);
         String firstName = "CountUpdate" + uid;
         String lastName = "Test" + uid;
@@ -385,7 +389,7 @@ class RehearsalDetailFilterUiTest extends UiTestBase {
 
     @Test
     void combinedTextAndAttendanceFilterShouldWork() throws Exception {
-        WebDriverWait wait = new WebDriverWait(driver, Duration.ofSeconds(10));
+        FluentWait<WebDriver> wait = new WebDriverWait(driver, Duration.ofSeconds(10)).pollingEvery(Duration.ofMillis(100));
         String uid = UUID.randomUUID().toString().substring(0, 8);
         String firstName = "Combined" + uid;
         String lastName = "Filter" + uid;
@@ -468,7 +472,7 @@ class RehearsalDetailFilterUiTest extends UiTestBase {
      */
     @Test
     void textFilterShouldSurviveAttendanceChangeReload() throws Exception {
-        WebDriverWait wait = new WebDriverWait(driver, Duration.ofSeconds(10));
+        FluentWait<WebDriver> wait = new WebDriverWait(driver, Duration.ofSeconds(10)).pollingEvery(Duration.ofMillis(100));
         String uid = UUID.randomUUID().toString().substring(0, 8);
         String firstNameA = "Alpha" + uid;
         String firstNameB = "Beta" + uid;
@@ -539,7 +543,7 @@ class RehearsalDetailFilterUiTest extends UiTestBase {
     }
 
     /** Change a member's attendance status via the page dropdown (fires the real flow). */
-    private void setStatusViaUi(Long memberId, String status, WebDriverWait wait) {
+    private void setStatusViaUi(Long memberId, String status, FluentWait<WebDriver> wait) {
         WebElement select = wait.until(ExpectedConditions.presenceOfElementLocated(
                 By.cssSelector("table[role='grid'] select.status-select[data-member-id='" + memberId + "']")));
         ((JavascriptExecutor) driver).executeScript(
@@ -548,35 +552,47 @@ class RehearsalDetailFilterUiTest extends UiTestBase {
                 select, status);
 
         // Wait for the HTMX swap to fully settle (see EventDetailFilterUiTest).
+        // Settled == DOM snapshot unchanged AND no HTMX request in flight. The
+        // idle check is load-bearing: without it, polling every 50 ms can declare
+        // "settled" in the window BEFORE the swap even starts (the pre-swap DOM
+        // is stable too), and the caller then types into an element the in-flight
+        // swap is about to replace — the historic flake of the reload-survival test.
         final String snap = "(function(){var t=document.querySelector('table[role=\"grid\"]');"
                 + "if(!t)return 'no-table';"
                 + "var rows=t.querySelectorAll('tbody tr').length;"
                 + "var inp=document.getElementById('attendance-filter');"
                 + "return rows+':'+(inp?inp.value.length:'-');})()";
+        final String idle = "return !document.querySelector('.htmx-request,.htmx-swapping,.htmx-settling');";
         long deadline = System.currentTimeMillis() + 10_000L;
         String last = null;
         boolean settled = false;
         while (!settled && System.currentTimeMillis() < deadline) {
             String cur = String.valueOf(((JavascriptExecutor) driver).executeScript(snap));
-            if (cur.equals(last)) {
+            boolean inFlight = !Boolean.TRUE.equals(((JavascriptExecutor) driver).executeScript(idle));
+            if (cur.equals(last) && !inFlight) {
                 settled = true;
             } else {
                 last = cur;
             }
-            Thread.yield();
+            try {
+                Thread.sleep(50);
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+            }
         }
         assertThat(settled).as("HTMX swap did not settle within timeout").isTrue();
 
         // Additional wait: ensure the filter input is present and interactable after swap
         wait.until(ExpectedConditions.elementToBeClickable(By.id("attendance-filter")));
 
-        // Extra stabilization: wait a bit more for the DOM to fully settle after the element is clickable
-        try {
-            Thread.sleep(200);
-        } catch (InterruptedException e) {
-            Thread.currentThread().interrupt();
-        }
+        // HTMX-aware stabilization (replaces a fixed 200 ms sleep): this returns as
+        // soon as no request is in flight — usually faster than the sleep, and under
+        // CI load it waits longer instead of flaking (this test is historically flaky).
+        new WebDriverWait(driver, Duration.ofSeconds(5)).pollingEvery(Duration.ofMillis(50))
+                .until(d -> Boolean.TRUE.equals(((JavascriptExecutor) d).executeScript(
+                        "return !document.querySelector('.htmx-request');")));
     }
+
     private void fill(String name, String value) {
         WebElement el = driver.findElement(By.cssSelector("input[name='" + name + "']"));
         el.clear();
@@ -595,7 +611,7 @@ class RehearsalDetailFilterUiTest extends UiTestBase {
      */
     @Test
     void tagFilterShouldMatchPrimaryInstrumentAccentAware() throws Exception {
-        WebDriverWait wait = new WebDriverWait(driver, Duration.ofSeconds(10));
+        FluentWait<WebDriver> wait = new WebDriverWait(driver, Duration.ofSeconds(10)).pollingEvery(Duration.ofMillis(100));
         String uid = UUID.randomUUID().toString().substring(0, 8);
         String lastName = "Test" + uid;
 

@@ -3,9 +3,11 @@ package pl.michalbzowski.windband.adapter.in.web;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.openqa.selenium.By;
+import org.openqa.selenium.WebDriver;
 import org.openqa.selenium.JavascriptExecutor;
 import org.openqa.selenium.WebElement;
 import org.openqa.selenium.support.ui.ExpectedConditions;
+import org.openqa.selenium.support.ui.FluentWait;
 import org.openqa.selenium.support.ui.WebDriverWait;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -48,7 +50,7 @@ class PageHeaderConsistencyUiTest extends pl.michalbzowski.windband.UiTestBase {
     @Test
     @DisplayName("events/detail: unified page-header present, aligned ≤1px, theme-aware, no inline styles")
     void eventsDetail_pageHeaderConsistency() {
-        WebDriverWait wait = new WebDriverWait(driver, Duration.ofSeconds(10));
+        FluentWait<WebDriver> wait = new WebDriverWait(driver, Duration.ofSeconds(10)).pollingEvery(Duration.ofMillis(100));
         Long eventId = createEvent();
 
         loginAndNavigateTo("/events/" + eventId);
@@ -101,7 +103,7 @@ class PageHeaderConsistencyUiTest extends pl.michalbzowski.windband.UiTestBase {
     @Test
     @DisplayName("rehearsals/detail: unified page-header present, aligned ≤1px, theme-aware, no inline styles")
     void rehearsalsDetail_pageHeaderConsistency() {
-        WebDriverWait wait = new WebDriverWait(driver, Duration.ofSeconds(10));
+        FluentWait<WebDriver> wait = new WebDriverWait(driver, Duration.ofSeconds(10)).pollingEvery(Duration.ofMillis(100));
         Long rehearsalId = createRehearsal();
 
         loginAndNavigateTo("/rehearsals/" + rehearsalId);
@@ -146,7 +148,7 @@ class PageHeaderConsistencyUiTest extends pl.michalbzowski.windband.UiTestBase {
         if (maybeSeed != null) {
             runSeed(maybeSeed);
         }
-        WebDriverWait wait = new WebDriverWait(driver, Duration.ofSeconds(10));
+        FluentWait<WebDriver> wait = new WebDriverWait(driver, Duration.ofSeconds(10)).pollingEvery(Duration.ofMillis(100));
         loginAndNavigateTo(path);
         WebElement bar = wait.until(ExpectedConditions.presenceOfElementLocated(
                 By.cssSelector("nav[data-page-header='v1']")));
@@ -175,7 +177,7 @@ class PageHeaderConsistencyUiTest extends pl.michalbzowski.windband.UiTestBase {
     }
 
     private void assertListPageHeadingsNoEmoji(String path) {
-        WebDriverWait wait = new WebDriverWait(driver, Duration.ofSeconds(10));
+        FluentWait<WebDriver> wait = new WebDriverWait(driver, Duration.ofSeconds(10)).pollingEvery(Duration.ofMillis(100));
         loginAndNavigateTo(path);
         WebElement content = wait.until(ExpectedConditions.presenceOfElementLocated(By.cssSelector("#content")));
         for (WebElement h : content.findElements(By.cssSelector("h1, h2, h3, h4"))) {
@@ -230,7 +232,7 @@ class PageHeaderConsistencyUiTest extends pl.michalbzowski.windband.UiTestBase {
      *  "Edytuj …" title — action-verb titles like "Dodaj X" / "Zaplanuj X" do not
      *  need a decorative prefix, matching the PR B list-page convention. */
     private void assertFormPageHeader(String path, String expectedTitle) {
-        WebDriverWait wait = new WebDriverWait(driver, Duration.ofSeconds(10));
+        FluentWait<WebDriver> wait = new WebDriverWait(driver, Duration.ofSeconds(10)).pollingEvery(Duration.ofMillis(100));
         loginAndNavigateTo(path);
         WebElement bar = wait.until(ExpectedConditions.presenceOfElementLocated(
                 By.cssSelector("nav[data-page-header='v1']")));
@@ -339,7 +341,7 @@ class PageHeaderConsistencyUiTest extends pl.michalbzowski.windband.UiTestBase {
     void login_iconPolicy() {
         // login is anonymous — skip auth setup
         driver.get(baseUrl() + "/login");
-        WebDriverWait wait = new WebDriverWait(driver, Duration.ofSeconds(6));
+        FluentWait<WebDriver> wait = new WebDriverWait(driver, Duration.ofSeconds(6)).pollingEvery(Duration.ofMillis(100));
 
         WebElement brandH1 = wait.until(ExpectedConditions.presenceOfElementLocated(
                 By.cssSelector("h1.ph-brand")));
@@ -394,7 +396,7 @@ class PageHeaderConsistencyUiTest extends pl.michalbzowski.windband.UiTestBase {
     @DisplayName("dashboard: section headers + stat titles + quick-link headers use SVG icons, no emoji in chrome")
     void dashboard_iconPolicy() {
         loginAndGoTo("/");
-        WebDriverWait wait = new WebDriverWait(driver, Duration.ofSeconds(6));
+        FluentWait<WebDriver> wait = new WebDriverWait(driver, Duration.ofSeconds(6)).pollingEvery(Duration.ofMillis(100));
 
         // At least one themed section title is always visible (attention or upcoming).
         // If seeded data makes both empty, fall back to asserting the stat-grid titles.
@@ -553,15 +555,22 @@ class PageHeaderConsistencyUiTest extends pl.michalbzowski.windband.UiTestBase {
                 .isLessThanOrEqualTo(maxSpreadPx);
     }
 
-    /** No element inside the bar must carry a non-empty style="" attribute. */
-    private static void assertNoInlineStyles(WebElement bar) {
-        List<WebElement> elements = bar.findElements(By.cssSelector("*"));
-        for (WebElement el : elements) {
-            String style = el.getAttribute("style");
-            boolean clean = (style == null || style.trim().isEmpty());
-            assertThat(clean).as(el.getTagName() + " must not carry inline styles")
-                    .isTrue();
-        }
+    /** No element inside the bar must carry a non-empty style="" attribute.
+     *  Single DOM round trip: the browser walks the subtree and collects every
+     *  offending node in one shot. Asserts the exact same fact as the previous
+     *  per-element getAttribute loop, which paid one WebDriver request per
+     *  element (~100 elements per bar × 14 tests = ~1400 round trips). */
+    private void assertNoInlineStyles(WebElement bar) {
+        Object dirty = ((JavascriptExecutor) driver).executeScript(
+                "var bad = [];" +
+                "arguments[0].querySelectorAll('*').forEach(function (el) {" +
+                "  var s = el.getAttribute('style');" +
+                "  if (s !== null && s.trim() !== '') bad.push(el.tagName + ' [style=\"' + s + '\"]');" +
+                "});" +
+                "return bad.join('; ');", bar);
+        assertThat((String) dirty)
+                .as("no element inside the page-header bar may carry inline styles")
+                .isEmpty();
     }
 
     /** Title must not contain emoji / pictograph range characters. */
@@ -576,15 +585,15 @@ class PageHeaderConsistencyUiTest extends pl.michalbzowski.windband.UiTestBase {
         }
     }
 
-    /** PR E — element-level version: walks the whole visible text tree of an
-     *  element and fails if any character is in the emoji/pictograph ranges. */
-    private static void assertNoEmojiInElement(WebElement element) {
-        String text = element.getText() == null ? "" : element.getText();
-        // Also walk into nested elements (e.g. a <strong> inside a <header>).
-        for (WebElement child : element.findElements(By.cssSelector("*"))) {
-            String inner = child.getText();
-            if (inner != null) text = text + " " + inner;
-        }
+    /** PR E — element-level version: fails if any character of the element's
+     *  text tree is in the emoji/pictograph ranges.
+     *  textContent is the union of the element's own text plus ALL descendants
+     *  (visible or not), so it is a superset of the previous getText()-on-each-
+     *  child walk — one DOM round trip instead of N, same coverage. */
+    private void assertNoEmojiInElement(WebElement element) {
+        String text = (String) ((JavascriptExecutor) driver)
+                .executeScript("return arguments[0].textContent || '';", element);
+        if (text == null) text = "";
         for (int i = 0; i < text.length(); ) {
             int cp = text.codePointAt(i);
             if (UnicodeChecker.isEmojiLike(cp)) {

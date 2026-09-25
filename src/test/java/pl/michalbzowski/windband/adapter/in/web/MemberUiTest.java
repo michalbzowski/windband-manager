@@ -2,9 +2,11 @@ package pl.michalbzowski.windband.adapter.in.web;
 
 import org.junit.jupiter.api.Test;
 import org.openqa.selenium.By;
+import org.openqa.selenium.WebDriver;
 import org.openqa.selenium.JavascriptExecutor;
 import org.openqa.selenium.WebElement;
 import org.openqa.selenium.support.ui.ExpectedConditions;
+import org.openqa.selenium.support.ui.FluentWait;
 import org.openqa.selenium.support.ui.WebDriverWait;
 import org.springframework.beans.factory.annotation.Autowired;
 import pl.michalbzowski.windband.UiTestBase;
@@ -44,7 +46,7 @@ class MemberUiTest extends UiTestBase {
 
         addButton.click();
 
-        WebDriverWait wait = new WebDriverWait(driver, Duration.ofSeconds(10));
+        FluentWait<WebDriver> wait = new WebDriverWait(driver, Duration.ofSeconds(10)).pollingEvery(Duration.ofMillis(100));
         wait.until(ExpectedConditions.presenceOfElementLocated(By.cssSelector("#member-form")));
 
         var formHeading = driver.findElement(By.cssSelector("#members-content h2"));
@@ -73,7 +75,7 @@ class MemberUiTest extends UiTestBase {
         String initialPhone = "111222333";
         String updatedPhone = "999888777";
 
-        WebDriverWait wait = new WebDriverWait(driver, Duration.ofSeconds(10));
+        FluentWait<WebDriver> wait = new WebDriverWait(driver, Duration.ofSeconds(10)).pollingEvery(Duration.ofMillis(100));
         Long memberId = null;
 
         try {
@@ -193,7 +195,7 @@ class MemberUiTest extends UiTestBase {
         String updEmail = "updated" + unique + "@test.pl";
         String updPhone = "999888777";
 
-        WebDriverWait wait = new WebDriverWait(driver, Duration.ofSeconds(10));
+        FluentWait<WebDriver> wait = new WebDriverWait(driver, Duration.ofSeconds(10)).pollingEvery(Duration.ofMillis(100));
         Long memberId = null;
 
         try {
@@ -330,7 +332,7 @@ class MemberUiTest extends UiTestBase {
      * Clicks the "Edytuj" button on the row whose first cell contains the given full name.
      * Uses JS click to bypass the htmx transition overlay (same workaround as AttributeUiTest).
      */
-    private void clickEditForMember(WebDriverWait wait, String fullName) {
+    private void clickEditForMember(FluentWait<WebDriver> wait, String fullName) {
         String xpath = String.format(
                 "//tr[td[contains(., '%s')]]//button[contains(., 'Edytuj')]", fullName);
         WebElement btn = wait.until(ExpectedConditions.presenceOfElementLocated(By.xpath(xpath)));
@@ -341,7 +343,7 @@ class MemberUiTest extends UiTestBase {
      * Reads the new member's id from its "Edytuj" button's hx-get attribute.
      * The button looks like: {@code hx-get="/members/123/edit"}.
      */
-    private Long readMemberIdFromEditButton(WebDriverWait wait, String fullName) {
+    private Long readMemberIdFromEditButton(FluentWait<WebDriver> wait, String fullName) {
         String xpath = String.format(
                 "//tr[td[contains(., '%s')]]//button[contains(., 'Edytuj')]", fullName);
         WebElement btn = wait.until(ExpectedConditions.presenceOfElementLocated(By.xpath(xpath)));

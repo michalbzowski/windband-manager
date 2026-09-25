@@ -2,9 +2,11 @@ package pl.michalbzowski.windband.adapter.in.web;
 
 import org.junit.jupiter.api.Test;
 import org.openqa.selenium.By;
+import org.openqa.selenium.WebDriver;
 import org.openqa.selenium.JavascriptExecutor;
 import org.openqa.selenium.WebElement;
 import org.openqa.selenium.support.ui.ExpectedConditions;
+import org.openqa.selenium.support.ui.FluentWait;
 import org.openqa.selenium.support.ui.WebDriverWait;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -29,7 +31,7 @@ class EventDetailFilterUiTest extends UiTestBase {
 
     @Test
     void textFilterShouldFilterByFirstName() {
-        WebDriverWait wait = new WebDriverWait(driver, Duration.ofSeconds(10));
+        FluentWait<WebDriver> wait = new WebDriverWait(driver, Duration.ofSeconds(10)).pollingEvery(Duration.ofMillis(100));
         String uid = UUID.randomUUID().toString().substring(0, 8);
         String firstName = "FilterFirst" + uid;
         String lastName = "Test" + uid;
@@ -40,11 +42,8 @@ class EventDetailFilterUiTest extends UiTestBase {
         Long memberId2 = createTestBand1Member("OtherFirst" + uid, "OtherLast" + uid, null);
 
         // --- Create the event via the application API (fast path) ---
-        loginAndNavigateTo("/events"); // ensure same-origin page before XHR
+        loginOnly(); // same-origin page (post-login redirect) is enough for the XHR seed helpers
         Long eventId = createEventViaApi("Filter Test Event " + uid, LocalDate.now());
-        Awaitility.await().atMost(Duration.ofSeconds(10)).until(() ->
-                jdbcTemplate.queryForObject(
-                        "SELECT COUNT(*) FROM band_events WHERE id = ?", Long.class, eventId) == 1);
 
         assertThat(eventId).isNotNull();
         assertThat(memberId1).isNotNull();
@@ -82,7 +81,7 @@ class EventDetailFilterUiTest extends UiTestBase {
 
     @Test
     void textFilterShouldFilterByLastName() {
-        WebDriverWait wait = new WebDriverWait(driver, Duration.ofSeconds(10));
+        FluentWait<WebDriver> wait = new WebDriverWait(driver, Duration.ofSeconds(10)).pollingEvery(Duration.ofMillis(100));
         String uid = UUID.randomUUID().toString().substring(0, 8);
         String firstName = "Test" + uid;
         String lastName = "FilterLast" + uid;
@@ -92,11 +91,8 @@ class EventDetailFilterUiTest extends UiTestBase {
         Long memberId2 = createTestBand1Member("Test" + uid, "OtherLast" + uid, null);
 
         // --- Create the event via the application API (fast path) ---
-        loginAndNavigateTo("/events"); // ensure same-origin page before XHR
+        loginOnly(); // same-origin page (post-login redirect) is enough for the XHR seed helpers
         Long eventId = createEventViaApi("Filter Test Event " + uid, LocalDate.now());
-        Awaitility.await().atMost(Duration.ofSeconds(10)).until(() ->
-                jdbcTemplate.queryForObject(
-                        "SELECT COUNT(*) FROM band_events WHERE id = ?", Long.class, eventId) == 1);
 
         assertThat(eventId).isNotNull();
         assertThat(memberId1).isNotNull();
@@ -134,7 +130,7 @@ class EventDetailFilterUiTest extends UiTestBase {
 
     @Test
     void responseFilterShouldFilterByConfirmed() {
-        WebDriverWait wait = new WebDriverWait(driver, Duration.ofSeconds(10));
+        FluentWait<WebDriver> wait = new WebDriverWait(driver, Duration.ofSeconds(10)).pollingEvery(Duration.ofMillis(100));
         String uid = UUID.randomUUID().toString().substring(0, 8);
         String firstName = "RespFilter" + uid;
         String lastName = "Test" + uid;
@@ -145,11 +141,8 @@ class EventDetailFilterUiTest extends UiTestBase {
         }
 
         // --- Create the event via the application API (fast path) ---
-        loginAndNavigateTo("/events"); // ensure same-origin page before XHR
+        loginOnly(); // same-origin page (post-login redirect) is enough for the XHR seed helpers
         Long eventId = createEventViaApi("Response Filter Test " + uid, LocalDate.now());
-        Awaitility.await().atMost(Duration.ofSeconds(10)).until(() ->
-                jdbcTemplate.queryForObject(
-                        "SELECT COUNT(*) FROM band_events WHERE id = ?", Long.class, eventId) == 1);
 
         List<Long> memberIds = jdbcTemplate.query(
                 "SELECT id FROM members WHERE first_name LIKE ? ORDER BY id",
@@ -159,99 +152,40 @@ class EventDetailFilterUiTest extends UiTestBase {
         assertThat(eventId).isNotNull();
         assertThat(memberIds).hasSize(3);
 
-        // --- Invite all three members to the event ---
-                        for (Long memberId : memberIds) {
-                            inviteMemberToEvent(eventId, memberId);
-                        }
+        // --- Invite all three members to the event (synchronous XHR — committed on return) ---
+        for (Long memberId : memberIds) {
+            inviteMemberToEvent(eventId, memberId);
+        }
+        assertThat(jdbcTemplate.queryForObject(
+                "SELECT COUNT(*) FROM event_participations WHERE event_id = ?", Long.class, eventId))
+                .as("all three participations persisted")
+                .isEqualTo(3L);
 
-                // Wait for participations to be created
-                Awaitility.await().atMost(Duration.ofSeconds(5)).until(() -> {
-                    Long count = jdbcTemplate.queryForObject(
-                        "SELECT COUNT(*) FROM event_participations WHERE event_id = ?", Long.class, eventId);
-                    return count >= 3;
-                });
-                System.out.println("All members invited, participations created");
-
-                // --- Set responses via XHR API (so they're committed and visible to web request) ---
-                setEventResponse(eventId, memberIds.get(0), "CONFIRMED");
-                setEventResponse(eventId, memberIds.get(1), "DECLINED");
-                // memberIds.get(2) stays as NO_RESPONSE
-                System.out.println("Responses set via API");
+        // --- Set responses via XHR API (so they're committed and visible to web request) ---
+        setEventResponse(eventId, memberIds.get(0), "CONFIRMED");
+        setEventResponse(eventId, memberIds.get(1), "DECLINED");
+        // memberIds.get(2) stays as NO_RESPONSE
 
         // --- Navigate to event detail ---
         driver.get(baseUrl() + "/events/" + eventId);
-        System.out.println("Navigated to event detail page for response filter test, current URL: " + driver.getCurrentUrl());
-        System.out.println("Page title: " + driver.getTitle());
-        System.out.println("Page source length: " + driver.getPageSource().length());
-        System.out.println("Page source preview: " + driver.getPageSource().substring(0, Math.min(2000, driver.getPageSource().length())));
-
-        // Check if we got an error page
-        String pageSource = driver.getPageSource();
-        if (pageSource.contains("xml-viewer-style") || pageSource.contains("404") || pageSource.contains("Error") || pageSource.contains("Whitelabel")) {
-            System.out.println("ERROR PAGE DETECTED!");
-            System.out.println("FULL ERROR PAGE SOURCE: " + pageSource);
-
-            if (pageSource.contains("Whitelabel Error Page")) {
-                System.out.println("WHITELABEL ERROR PAGE DETECTED");
-            }
-            if (pageSource.contains("EventNotFound")) {
-                System.out.println("EVENT NOT FOUND ERROR DETECTED");
-            }
-            if (pageSource.contains("stackTrace") || pageSource.contains("Exception") || pageSource.contains("exception")) {
-                System.out.println("EXCEPTION DETECTED IN PAGE SOURCE");
-            }
-            if (pageSource.contains("null key")) {
-                System.out.println("NULL KEY ERROR DETECTED");
-            }
-            if (pageSource.contains("Jackson")) {
-                System.out.println("JACKSON ERROR DETECTED");
-            }
-            if (pageSource.contains("Map") && pageSource.contains("timestamp")) {
-                System.out.println("SPRING ERROR RESPONSE DETECTED (XML/JSON)");
-            }
-        }
-
-        System.out.println("About to wait for events-content element...");
         wait.until(ExpectedConditions.presenceOfElementLocated(By.id("events-content")));
 
         // Wait for participants table to load
         wait.until(ExpectedConditions.presenceOfElementLocated(By.id("participants-table")));
-        System.out.println("Participants table loaded for response filter test");
 
         // --- Test response filter: click CONFIRMED (✅) ---
         WebElement confirmedBtn = wait.until(ExpectedConditions.presenceOfElementLocated(
                 By.cssSelector(".response-filter-btn[data-response-filter='CONFIRMED']")));
-        System.out.println("Found CONFIRMED button, clicking...");
         ((JavascriptExecutor) driver).executeScript("arguments[0].click();", confirmedBtn);
-        System.out.println("Clicked CONFIRMED button");
 
-        // Debug: Check the active filters input and response values
+        // The click toggles CONFIRMED into the active-filters field (sync DOM state,
+        // read once — the filter itself is verified by the row assertion below).
         String activeFiltersValue = (String) ((JavascriptExecutor) driver).executeScript(
                 "return document.getElementById('active-response-filters').value;");
-        System.out.println("Active filters value after click: " + activeFiltersValue);
-
-        List<WebElement> allRows = driver.findElements(By.cssSelector("#participants-table tbody tr"));
-        System.out.println("Total rows in table: " + allRows.size());
-        for (int i = 0; i < allRows.size(); i++) {
-            WebElement row = allRows.get(i);
-            String responseValue = "";
-            try {
-                WebElement select = row.findElement(By.cssSelector("td[data-label='Odpowiedź'] select"));
-                responseValue = select.getAttribute("value");
-            } catch (Exception e) {
-                responseValue = "NO_SELECT";
-            }
-            String display = row.getAttribute("style");
-            System.out.println("Row " + i + ": response=" + responseValue + ", style=" + display);
-        }
+        assertThat(activeFiltersValue).as("CONFIRMED is the active filter after click").contains("CONFIRMED");
 
         // Wait for filter to apply
-        Awaitility.await().atMost(Duration.ofSeconds(3)).until(() -> {
-            List<WebElement> visibleRows = driver.findElements(
-                    By.cssSelector("#participants-table tbody tr[style=''], #participants-table tbody tr:not([style*='display: none'])"));
-            System.out.println("Visible rows after filter: " + visibleRows.size());
-            return visibleRows.size() == 1;
-        });
+        Awaitility.await().atMost(Duration.ofSeconds(3)).until(() -> countVisibleRows() == 1);
 
         List<WebElement> visibleRows = driver.findElements(
                 By.cssSelector("#participants-table tbody tr[style=''], #participants-table tbody tr:not([style*='display: none'])"));
@@ -264,20 +198,14 @@ class EventDetailFilterUiTest extends UiTestBase {
         // --- Click CONFIRMED again to deselect (should show all) ---
         ((JavascriptExecutor) driver).executeScript("arguments[0].click();", confirmedBtn);
 
-        Awaitility.await().atMost(Duration.ofSeconds(3)).until(() -> {
-            List<WebElement> visibleRows2 = driver.findElements(
-                    By.cssSelector("#participants-table tbody tr[style=''], #participants-table tbody tr:not([style*='display: none'])"));
-            return visibleRows2.size() == 3;
-        });
+        Awaitility.await().atMost(Duration.ofSeconds(5)).until(() -> countVisibleRows() == 3);
 
-        List<WebElement> allVisibleRows = driver.findElements(
-                By.cssSelector("#participants-table tbody tr[style=''], #participants-table tbody tr:not([style*='display: none'])"));
-        assertThat(allVisibleRows).hasSize(3);
+        assertThat(countVisibleRows()).as("deselect restores all three rows").isEqualTo(3);
     }
 
     @Test
     void responseFilterShouldFilterByMultipleStatuses() throws Exception {
-        WebDriverWait wait = new WebDriverWait(driver, Duration.ofSeconds(10));
+        FluentWait<WebDriver> wait = new WebDriverWait(driver, Duration.ofSeconds(10)).pollingEvery(Duration.ofMillis(100));
         String uid = UUID.randomUUID().toString().substring(0, 8);
         String firstName = "MultiResp" + uid;
         String lastName = "Test" + uid;
@@ -288,14 +216,11 @@ class EventDetailFilterUiTest extends UiTestBase {
         }
 
         // --- Create the event via the application API (fast path) ---
-        loginAndNavigateTo("/events"); // ensure same-origin page before XHR
+        loginOnly(); // same-origin page (post-login redirect) is enough for the XHR seed helpers
         Long eventId = createEventViaApi("Multi Response Filter Test " + uid, LocalDate.now());
         assertThat(eventId).isNotNull();
 
         // Wait for the event to be persisted before we read rows off it.
-        Awaitility.await().atMost(Duration.ofSeconds(10)).until(() ->
-                jdbcTemplate.queryForObject(
-                        "SELECT COUNT(*) FROM band_events WHERE id = ?", Long.class, eventId) == 1);
 
         List<Long> memberIds = jdbcTemplate.query(
                 "SELECT id FROM members WHERE first_name LIKE ? ORDER BY id",
@@ -353,7 +278,7 @@ class EventDetailFilterUiTest extends UiTestBase {
 
     @Test
     void combinedTextAndResponseFilterShouldWork() {
-        WebDriverWait wait = new WebDriverWait(driver, Duration.ofSeconds(10));
+        FluentWait<WebDriver> wait = new WebDriverWait(driver, Duration.ofSeconds(10)).pollingEvery(Duration.ofMillis(100));
         String uid = UUID.randomUUID().toString().substring(0, 8);
         String firstName = "Combined" + uid;
         String lastName = "Filter" + uid;
@@ -364,11 +289,8 @@ class EventDetailFilterUiTest extends UiTestBase {
         createTestBand1Member("Other" + uid, "Person" + uid, null);
 
         // --- Create the event via the application API (fast path) ---
-        loginAndNavigateTo("/events"); // ensure same-origin page before XHR
+        loginOnly(); // same-origin page (post-login redirect) is enough for the XHR seed helpers
         Long eventId = createEventViaApi("Combined Filter Test " + uid, LocalDate.now());
-        Awaitility.await().atMost(Duration.ofSeconds(10)).until(() ->
-                jdbcTemplate.queryForObject(
-                        "SELECT COUNT(*) FROM band_events WHERE id = ?", Long.class, eventId) == 1);
 
         List<Long> memberIds = jdbcTemplate.query(
                 "SELECT id FROM members WHERE first_name LIKE ? ORDER BY id",
@@ -437,7 +359,7 @@ class EventDetailFilterUiTest extends UiTestBase {
      */
     @Test
     void textAndResponseFilterShouldSurviveResponseChangeReload() {
-        WebDriverWait wait = new WebDriverWait(driver, Duration.ofSeconds(10));
+        FluentWait<WebDriver> wait = new WebDriverWait(driver, Duration.ofSeconds(10)).pollingEvery(Duration.ofMillis(100));
         String uid = UUID.randomUUID().toString().substring(0, 8);
         String firstNameA = "Keep" + uid;
         String firstNameB = "Other" + uid;
@@ -448,11 +370,8 @@ class EventDetailFilterUiTest extends UiTestBase {
         createTestBand1Member(firstNameB, lastName, null);
 
         // --- Create the event via the application API (fast path) ---
-        loginAndNavigateTo("/events"); // ensure same-origin page before XHR
+        loginOnly(); // same-origin page (post-login redirect) is enough for the XHR seed helpers
         Long eventId = createEventViaApi("Persist Filter Test " + uid, LocalDate.now());
-        Awaitility.await().atMost(Duration.ofSeconds(10)).until(() ->
-                jdbcTemplate.queryForObject(
-                        "SELECT COUNT(*) FROM band_events WHERE id = ?", Long.class, eventId) == 1);
         Long memberIdA = jdbcTemplate.queryForObject(
                 "SELECT id FROM members WHERE first_name = ?", Long.class, firstNameA);
         Long memberIdB = jdbcTemplate.queryForObject(
@@ -511,7 +430,7 @@ class EventDetailFilterUiTest extends UiTestBase {
      */
     @Test
     void textFilterShouldSurviveTwoSuccessiveResponseSaves() {
-        WebDriverWait wait = new WebDriverWait(driver, Duration.ofSeconds(10));
+        FluentWait<WebDriver> wait = new WebDriverWait(driver, Duration.ofSeconds(10)).pollingEvery(Duration.ofMillis(100));
         String uid = UUID.randomUUID().toString().substring(0, 8);
         String firstNameA = "Survive2" + uid;
         String firstNameB = "GhostA" + uid;
@@ -524,11 +443,8 @@ class EventDetailFilterUiTest extends UiTestBase {
         createTestBand1Member(firstNameC, lastName, null);
 
         // --- Create the event via the application API (fast path) ---
-        loginAndNavigateTo("/events"); // ensure same-origin page before XHR
+        loginOnly(); // same-origin page (post-login redirect) is enough for the XHR seed helpers
         Long eventId = createEventViaApi("Successive Saves Test " + uid, LocalDate.now());
-        Awaitility.await().atMost(Duration.ofSeconds(10)).until(() ->
-                jdbcTemplate.queryForObject(
-                        "SELECT COUNT(*) FROM band_events WHERE id = ?", Long.class, eventId) == 1);
         Long memberIdA = lookupFirst("first_name", firstNameA);
         Long memberIdB = lookupFirst("first_name", firstNameB);
         Long memberIdC = lookupFirst("first_name", firstNameC);
@@ -575,7 +491,7 @@ class EventDetailFilterUiTest extends UiTestBase {
      */
     @Test
     void lastNameFilterShouldSurviveResponseSave() {
-        WebDriverWait wait = new WebDriverWait(driver, Duration.ofSeconds(10));
+        FluentWait<WebDriver> wait = new WebDriverWait(driver, Duration.ofSeconds(10)).pollingEvery(Duration.ofMillis(100));
         String uid = UUID.randomUUID().toString().substring(0, 8);
         String lastNameA = "KeepLast" + uid;
         String lastNameB = "OtherLast" + uid;
@@ -585,11 +501,8 @@ class EventDetailFilterUiTest extends UiTestBase {
         createTestBand1Member("Beta" + uid, lastNameB, null);
 
         // --- Create the event via the application API (fast path) ---
-        loginAndNavigateTo("/events"); // ensure same-origin page before XHR
+        loginOnly(); // same-origin page (post-login redirect) is enough for the XHR seed helpers
         Long eventId = createEventViaApi("Last Name Persist Test " + uid, LocalDate.now());
-        Awaitility.await().atMost(Duration.ofSeconds(10)).until(() ->
-                jdbcTemplate.queryForObject(
-                        "SELECT COUNT(*) FROM band_events WHERE id = ?", Long.class, eventId) == 1);
         Long memberIdA = lookupFirst("last_name", lastNameA);
         Long memberIdB = lookupFirst("last_name", lastNameB);
 
@@ -625,7 +538,7 @@ class EventDetailFilterUiTest extends UiTestBase {
      */
     @Test
     void tagFilterShouldMatchInstrumentTagAccentAware() {
-        WebDriverWait wait = new WebDriverWait(driver, Duration.ofSeconds(10));
+        FluentWait<WebDriver> wait = new WebDriverWait(driver, Duration.ofSeconds(10)).pollingEvery(Duration.ofMillis(100));
         String uid = UUID.randomUUID().toString().substring(0, 8);
         String lastName = "Test" + uid;
 
@@ -697,7 +610,7 @@ class EventDetailFilterUiTest extends UiTestBase {
      */
     @Test
     void filterStateAfterNavigationAwayAndBackIsConsistent() {
-        WebDriverWait wait = new WebDriverWait(driver, Duration.ofSeconds(10));
+        FluentWait<WebDriver> wait = new WebDriverWait(driver, Duration.ofSeconds(10)).pollingEvery(Duration.ofMillis(100));
         String uid = UUID.randomUUID().toString().substring(0, 8);
         String firstNameA = "ResetKeep" + uid;
         String firstNameB = "ResetOther" + uid;
@@ -706,11 +619,8 @@ class EventDetailFilterUiTest extends UiTestBase {
         createTestBand1Member(firstNameA, lastName, null);
         createTestBand1Member(firstNameB, lastName, null);
 
-        loginAndNavigateTo("/events"); // ensure same-origin page before XHR
+        loginOnly(); // same-origin page (post-login redirect) is enough for the XHR seed helpers
         Long eventId = createEventViaApi("Reset Nav Test " + uid, LocalDate.now());
-        Awaitility.await().atMost(Duration.ofSeconds(10)).until(() ->
-                jdbcTemplate.queryForObject(
-                        "SELECT COUNT(*) FROM band_events WHERE id = ?", Long.class, eventId) == 1);
         Long memberIdA = lookupFirst("first_name", firstNameA);
         Long memberIdB = lookupFirst("first_name", firstNameB);
 

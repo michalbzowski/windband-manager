@@ -2,7 +2,9 @@ package pl.michalbzowski.windband.adapter.in.web;
 
 import org.junit.jupiter.api.Test;
 import org.openqa.selenium.By;
+import org.openqa.selenium.WebDriver;
 import org.openqa.selenium.support.ui.ExpectedConditions;
+import org.openqa.selenium.support.ui.FluentWait;
 import org.openqa.selenium.support.ui.WebDriverWait;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -31,8 +33,8 @@ class EventRehearsalDetailActionsBarUiTest extends UiTestBase {
     @Autowired
     private JdbcTemplate jdbcTemplate;
 
-    private WebDriverWait waitHelper() {
-        return new WebDriverWait(driver, Duration.ofSeconds(10));
+    private FluentWait<WebDriver> waitHelper() {
+        return new WebDriverWait(driver, Duration.ofSeconds(10)).pollingEvery(Duration.ofMillis(100));
     }
 
     // ========== EVENT DETAIL BACK BUTTON TESTS ==========
@@ -42,12 +44,9 @@ class EventRehearsalDetailActionsBarUiTest extends UiTestBase {
         // Create an event
         Long eventId = createTestEvent("Event from List " + UUID.randomUUID().toString().substring(0, 8));
 
-        // Start from events list
-        loginAndNavigateTo("/events");
-        waitHelper().until(ExpectedConditions.presenceOfElementLocated(By.id("events-list-container")));
-
-        // Navigate to event detail (simulating click from list)
-        // The referrer will be /events, so back button should return to /events
+        // One navigation is enough: driver.get() sends no Referer, so the list
+        // page never influenced the back-link target — the contract under test is
+        // the back link's resolved URL, asserted below exactly as before.
         loginAndNavigateTo("/events/" + eventId);
         waitHelper().until(ExpectedConditions.presenceOfElementLocated(By.id("events-content")));
 
@@ -69,14 +68,8 @@ class EventRehearsalDetailActionsBarUiTest extends UiTestBase {
         // Create an event
         Long eventId = createTestEvent("Event from Main " + UUID.randomUUID().toString().substring(0, 8));
 
-        // Start from main view (dashboard)
-        loginAndNavigateTo("/");
-        waitHelper().until(ExpectedConditions.presenceOfElementLocated(By.id("content")));
-
-        // Navigate to event detail from main view using a link click to preserve referrer
-        // Find the events list on main view and click an event, or navigate with referrer
-        // For test simplicity, we'll just verify back button goes to /events (default) when referrer is not /
-        // The actual behavior: back button uses Referer header, defaults to /events
+        // The dashboard render added nothing to the referrer (driver.get sends
+        // none) — loginAndNavigateTo("/events/{id}") establishes the session itself.
         loginAndNavigateTo("/events/" + eventId);
         waitHelper().until(ExpectedConditions.presenceOfElementLocated(By.id("events-content")));
 
@@ -100,11 +93,6 @@ class EventRehearsalDetailActionsBarUiTest extends UiTestBase {
         // Create a rehearsal
         Long rehearsalId = createTestRehearsal("Rehearsal from List " + UUID.randomUUID().toString().substring(0, 8));
 
-        // Start from rehearsals list
-        loginAndNavigateTo("/rehearsals");
-        waitHelper().until(ExpectedConditions.presenceOfElementLocated(By.id("rehearsals-content")));
-
-        // Navigate to rehearsal detail (referrer will be /rehearsals)
         loginAndNavigateTo("/rehearsals/" + rehearsalId);
         waitHelper().until(ExpectedConditions.presenceOfElementLocated(By.id("rehearsals-content")));
 
@@ -126,11 +114,6 @@ class EventRehearsalDetailActionsBarUiTest extends UiTestBase {
         // Create a rehearsal
         Long rehearsalId = createTestRehearsal("Rehearsal from Main " + UUID.randomUUID().toString().substring(0, 8));
 
-        // Start from main view (dashboard)
-        loginAndNavigateTo("/");
-        waitHelper().until(ExpectedConditions.presenceOfElementLocated(By.id("content")));
-
-        // Navigate to rehearsal detail - for test simplicity, verify back button goes to /rehearsals (default)
         loginAndNavigateTo("/rehearsals/" + rehearsalId);
         waitHelper().until(ExpectedConditions.presenceOfElementLocated(By.id("rehearsals-content")));
 
@@ -153,10 +136,6 @@ class EventRehearsalDetailActionsBarUiTest extends UiTestBase {
     void eventDetail_deleteButton_deletesEventAndRedirectsToEventsList() {
         // Create an event
         Long eventId = createTestEvent("Event to Delete " + UUID.randomUUID().toString().substring(0, 8));
-
-        // Go to event detail from events list (so referrer is /events)
-        loginAndNavigateTo("/events");
-        waitHelper().until(ExpectedConditions.presenceOfElementLocated(By.id("events-list-container")));
 
         loginAndNavigateTo("/events/" + eventId);
         waitHelper().until(ExpectedConditions.presenceOfElementLocated(By.id("events-content")));
@@ -194,10 +173,6 @@ class EventRehearsalDetailActionsBarUiTest extends UiTestBase {
     void rehearsalDetail_deleteButton_deletesRehearsalAndRedirectsToRehearsalsList() {
         // Create a rehearsal
         Long rehearsalId = createTestRehearsal("Rehearsal to Delete " + UUID.randomUUID().toString().substring(0, 8));
-
-        // Go to rehearsal detail from rehearsals list (so referrer is /rehearsals)
-        loginAndNavigateTo("/rehearsals");
-        waitHelper().until(ExpectedConditions.presenceOfElementLocated(By.id("rehearsals-content")));
 
         loginAndNavigateTo("/rehearsals/" + rehearsalId);
         waitHelper().until(ExpectedConditions.presenceOfElementLocated(By.id("rehearsals-content")));
@@ -245,9 +220,9 @@ class EventRehearsalDetailActionsBarUiTest extends UiTestBase {
 
         Long rehearsalId = createTestRehearsal("Rehearsal for QA " + uid);
 
-        // Go to rehearsal detail
-        loginAndNavigateTo("/rehearsals/" + rehearsalId);
-        waitHelper().until(ExpectedConditions.presenceOfElementLocated(By.id("rehearsals-content")));
+        // loginOnly establishes the same-origin + session context the sync XHR
+        // invite needs; the detail-page wait below is the first real render.
+        loginOnly();
 
         // Invite the member first (fresh rehearsal has empty attendance)
         inviteMemberToRehearsalHelper(rehearsalId, memberId);
