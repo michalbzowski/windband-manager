@@ -1704,7 +1704,11 @@
     function refreshPartsPanelAfterSave() {
         var table = document.getElementById('existing-parts');
         if (!table || !bandId || !compId) return;
-        fetch(basePath, { headers: { 'HX-Request': 'true' } })
+        // #240: the parts panel sits OUTSIDE the HTMX fragment region (#compositions-content /
+        // <main id=content>), so a fragmented response never contains #existing-parts and the
+        // swap silently no-ops. A full-page render always contains it (hence manual reload "fixed"
+        // it) — fetch the full page and splice ONLY the fresh table in, keeping modal/file state.
+        fetch(basePath)
             .then(function (r) { if (!r.ok) throw new Error('HTTP ' + r.status); return r.text(); })
             .then(function (html) {
                 var tpl = document.createElement('template');
