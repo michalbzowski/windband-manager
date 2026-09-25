@@ -64,8 +64,10 @@ class ReportControllerTest {
         ReportController controller = new ReportController(service);
 
         ReportController.ReportGenerationRequest request = new ReportController.ReportGenerationRequest();
-        request.setPeriodYear(2026);
-        request.setPeriodMonth(7);
+        // NO periodYear/periodMonth here: this test is the DEFAULT-range case ("when no period
+        // specified" — see DisplayName). Setting an explicit period would force the controller's
+        // explicit-period branch (2026-07-01) and break the last-month assertion below. The
+        // explicit-period path is covered by the sibling test above.
 
         pl.michalbzowski.windband.adapter.in.security.WindbandOidcUser oidcUser =
                 org.mockito.Mockito.mock(pl.michalbzowski.windband.adapter.in.security.WindbandOidcUser.class);
