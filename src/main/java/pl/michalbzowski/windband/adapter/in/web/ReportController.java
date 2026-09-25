@@ -10,10 +10,13 @@ import org.springframework.http.ContentDisposition;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.stereotype.Component;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.ModelAttribute;
 import org.springframework.web.bind.annotation.RequestParam;
 import pl.michalbzowski.windband.application.report.ReportGeneratorService;
+import pl.michalbzowski.windband.adapter.in.security.WindbandOidcUser;
 
 @Component
 class ReportController {
@@ -31,7 +34,14 @@ class ReportController {
         return "reports/monthly-report";
     }
 
-    public ResponseEntity<byte[]> generateReport(ReportGenerationRequest request) {
+    @ModelAttribute("reportGenerationRequest")
+    public ReportGenerationRequest reportGenerationRequest(@AuthenticationPrincipal WindbandOidcUser oidcUser) {
+        // Model attribute to ensure band context is available in the form
+        return new ReportGenerationRequest();
+    }
+
+    public ResponseEntity<byte[]> generateReport(ReportGenerationRequest request,
+                                                 @AuthenticationPrincipal WindbandOidcUser oidcUser) {
         LocalDate now = LocalDate.now();
         LocalDate from = request.getPeriodYear() != null && request.getPeriodMonth() != null
                 ? LocalDate.of(request.getPeriodYear(), request.getPeriodMonth(), 1)
@@ -46,10 +56,12 @@ class ReportController {
 
         Map<String, Object> params = new HashMap<>();
 
-        // Parametr band_id jest wymagany do filtrowania danych w zapytaniu SQL
-        Long bandId = 1L; // TODO: pobrać z kontekstu sesji/autentyzacji dla multi-tenant
-
-        params.put("band_id", bandId);
+        // Pobierz band_id z kontekstu sesji/autentyzacji (Keycloak token) - zastępuje hardcodowane 1L
+        Long activeBandId = oidcUser != null ? oidcUser.getActiveTeamId() : null;
+        if (activeBandId == null) {
+            return ResponseEntity.status(org.springframework.http.HttpStatus.FORBIDDEN).build();
+        }
+        params.put("band_id", activeBandId);
         params.put("date_from", fromDate);
         params.put("date_to", toDate);
         params.put("band_name", request.getBandName() != null ? request.getBandName() : "");
@@ -83,5 +95,4 @@ class ReportController {
         private Integer senior60PlusCount;
         private Integer rehearsalsCount;
     }
-
 }
