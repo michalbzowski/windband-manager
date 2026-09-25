@@ -26,6 +26,58 @@
              in this page's script — kept out of the shared fragment on purpose. -->
         <input type="hidden" id="event-edit-url" th:value="@{/events/{id}/edit(id=${event.id})}">
 
+        <!-- Issue #226 ("Przenieś akcje"): the "Zaproś" and "Wyślij do wszystkich" actions
+             now live in the unified page header's three-dot (⋮) overflow menu.
+             The nodes stay server-rendered exactly ONCE per navigation — deliberately
+             OUTSIDE #events-content, because an HTMX outerHTML swap of that fragment
+             would otherwise recreate floating copies (duplicate ids). The script at the
+             bottom of this template relocates them into .overflow-menu. Keeping the
+             original ids (#open-invite-btn / #send-all-btn) means every existing JS
+             binding (windband-utils.js send-all handler, unified invite binder) keeps
+             working unchanged after the move. -->
+        <div id="event-detail-actions" data-event-detail-actions="" style="display:none;">
+            <button type="button" class="outline" id="open-invite-btn">➕ Zaproś</button>
+            <th:block th:if="${!eventAlreadyOccurred}">
+                <button class="primary" id="send-all-btn">📧 Wyślij do wszystkich</button>
+                <span id="send-all-result" style="font-size:0.9rem;"></span>
+            </th:block>
+        </div>
+
+<script>
+    // Issue #226 ("Przenieś akcje"): move the "Zaproś" + "Wyślij do wszystkich" actions
+    // into the unified page header's ⋮ overflow menu (same relocation pattern the
+    // rehearsal detail page uses for its "Szybka obecność" item).
+    //
+    // Why this works without touching any JS binding:
+    //   - Moving a DOM node keeps the element AND its listeners, so the windband-utils.js
+    //     #send-all-btn handler and the unified invite binder (both key on getElementById)
+    //     keep working exactly as before;
+    //   - The nodes are server-rendered once (inside #event-detail-actions, outside
+    //     #events-content), so HTMX outerHTML swaps of that fragment can never create
+    //     duplicate ids — this script only runs at parse time, once per full load.
+    function relocateEventDetailActions() {
+        var bar = document.querySelector('nav.detail-actions-bar[data-detail-bar]');
+        if (!bar) return;
+        var menu = bar.querySelector('.overflow-menu');
+        if (!menu) return;
+        ['open-invite-btn', 'send-all-btn'].forEach(function(id) {
+            var btn = document.getElementById(id);
+            if (!btn || btn.parentNode === menu) return;   // already placed — idempotent
+            btn.className = 'overflow-item';               // match the other ⋮ menu items
+            // Keep the action visible after the menu closes: clicking it performs the
+            // invite/send; standard menu UX = close right after selection.
+            btn.addEventListener('click', function() {
+                menu.classList.remove('open');
+                var trig = bar.querySelector('[data-detail-action="toggle-more"]');
+                if (trig) trig.setAttribute('aria-expanded', 'false');
+            });
+            menu.appendChild(btn);
+        });
+    }
+    relocateEventDetailActions();          // runs at parse time: targets are already in the DOM
+    document.addEventListener('DOMContentLoaded', relocateEventDetailActions, {once: true});
+</script>
+
     <div id="event-detail-wrapper">
 <div id="events-content"
      th:data-event-id="${event.id}"
@@ -56,21 +108,11 @@
         <p th:if="${event.notes}" th:text="${event.notes}">Notatki</p>
     </article>
 
-    <h3>Zaproś na wydarzenie</h3>
-
-    <!-- Unified invite (t_c9b13437): one button opens the shared InvitationModal
-         with groups + members fetched from GET /api/events/{id}/invite-options. -->
-    <div style="display:flex; gap:0.5rem; margin-bottom:1rem;">
-        <button type="button" class="outline" id="open-invite-btn">➕ Zaproś</button>
-    </div>
-
-    <div th:if="${!eventAlreadyOccurred}">
-        <h3>📧 Wyślij zaproszenia</h3>
-        <div style="display:flex; gap:0.5rem; margin-bottom:1rem; align-items:center;">
-            <button class="primary" id="send-all-btn">📧 Wyślij do wszystkich</button>
-            <span id="send-all-result" style="font-size:0.9rem;"></span>
-        </div>
-    </div>
+    <!-- Issue #226 ("Przenieś akcje"): the "Zaproś" and "Wyślij do wszystkich" actions moved
+         to the page header's ⋮ overflow menu. They are server-rendered once as
+         #event-detail-actions (outside this fragment, above it) and relocated into
+         .overflow-menu by the script at the bottom of this template — that keeps the ids
+         and all existing JS bindings intact across HTMX outerHTML swaps. -->
 
     <h3>Podsumowanie - ile osób gra na każdym instrumencie</h3>
 <div style="display: flex; flex-wrap: wrap; gap: 1rem; margin-bottom: 1rem;">

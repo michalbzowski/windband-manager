@@ -2,6 +2,7 @@ package pl.michalbzowski.windband.adapter.in.web;
 
 import org.junit.jupiter.api.Test;
 import org.openqa.selenium.By;
+import org.openqa.selenium.JavascriptExecutor;
 import org.openqa.selenium.WebElement;
 import org.openqa.selenium.support.ui.ExpectedConditions;
 import org.openqa.selenium.support.ui.WebDriverWait;
@@ -15,12 +16,18 @@ import static org.assertj.core.api.Assertions.assertThat;
 /**
  * UI tests for Issue #118: Hide invitation sending section for past events.
  *
- * The "📧 Wyślij zaproszenia" (Send invitations) section should be hidden when an event's date is in the past
+ * The "📧 Wyślij do wszystkich" (Send invitations) action should be hidden when an event's date is in the past
  * (today or earlier). This test suite covers all specified acceptance criteria:
  * - Check event end date against current date at page load
- * - If event has already occurred, hide the entire "📧 Wyślij zaproszenia" section including button
- * - Section remains visible for future events only
+ * - If event has already occurred, hide the "📧 Wyślij do wszystkich" action including button
+ * - Action remains available for future events only
  * - Test with events dated: yesterday, today, tomorrow, next week
+ *
+ * <p>Issue #226 ("Przenieś akcje") relocated both actions ("Zaproś" and "Wyślij do
+ * wszystkich") from floating body sections into the page header's ⋮ overflow menu.
+ * The send-all action is server-rendered only for future events (hidden for past
+ * ones), so for past events the button must be ABSENT from the DOM, while for
+ * future events it must exist inside {@code .overflow-menu}.
  */
 class EventPastDateInvitationVisibilityUiTest extends UiTestBase {
 
@@ -57,18 +64,17 @@ class EventPastDateInvitationVisibilityUiTest extends UiTestBase {
 
         assertThat(driver.getCurrentUrl()).contains("/events/" + eventId);
 
-        // The invitation section should NOT be visible for past events
-        By invitationSectionLocator = By.xpath("//h3[contains(., '📧 Wyślij zaproszenia')]");
-        // Negative check: the element must disappear from the DOM. Selenium 4's
-        // invisibilityOf polls for absence with a short timeout — no full 10 s wait.
+        // The "Send invitations" action must be ABSENT from the DOM for past events.
+        // It is no longer a fixed body section (moved to the ⋮ overflow menu by Issue #226),
+        // so the absence-of-the-button check is stronger than the former heading check:
+        // if the button were rendered at all, the hidden send-all flow would still be reachable.
         org.openqa.selenium.support.ui.WebDriverWait invisible = new org.openqa.selenium.support.ui.WebDriverWait(driver, Duration.ofMillis(300));
         try {
-            invisible.until(ExpectedConditions.invisibilityOfElementLocated(invitationSectionLocator));
+            invisible.until(ExpectedConditions.invisibilityOfElementLocated(By.id("send-all-btn")));
         } catch (org.openqa.selenium.TimeoutException ignored) {
             // Element did not appear within the poll window — that is the correct outcome.
         }
-        // Final assertion: the element must be absent from the DOM at this moment.
-        org.assertj.core.api.Assertions.assertThat(driver.findElements(invitationSectionLocator)).isEmpty();
+        org.assertj.core.api.Assertions.assertThat(driver.findElements(By.id("send-all-btn"))).isEmpty();
     }
 
     @Test
@@ -81,15 +87,14 @@ class EventPastDateInvitationVisibilityUiTest extends UiTestBase {
 
         assertThat(driver.getCurrentUrl()).contains("/events/" + eventId);
 
-        // The invitation section should be hidden for events dated today
-        By invitationSectionLocator = By.xpath("//h3[contains(., '📧 Wyślij zaproszenia')]");
+        // The "Send invitations" action must be hidden for events dated today
         org.openqa.selenium.support.ui.WebDriverWait invisible = new org.openqa.selenium.support.ui.WebDriverWait(driver, Duration.ofMillis(300));
         try {
-            invisible.until(ExpectedConditions.invisibilityOfElementLocated(invitationSectionLocator));
+            invisible.until(ExpectedConditions.invisibilityOfElementLocated(By.id("send-all-btn")));
         } catch (org.openqa.selenium.TimeoutException ignored) {
             // Element did not appear within the poll window — that is the correct outcome.
         }
-        org.assertj.core.api.Assertions.assertThat(driver.findElements(invitationSectionLocator)).isEmpty();
+        org.assertj.core.api.Assertions.assertThat(driver.findElements(By.id("send-all-btn"))).isEmpty();
     }
 
     @Test
@@ -102,16 +107,15 @@ class EventPastDateInvitationVisibilityUiTest extends UiTestBase {
 
         assertThat(driver.getCurrentUrl()).contains("/events/" + eventId);
 
-        // The invitation section should be visible for future events
-        By invitationSectionLocator = By.xpath("//h3[contains(., '📧 Wyślij zaproszenia')]");
-
+        // The "Send invitations" action must exist and, since Issue #226, live inside the
+        // page header's ⋮ overflow menu (not as a floating body section).
         WebDriverWait wait = new WebDriverWait(driver, Duration.ofSeconds(10));
-        WebElement element = wait.until(ExpectedConditions.presenceOfElementLocated(invitationSectionLocator));
-        assertThat(element.isDisplayed()).as("Invitation sending section should be visible for future event (tomorrow)").isTrue();
-
-        // Also verify the "Send to all" button is present (part of the same section)
         WebElement sendAllButton = wait.until(ExpectedConditions.presenceOfElementLocated(By.id("send-all-btn")));
-        assertThat(sendAllButton.isDisplayed()).as("Send invitations button should be visible").isTrue();
+        Object inOverflowMenu = ((JavascriptExecutor) driver).executeScript(
+                "var el = arguments[0]; var bar = document.querySelector('.overflow-menu');" +
+                " return !!(el && bar && bar.contains(el));",
+                sendAllButton);
+        assertThat(Boolean.TRUE.equals(inOverflowMenu)).as("Send invitations action should be inside the ⋮ overflow menu for a future event (tomorrow)").isTrue();
     }
 
     @Test
@@ -124,12 +128,15 @@ class EventPastDateInvitationVisibilityUiTest extends UiTestBase {
 
         assertThat(driver.getCurrentUrl()).contains("/events/" + eventId);
 
-        // The invitation section should be visible for future events
-        By invitationSectionLocator = By.xpath("//h3[contains(., '📧 Wyślij zaproszenia')]");
-
+        // The "Send invitations" action must be present for future events and, since Issue #226,
+        // reside in the ⋮ overflow menu (the former body heading was removed).
         WebDriverWait wait = new WebDriverWait(driver, Duration.ofSeconds(10));
-        WebElement element = wait.until(ExpectedConditions.presenceOfElementLocated(invitationSectionLocator));
-        assertThat(element.isDisplayed()).as("Invitation sending section should be visible for future event (next week)").isTrue();
+        WebElement element = wait.until(ExpectedConditions.presenceOfElementLocated(By.id("send-all-btn")));
+        Object inOverflowMenu = ((JavascriptExecutor) driver).executeScript(
+                "var el = arguments[0]; var bar = document.querySelector('.overflow-menu');" +
+                " return !!(el && bar && bar.contains(el));",
+                element);
+        assertThat(Boolean.TRUE.equals(inOverflowMenu)).as("Invitation sending section should be visible for future event (next week)").isTrue();
     }
 
     @Test
@@ -142,10 +149,14 @@ class EventPastDateInvitationVisibilityUiTest extends UiTestBase {
 
         // Verify that other sections are still visible (not affected by hiding invocation section)
 
-        // "Zaproś na wydarzenie" section should still be visible (different from invitation sending)
-        By inviteSectionLocator = By.xpath("//h3[contains(., 'Zaproś na wydarzenie')]");
+        // "Zaproś" must remain available for past events; since Issue #226 it lives in the ⋮ overflow menu.
+        By inviteSectionLocator = By.id("open-invite-btn");
         WebElement element = waitHelper().until(ExpectedConditions.presenceOfElementLocated(inviteSectionLocator));
-        assertThat(element.isDisplayed()).as("Invite participants section remains visible").isTrue();
+        Object inOverflowMenu = ((JavascriptExecutor) driver).executeScript(
+                "var el = arguments[0]; var bar = document.querySelector('.overflow-menu');" +
+                " return !!(el && bar && bar.contains(el));",
+                element);
+        assertThat(Boolean.TRUE.equals(inOverflowMenu)).as("Invite participants action remains available (in overflow menu)").isTrue();
 
         // Event name should be displayed
         String title = driver.findElement(By.cssSelector("#events-content article header strong")).getText();
