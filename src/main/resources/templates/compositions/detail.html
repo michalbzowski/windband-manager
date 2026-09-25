@@ -987,10 +987,14 @@
         <small>Każda pozycja opisuje, które strony PDF-a odpowiadają danemu instrumentowi / role.</small>
     </header>
 
+    <!-- Issue #242: the add-part button lives DIRECTLY under the header (above the table),
+         so it is reachable without scrolling past saved rows. -->
+    <button type="button" id="open-add-part-modal-btn" class="primary">＋ Dodaj głos</button>
+
     <table id="existing-parts" class="data-table">
         <thead><tr><th>Instrument</th><th>Rola</th><th>Plik nut</th><th>Strony</th><th>Akcje</th></tr></thead>
         <tbody>
-            <tr th:if="${parts == null or parts.size() == 0}" class="empty-row"><td colspan="5">Brak oznaczonych głosów — dodaj poniżej.</td></tr>
+            <tr th:if="${parts == null or parts.size() == 0}" class="empty-row"><td colspan="5">Brak oznaczonych głosów — dodaj powyżej.</td></tr>
             <tr th:each="p : ${parts}"
                 th:attr="data-part-id=${p.id}, data-instrument-name=${p.instrumentName != null ? p.instrumentName : ''}, data-role=${p.instrumentRole != null and !#strings.isEmpty(p.instrumentRole) ? p.instrumentRole : '—'}, data-page-from=${p.pageFrom}, data-page-to=${p.pageTo}">
                 <td th:text="${p.instrumentName != null ? p.instrumentName : ''}">Instrument</td>
@@ -1002,8 +1006,6 @@
             </tr>
         </tbody>
     </table>
-
-    <button type="button" id="open-add-part-modal-btn" class="primary">＋ Dodaj głos</button>
 
     <dialog id="add-part-dialog" class="app-modal add-part-modal">
         <form id="add-part-form" method="post" th:action="@{/bands/{bandId}/compositions/{compositionId}/parts(bandId=${bandId}, compositionId=${composition.id})}">
