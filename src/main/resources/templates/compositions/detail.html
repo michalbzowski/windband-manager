@@ -1034,15 +1034,19 @@
                     <img id="part-preview-img" alt="Podgląd góry strony PDF (nazwa instrumentu)">
                     <!-- User request (2026-09-24): arrows + page badge moved from the
                          middle of the strip to a dedicated BOTTOM BAR inside the preview
-                         component. The bar carries two extra same-size buttons (⇤ / ⇥)
-                         that set the (now visually hidden) "Strona od" / "Strona do"
-                         fields to the currently previewed page. -->
+                         component. The bar carries two extra same-size buttons that set
+                         the (visually hidden) "Strona od" / "Strona do" fields to the
+                         currently previewed page. Second iteration (same day): instead
+                         of the ⇤ / ⇥ glyphs the buttons DISPLAY their page numbers —
+                         the left one shows "Strona od", the right one "Strona do" —
+                         kept in sync with the hidden inputs by syncRangeButtons().
+                         The title/aria-labels carry the (dynamic) meaning. -->
                     <div id="part-preview-bar" class="ap-bar">
                         <span class="ap-bar-group">
-                            <button type="button" id="part-range-from" class="ap-preview-btn ap-overlay"
-                                    aria-label="Ustaw 'Strona od' na podglądaną stronę" title="Ustaw 'Strona od' na tę stronę">⇤</button>
-                            <button type="button" id="part-range-to" class="ap-preview-btn ap-overlay"
-                                    aria-label="Ustaw 'Strona do' na podglądaną stronę" title="Ustaw 'Strona do' na tę stronę">⇥</button>
+                            <button type="button" id="part-range-from" class="ap-preview-btn ap-range-btn ap-overlay"
+                                    aria-label="Strona od: 1 — kliknij, aby ustawić na podglądaną stronę" title="Strona od — kliknij, aby ustawić na podglądaną stronę">1</button>
+                            <button type="button" id="part-range-to" class="ap-preview-btn ap-range-btn ap-overlay"
+                                    aria-label="Strona do: 2 — kliknij, aby ustawić na podglądaną stronę" title="Strona do — kliknij, aby ustawić na podglądaną stronę">2</button>
                         </span>
                         <span id="part-preview-badge" class="ap-overlay" role="status">Strona —</span>
                         <span class="ap-bar-group">
@@ -1390,6 +1394,7 @@
         // Requirement 7: the shown page flows straight into "Strona od".
         if (fromInp) fromInp.value = String(page);
         bumpTo(fromPage(), 'preview');
+        syncRangeButtons();   // keep the digits on the range buttons in step (iter. 2)
     }
 
     function setPreviewPage(page, totalOverride) {
@@ -1506,6 +1511,7 @@
             var t = parseInt(toInp.value, 10);
             if (!isNaN(t) && t > max) toInp.value = String(max);
         }
+        syncRangeButtons();   // the clamp above changed "do" without an input event
         setPreviewPage(1, max != null ? max : null);
     });
 
@@ -1531,7 +1537,33 @@
         showStatus('success', which === 'from'
             ? 'Strona od = ' + (fromInp ? fromInp.value : page)
             : 'Strona do = ' + toInp.value);
+        syncRangeButtons();   // the pressed button now displays this page number
     }
+    // ── Number labels on the range buttons (user request 2026-09-24, iteration 2) ──
+    // The two range buttons no longer show ⇤ / ⇥ glyphs — each shows the page
+    // number it holds: the LEFT mirrors the hidden "Strona od", the RIGHT mirrors
+    // the hidden "Strona do". Clicking either pins it to the previewed page (see
+    // setRangeEnd), so on page N the pressed button reads N (rules a–c).
+    // The left ≤ right invariant (rule d) and "raise left drags right up" (rule f)
+    // are guaranteed by the inputs themselves — bumpTo on every "od" raise and the
+    // od-clamp in setRangeEnd('to') — so mirroring the input values keeps the two
+    // digits ordered with no extra logic. The hidden inputs remain the single
+    // source of truth for the POST payload (rule e — FormData submits them as-is).
+    function syncRangeButtons() {
+        var fv = (fromInp && fromInp.value !== '') ? String(fromInp.value) : '1';
+        var tv = (toInp && toInp.value !== '') ? String(toInp.value) : fv;
+        if (btnRangeFrom) {
+            btnRangeFrom.textContent = fv;
+            btnRangeFrom.setAttribute('aria-label',
+                "Strona od: " + fv + " — kliknij, aby ustawić na podglądaną stronę");
+        }
+        if (btnRangeTo) {
+            btnRangeTo.textContent = tv;
+            btnRangeTo.setAttribute('aria-label',
+                "Strona do: " + tv + " — kliknij, aby ustawić na podglądaną stronę");
+        }
+    }
+
     if (btnRangeFrom) btnRangeFrom.addEventListener('click', function () { setRangeEnd('from'); });
     if (btnRangeTo)   btnRangeTo.addEventListener('click', function () { setRangeEnd('to'); });
 
@@ -1573,6 +1605,7 @@
     // show its top-of-page-1 strip so the preview is ready the moment the user
     // opens the dialog (no extra click needed, browser caches the JPEG afterwards).
     if (filePicker.value !== '') { setPreviewPage(1, selectedMax()); }
+    syncRangeButtons();   // no-file path skips setPreviewUi — still show the default 1 / 2
 
     // ------------------------------------------------------------------
     // Requirement 12: clicking into a non-empty "Rola" selects all its text,
@@ -1594,12 +1627,13 @@
                 if (t < f) showError('Strona do musi być większa lub równa stronie od.');
                 else clearError();
             }
+            syncRangeButtons();   // typed digits are echoed on the buttons live (iter. 2)
         });
     });
 
     // Typing a higher "Strona od" bumps "Strona do" up (kept behaviour from 2026-09-24).
     if (fromInp) {
-        fromInp.addEventListener('input', function () { bumpTo(fromPage(), 'manual'); });
+        fromInp.addEventListener('input', function () { bumpTo(fromPage(), 'manual'); syncRangeButtons(); });
     }
 
     // ------------------------------------------------------------------
@@ -1686,6 +1720,7 @@
     function resetOnClose() {
         if (!form) return;
         form.reset();
+        syncRangeButtons();   // inputs are back to their HTML defaults — echo them (iter. 2)
         // The overlay state (calm/visible) never survives a close — every open starts fresh.
         if (previewBox) {
             previewBox.classList.remove('ap-calm');
