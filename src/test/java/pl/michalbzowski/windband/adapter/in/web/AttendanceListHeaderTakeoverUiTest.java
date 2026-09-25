@@ -54,29 +54,14 @@ class AttendanceListHeaderTakeoverUiTest extends UiTestBase {
         return (int) toDouble(v);
     }
 
-    private long scrollMax() {
-        Object v = eval("return document.documentElement.scrollHeight - window.innerHeight;");
-        return (long) toDouble(v);
-    }
-
-    /** Smooth-ish step scroll in the requested direction, one 40 px step per call. */
+    /** Smooth-ish step scroll in the requested direction, one step per call.
+     *  Position read + clamp + scroll all happen inside the page in a single
+     *  round trip (previously 3 WebDriver calls per 20 px step). */
     private void nudgeScroll(int dyPx) {
-        int target = (int) Math.max(0, Math.min(scrollMax(), scrollY() + dyPx));
-        exec("window.scrollTo({top: arguments[0], behavior: 'auto'});", target);
+        exec("var max = document.documentElement.scrollHeight - window.innerHeight;" +
+             "var t = Math.max(0, Math.min(max, window.scrollY + arguments[0]));" +
+             "window.scrollTo({top: t, behavior: 'auto'});", dyPx);
         sleep(25);
-    }
-
-    private void waitScrollReaches(long target, long timeoutMs) {
-        long deadline = System.currentTimeMillis() + timeoutMs;
-        while (System.currentTimeMillis() < deadline) {
-            if (Math.abs(scrollY() - target) < 2L) {
-                return;
-            }
-            nudgeScroll(target > scrollY() ? 40 : -40);
-        }
-        // Best-effort hard set even if we raced above — final position only matters.
-        exec("window.scrollTo(0, arguments[0]);", Math.max(0L, Math.min(scrollMax(), target)));
-        sleep(50);
     }
 
     private static double toDouble(Object v) {
@@ -89,6 +74,24 @@ class AttendanceListHeaderTakeoverUiTest extends UiTestBase {
         } catch (NumberFormatException ignored) {
             return 0.0;
         }
+    }
+
+    /**
+     * Waits for N real animation frames to pass in the page. The #119 header/filter
+     * state machine runs inside a requestAnimationFrame callback fired by scroll
+     * events, so pumping a few frames is both SUFFICIENT (the machine has seen the
+     * new position and applied its class flips) and much faster than the fixed
+     * 300/600 ms sleeps it replaces — ~16 ms per frame.
+     * Selenium appends the async callback as the LAST argument, so read it via
+     * arguments[arguments.length - 1]; the 1200 ms timeout is a starvation safety
+     * net for headless render loops, not the normal path.
+     */
+    private void pumpFrames(int n) {
+        ((JavascriptExecutor) driver).executeAsyncScript(
+                "var done = arguments[arguments.length - 1]; var left = arguments[0];" +
+                "var bail = setTimeout(done, 1200);" +
+                "function f(){ if (--left <= 0) { clearTimeout(bail); done(); } else { requestAnimationFrame(f); } }" +
+                "requestAnimationFrame(f);", n);
     }
 
     private static void sleep(long ms) {
@@ -180,6 +183,11 @@ class AttendanceListHeaderTakeoverUiTest extends UiTestBase {
         //    do an extra ~40 px of scroll to push it cleanly out and into the "sticky filter" state.
         double headerBottom = rectBottom("#dashboardHeader");
         long deadline = System.currentTimeMillis() + 25_000L;
+        // Coarse steps for the long distance BEFORE the handoff line: the #119
+        // machine is positional (fires when top crosses H), not step-size sensitive.
+        while (System.currentTimeMillis() < deadline && rectTop("#uber-filter-container") > headerBottom + 60) {
+            nudgeScroll(60);
+        }
         while (System.currentTimeMillis() < deadline && rectTop("#uber-filter-container") > headerBottom) {
             nudgeScroll(20);
         }
@@ -256,7 +264,7 @@ class AttendanceListHeaderTakeoverUiTest extends UiTestBase {
         // following the page content up/off-screen.
         int beforeSticky = (int) rectTop("#uber-filter-container");
         exec("window.scrollTo(0, arguments[0]);", scrollY() + 150);
-        sleep(300);  // let CSS sticky settle / requestAnimationFrame loop run a few frames
+        pumpFrames(3);  // rAF pump replaces the fixed 300 ms sleep (machine settles in 1-2 frames)
         int afterSticky = (int) rectTop("#uber-filter-container");
         assertThat(Math.abs(afterSticky - beforeSticky))
                 .describedAs("filter should be STICKY after release (does not drift more than a small tolerance with further scroll)")
@@ -264,7 +272,9 @@ class AttendanceListHeaderTakeoverUiTest extends UiTestBase {
 
         // Spec requirement (phase 5): scroll back to the very top → header returns, filter returns below.
         exec("window.scrollTo(0, 0);");
-        sleep(600); // wait for CSS to fully settle
+        pumpFrames(4); // scroll event + rAF settle replaces the fixed 600 ms sleep
+        // The machine must have left PHASE B/C (header .scrolled removed) after
+        // the filter climbed back below H — asserted below via geometry anyway.
         System.out.println("[DIAG-SCROLLBACK] after scrollTo(0): sy=" + scrollY()
             + " released=" + ((JavascriptExecutor) driver).executeScript("return document.body.classList.contains(\"detail-released\")")
             + " headerTop=" + rectTop("#dashboardHeader")
@@ -325,8 +335,12 @@ class AttendanceListHeaderTakeoverUiTest extends UiTestBase {
                 By.cssSelector("#participants-table tbody tr")));
 
         double headerBottom = rectBottom("#dashboardHeader");
-        // Phase 3: scroll until filter reaches the bottom row of the menu.
+        // Phase 3: scroll until filter reaches the bottom row of the menu
+        // (coarse 60 px steps far from the line, then 20 px for the final approach).
         long deadline = System.currentTimeMillis() + 25_000L;
+        while (System.currentTimeMillis() < deadline && rectTop("#uber-filter-container") > headerBottom + 60) {
+            nudgeScroll(60);
+        }
         while (System.currentTimeMillis() < deadline && rectTop("#uber-filter-container") > headerBottom) {
             nudgeScroll(20);
         }
@@ -349,7 +363,7 @@ class AttendanceListHeaderTakeoverUiTest extends UiTestBase {
         assertThat(rectTop("#dashboardHeader")).as("header off-screen after release on event page").isLessThan(0.0);
 
         exec("window.scrollTo(0, arguments[0]);", scrollY() + 150);
-        sleep(300);
+        pumpFrames(3);
         int beforeSticky = (int) rectTop("#uber-filter-container");
         // sticky check: position is essentially frozen against further scroll
         assertThat(Math.abs((int) rectTop("#uber-filter-container") - beforeSticky))
@@ -357,7 +371,7 @@ class AttendanceListHeaderTakeoverUiTest extends UiTestBase {
                 .isLessThanOrEqualTo(8);
 
         exec("window.scrollTo(0, 0);");
-        sleep(600); // wait for CSS settle; event pages may behave slightly differently re: natural padding
+        pumpFrames(4); // rAF settle replaces the fixed 600 ms sleep
         System.out.println("[DIAG-EVENT-SCROLLBACK] sy=" + scrollY()
             + " released=" + ((JavascriptExecutor) driver).executeScript("return document.body.classList.contains(\"detail-released\")")
             + " headerTop=" + rectTop("#dashboardHeader")

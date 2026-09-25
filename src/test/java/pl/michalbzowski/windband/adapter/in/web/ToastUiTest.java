@@ -2,9 +2,11 @@ package pl.michalbzowski.windband.adapter.in.web;
 
 import org.junit.jupiter.api.Test;
 import org.openqa.selenium.By;
+import org.openqa.selenium.WebDriver;
 import org.openqa.selenium.JavascriptExecutor;
 import org.openqa.selenium.WebElement;
 import org.openqa.selenium.support.ui.ExpectedConditions;
+import org.openqa.selenium.support.ui.FluentWait;
 import org.openqa.selenium.support.ui.WebDriverWait;
 import pl.michalbzowski.windband.UiTestBase;
 
@@ -55,7 +57,7 @@ class ToastUiTest extends UiTestBase {
     @Test
     void shouldDisplaySuccessToastWithCorrectPositionAndStyles() {
         loginAndNavigateTo("/members");
-        WebDriverWait wait = new WebDriverWait(driver, Duration.ofSeconds(10));
+        FluentWait<WebDriver> wait = new WebDriverWait(driver, Duration.ofSeconds(10)).pollingEvery(Duration.ofMillis(100));
 
         // Sanity: the container exists in the DOM (it must be included by the page)
         WebElement container = wait.until(ExpectedConditions.presenceOfElementLocated(
@@ -167,7 +169,7 @@ class ToastUiTest extends UiTestBase {
         // === Auto-dismissal: success toasts disappear after ~3s ===
         // Toast.show sets a 3s timeout for success; the fade-out animation is 0.3s.
         // We wait up to 8s for the element to be gone.
-        new WebDriverWait(driver, Duration.ofSeconds(8))
+        new WebDriverWait(driver, Duration.ofSeconds(8)).pollingEvery(Duration.ofMillis(100))
                 .until(ExpectedConditions.invisibilityOfElementLocated(
                         By.cssSelector("#toast-container .toast.success")));
     }
@@ -179,7 +181,7 @@ class ToastUiTest extends UiTestBase {
     @Test
     void shouldDisplayErrorToastThatDoesNotAutoHide() {
         loginAndNavigateTo("/members");
-        WebDriverWait wait = new WebDriverWait(driver, Duration.ofSeconds(10));
+        FluentWait<WebDriver> wait = new WebDriverWait(driver, Duration.ofSeconds(10)).pollingEvery(Duration.ofMillis(100));
 
         ((JavascriptExecutor) driver).executeScript(
                 "window.Toast.error('Test error: cos poszlo nie tak');");
@@ -207,7 +209,8 @@ class ToastUiTest extends UiTestBase {
 
         // Error toasts do NOT auto-hide — confirm it is still present in the DOM
         // after a generous wait (replaces fixed Thread.sleep — waits on DOM persistence)
-        new WebDriverWait(driver, Duration.ofSeconds(4)).until(d ->
+        new WebDriverWait(driver, Duration.ofSeconds(4)).pollingEvery(Duration.ofMillis(100))
+                .until(d ->
                 !d.findElements(By.cssSelector("#toast-container .toast.error")).isEmpty());
         List<WebElement> stillThere = driver.findElements(
                 By.cssSelector("#toast-container .toast.error"));
@@ -223,7 +226,7 @@ class ToastUiTest extends UiTestBase {
     @Test
     void shouldShowSuccessToastAfterAddingMemberThroughForm() {
         loginAndNavigateTo("/members");
-        WebDriverWait wait = new WebDriverWait(driver, Duration.ofSeconds(10));
+        FluentWait<WebDriver> wait = new WebDriverWait(driver, Duration.ofSeconds(10)).pollingEvery(Duration.ofMillis(100));
 
         // Open the new-member form
         driver.findElement(By.xpath("//button[contains(., 'Dodaj członka')]")).click();

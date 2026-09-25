@@ -4,7 +4,9 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.openqa.selenium.By;
+import org.openqa.selenium.WebDriver;
 import org.openqa.selenium.support.ui.ExpectedConditions;
+import org.openqa.selenium.support.ui.FluentWait;
 import org.openqa.selenium.support.ui.WebDriverWait;
 import pl.michalbzowski.windband.UiTestBase;
 
@@ -52,10 +54,12 @@ class ScoreFileUploadUiTest extends UiTestBase {
 
     @Test
     void shouldRenderUploadSection_withFileInputAndButtons() {
-        loginAndNavigateTo("/bands/1/compositions");
-        driver.get(baseUrl() + "/bands/1/compositions/" + compositionId);
+        // The compositions LIST page render was pure overhead — loginAndNavigateTo
+        // goes straight to the detail (its wait already accepts #composition-detail),
+        // so the same-origin requirement for the XHR helpers is met in one load.
+        loginAndNavigateTo("/bands/1/compositions/" + compositionId);
 
-        WebDriverWait wait = new WebDriverWait(driver, Duration.ofSeconds(15));
+        FluentWait<WebDriver> wait = new WebDriverWait(driver, Duration.ofSeconds(15)).pollingEvery(Duration.ofMillis(100));
         // The page must render without a Thymeleaf JS error first.
         wait.until(ExpectedConditions.presenceOfElementLocated(By.id("composition-detail")));
         // The upload section (dropzone) must be visible on the detail page.
@@ -82,9 +86,11 @@ class ScoreFileUploadUiTest extends UiTestBase {
         // Generate a 3-page PDF in a temp file.
         Path pdf = generateTempPdf(3);
 
-        loginAndNavigateTo("/bands/1/compositions");
-        driver.get(baseUrl() + "/bands/1/compositions/" + compositionId);
-        WebDriverWait wait = new WebDriverWait(driver, Duration.ofSeconds(15));
+        // The compositions LIST page render was pure overhead — loginAndNavigateTo
+        // goes straight to the detail (its wait already accepts #composition-detail),
+        // so the same-origin requirement for the XHR helpers is met in one load.
+        loginAndNavigateTo("/bands/1/compositions/" + compositionId);
+        FluentWait<WebDriver> wait = new WebDriverWait(driver, Duration.ofSeconds(15)).pollingEvery(Duration.ofMillis(100));
         wait.until(ExpectedConditions.presenceOfElementLocated(By.id("composition-detail")));
         wait.until(ExpectedConditions.presenceOfElementLocated(By.id("score-upload-panel")));
 
@@ -164,9 +170,11 @@ class ScoreFileUploadUiTest extends UiTestBase {
 
         driver.manage().window().setSize(new Dimension(360, 800));
 
-        loginAndNavigateTo("/bands/1/compositions");
-        driver.get(baseUrl() + "/bands/1/compositions/" + compositionId);
-        WebDriverWait wait = new WebDriverWait(driver, Duration.ofSeconds(20));
+        // The compositions LIST page render was pure overhead — loginAndNavigateTo
+        // goes straight to the detail (its wait already accepts #composition-detail),
+        // so the same-origin requirement for the XHR helpers is met in one load.
+        loginAndNavigateTo("/bands/1/compositions/" + compositionId);
+        FluentWait<WebDriver> wait = new WebDriverWait(driver, Duration.ofSeconds(20)).pollingEvery(Duration.ofMillis(100));
         wait.until(ExpectedConditions.presenceOfElementLocated(By.id("composition-detail")));
 
         // The per-file preview panel is rendered (pageCount > 0) inside the file row.
@@ -274,10 +282,12 @@ class ScoreFileUploadUiTest extends UiTestBase {
         // 512x780 is close enough to a real phone; we use this for the overflow assertion.
         driver.manage().window().setSize(new Dimension(360, 800));
 
-        loginAndNavigateTo("/bands/1/compositions");
-        driver.get(baseUrl() + "/bands/1/compositions/" + compositionId);
+        // The compositions LIST page render was pure overhead — loginAndNavigateTo
+        // goes straight to the detail (its wait already accepts #composition-detail),
+        // so the same-origin requirement for the XHR helpers is met in one load.
+        loginAndNavigateTo("/bands/1/compositions/" + compositionId);
 
-        WebDriverWait wait = new WebDriverWait(driver, Duration.ofSeconds(20));
+        FluentWait<WebDriver> wait = new WebDriverWait(driver, Duration.ofSeconds(20)).pollingEvery(Duration.ofMillis(100));
         wait.until(ExpectedConditions.presenceOfElementLocated(By.id("composition-detail")));
         wait.until(ExpectedConditions.visibilityOfElementLocated(By.id("score-upload-panel")));
 
@@ -308,9 +318,11 @@ class ScoreFileUploadUiTest extends UiTestBase {
         // Generate a 2-page PDF.
         Path pdf = generateTempPdf(2);
 
-        loginAndNavigateTo("/bands/1/compositions");
-        driver.get(baseUrl() + "/bands/1/compositions/" + compositionId);
-        WebDriverWait wait = new WebDriverWait(driver, Duration.ofSeconds(15));
+        // The compositions LIST page render was pure overhead — loginAndNavigateTo
+        // goes straight to the detail (its wait already accepts #composition-detail),
+        // so the same-origin requirement for the XHR helpers is met in one load.
+        loginAndNavigateTo("/bands/1/compositions/" + compositionId);
+        FluentWait<WebDriver> wait = new WebDriverWait(driver, Duration.ofSeconds(15)).pollingEvery(Duration.ofMillis(100));
         wait.until(ExpectedConditions.presenceOfElementLocated(By.id("composition-detail")));
         wait.until(ExpectedConditions.visibilityOfElementLocated(By.id("score-upload-panel")));
 
@@ -336,7 +348,7 @@ class ScoreFileUploadUiTest extends UiTestBase {
         confirmBtn.click();
 
         // Wait for file to appear in the list
-        WebDriverWait successWait = new WebDriverWait(driver, Duration.ofSeconds(20));
+        FluentWait<WebDriver> successWait = new WebDriverWait(driver, Duration.ofSeconds(20)).pollingEvery(Duration.ofMillis(100));
         successWait.until(ExpectedConditions.presenceOfElementLocated(
                 By.xpath("//ul[@id='score-files-list']//a[contains(text(),'test.pdf')]")));
 
