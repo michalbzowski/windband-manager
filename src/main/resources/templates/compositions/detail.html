@@ -1382,6 +1382,23 @@
     var previewVisible = false;
     var previewToken = 0;
 
+    // User request (2026-09-26): the LEFT range button doubles as a LOCK toggle.
+    // LOCKED   — "Strona od" is pinned at the page where the lock was set; ‹/› drive
+    //            "Strona do" in BOTH directions (forward bumps it up, backward lowers
+    //            it) but "do" can never drop below the locked "od". Workflow: find the
+    //            page where the instrument's voice STARTS → lock it → hunt for the END
+    //            → overshoot? one step back — the range is then correct, save directly.
+    // UNLOCKED — the classic behaviour (req. 7 + 8): the previewed page flows into
+    //            "Strona od" and "Strona do" only ever bumps UP, never down.
+    // The lock never survives a file switch, a save, or closing the dialog.
+    var fromLocked = false;
+    var lockedFrom = null;
+
+    function clearFromLock() {
+        fromLocked = false;
+        lockedFrom = null;
+    }
+
     function thumbUrl(page, width) {
         return '/bands/' + bandId + '/compositions/' + compId +
                '/files/' + encodeURIComponent(filePicker.value) +
@@ -1393,9 +1410,16 @@
         if (previewBadge) previewBadge.textContent = 'Strona ' + page + ' z ' + (t > 900 ? '…' : t);
         if (btnPrev) btnPrev.disabled = page <= 1;
         if (btnNext) btnNext.disabled = (previewTotal != null) && page >= previewTotal;
-        // Requirement 7: the shown page flows straight into "Strona od".
-        if (fromInp) fromInp.value = String(page);
-        bumpTo(fromPage(), 'preview');
+        if (fromLocked && lockedFrom != null) {
+            // Locked (2026-09-26): "od" never moves; "do" chases the previewed page in
+            // both directions, clamped so it cannot fall below the locked start.
+            if (toInp) toInp.value = String(page < lockedFrom ? lockedFrom : page);
+            clearError();
+        } else {
+            // Requirement 7: the shown page flows straight into "Strona od".
+            if (fromInp) fromInp.value = String(page);
+            bumpTo(fromPage(), 'preview');
+        }
         syncRangeButtons();   // keep the digits on the range buttons in step (iter. 2)
     }
 
@@ -1475,6 +1499,7 @@
 
     function hidePreview() {
         previewVisible = false;
+        clearFromLock();
         if (previewBox) {
             previewBox.hidden = true;
             previewBox.classList.remove('ap-calm');     // never carry the overlay state into a later open
@@ -1505,6 +1530,7 @@
 
     filePicker.addEventListener('change', function () {
         var v = String(filePicker.value);
+        clearFromLock();          // a different PDF → the old start page means nothing (2026-09-26)
         if (v === '') { hidePreview(); return; }
         lastUserFileId = v;
         var max = selectedMax();
@@ -1524,21 +1550,31 @@
     // "Strona od" / "Strona do" are hidden, so the bar buttons are the manual way to
     // pin each end of the range to the currently previewed page. Both reuse the
     // established bump rule: raising the range start never leaves "do" below "od".
+    // Since 2026-09-26 the LEFT button is also the START LOCK toggle (see fromLocked).
     function setRangeEnd(which) {
         var page = previewPage;
         if (which === 'from') {
-            if (fromInp) fromInp.value = String(page);
-            bumpTo(page, 'range');
+            if (fromLocked) {
+                // Second press: release the lock. The pinned value stays on the
+                // button/hidden field; from now on navigation drives "od" again.
+                clearFromLock();
+                showStatus('success', 'Strona od odblokowana — przewracanie znowu ustawia stronę od');
+            } else {
+                if (fromInp) fromInp.value = String(page);
+                bumpTo(page, 'range');
+                fromLocked = true;
+                lockedFrom = page;
+                showStatus('success', 'Strona od zablokowana na ' + page
+                    + ' — ⇆ przewracają tylko stronę do');
+            }
             clearError();
         } else if (toInp) {
             var f = fromPage();
             var v = (!isNaN(f) && page < f) ? f : page;   // "do" can never go below "od"
             toInp.value = String(v);
             clearError();
+            showStatus('success', 'Strona do = ' + toInp.value);
         }
-        showStatus('success', which === 'from'
-            ? 'Strona od = ' + (fromInp ? fromInp.value : page)
-            : 'Strona do = ' + toInp.value);
         syncRangeButtons();   // the pressed button now displays this page number
     }
     // ── Number labels on the range buttons (user request 2026-09-24, iteration 2) ──
@@ -1556,8 +1592,17 @@
         var tv = (toInp && toInp.value !== '') ? String(toInp.value) : fv;
         if (btnRangeFrom) {
             btnRangeFrom.textContent = fv;
+            // LOCKED visual state (user request 2026-09-26): the digit stays, the ring
+            // + aria-pressed communicate that ‹/› now drive "Strona do" instead of "od".
+            btnRangeFrom.classList.toggle('ap-locked', fromLocked);
+            btnRangeFrom.setAttribute('aria-pressed', fromLocked ? 'true' : 'false');
             btnRangeFrom.setAttribute('aria-label',
-                "Strona od: " + fv + " — kliknij, aby ustawić na podglądaną stronę");
+                fromLocked
+                    ? "Strona od: " + fv + " — zablokowana, kliknij, aby odblokować"
+                    : "Strona od: " + fv + " — kliknij, aby zablokować tę stronę startową");
+            btnRangeFrom.title = fromLocked
+                ? "Strona od zablokowana na " + fv + " — ‹/› przesuwa tylko stronę do; kliknij, aby odblokować"
+                : "Strona od — kliknij, aby zablokować podglądaną stronę jako początek głosu";
         }
         if (btnRangeTo) {
             btnRangeTo.textContent = tv;
@@ -1634,8 +1679,14 @@
     });
 
     // Typing a higher "Strona od" bumps "Strona do" up (kept behaviour from 2026-09-24).
+    // An explicit typed value also releases the start lock (2026-09-26) — the user is
+    // overriding the pinned page directly, so navigation goes back to driving "od".
     if (fromInp) {
-        fromInp.addEventListener('input', function () { bumpTo(fromPage(), 'manual'); syncRangeButtons(); });
+        fromInp.addEventListener('input', function () {
+            clearFromLock();
+            bumpTo(fromPage(), 'manual');
+            syncRangeButtons();
+        });
     }
 
     // ------------------------------------------------------------------
@@ -1683,6 +1734,9 @@
                 // the file picker keeps its selection so the preview stays usable, and the
                 // page fields stay where the user left them (bump rule already applied).
                 if (roleInp) { roleInp.value = ''; }
+                // The saved voice's start lock is done with — unlock for the next instrument.
+                clearFromLock();
+                syncRangeButtons();
                 showStatus('success', 'Zapisano głos ✓ — możesz od razu dodać następny.');
                 refreshPartsPanelAfterSave();
             })
@@ -1726,6 +1780,7 @@
     function resetOnClose() {
         if (!form) return;
         form.reset();
+        clearFromLock();      // the lock never survives a close (user request 2026-09-26)
         syncRangeButtons();   // inputs are back to their HTML defaults — echo them (iter. 2)
         // The overlay state (calm/visible) never survives a close — every open starts fresh.
         if (previewBox) {
