@@ -641,6 +641,9 @@ class CompositionDetailPartsUiTest extends UiTestBase {
                 .as("⇤ pins hidden 'Strona od' to the previewed page 3").isEqualTo("3");
         assertThat((String) js.executeScript("return document.getElementById('part-page-to').value;"))
                 .as("bump rule — 'Strona do' (default 2) rises to 3 with it").isEqualTo("3");
+        // 2026-09-26: that same press also ARMS the start lock — release it so the
+        // classic navigation-drives-'od' behaviour below stays under test.
+        js.executeScript("document.getElementById('part-range-from').click();");
 
         // Move back to page 2: navigation itself re-pins the hidden "od" to 2 (req. 7 —
         // by design the previewed page drives 'od'), so ⇥ here sets a valid 2–2 range.
@@ -650,10 +653,12 @@ class CompositionDetailPartsUiTest extends UiTestBase {
         assertThat((String) js.executeScript("return document.getElementById('part-page-to').value;"))
                 .as("⇥ pins 'do' to the previewed page 2").isEqualTo("2");
 
-        // ⇤ on page 2 is a no-op re-pin; then jump to the last page and pin 'do' = 5.
+        // ⇤ on page 2 is a no-op re-pin (2026-09-26: + locks the start — release it
+        // immediately); then jump to the last page and pin 'do' = 5.
         js.executeScript("document.getElementById('part-range-from').click();");
         assertThat((String) js.executeScript("return document.getElementById('part-page-from').value;"))
                 .as("⇤ keeps 'od' at page 2").isEqualTo("2");
+        js.executeScript("document.getElementById('part-range-from').click();");
         driver.findElement(By.id("part-preview-next")).click();
         driver.findElement(By.id("part-preview-next")).click();
         driver.findElement(By.id("part-preview-next")).click();
@@ -713,9 +718,12 @@ class CompositionDetailPartsUiTest extends UiTestBase {
         assertThat(rangeButtonLabel(js, "part-range-to")).as("right button starts at 2").isEqualTo("2");
 
         // ── a) page 1, press LEFT → it shows 1; the right keeps its own number ──────
+        // (2026-09-26: the press also arms the start lock — released right away so the
+        // classic navigation-drives-'od' rules below stay under test.)
         js.executeScript("document.getElementById('part-range-from').click();");
         assertThat(rangeButtonLabel(js, "part-range-from")).as("(a) left shows 1 on page 1").isEqualTo("1");
         assertThat(rangeButtonLabel(js, "part-range-to")).as("(d) right untouched by left press").isEqualTo("2");
+        js.executeScript("document.getElementById('part-range-from').click();");
 
         // ── b) page 1, press RIGHT → it shows 1 (pinned to the previewed page) ───────
         js.executeScript("document.getElementById('part-range-to').click();");
@@ -768,6 +776,101 @@ class CompositionDetailPartsUiTest extends UiTestBase {
         assertThat((String) js.executeScript(
                 "return document.getElementById('part-range-to').getAttribute('aria-label');"))
                 .startsWith("Strona do: 5");
+    }
+
+    /**
+     * User request (2026-09-26) — START-PAGE LOCK on the left range button.
+     * Scenario: the user flips through the score until the page where the wanted
+     * instrument's voice BEGINS, presses the left (od) button — that page is then
+     * pinned. Further ‹/› navigation drives only the RIGHT (do) button, in BOTH
+     * directions (so an overshoot can be corrected one page back and the range is
+     * immediately right), but "do" can never fall below the locked "od". A second
+     * press on the left button releases the lock and the classic
+     * navigation-drives-'od' behaviour resumes.
+     */
+    @Test
+    void addPartModal_lockingStartPageDrivesOnlyTheEndPage() {
+        loginAndNavigateTo("/bands/1/compositions/" + compositionId);
+        WebDriverWait wait = new WebDriverWait(driver, WAIT);
+        JavascriptExecutor js = (JavascriptExecutor) driver;
+
+        driver.findElement(By.id("open-add-part-modal-btn")).click();
+        wait.until(wd -> {
+            Boolean open = (Boolean) js.executeScript(
+                    "var d = document.getElementById('add-part-dialog');" +
+                    "return d && (d.open === true || d.hasAttribute('open'));");
+            return Boolean.TRUE.equals(open);
+        });
+        wait.until(wd -> {
+            Boolean loaded = (Boolean) js.executeScript(
+                    "var i = document.getElementById('part-preview-img');" +
+                    "return !!(i && i.getAttribute('src') && i.naturalWidth > 0);");
+            return Boolean.TRUE.equals(loaded);
+        });
+
+        // ── find the voice's START on page 3, lock it ────────────────────────────────
+        driver.findElement(By.id("part-preview-next")).click();
+        wait.until(wd -> "Strona 2 z 5".equals(previewBadgeText(js)));
+        driver.findElement(By.id("part-preview-next")).click();
+        wait.until(wd -> "Strona 3 z 5".equals(previewBadgeText(js)));
+
+        js.executeScript("document.getElementById('part-range-from').click();");
+        assertThat((Boolean) js.executeScript(
+                "return document.getElementById('part-range-from').classList.contains('ap-locked');"))
+                .as("left button shows the LOCKED state").isTrue();
+        assertThat((String) js.executeScript(
+                "return document.getElementById('part-range-from').getAttribute('aria-pressed');"))
+                .as("lock is announced to assistive tech").isEqualTo("true");
+        assertThat(hiddenPageValue(js, "part-page-from")).as("locked 'od' = 3").isEqualTo("3");
+        assertThat(hiddenPageValue(js, "part-page-to")).as("bump rule: 'do' rose to 3").isEqualTo("3");
+
+        // ── forward: hunt for the END — 'od' stays 3, 'do' follows the preview up ────
+        driver.findElement(By.id("part-preview-next")).click();
+        wait.until(wd -> "Strona 4 z 5".equals(previewBadgeText(js)));
+        assertThat(hiddenPageValue(js, "part-page-from")).as("'od' stays locked while navigating").isEqualTo("3");
+        assertThat(hiddenPageValue(js, "part-page-to")).as("'do' bumped to the previewed page 4").isEqualTo("4");
+        assertThat(rangeButtonLabel(js, "part-range-from")).as("left digit untouched by nav").isEqualTo("3");
+
+        driver.findElement(By.id("part-preview-next")).click();
+        wait.until(wd -> "Strona 5 z 5".equals(previewBadgeText(js)));
+        assertThat(hiddenPageValue(js, "part-page-to")).as("'do' tracks page 5").isEqualTo("5");
+
+        // ── overshoot! step back — 'do' FOLLOWS DOWN too (the new locked behaviour) ──
+        driver.findElement(By.id("part-preview-prev")).click();
+        wait.until(wd -> "Strona 4 z 5".equals(previewBadgeText(js)));
+        assertThat(hiddenPageValue(js, "part-page-from")).as("'od' still locked at 3").isEqualTo("3");
+        assertThat(hiddenPageValue(js, "part-page-to")).as("'do' retreated to 4").isEqualTo("4");
+
+        driver.findElement(By.id("part-preview-prev")).click();
+        wait.until(wd -> "Strona 3 z 5".equals(previewBadgeText(js)));
+        assertThat(hiddenPageValue(js, "part-page-to")).as("'do' reaches the locked start").isEqualTo("3");
+
+        // ── the hard floor: cannot retreat 'do' BELOW the locked 'od' ────────────────
+        driver.findElement(By.id("part-preview-prev")).click();
+        wait.until(wd -> "Strona 2 z 5".equals(previewBadgeText(js)));
+        assertThat(hiddenPageValue(js, "part-page-from")).as("'od' never moves while locked").isEqualTo("3");
+        assertThat(hiddenPageValue(js, "part-page-to")).as("'do' clamped at the locked start").isEqualTo("3");
+        assertThat((String) js.executeScript(
+                "return String(document.getElementById('part-range-error').classList.contains('hidden'));"))
+                .as("clamping never surfaces a bogus range error").isEqualTo("true");
+        assertLeftNotAfterRight(js);
+
+        // ── second press on the left button UNLOCKS — classic behaviour resumes ──────
+        js.executeScript("document.getElementById('part-range-from').click();");
+        assertThat((Boolean) js.executeScript(
+                "return document.getElementById('part-range-from').classList.contains('ap-locked');"))
+                .as("lock released").isFalse();
+        assertThat(hiddenPageValue(js, "part-page-from")).as("release keeps the pinned 3").isEqualTo("3");
+
+        driver.findElement(By.id("part-preview-prev")).click();
+        wait.until(wd -> "Strona 1 z 5".equals(previewBadgeText(js)));
+        assertThat(hiddenPageValue(js, "part-page-from")).as("'od' follows navigation again").isEqualTo("1");
+        assertThat(hiddenPageValue(js, "part-page-to"))
+                .as("unlocked bump rule is up-only — 'do' keeps 3").isEqualTo("3");
+    }
+
+    private static String hiddenPageValue(JavascriptExecutor js, String id) {
+        return (String) js.executeScript("return document.getElementById(arguments[0]).value;", id);
     }
 
     /** (d) the left range digit must never sit past the right one. */
