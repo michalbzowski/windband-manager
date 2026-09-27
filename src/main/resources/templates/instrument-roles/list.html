@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="pl" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/layout :: head('Instrument → role')}"></head>
+<body class="dashboard-page">
+
+<div th:replace="~{fragments/layout :: dialogs}"></div>
+
+<main class="container" id="content">
+    <section class="dashboard-upcoming">
+        <header th:replace="~{fragments/layout :: dashboard-header}"></header>
+
+        <div id="instrument-roles-content">
+            <nav th:replace="~{fragments/page-header :: page-header-b(
+                                @{/bands/__${bandId}__/compositions(bandId=${bandId})}, 'Instrument → role',
+                                null, null,
+                                null, null, '#instrument-roles-content',
+                                null, null, null, null)}"></nav>
+
+            <p class="muted" style="font-size: 0.92rem; margin: 0.75rem 0 1rem;">
+                Mapowania etykiety instrumentu z nut (np. „Klarinet B") na rolę w systemie
+                (np. „Saksofon 1"). Nową etykietę członka podpinasz tak, bez SQL-a — dodany
+                wiersz od razu widzą importy i automatyczne oznaczanie głosów.
+            </p>
+
+            <div th:if="${error != null}" class="alert alert-error" id="role-map-form-errors"
+                 role="alert" aria-live="polite">
+                <p th:text="${error}">Błąd walidacji mapowania</p>
+            </div>
+            <div th:if="${success != null}" style="background:#d4edda; border:1px solid #c3e6cb; border-radius:8px; padding:0.75rem 1rem;"
+                 id="role-map-success" role="status" aria-live="polite">
+                <p th:text="${success}">Dodano mapowanie</p>
+            </div>
+
+            <!-- ══ Existing mappings (read path) ══ -->
+            <h3 style="margin: 1.25rem 0 0.5rem;">Zdefiniowane mapowania</h3>
+
+            <div th:if="${#lists.isEmpty(mappings)}">
+                <article>
+                    <p>Brak zdefiniowanych mapowań dla tego zespołu.</p>
+                    <p class="muted" style="font-size: 0.9em;">
+                        Dodaj pierwszy wiersz formularzem poniżej.
+                    </p>
+                </article>
+            </div>
+
+            <div th:unless="${#lists.isEmpty(mappings)}">
+                <table role="grid" id="role-maps-table">
+                    <thead>
+                        <tr>
+                            <th>Etykieta (tag)</th>
+                            <th>Rola w systemie</th>
+                            <th>Notatka</th>
+                            <th>Akcje</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr th:each="m : ${mappings}">
+                            <td><code th:text="${m.sourceTag}">Klarinet B</code></td>
+                            <td th:text="${m.targetRolePattern}">Saksofon 1</td>
+                            <td class="muted" th:text="${m.description}" style="font-size:0.9em;">notatka</td>
+                            <td>
+                                <form th:action="@{/bands/{bandId}/instrument-roles/{id}/delete(bandId=${bandId}, id=${m.id})}"
+                                      method="post" role="group" aria-label="Usuń mapowanie">
+                                    <button type="submit" class="outline small secondary"
+                                            th:data-role-map-id="${m.id}">Usuń</button>
+                                </form>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- ══ Add mapping (write path) ══ -->
+            <h3 style="margin: 1.5rem 0 0.5rem;" id="role-map-form-heading">Dodaj mapowanie</h3>
+            <form id="role-map-form" th:action="@{/bands/{bandId}/instrument-roles(bandId=${bandId})}"
+                  method="post" novalidate>
+                <div style="display:flex; flex-wrap:wrap; gap:0.75rem; align-items:flex-end;">
+                    <label style="flex:1 1 160px;">
+                        Etykieta (tag) *
+                        <input type="text" name="sourceTag" id="role-source-tag"
+                               th:value="${command.sourceTag}"
+                               placeholder="Klarinet B" required autocomplete="off">
+                    </label>
+                    <label style="flex:1 1 160px;">
+                        Rola w systemie *
+                        <input type="text" name="targetRolePattern" id="role-target-role"
+                               th:value="${command.targetRolePattern}"
+                               placeholder="Saksofon 1" required autocomplete="off">
+                    </label>
+                    <label style="flex:2 1 240px;">
+                        Notatka (opcjonalnie)
+                        <input type="text" name="description" id="role-description"
+                               th:value="${command.description}"
+                               placeholder="np. przyporządkowanie na próbę" autocomplete="off">
+                    </label>
+                </div>
+                <div style="margin-top:0.75rem;">
+                    <button type="submit" class="primary" id="add-role-map-btn">Dodaj mapowanie</button>
+                </div>
+            </form>
+        </div>
+    </section>
+</main>
+
+<footer th:replace="~{fragments/layout :: footer}"></footer>
+<div th:insert="~{fragments/layout :: toast-container}"></div>
+<div th:insert="~{fragments/layout :: footer-scripts}"></div>
+<div th:insert="~{fragments/layout :: dashboard-header-morph}"></div>
+</body>
+</html>
