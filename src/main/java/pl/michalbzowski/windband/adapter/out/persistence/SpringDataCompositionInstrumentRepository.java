@@ -10,6 +10,7 @@ import pl.michalbzowski.windband.domain.band.Band;
 import pl.michalbzowski.windband.domain.composition.Composition;
 import pl.michalbzowski.windband.domain.composition.CompositionInstrument;
 
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 
@@ -68,6 +69,17 @@ public interface SpringDataCompositionInstrumentRepository extends JpaRepository
             WHERE ci.composition.band = :band
             ORDER BY ci.pageFrom ASC, ci.id ASC""")
     List<CompositionInstrument> findAllByBand(@Param("band") Band band);
+
+    /**
+     * All part rows across a set of compositions (US-6.2 event distribution — one DB-fresh query
+     * instead of N parent-collection loads). Same JOIN FETCH discipline as {@link #findAllByBand}.
+     */
+    @Query("""
+            SELECT ci FROM CompositionInstrument ci
+            JOIN FETCH ci.composition JOIN FETCH ci.instrument
+            WHERE ci.composition.id IN :compositionIds
+            ORDER BY ci.composition.id ASC, ci.pageFrom ASC, ci.id ASC""")
+    List<CompositionInstrument> findAllByCompositionIdIn(@Param("compositionIds") Collection<Long> compositionIds);
 
     boolean existsByCompositionId(Long compositionId);
 

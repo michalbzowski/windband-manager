@@ -149,6 +149,59 @@
     </p>
 </section>
 
+<!-- US-6.2 — Rozdanie głosow: kto gra co na jakim zakresie stron + luki "brak muzyka".
+     Serwis read-only buduje to w transakcji; DTO jest calkowite skalarnie (Shape C). -->
+<section id="event-parts-panel" th:if="${partsDistribution != null and !partsDistribution.pieces().isEmpty()}" style="margin-bottom:1.5rem;">
+    <header style="display:flex; align-items:center; gap:0.75rem; margin-bottom:0.5rem; flex-wrap:wrap;">
+        <h3 style="margin:0;">&#x1F3BC; Rozdanie głosów</h3>
+        <small style="color:var(--pico-muted-color);">kto gra, na jakim zakresie stron — luki oznaczone „brak muzyka”</small>
+    </header>
+
+    <div th:each="piece : ${partsDistribution.pieces()}"
+         style="background:var(--pico-background-color); border:1px solid var(--pico-muted-border-color); border-radius:6px; padding:0.75rem 1rem; margin-bottom:0.5rem;">
+        <div style="display:flex; align-items:baseline; gap:0.5rem; margin-bottom:0.25rem; flex-wrap:wrap;">
+            <strong th:text="${piece.setlistPosition()}">1</strong>
+            <h4 style="margin:0;" th:text="${piece.title()}">Marsz Testowy</h4>
+            <span th:if="${piece.hasNoParts()}"
+                  style="margin-left:auto; background:var(--pico-warning-color); color:var(--pico-color-inverse); padding:0.1rem 0.5rem; border-radius:999px; font-size:0.8rem;">brak głosów</span>
+        </div>
+
+        <table th:if="${not piece.hasNoParts()}" style="width:100%; border-collapse:collapse; margin-top:0.25rem;">
+            <thead>
+            <tr style="text-align:left; color:var(--pico-muted-color);">
+                <th style="padding:0.25rem 0.5rem 0.25rem 0;">Głos</th>
+                <th style="padding:0.25rem 0.5rem;">Strony</th>
+                <th style="padding:0.25rem 0.5rem;">Muzyk</th>
+            </tr>
+            </thead>
+            <tbody>
+            <tr th:each="part : ${piece.parts()}" style="border-top:1px solid var(--pico-muted-border-color);">
+                <td style="padding:0.4rem 0.5rem 0.4rem 0;" th:text="${part.role()}">Flet 1</td>
+                <td style="padding:0.4rem 0.5rem;" th:text="${#numbers.toString(part.pageFrom()) + '–' + #numbers.toString(part.pageTo())}">5&ndash;8</td>
+                <td style="padding:0.4rem 0.5rem;">
+                    <span th:if="${part.isUncovered()}"
+                          style="background:var(--pico-error-color); color:var(--pico-color-inverse); padding:0.1rem 0.5rem; border-radius:999px; font-size:0.8rem;"
+                          role="status">brak muzyka</span>
+                    <ul th:if="${not part.isUncovered()}" style="margin:0; padding-left:1rem; list-style:none;">
+                        <li th:each="player : ${part.players()}">
+                            <span th:text="${player.memberName()}">Jan Kowalski</span>
+                            <span th:if="${not player.emailConsentGiven()}"
+                                  title="Nie wyraził(a) zgody na wysyłkę e-maili"
+                                  style="background:var(--pico-secondary-color); color:var(--pico-color-inverse); padding:0.05rem 0.4rem; border-radius:999px; font-size:0.7rem; margin-left:0.25rem;">brak zgody</span>
+                        </li>
+                    </ul>
+                </td>
+            </tr>
+            </tbody>
+        </table>
+    </div>
+</section>
+
+<section th:if="${partsDistribution != null and partsDistribution.pieces().isEmpty()}" style="margin-bottom:1.5rem;">
+    <h3 style="margin:0 0 0.25rem 0;">&#x1F3BC; Rozdanie głosów</h3>
+    <p style="color:var(--pico-muted-color); margin:0;">Brak utworów w setliście tego wydarzenia — dodaj utwory, aby rozdzielić głosy.</p>
+</section>
+
 <dialog id="add-composition-dialog" class="app-modal">
     <form method="post" th:action="@{/events/{id}/compositions(id=${event.id})}"
           onsubmit="return submitCompositionAddForm(this)">
