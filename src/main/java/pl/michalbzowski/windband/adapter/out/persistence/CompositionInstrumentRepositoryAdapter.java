@@ -8,6 +8,7 @@ import pl.michalbzowski.windband.domain.composition.Composition;
 import pl.michalbzowski.windband.domain.composition.CompositionInstrument;
 import pl.michalbzowski.windband.domain.composition.CompositionInstrumentRepository;
 
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 
@@ -56,6 +57,14 @@ public class CompositionInstrumentRepositoryAdapter implements CompositionInstru
 
     @Override
     public List<CompositionInstrument> findAllByBand(Band band) { return springData.findAllByBand(band); }
+
+    @Override
+    public List<CompositionInstrument> findAllByCompositionIdIn(Collection<Long> compositionIds) {
+        if (compositionIds == null || compositionIds.isEmpty()) {
+            return List.of();
+        }
+        return springData.findAllByCompositionIdIn(compositionIds);
+    }
 
     @Override
     public boolean existsByCompositionId(Long compositionId) { return springData.existsByCompositionId(compositionId); }

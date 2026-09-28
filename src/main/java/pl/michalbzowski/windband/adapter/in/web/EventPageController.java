@@ -12,6 +12,7 @@ import org.springframework.web.bind.annotation.*;
 
 import pl.michalbzowski.windband.application.dto.EventDetailDto.ParticipationDto;
 
+import pl.michalbzowski.windband.application.query.event.EventCompositionPartsQueryService;
 import pl.michalbzowski.windband.application.query.event.EventQueryService;
 
 import pl.michalbzowski.windband.application.query.member.MemberQueryService;
@@ -31,6 +32,8 @@ import java.time.LocalDate;
 public class EventPageController {
 
     private final EventQueryService eventQueryService;
+
+    private final EventCompositionPartsQueryService eventPartsQueryService;
 
     private final MemberQueryService memberQueryService;
 
@@ -122,6 +125,8 @@ public class EventPageController {
         model.addAttribute("instruments", instrumentQueryService.findAll(activeTeamId));
         model.addAttribute("bandCompositions", compositionQueryService.listByBand(activeTeamId, null));
         model.addAttribute("eventCompositions", eventCommandService.getEventCompositions(id));
+        // US-6.2 — concrete part list for the event: who plays what, over which pages (Shape C DTO).
+        model.addAttribute("partsDistribution", eventPartsQueryService.forEvent(id, activeTeamId));
         model.addAttribute("event", eventDetail);
 
         // Determine back URL from Referer header, default to events list

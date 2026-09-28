@@ -30,6 +30,13 @@ public interface CompositionInstrumentRepository {
     /** All parts of the given composition (the dominant read target — Parts tab of US-3.03). */
     List<CompositionInstrument> findAllByComposition(Composition composition);
 
+    /**
+     * All parts across a batch of compositions in a SINGLE query — for event-distribution reads
+     * (US-6.2) that must not trust the parent's {@code mappedBy} collection (stale once rows were
+     * added through this repository). DB-fresh, composition-scoped; callers prove band up front.
+     */
+    List<CompositionInstrument> findAllByCompositionIdIn(java.util.Collection<Long> compositionIds);
+
     /** Paginated version — for large libraries where a single query can span pages. */
     Page<CompositionInstrument> findAllByComposition(Composition composition, Pageable pageable);
 
