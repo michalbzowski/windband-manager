@@ -25,9 +25,9 @@ Create a team-scoped compositions library where band members can catalog pieces,
 | **Epic 2: File Upload & Storage** | 2.1 – 2.5 | Secure upload, storage strategy, validation | ✅ All done |
 | **Epic 3: Composition CRUD (Manual)** | 3.1 – 3.5 + 3.03 | Create/read/update/delete without AI | ✅ All done |
 | **Epic 4: AI-Assisted Score Analysis** | 4.1 – 4.7 | PDF/ZIP analysis, preview, verification | 🔶 US-4.1 + US-4.3 done · 4.2/4.4/4.5/4.6/4.7 not started |
-| **Epic 5: Instrument Alias Mapping** | 5.1 – 5.3 | Tag-to-role resolution for distribution | ⬜ Not started (domain layer US-1.2 ready) |
+| **Epic 5: Instrument Alias Mapping** | 5.1 – 5.3 | Tag-to-role resolution for distribution | 🔶 US-5.1 ✅ PR #251 (resolution service); US-5.2/5.3 ⬜ |
 | **Epic 6: Event Integration & Distribution** | 6.1 – 6.6 | Assign to event, generate parts, send | 🔶 US-7.2/6.1 event-setlist link done · generation + sending not started |
-| **Epic 7: UI & UX** | 7.0 – 7.9 | Thymeleaf templates, HTMX interactions | 🔶 nav (7.0) + parts panel (7.1) done · US-7.9 upload/preview next · role-map admin UI (7.3) and the rest open |
+| **Epic 7: UI & UX** | 7.0 – 7.9 | Thymeleaf templates, HTMX interactions | 🔶 nav (7.0) + parts panel (7.1) + role-map admin UI (7.3, PR #250) + upload/preview (7.9) done · the rest open |
 
 > **Status legend:** ✅ done · 🔶 partial / open items listed below · ⬜ not started · ❌ deliberately deferred
 >
@@ -71,7 +71,7 @@ All six stories are implemented and tested. Remaining open work per story is not
 - [x] Tests: `InstrumentAliasIT`, `InstrumentCommandServiceAliasTest`
 
 **Open items:**
-- ⬜ **Epic 5 (US-5.1–5.3)**: consuming the `aliasOf` hierarchy to resolve member instrument tags → composition roles ("Kornet" tag matches "Kornet 1", which is an alias of "Trąbka"). Persistence and domain mutator are ready; no resolution service or UI exists yet.
+- 🔶 **Epic 5 (US-5.1–5.3)**: consuming the `aliasOf` hierarchy to resolve member instrument tags → composition roles ("Kornet" tag matches "Kornet 1", which is an alias of "Trąbka"). Resolution service **landed in US-5.1 (PR #251)** — `"Kornet"` now resolves to `{Trąbka 1, Trąbka 2, Kornet 1}` via `InstrumentRoleResolutionQueryService`; what remains is US-5.2 (cache/invalidation seam) and US-5.3 (distribution-list consumption).
 
 **Story Points:** 2
 **Dependencies:** US-1.1 (band isolation pre-existed since V23/V28)
@@ -476,16 +476,27 @@ Not yet implemented. US-2.3 has already exploded the ZIP into per-entry `score_f
 
 ---
 
-## ⬜ Epic 5: Instrument Alias Mapping — Not started
+## 🔶 Epic 5: Instrument Alias Mapping — Partial (US-5.1 ✅; US-5.2/5.3 ⬜)
 
-> **Status note:** the *persistence* layer (US-1.2 — `aliasOf` self-reference on `Instrument`, guards against self/cross-band aliasing, root-target only) and the *domain unit test* are in place. What's missing is the **resolution service** that walks the alias chain to answer "which composition role does this member's `Kornet` tag map to", and its UI.
+> **Status note:** the *persistence* layer (US-1.2 — `aliasOf` self-reference on `Instrument`, guards against self/cross-band aliasing, root-target only), the domain unit test, **and now the resolution service (US-5.1)** are in place: `"Kornet"` tag → `{Trąbka 1, Trąbka 2, Kornet 1}` via `InstrumentRoleResolutionQueryService` (PR #251). What's missing is the cache/invalidation layer (US-5.2) and the consumption UI in the distribution flow (US-5.3 → US-6.2/6.3).
 
-### **US-5.1: Resolution algorithm (tag → role via alias chain)** ⬜
+### **US-5.1: Resolution algorithm (tag → role via alias chain)** ✅ in PR #251 (2026-09-28)
 > **As a** band manager or librarian
 > **I want a function that, given a member's instrument tag and my team's `InstrumentRoleMap` rows, returns the matching composition role(s)
 > **So that** "Kornet" (alias of "Trąbka") can legitimately match "Trąbka 1", "Trąbka 2", **and** "Kornet 1"
 
-Proposed design (not yet implemented): read via `InstrumentRoleMapRepository.findByBandIdAndSourceTag(bandId, sourceTag)` (US-1.4), then resolve each `targetRolePattern` against the instrument's `aliasOf` chain from US-1.2 (max depth guarded to prevent cycles — already enforced by the write path, but the read must still terminate). The result feeds US-5.3's distribution list.
+**Implemented:** `InstrumentRoleResolutionQueryService` (`application/query/composition/`) — pure application-layer read service, no UI (that's US-5.3's territory):
+- [x] Widen the input tag to its **alias family**: itself (always kept, so hand-typed map rows stay reachable), its canonical root when it is an alias, and every direct alias of that root — matching "Kornet" ⇒ {Trąbka 1, Trąbka 2, Kornet 1} exactly as the acceptance story requires
+- [x] Case-insensitive tag matching (folded with `Locale.ROOT`), mirroring V39's `lower(source_tag)` unique index so app and DB never disagree; role labels keep original spelling in results
+- [x] Deterministic output: deduped on folded role label, sorted by role then source tag — stable regardless of DB row order
+- [x] Two entry points: `resolveRoles(bandId, tag)` → `List<ResolvedInstrumentRole>` (role + matched `source_tag` provenance) and `resolveRoleNames(bandId, tag)` → flat `List<String>` for US-5.3's distribution list
+- [x] Fail-closed: blank/null tag → empty list (no port touched); unknown band → `IllegalArgumentException` from `getRequiredBand` (→ 400); band with no matching rows → empty list (valid state)
+- [x] Termination is structural — only one band's instruments + one band's role-map rows are ever loaded, and the write path forbids self/cross-band/chained aliases (`Instrument.setAliasOf`), so a 1-step family is bounded; the read still guards an `aliasOf` pointer that resolves to nothing
+- [x] Tests: 10 unit (Mockito contract) + 9 integration (real PG/H2: acceptance example, root/alias symmetry, second alias, provenance, hand-typed unknown tag, blank input, fail-closed band, unrelated roots, cross-band isolation). Full `./mvnw clean verify` BUILD SUCCESS — 639 tests green, Checkstyle + SpotBugs clean
+
+**Design deviations from the "Proposed design" above (recorded for US-5.2/5.3):**
+1. The walk is **symmetric family matching**, not a per-row `aliasOf` chain: the whole alias family (root + all its direct aliases) is treated as equivalent names of one musical role, so *both* "Kornet" and "Trąbka" resolve to the union of roles mapped under either label. This is what makes the story's example work for root players too.
+2. No in-memory cache yet — that is deliberately left to **US-5.2** (cache/invalidation). The current read loads at most one band's instruments and role-map rows; the US-5.2 cache layer can sit directly in front of `resolveRoles` without changing any caller.
 
 ### **US-5.2: Cache / invalidation** ⬜
 > **As a** system
@@ -711,11 +722,12 @@ Not planned in the original US list; listed here only to keep the "Epic 7" secti
 
 0. ~~US-7.11~~ ✅ shipped 2026-09-23 (V45 tokens, `PdfPageExtractor`, public endpoint, modal + e-mail switched). Note for the next Epic 6 work: `PartShareByEmailCommandService` now embeds the token URL — US-6.3 bulk distribution should reuse `PartShareTokenCommandService.tokenFor` rather than minting its own scheme.
 1. ~~US-7.9 — PDF upload button + header preview on detail page~~ ✅ present on `main` (verified against HEAD `5c337f0`, 2026-09-27): the US-2.1 upload endpoint was already there; `ScoreFileThumbRestController` + `ScoreFileThumbQueryService` (PDFBox page thumbnails, LRU-cached) and the upload + inline header/preview panels in `compositions/detail.html` are merged. MVP complete — an optional mobile-only visual polish pass may still be done ad-hoc, but it is no longer tracked here.
-2. ~~US-7.3 — InstrumentRoleMap admin UI~~ ✅ in PR #250 (2026-09-27, in review). Band-scoped page at `/bands/{bandId}/instrument-roles` with thin command/query services over the US-1.4 port; full test coverage (unit + IT + Selenium) and green `clean verify`. Once merged, this unblocks the rest of Epic 6/7 stories that currently lean on hand-written fixtures.
-3. **US-5.1 — alias resolution read path (now next in line).** US-1.2's `aliasOf` hierarchy is written but never walked by any read model yet. Once this lands, US-7.1's parts panel can auto-suggest roles from a member's tag (instead of requiring the manager to type "Trąbka 1"), and US-6.2's distribution list gets its primary input.
-4. **US-4.4 + US-4.5 — AI preview render + accept.** The runner seam (US-4.1) and the detail-page entry point (US-4.3) are done; what's missing is turning `arrangement_json_path` into an editable table and then writing the accepted rows into `composition_instruments` with their `PartSource.AI`/`.HYBRID` stamp. This story unblocks US-3.03 for teams who *do* want to use AI (US-7.1 is the no-AI alternative and already works).
-5. **US-6.2 / US-6.3 — distribution & delivery.** Epic 6's *core* value (getting pages to musicians) hasn't shipped yet; US-7.2 (setlist link) is the prerequisite and it's done, so 6.2 + 6.3 are the natural next pair.
-6. **US-4.6 / US-4.7 (re-run / cancel, ZIP-parent analysis).** Lower priority — only matters once an external-runner failure rate makes retries common, or once a band uploads multi-PDF ZIPs and expects them to be analysable per-entry.
+2. ~~US-7.3 — InstrumentRoleMap admin UI~~ ✅ merged (PR #250, 2026-09-28). Band-scoped page at `/bands/{bandId}/instrument-roles` with thin command/query services over the US-1.4 port; full test coverage (unit + IT + Selenium) and green `clean verify`. This unblocked the hand-written role-map fixtures used across Epic 6/7 tests.
+3. ~~US-5.1 — alias resolution read path~~ ✅ in PR #251 (2026-09-28). US-1.2's `aliasOf` hierarchy is now walked by a read model: `InstrumentRoleResolutionQueryService` resolves a member tag to its alias-family role set ("Kornet" ⇒ {Trąbka 1, Trąbka 2, Kornet 1}), returning provenance-tagged + name-list projections for consumers. No cache yet (US-5.2) and no UI consumption (US-5.3).
+4. **US-6.2 / US-6.3 — distribution & delivery.** Epic 6's *core* value (getting pages to musicians) hasn't shipped yet; US-7.2 (setlist link) and now US-5.1 (alias→role resolution, the primary input for "who plays what") are both done, so **6.2 (generate the concrete per-member part list)** is next in line — it should consume `resolveRoles`/`resolveRoleNames`. 6.3 (delivery) directly follows.
+5. **US-4.4 + US-4.5 — AI preview render + accept.** The runner seam (US-4.1) and the detail-page entry point (US-4.3) are done; what's missing is turning `arrangement_json_path` into an editable table and then writing the accepted rows into `composition_instruments` with their `PartSource.AI`/`.HYBRID` stamp. This story unblocks US-3.03 for teams who *do* want to use AI (US-7.1 is the no-AI alternative and already works).
+6. **US-5.2 — cache / invalidation seam.** Now that US-5.1's resolution service exists, layer a per-band in-memory cache keyed by `(bandId, sourceTag)` with invalidation hooks on alias/tag writes (see the US-5.2 "Design call"). Only worth doing once US-6.2 lands and distribution clicks make the un-cached read hot.
+7. **US-4.6 / US-4.7 (re-run / cancel, ZIP-parent analysis).** Lower priority — only matters once an external-runner failure rate makes retries common, or once a band uploads multi-PDF ZIPs and expects them to be analysable per-entry.
 
 ---
 
@@ -725,6 +737,7 @@ Not planned in the original US list; listed here only to keep the "Epic 7" secti
 - **Epic 2** closed 2026-09-16/17 (PR #200 US-2.1/US-2.2; PR #201 US-2.3; PR #202 US-2.4/US-2.5).
 - **Epic 3** closed 2026-09-17/18 (PR #206 US-3.4; PR #207 US-3.4 review fixes + US-3.5; US-3.1/US-3.2 shipped in the same controller/template surface and are considered part of the Epic 3 closure).
 - **Epic 4** in progress: US-4.1 (`c4088d0`), US-4.3 (`5b10a7f`) landed 2026-09-18 on `main`; US-4.2–4.7 open.
+- **Epic 5** partial: **US-5.1 resolution algorithm (tag → role via alias family) in PR #251 (commit `987f3a9`, branch `feat/us-5.1-role-resolution`, 2026-09-28)** — `InstrumentRoleResolutionQueryService` + `ResolvedInstrumentRole` DTO, 10 unit + 9 integration tests, `clean verify` green (639 tests). US-5.2 (cache/invalidation) and US-5.3 (distribution consumption) open.
 - **Epic 6 (≈7.2)** event-setlist link merged 2026-09-18 (`9c7bbbd`); US-6.2/6.3/6.4/6.5/6.6 open.
 - **Epic 7** partial: US-7.0 nav (`020ce81`) + US-7.1 parts panel (`8aeb95e`, fixes `1aa6216` + `34b8c83`) landed 2026-09-18; **US-7.9 upload + header preview is present on `main`** (verified against HEAD `5c337f0`: `ScoreFileThumbRestController` + `ScoreFileThumbQueryService` + test, and the upload/preview sections in `compositions/detail.html`); US-7.10/7.11 public token links shipped 2026-09-23; **US-7.3 role-map admin UI in PR #250 (2026-09-27, in review)**; US-7.4–7.8 open.
 
