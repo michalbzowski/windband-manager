@@ -445,6 +445,7 @@
                 <ul sec:authorize="hasAnyRole('ADMIN', 'SYSTEM_ADMIN')">
                     <li><a th:href="@{/admin/system-admins}" hx-target="#content" hx-swap="innerHTML transition:true" data-close>⚙️ Admini</a></li>
                     <li><a th:href="@{/band/inventory-attributes(type='MEMBER')}" hx-target="#content" hx-swap="innerHTML transition:true" data-close>⚙️ Atrybuty</a></li>
+                    <li><a th:href="${activeTeamId} != null ? @{/bands/{bandId}/instrument-roles(bandId=${activeTeamId})} : @{/}" hx-target="#content" hx-swap="innerHTML transition:true" data-close>🎼 Instrument → role</a></li>
                 </ul>
 
                 <p class="app-modal-section">Konto</p>

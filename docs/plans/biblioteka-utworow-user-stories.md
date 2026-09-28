@@ -579,22 +579,31 @@ Implemented: the shared layout was extended (via the team's normal `fragments/la
 
 ---
 
-### **US-7.3 (was Epic 1.4 open item): Admin UI for InstrumentRoleMap** ⬜ Not started
+### **US-7.3 (was Epic 1.4 open item): Admin UI for InstrumentRoleMap** ✅ (PR #250, 2026-09-27 — in review)
 > **As a** band manager
 > **I want to add / remove rows in `instrument_role_map` from the app, not from SQL
 > **So that** a new member instrument tag ("Klarinet B"→"Saksofon 1") can be wired in seconds
 
-Not yet implemented. The persistence layer is ready (US-1.4: entity, repository, V39 migration with seed rows for band id=1). What's needed is a small admin page under `/bands/{bandId}/admin/instrument-roles` (or similar), a thin command service using the existing `InstrumentRoleMapRepository`, and a read path that renders the current list per band. No code in `application/command/composition/` or `application/query/composition/` exists yet for this surface.
+Implemented on `feat/us-7.3-role-map-admin-ui` (PR #250). Delivered exactly the seam this story asked for:
+- `InstrumentRoleMapPageController` at `/bands/{bandId}/instrument-roles` — GET list+form, POST add, POST `/{id}/delete`, with a `belongsToTeam` guard so a foreign band's rows can never be listed/mutated.
+- `InstrumentRoleMapCommandService` (`addMapping` / `deleteMapping`) layered over the existing US-1.4 port; duplicate → app-side reject, blank input → HTTP 400, cross-team/unknown-band delete → HTTP 409 with no row touched.
+- `InstrumentRoleMapQueryService` projecting a band's rows to a DTO so the template never touches the lazy `Band` association.
+- `instrument-roles/list.html` + one menu link in the hamburger **Administracja** section (ADMIN/SYSTEM_ADMIN).
+- Tests: controller unit tests, command-service integration test (add / duplicate / cross-band delete isolation), and a Selenium UI test through the real admin login against band 1 (add → renders → remove → gone; duplicate rejected with the Polish message; blank-field server validation).
+
+`./mvnw clean verify` is green (Checkstyle + SpotBugs passing). Status flips to fully ✅ on merge to `main`.
 
 ---
 
-### **US-7.9: PDF score file upload button + header preview panel** ⬜ Not started (added 2026-09-19 per team request)
+### **US-7.9: PDF score file upload button + header preview panel** ✅ present on `main` (added 2026-09-19 per team request; verified against HEAD `5c337f0`)
 
 > **As a band manager or librarian**
 > **I want to upload a PDF score file from the composition detail page and see it rendered as an inline header preview (page thumbnails / first lines of each page)**
 > **So that I can visually confirm which instrument parts start on which pages — without opening the full PDF in a separate tab**
 
 **Storage:** The REST endpoint (`POST /bands/{bandId}/compositions/{compositionId}/files`, US-2.1 / `ScoreFileUploadRestController`) and persistence layer are already in place. **This story is purely UI + optional preview render path** — no new domain entity or migration required for MVP.
+
+**Status (re-checked 2026-09-27 on `origin/main`):** the story is implemented and merged — `ScoreFileThumbRestController` + `ScoreFileThumbQueryService` (server-side PDFBox page thumbnails, LRU-cached) + a controller test are all on `main`, and the upload section + inline header/preview panel render in `compositions/detail.html`. The acceptance criteria below are therefore satisfied; kept verbatim as the spec this was built to.
 
 **Acceptance criteria (target state):**
 
@@ -690,8 +699,8 @@ Not planned in the original US list; listed here only to keep the "Epic 7" secti
 |-------|--------|-------|
 | US-7.0 nav entry | ✅ done | "Utwory" in top-nav + hamburger, layout-level change, integration-owned |
 | US-7.1 parts panel | ✅ done | Manual page→instrument mapping from the detail page; `addPart` command service method; Selenium test pins happy + 2 failure paths |
-| US-7.3 role-map admin UI | ⬜ not started | Persistence ready (US-1.4); page + service not written |
-| US-7.9 upload + header preview | ⬜ not started (added 2026-09-19) | Upload UI for the existing US-2.1 endpoint; server-side PDFBox thumbnail endpoint (pages 1–3); mobile pass |
+| US-7.3 role-map admin UI | ✅ in PR #250 (2026-09-27) | Persistence ready (US-1.4); page + thin command/query services + menu link implemented; tests green, in review |
+| US-7.9 upload + header preview | ✅ on `main` (verified @ `5c337f0`) | Upload UI for the existing US-2.1 endpoint + server-side PDFBox thumbnail endpoint (`ScoreFileThumbRestController`); inline header preview in `compositions/detail.html` |
 | US-7.10 shareable voice link | ✅ shipped 2026-09-23 | Streams the FULL pdf under an enumerable `/bands/…/parts/N` URL that still requires login — see gaps + replacement below |
 | US-7.11 public tokenized link + real page split | ✅ shipped 2026-09-23 | UUIDv4 link at /public/parts/{token}, unauthenticated, PDFBox PageExtractor slice; old URL = 410 tombstone; rotate button in modal |
 | US-7.4 – 7.8 | ⬜ not started | No code; see per-story notes above |
@@ -701,9 +710,9 @@ Not planned in the original US list; listed here only to keep the "Epic 7" secti
 ## 📌 Open work, in priority order (team decision needed)
 
 0. ~~US-7.11~~ ✅ shipped 2026-09-23 (V45 tokens, `PdfPageExtractor`, public endpoint, modal + e-mail switched). Note for the next Epic 6 work: `PartShareByEmailCommandService` now embeds the token URL — US-6.3 bulk distribution should reuse `PartShareTokenCommandService.tokenFor` rather than minting its own scheme.
-1. **US-7.9 — PDF upload button + header preview on detail page.** The upload REST endpoint (US-2.1) and `pageCount` (US-2.2) both already exist; what's missing is the UI for uploading from the detail page + a lightweight per-page preview. Highest immediate user pain point per team request (2026-09-19). No new migration needed for MVP; one new server-side thumbnail endpoint (PDFBox `PDFRenderer.createImageAtIndex`) + two template sections + mobile pass. Story points: 7. **This is next in line.**
-2. **US-7.3 — InstrumentRoleMap admin UI.** Persistence has been sitting idle since US-1.4 (PR #199 merged); every other story that consumes it is blocked on manual SQL or hand-written test fixtures. Highest ROI relative to effort, fully in the "UI + thin service" pattern already proven by US-3.x and US-7.1.
-3. **US-5.1 — alias resolution read path.** US-1.2's `aliasOf` hierarchy is written but never walked by any read model yet. Once this lands, US-7.1's parts panel can auto-suggest roles from a member's tag (instead of requiring the manager to type "Trąbka 1"), and US-6.2's distribution list gets its primary input.
+1. ~~US-7.9 — PDF upload button + header preview on detail page~~ ✅ present on `main` (verified against HEAD `5c337f0`, 2026-09-27): the US-2.1 upload endpoint was already there; `ScoreFileThumbRestController` + `ScoreFileThumbQueryService` (PDFBox page thumbnails, LRU-cached) and the upload + inline header/preview panels in `compositions/detail.html` are merged. MVP complete — an optional mobile-only visual polish pass may still be done ad-hoc, but it is no longer tracked here.
+2. ~~US-7.3 — InstrumentRoleMap admin UI~~ ✅ in PR #250 (2026-09-27, in review). Band-scoped page at `/bands/{bandId}/instrument-roles` with thin command/query services over the US-1.4 port; full test coverage (unit + IT + Selenium) and green `clean verify`. Once merged, this unblocks the rest of Epic 6/7 stories that currently lean on hand-written fixtures.
+3. **US-5.1 — alias resolution read path (now next in line).** US-1.2's `aliasOf` hierarchy is written but never walked by any read model yet. Once this lands, US-7.1's parts panel can auto-suggest roles from a member's tag (instead of requiring the manager to type "Trąbka 1"), and US-6.2's distribution list gets its primary input.
 4. **US-4.4 + US-4.5 — AI preview render + accept.** The runner seam (US-4.1) and the detail-page entry point (US-4.3) are done; what's missing is turning `arrangement_json_path` into an editable table and then writing the accepted rows into `composition_instruments` with their `PartSource.AI`/`.HYBRID` stamp. This story unblocks US-3.03 for teams who *do* want to use AI (US-7.1 is the no-AI alternative and already works).
 5. **US-6.2 / US-6.3 — distribution & delivery.** Epic 6's *core* value (getting pages to musicians) hasn't shipped yet; US-7.2 (setlist link) is the prerequisite and it's done, so 6.2 + 6.3 are the natural next pair.
 6. **US-4.6 / US-4.7 (re-run / cancel, ZIP-parent analysis).** Lower priority — only matters once an external-runner failure rate makes retries common, or once a band uploads multi-PDF ZIPs and expects them to be analysable per-entry.
@@ -717,6 +726,7 @@ Not planned in the original US list; listed here only to keep the "Epic 7" secti
 - **Epic 3** closed 2026-09-17/18 (PR #206 US-3.4; PR #207 US-3.4 review fixes + US-3.5; US-3.1/US-3.2 shipped in the same controller/template surface and are considered part of the Epic 3 closure).
 - **Epic 4** in progress: US-4.1 (`c4088d0`), US-4.3 (`5b10a7f`) landed 2026-09-18 on `main`; US-4.2–4.7 open.
 - **Epic 6 (≈7.2)** event-setlist link merged 2026-09-18 (`9c7bbbd`); US-6.2/6.3/6.4/6.5/6.6 open.
-- **Epic 7** partial: US-7.0 nav (`020ce81`) + US-7.1 parts panel (`8aeb95e`, fixes `1aa6216` + `34b8c83`) landed 2026-09-18; US-7.3–7.8 open.
+- **Epic 7** partial: US-7.0 nav (`020ce81`) + US-7.1 parts panel (`8aeb95e`, fixes `1aa6216` + `34b8c83`) landed 2026-09-18; **US-7.9 upload + header preview is present on `main`** (verified against HEAD `5c337f0`: `ScoreFileThumbRestController` + `ScoreFileThumbQueryService` + test, and the upload/preview sections in `compositions/detail.html`); US-7.10/7.11 public token links shipped 2026-09-23; **US-7.3 role-map admin UI in PR #250 (2026-09-27, in review)**; US-7.4–7.8 open.
 
 *Last audited against HEAD on this branch: commit `1dc9159` (2026-09-18), PR numbers verified through #207.*
+*Re-checked against `origin/main` HEAD `5c337f0` on 2026-09-27, PR numbers verified through #250: US-7.3 now in review (PR #250); US-7.9 confirmed present on main.*
