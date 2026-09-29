@@ -247,6 +247,29 @@ public class CompositionPageController {
         return "redirect:/bands/" + bandId + "/compositions/" + id;
     }
 
+    /**
+     * Issue #241 — edit an existing part mapping. Same form payload as {@link #addPart}
+     * (see the "Dodaj głos" modal, which the front-end reuses in edit mode), addressed by
+     * the part id: {@code POST /bands/{bandId}/compositions/{id}/parts/{partId}}. The command
+     * service proves the part belongs to this composition of this band and re-runs every
+     * creation invariant, so an unknown/foreign {@code partId} fails closed (409) instead of
+     * silently editing another band's row.
+     */
+    @PostMapping("/{id}/parts/{partId}")
+    public String updatePart(@PathVariable Long bandId, @PathVariable Long id,
+                             @PathVariable Long partId,
+                             @AuthenticationPrincipal OidcUser oidcUser,
+                             @Valid @ModelAttribute AddPartCommand cmd,
+                             BindingResult bindingResult) {
+        requireBandAccess(oidcUser, bandId);
+        if (bindingResult.hasErrors()) {
+            throw new IllegalArgumentException(firstFieldError(bindingResult));
+        }
+        commandService.updatePart(partId, id, cmd.getInstrumentId(), cmd.getRole(),
+                cmd.getPageFrom(), cmd.getPageTo(), cmd.getScoreFileId(), bandId);
+        return "redirect:/bands/" + bandId + "/compositions/" + id;
+    }
+
     private String firstFieldError(BindingResult bindingResult) {
         return bindingResult.getFieldErrors().stream()
                 .map(fe -> fe.getDefaultMessage())

@@ -103,6 +103,44 @@ class AddPartEndpointTest {
         return br;
     }
 
+    // ---- issue #241: updatePart endpoint ------------------------------------
+
+    @Test
+    void updatePart_routesToCommandServiceWithPartId() {
+        // POST /bands/1/compositions/42/parts/7 must forward (partId=7, compositionId=42).
+        var cmd = new AddPartCommand();
+        cmd.setInstrumentId(9L);
+        cmd.setRole("Flet 1");
+        cmd.setPageFrom(3);
+        cmd.setPageTo(8);
+        cmd.setScoreFileId(55L);
+
+        String view = controller.updatePart(1L, 42L, 7L, band1User, cmd, noError());
+
+        assertThat(view).startsWith("redirect:/bands/1/compositions/42");
+        verify(commandService).updatePart(eq(7L), eq(42L), eq(9L), eq("Flet 1"), eq(3), eq(8), eq(55L), eq(1L));
+    }
+
+    @Test
+    void updatePart_rejectsForeignBandUser() {
+        var cmd = new AddPartCommand();
+        cmd.setInstrumentId(9L);
+        cmd.setRole("Flet 1");
+        cmd.setPageFrom(3);
+        cmd.setPageTo(8);
+
+        org.junit.jupiter.api.Assertions.assertThrows(IllegalStateException.class, () ->
+                controller.updatePart(1L, 42L, 7L, band2User, cmd, noError()));
+
+        verify(commandService, never()).updatePart(org.mockito.ArgumentMatchers.any(),
+                org.mockito.ArgumentMatchers.any(), org.mockito.ArgumentMatchers.any(),
+                org.mockito.ArgumentMatchers.any(),
+                org.mockito.ArgumentMatchers.any(Integer.class),
+                org.mockito.ArgumentMatchers.any(Integer.class),
+                org.mockito.ArgumentMatchers.any(),
+                org.mockito.ArgumentMatchers.any());
+    }
+
     private static void assertNoErrors(org.springframework.validation.BindingResult br) {
         // sanity — the test is asserting the happy path on this code.
         if (br.hasErrors()) {

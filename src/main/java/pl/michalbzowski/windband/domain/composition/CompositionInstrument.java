@@ -223,6 +223,48 @@ public class CompositionInstrument {
         this.verifiedAt = at;
     }
 
+    /**
+     * Issue #241 — edit an already-saved voice mapping in place: instrument, role and the
+     * page range (and optionally the bound {@link ScoreFile}) are replaced atomically, with
+     * the SAME invariant set the static factory enforces on creation ({@code pageFrom &lt;= pageTo},
+     * non-blank role, same-band instrument, score file from the same composition whose
+     * {@code pageCount} covers {@code pageTo}). A null {@code newScoreFile} CLEARS the binding
+     * (the row falls back to the legacy "largest covering PDF" read path).
+     *
+     * <p>What is deliberately NOT touched: {@code fileRef}, {@code source}, the confidence
+     * score and the {@code verifiedBy/verifiedAt} audit pair — editing the mapping does not
+     * rewrite who approved it (the freeze contract of {@link #verify} stays intact).</p>
+     */
+    public void updateMapping(Instrument newInstrument, String role, int pageFrom, int pageTo,
+                              ScoreFile newScoreFile) {
+        if (newInstrument == null) throw new NullPointerException("instrument required");
+        requireRole(role);
+        verifyRange(pageFrom, pageTo);
+        if (!bandsAgree(this.composition, newInstrument)) {
+            throw new IllegalArgumentException(
+                    "instrument must belong to the same band as the composition");
+        }
+        if (newScoreFile != null) {
+            if (newScoreFile.getComposition() == null) {
+                throw new IllegalArgumentException("scoreFile must be attached to a composition");
+            }
+            if (!sameComposition(this.composition, newScoreFile)) {
+                throw new IllegalArgumentException(
+                        "scoreFile must belong to the same composition as the part mapping");
+            }
+            if (newScoreFile.getPageCount() != null && pageTo > newScoreFile.getPageCount()) {
+                throw new IllegalArgumentException(
+                        "pageTo (" + pageTo + ") exceeds the selected ScoreFile's pageCount ("
+                                + newScoreFile.getPageCount() + ")");
+            }
+        }
+        this.instrument     = newInstrument;
+        this.instrumentRole = role.trim();
+        this.pageFrom       = pageFrom;
+        this.pageTo         = pageTo;
+        this.scoreFile      = newScoreFile;
+    }
+
     private static boolean bandsAgree(Composition c, Instrument i) {
         // Strict two-sided check: both sides must expose a resolvable band id AND they must be
         // equal. We deliberately DO NOT treat "null == null" as agreement — if either side cannot

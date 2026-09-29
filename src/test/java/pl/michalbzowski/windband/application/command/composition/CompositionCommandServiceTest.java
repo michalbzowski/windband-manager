@@ -355,6 +355,97 @@ class CompositionCommandServiceTest extends BaseIntegrationTest {
         assertThat(inDb).isNull();
     }
 
+    // ---- updatePart (issue #241 — editing a saved voice) -------------------
+
+    @Test
+    void updatePart_changesInstrumentRoleAndPageRange() {
+        Long bandId = 1L;
+        var comp = seedComposition(bandId, "Edit voice 241 A");
+        Instrument flet = instrumentInBand(bandId, "Flet 241A");
+        var part = commandService.addPart(comp.getId(), flet.getId(), "Flet 1", 1, 4, null, null, bandId);
+
+        Instrument trabka = instrumentInBand(bandId, "Trąbka 241A");
+        var updated = commandService.updatePart(part.getId(), comp.getId(), trabka.getId(),
+                "Trąbka Bb", 5, 9, null, bandId);
+
+        assertThat(updated.getId()).isEqualTo(part.getId());               // same row, no duplicate
+        assertThat(updated.getInstrumentRole()).isEqualTo("Trąbka Bb");
+        assertThat(updated.getPageFrom()).isEqualTo(5);
+        assertThat(updated.getPageTo()).isEqualTo(9);
+        var reloaded = compositionInstrumentRepository.findById(part.getId()).orElseThrow();
+        assertThat(reloaded.getInstrument().getId()).isEqualTo(trabka.getId());
+    }
+
+    @Test
+    void updatePart_rejectsReversedPageRange() {
+        Long bandId = 1L;
+        var comp = seedComposition(bandId, "Edit voice 241 B");
+        Instrument insp = instrumentInBand(bandId, "Klarnet 241B");
+        var part = commandService.addPart(comp.getId(), insp.getId(), "Klarnet", 2, 6, null, null, bandId);
+
+        assertThatThrownBy(() -> commandService.updatePart(part.getId(), comp.getId(),
+                insp.getId(), "Klarnet", 7, 3, null, bandId))
+                .isInstanceOf(IllegalArgumentException.class);
+    }
+
+    @Test
+    void updatePart_rejectsBlankRole() {
+        Long bandId = 1L;
+        var comp = seedComposition(bandId, "Edit voice 241 C");
+        Instrument insp = instrumentInBand(bandId, "Obój 241C");
+        var part = commandService.addPart(comp.getId(), insp.getId(), "Obój", 1, 2, null, null, bandId);
+
+        assertThatThrownBy(() -> commandService.updatePart(part.getId(), comp.getId(),
+                insp.getId(), "   ", 1, 2, null, bandId))
+                .isInstanceOf(IllegalArgumentException.class);
+    }
+
+    @Test
+    void updatePart_rejectsForeignPartId() {
+        Long bandA = 1L;
+        Long bandB = bandRepository.findAll().stream()
+                .filter(b -> !b.getId().equals(bandA))
+                .map(b -> b.getId())
+                .findFirst()
+                .orElseGet(() -> {
+                    var uid = java.util.UUID.randomUUID();
+                    var fresh = pl.michalbzowski.windband.domain.band.Band.create("B241-" + uid, "b241-" + uid);
+                    return bandRepository.save(fresh).getId();
+                });
+        var compA = seedComposition(bandA, "Edit voice 241 D own");
+        var compB = seedComposition(bandB, "Edit voice 241 D foreign");
+        Instrument inspA = instrumentInBand(bandA, "Fagot 241D");
+        var partA = commandService.addPart(compA.getId(), inspA.getId(), "Fagot", 1, 2, null, null, bandA);
+
+        // Band B owns its composition but NOT partA — editing A's row through B must fail closed.
+        Instrument inspB = instrumentInBand(bandB, "Puzon 241D");
+        assertThatThrownBy(() -> commandService.updatePart(partA.getId(), compB.getId(),
+                inspB.getId(), "Puzon", 1, 2, null, bandB))
+                .isInstanceOf(IllegalStateException.class);
+    }
+
+    @Test
+    void updatePart_reboundsToScoreFileOfSameCompositionAndClearsToNull() {
+        Long bandId = 1L;
+        var comp = seedComposition(bandId, "Edit voice 241 E");
+        Instrument insp = instrumentInBand(bandId, "Tuba 241E");
+        var part = commandService.addPart(comp.getId(), insp.getId(), "Tuba", 1, 3, null, null, bandId);
+
+        ScoreFile file = scoreFileRepository.save(ScoreFile.forComposition(
+                repository.findByIdAndBandId(comp.getId(), bandId).orElseThrow(),
+                "application/pdf", "tuba.pdf", 1000L,
+                "b".repeat(64), "/tmp/tuba-241E.pdf", 8));
+
+        var rebound = commandService.updatePart(part.getId(), comp.getId(), insp.getId(),
+                "Tuba", 1, 8, file.getId(), bandId);
+        assertThat(rebound.getScoreFile()).isNotNull();
+        assertThat(rebound.getScoreFile().getId()).isEqualTo(file.getId());
+
+        var cleared = commandService.updatePart(part.getId(), comp.getId(), insp.getId(),
+                "Tuba", 1, 8, null, bandId);
+        assertThat(cleared.getScoreFile()).isNull();
+    }
+
     // helper ---------------------------------------------------------------
 
     private Composition seedComposition(Long bandId, String title) {

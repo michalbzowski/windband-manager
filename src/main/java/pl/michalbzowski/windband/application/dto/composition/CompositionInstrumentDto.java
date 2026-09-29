@@ -24,7 +24,13 @@ public record CompositionInstrumentDto(
         pl.michalbzowski.windband.domain.composition.PartSource source,
         Double confidenceScore,
         String verifiedBy,
-        Instant verifiedAt) {
+        Instant verifiedAt,
+        /**
+         * Issue #241 — id of the band instrument this voice is mapped to. Carried on the DTO so
+         * the detail page can pre-select it when the "Dodaj głos" modal reopens in EDIT mode
+         * (a template must never dereference the lazy {@code instrument} association itself).
+         */
+        Long instrumentId) {
 
     /**
      * US- detail-page cleanup — mockup shows the page range as ONE column ("Strony 1–22")

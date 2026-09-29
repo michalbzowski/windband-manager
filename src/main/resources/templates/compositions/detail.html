@@ -996,12 +996,15 @@
         <tbody>
             <tr th:if="${parts == null or parts.size() == 0}" class="empty-row"><td colspan="5">Brak oznaczonych głosów — dodaj powyżej.</td></tr>
             <tr th:each="p : ${parts}"
-                th:attr="data-part-id=${p.id}, data-instrument-name=${p.instrumentName != null ? p.instrumentName : ''}, data-role=${p.instrumentRole != null and !#strings.isEmpty(p.instrumentRole) ? p.instrumentRole : '—'}, data-page-from=${p.pageFrom}, data-page-to=${p.pageTo}">
+                th:attr="data-part-id=${p.id}, data-instrument-name=${p.instrumentName != null ? p.instrumentName : ''}, data-role=${p.instrumentRole != null and !#strings.isEmpty(p.instrumentRole) ? p.instrumentRole : '—'}, data-page-from=${p.pageFrom}, data-page-to=${p.pageTo}, data-instrument-id=${p.instrumentId}, data-score-file-id=${p.scoreFileId}">
                 <td th:text="${p.instrumentName != null ? p.instrumentName : ''}">Instrument</td>
                 <td th:text="${p.instrumentRole != null and !#strings.isEmpty(p.instrumentRole) ? p.instrumentRole : '—'}">Rola</td>
                 <td><span th:if="${p.scoreFileName}"><span th:text="${p.scoreFileName}" class="text-secondary">Polonez (głosy).pdf</span></span><span th:unless="${p.scoreFileName}" class="text-muted">(dowolny plik)</span></td>
                 <td th:text="${p.pageRange()}">1–5</td>
-                <td><button type="button" class="secondary part-share-btn"
+                <!-- Issue #241: "Edytuj" reopens the "Dodaj głos" modal prefilled with this row. -->
+                <td><button type="button" class="secondary part-edit-btn"
+                        title="Edytuj ten głos (instrument, rola, strony)">✏️ Edytuj</button>
+                    <button type="button" class="secondary part-share-btn"
                         title="Udostępnij ten głos (link do PDF-a + opcjonalnie e-mail do wielu odbiorców)">📤 Udostępnij</button></td>
             </tr>
         </tbody>
@@ -1377,6 +1380,90 @@
 
     var basePath = '/bands/' + bandId + '/compositions/' + compId;   // page GET (HX-Request → fragment)
 
+    // ------------------------------------------------------------------
+    // Issue #241 — EDIT MODE. "✏️ Edytuj" on a saved voice row reopens THIS
+    // modal prefilled from the row's data-* attributes; the submit target
+    // switches from POST .../parts (create) to POST .../parts/{partId}
+    // (update). Leaving edit mode happens on close and after a successful
+    // save, so the modal is always ready for the next plain "Dodaj głos".
+    // ------------------------------------------------------------------
+    var DEFAULT_ACTION = String(form.action);
+    var DEFAULT_TITLE  = 'Dodaj głos (strony w nutach)';
+    var titleEl   = document.getElementById('add-part-dialog-title');
+    var instrSel  = document.getElementById('part-instrument-picker');
+    var saveBtn   = document.getElementById('save-part-btn');   // hoisted: edit mode renames it
+    var editingPartId = null;
+
+    function hasOption(select, value) {
+        if (!select || value === '' || value == null) return false;
+        for (var i = 0; i < select.options.length; i++) {
+            if (String(select.options[i].value) === String(value)) return true;
+        }
+        return false;
+    }
+
+    function exitEditMode() {
+        editingPartId = null;
+        form.action = DEFAULT_ACTION;
+        if (titleEl) titleEl.textContent = DEFAULT_TITLE;
+        if (saveBtn) saveBtn.textContent = '✓ Zapisz głos';
+    }
+
+    function openEditPart(row) {
+        var ds = row.dataset;
+        if (!ds.partId) return;
+        editingPartId = String(ds.partId);
+        form.action = window.location.origin + basePath + '/parts/' + encodeURIComponent(editingPartId);
+        if (titleEl) titleEl.textContent = 'Edytuj głos (strony w nutach)';
+        if (saveBtn) saveBtn.textContent = '✓ Zapisz zmiany';
+
+        // File + preview first: setPreviewPage's synchronous UI pass overwrites the
+        // page fields, so the real stored range is applied AFTER it (prefillRange).
+        var sf = ds.scoreFileId || '';
+        filePicker.value = hasOption(filePicker, sf) ? sf : '';
+        lastUserFileId = filePicker.value;
+        clearFromLock();
+        var max = selectedMax();
+        if (filePicker.value === '') hidePreview(); else setPreviewPage(1, max != null ? max : null);
+
+        if (instrSel && hasOption(instrSel, ds.instrumentId)) instrSel.value = ds.instrumentId;
+        prefillRange(ds);
+
+        if (typeof openAppModal === 'function') { openAppModal('add-part-dialog'); }
+        else if (typeof addPartDlg.showModal === 'function') { addPartDlg.showModal(); }
+        else { addPartDlg.setAttribute('open', ''); }
+    }
+
+    // Applied AFTER the preview init so the saved values are not clobbered by the
+    // "preview page flows into Strona od" rule. Programmatic .value sets fire no
+    // 'input'/'change' events, so the bump/lock logic stays out of the way.
+    function prefillRange(ds) {
+        if (roleInp) roleInp.value = (ds.role && ds.role !== '—') ? ds.role : '';
+        var f = ds.pageFrom || '1';
+        var t = ds.pageTo || f;
+        if (fromInp) fromInp.value = f;
+        if (toInp) toInp.value = t;
+        syncRangeButtons();
+    }
+
+    // Delegated: the table is swapped after every save (refreshPartsPanelAfterSave),
+    // so per-row listeners would detach — this mirrors the share button's binding.
+    document.addEventListener('click', function (ev) {
+        var target = ev.target;
+        if (!target || typeof target.closest !== 'function') return;
+        var btn = target.closest('.part-edit-btn');
+        if (!btn) return;
+        var row = btn.closest('tr');
+        if (row && row.dataset && row.dataset.partId) openEditPart(row);
+    });
+
+    // "＋ Dodaj głos" ALWAYS opens in add mode. The <dialog> 'close' event (which runs
+    // resetOnClose → exitEditMode) is queued asynchronously, so reopening right after a
+    // close could still be in a pending edit; exiting here makes the switch deterministic.
+    if (openBtn) {
+        openBtn.addEventListener('click', exitEditMode);
+    }
+
     var previewPage = 1;
     var previewTotal = null;
     var previewVisible = false;
@@ -1695,8 +1782,6 @@
     // stay). A separate "Zamknij" button (data-close) closes it.
     // Validation stays client-side first; server errors surface inline.
     // ------------------------------------------------------------------
-    var saveBtn = document.getElementById('save-part-btn');
-
     form.addEventListener('submit', function (ev) {
         ev.preventDefault();          // never let a native POST navigate away
         var fromVal = parseInt(fromInp && fromInp.value, 10) || 1;
@@ -1730,6 +1815,15 @@
             })
             .then(function () {
                 hideStatus();
+                if (editingPartId) {
+                    // Issue #241 — an edit saved: the modal STAYS in edit mode (another "Zapisz
+                    // zmiany" updates the same row — a stray second save can never silently
+                    // create a duplicate voice) and the table refreshes under it. Closing the
+                    // dialog is what leaves edit mode (resetOnClose → exitEditMode).
+                    refreshPartsPanelAfterSave();
+                    showStatus('success', 'Zapisano zmiany głosu ✓');
+                    return;
+                }
                 // Keep the modal OPEN (requirement 9). Reset role for the next instrument;
                 // the file picker keeps its selection so the preview stays usable, and the
                 // page fields stay where the user left them (bump rule already applied).
@@ -1779,6 +1873,7 @@
     // ------------------------------------------------------------------
     function resetOnClose() {
         if (!form) return;
+        exitEditMode();     // #241: closing always drops a pending edit
         form.reset();
         clearFromLock();      // the lock never survives a close (user request 2026-09-26)
         syncRangeButtons();   // inputs are back to their HTML defaults — echo them (iter. 2)
