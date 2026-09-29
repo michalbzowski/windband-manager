@@ -112,7 +112,8 @@ public class ScoreFileListQueryService {
                 part.getSource(),
                 part.getConfidenceScore(),
                 part.getVerifiedBy(),
-                part.getVerifiedAt());
+                part.getVerifiedAt(),
+                part.getInstrument() == null ? null : part.getInstrument().getId());
     }
 
     /** 404 mirror of the repository contract (a file that is not on the disk or does not belong to the comp). */

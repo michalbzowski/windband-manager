@@ -144,6 +144,52 @@ public class CompositionCommandService {
         return instrumentRepository.save(part);
     }
 
+    /**
+     * Issue #241 — "Brak możliwości edycji dodanego głosu": edit an existing part mapping in
+     * place. The caller (web layer) has already proven band access; this method additionally
+     * proves the part row belongs to THIS composition of THIS band, so a foreign
+     * {@code partId} swapped into the form URL fails closed (409) without touching any row.
+     *
+     * <p>Reuses the exact same validation surface as {@link #addPart} (blank role → 400,
+     * cross-band instrument → 400, score file of another composition → 400) plus the domain
+     * invariant set in {@link CompositionInstrument#updateMapping}. A null {@code scoreFileId}
+     * clears the explicit file binding — the row returns to the legacy "largest covering PDF"
+     * resolution, mirroring what an empty picker selection means in the modal.</p>
+     */
+    public CompositionInstrument updatePart(Long partId,
+                                            Long compositionId,
+                                            Long instrumentId,
+                                            String role,
+                                            int pageFrom,
+                                            int pageTo,
+                                            Long scoreFileId,
+                                            Long bandId) {
+        Objects.requireNonNull(partId, "partId");
+        Objects.requireNonNull(instrumentId, "instrumentId");
+        Objects.requireNonNull(bandId, "bandId");
+
+        if (role == null || role.trim().isEmpty()) {
+            throw new IllegalArgumentException("Role instrumentu jest wymagana");
+        }
+
+        var composition = requireOwned(compositionId, bandId);
+        var part = instrumentRepository.findById(partId)
+                .orElseThrow(() -> new IllegalStateException(
+                        "Part " + partId + " does not exist"));
+        if (part.getComposition() == null || !composition.getId().equals(part.getComposition().getId())) {
+            throw new IllegalStateException(
+                    "Part " + partId + " does not belong to composition " + compositionId);
+        }
+
+        var instrument = memberInstrumentRepository.findByIdAndBandId(instrumentId, bandId)
+                .orElseThrow(() -> new IllegalArgumentException("Nie znaleziono instrumentu w tym zespole"));
+
+        ScoreFile boundScoreFile = (scoreFileId == null) ? null : resolveBoundScoreFile(scoreFileId, compositionId);
+
+        part.updateMapping(instrument, role.trim(), pageFrom, pageTo, boundScoreFile);
+        return instrumentRepository.save(part);
+    }
+
     // ---- delete (US-1.6 AC) ----------------------------------------------
 
     /**

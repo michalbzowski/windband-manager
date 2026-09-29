@@ -228,6 +228,7 @@ public class CompositionQueryService {
                 p.getSource(),
                 p.getConfidenceScore(),
                 p.getVerifiedBy(),
-                p.getVerifiedAt());
+                p.getVerifiedAt(),
+                p.getInstrument() == null ? null : p.getInstrument().getId());
     }
 }
