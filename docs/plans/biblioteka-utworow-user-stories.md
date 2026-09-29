@@ -26,7 +26,7 @@ Create a team-scoped compositions library where band members can catalog pieces,
 | **Epic 3: Composition CRUD (Manual)** | 3.1 – 3.5 + 3.03 | Create/read/update/delete without AI | ✅ All done |
 | **Epic 4: AI-Assisted Score Analysis** | 4.1 – 4.7 | PDF/ZIP analysis, preview, verification | 🔶 US-4.1 + US-4.3 done · 4.2/4.4/4.5/4.6/4.7 not started |
 | **Epic 5: Instrument Alias Mapping** | 5.1 – 5.3 | Tag-to-role resolution for distribution | 🔶 US-5.1 ✅ PR #251 (resolution service); US-5.2/5.3 ⬜ |
-| **Epic 6: Event Integration & Distribution** | 6.1 – 6.6 | Assign to event, generate parts, send | 🔶 US-7.2/6.1 event-setlist link done · generation + sending not started |
+| **Epic 6: Event Integration & Distribution** | 6.1 – 6.6 | Assign to event, generate parts, send | 🔶 US-7.2/6.1 setlist + **US-6.2 part-list generation ✅ merged (PR #252, 2026-09-28)** · delivery (US-6.3+) not started |
 | **Epic 7: UI & UX** | 7.0 – 7.9 | Thymeleaf templates, HTMX interactions | 🔶 nav (7.0) + parts panel (7.1) + role-map admin UI (7.3, PR #250) + upload/preview (7.9) done · the rest open |
 
 > **Status legend:** ✅ done · 🔶 partial / open items listed below · ⬜ not started · ❌ deliberately deferred
@@ -514,7 +514,7 @@ Depends on US-3.03's READY gate (the `verifiedBy`/`verifiedAt` audit pair must b
 
 ---
 
-## 🔶 Epic 6: Event Integration & Distribution — 🔶 PARTIAL (setlist link done; generation + sending not started)
+## 🔶 Epic 6: Event Integration & Distribution — 🔶 PARTIAL (setlist link + US-6.2 part-list generation done; delivery US-6.3+ not started)
 
 > **Important ordering fact discovered during the audit:** the *event assignment* story (linking a composition to an event's setlist) shipped as **US-7.2** in this repo, even though it is logically Epic 6/7 hybrid — because its UI surface (the setlist panel on the event detail page) landed through the same Thymeleaf workstream as US-7.1. The original plan's "Epic 6.1: assign to event" work is therefore **already done** below; what remains in Epic 6 is the parts-generation + e-mail/delivery side, which is genuinely new work.
 
@@ -535,12 +535,20 @@ Depends on US-3.03's READY gate (the `verifiedBy`/`verifiedAt` audit pair must b
 
 ---
 
-### **US-6.2: Generate the concrete part list for an event × member** ⬜ Not started
+### **US-6.2: Generate the concrete part list for an event × member** ✅ (PR #252, merged 2026-09-28, commit `0e9bfb4`)
 > **As a** band manager
 > **I want, for a given READY composition and a chosen member, the exact page range (or extracted ZIP entry) they should play
 > **So that** I can print / share it to them individually
 
-Not yet implemented. Inputs are all present: US-7.2's ordered setlist rows, US-7.1 / US-4.5 part rows (with `pageFrom`/`pageTo`, `fileRef`, `PartSource`), US-2.3's per-entry `score_files` rows for ZIP uploads, and US-5.1's alias resolution (member tag → role). Output is a new read model (not yet designed) — probably a `List<EventPartDto>` assembled by a `application/query/event/EventCompositionPartsQueryService` that does not yet exist.
+**Real implementation (verified in code):**
+- [x] `EventPartDistributionDto` (`application/dto/event/`) — nested read model: compositions in setlist order → parts (role, `pageFrom`/`pageTo`, `fileRef`) → matched musicians (member + the instrument tag that produced the match)
+- [x] `EventCompositionPartsQueryService` (`application/query/event/`) — band-scoped generator: walks US-7.2's ordered `event_compositions` rows, loads each composition's part rows, and resolves who plays each part through US-5.1's `InstrumentRoleResolutionQueryService` (tag → alias family → role set). Fail-closed band isolation: unknown band → `IllegalArgumentException` (400), cross-band probe → `IllegalStateException` (409)
+- [x] UI: "Rozdanie głosów" panel in `templates/events/detail.html` (composition → part → musician, empty state when the setlist has no parts); wired through `EventPageController` model attribute `partsDistribution`
+- [x] `CompositionInstrumentRepository` + adapter gained the band-scoped batch read the generator needs
+- [x] Tests: 13 service-level tests (`EventCompositionPartsQueryServiceTest` — alias-matched resolution, cross-band isolation, empty-setlist and no-matching-musician empty states) + canary UI test on `/events/{id}` (no regression)
+
+**Story Points:** 5.
+**Dependencies:** US-7.2 (ordered setlist), US-7.1 / US-4.5 (part rows with page ranges), US-2.3 (per-entry `score_files`), US-5.1 (alias resolution — consumed, not re-implemented).
 
 ---
 
@@ -724,7 +732,7 @@ Not planned in the original US list; listed here only to keep the "Epic 7" secti
 1. ~~US-7.9 — PDF upload button + header preview on detail page~~ ✅ present on `main` (verified against HEAD `5c337f0`, 2026-09-27): the US-2.1 upload endpoint was already there; `ScoreFileThumbRestController` + `ScoreFileThumbQueryService` (PDFBox page thumbnails, LRU-cached) and the upload + inline header/preview panels in `compositions/detail.html` are merged. MVP complete — an optional mobile-only visual polish pass may still be done ad-hoc, but it is no longer tracked here.
 2. ~~US-7.3 — InstrumentRoleMap admin UI~~ ✅ merged (PR #250, 2026-09-28). Band-scoped page at `/bands/{bandId}/instrument-roles` with thin command/query services over the US-1.4 port; full test coverage (unit + IT + Selenium) and green `clean verify`. This unblocked the hand-written role-map fixtures used across Epic 6/7 tests.
 3. ~~US-5.1 — alias resolution read path~~ ✅ in PR #251 (2026-09-28). US-1.2's `aliasOf` hierarchy is now walked by a read model: `InstrumentRoleResolutionQueryService` resolves a member tag to its alias-family role set ("Kornet" ⇒ {Trąbka 1, Trąbka 2, Kornet 1}), returning provenance-tagged + name-list projections for consumers. No cache yet (US-5.2) and no UI consumption (US-5.3).
-4. **US-6.2 / US-6.3 — distribution & delivery.** Epic 6's *core* value (getting pages to musicians) hasn't shipped yet; US-7.2 (setlist link) and now US-5.1 (alias→role resolution, the primary input for "who plays what") are both done, so **6.2 (generate the concrete per-member part list)** is next in line — it should consume `resolveRoles`/`resolveRoleNames`. 6.3 (delivery) directly follows.
+4. ~~US-6.2 — generate the concrete per-member part list~~ ✅ merged (PR #252, 2026-09-28): `EventCompositionPartsQueryService` + `EventPartDistributionDto` + "Rozdanie głosów" panel in `events/detail.html`; consumes US-5.1's `resolveRoles`. **US-6.3 (delivery of parts to musicians) is now next in line** — it should build on the US-6.2 read model, `PartShareTokenCommandService.tokenFor` (US-7.11) for link payloads, and `ConsentService` (silent refusal for non-consenting members).
 5. **US-4.4 + US-4.5 — AI preview render + accept.** The runner seam (US-4.1) and the detail-page entry point (US-4.3) are done; what's missing is turning `arrangement_json_path` into an editable table and then writing the accepted rows into `composition_instruments` with their `PartSource.AI`/`.HYBRID` stamp. This story unblocks US-3.03 for teams who *do* want to use AI (US-7.1 is the no-AI alternative and already works).
 6. **US-5.2 — cache / invalidation seam.** Now that US-5.1's resolution service exists, layer a per-band in-memory cache keyed by `(bandId, sourceTag)` with invalidation hooks on alias/tag writes (see the US-5.2 "Design call"). Only worth doing once US-6.2 lands and distribution clicks make the un-cached read hot.
 7. **US-4.6 / US-4.7 (re-run / cancel, ZIP-parent analysis).** Lower priority — only matters once an external-runner failure rate makes retries common, or once a band uploads multi-PDF ZIPs and expects them to be analysable per-entry.
@@ -738,8 +746,9 @@ Not planned in the original US list; listed here only to keep the "Epic 7" secti
 - **Epic 3** closed 2026-09-17/18 (PR #206 US-3.4; PR #207 US-3.4 review fixes + US-3.5; US-3.1/US-3.2 shipped in the same controller/template surface and are considered part of the Epic 3 closure).
 - **Epic 4** in progress: US-4.1 (`c4088d0`), US-4.3 (`5b10a7f`) landed 2026-09-18 on `main`; US-4.2–4.7 open.
 - **Epic 5** partial: **US-5.1 resolution algorithm (tag → role via alias family) in PR #251 (commit `987f3a9`, branch `feat/us-5.1-role-resolution`, 2026-09-28)** — `InstrumentRoleResolutionQueryService` + `ResolvedInstrumentRole` DTO, 10 unit + 9 integration tests, `clean verify` green (639 tests). US-5.2 (cache/invalidation) and US-5.3 (distribution consumption) open.
-- **Epic 6 (≈7.2)** event-setlist link merged 2026-09-18 (`9c7bbbd`); US-6.2/6.3/6.4/6.5/6.6 open.
+- **Epic 6 (≈7.2)** event-setlist link merged 2026-09-18 (`9c7bbbd`); **US-6.2 part-list generation merged in PR #252 (`0e9bfb4`, 2026-09-28)**; US-6.3/6.4/6.5/6.6 open — US-6.3 (delivery) is next.
 - **Epic 7** partial: US-7.0 nav (`020ce81`) + US-7.1 parts panel (`8aeb95e`, fixes `1aa6216` + `34b8c83`) landed 2026-09-18; **US-7.9 upload + header preview is present on `main`** (verified against HEAD `5c337f0`: `ScoreFileThumbRestController` + `ScoreFileThumbQueryService` + test, and the upload/preview sections in `compositions/detail.html`); US-7.10/7.11 public token links shipped 2026-09-23; **US-7.3 role-map admin UI in PR #250 (2026-09-27, in review)**; US-7.4–7.8 open.
 
 *Last audited against HEAD on this branch: commit `1dc9159` (2026-09-18), PR numbers verified through #207.*
 *Re-checked against `origin/main` HEAD `5c337f0` on 2026-09-27, PR numbers verified through #250: US-7.3 now in review (PR #250); US-7.9 confirmed present on main.*
+*Re-checked against `origin/main` HEAD `fb22c38` on 2026-09-29: US-7.3 merged (PR #250), US-5.1 merged (PR #251), **US-6.2 merged (PR #252)**; PR #253 (voice editing, issue #241) also merged. US-6.3 (delivery) is the next story.*
