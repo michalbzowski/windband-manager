@@ -26,7 +26,7 @@ Create a team-scoped compositions library where band members can catalog pieces,
 | **Epic 3: Composition CRUD (Manual)** | 3.1 – 3.5 + 3.03 | Create/read/update/delete without AI | ✅ All done |
 | **Epic 4: AI-Assisted Score Analysis** | 4.1 – 4.7 | PDF/ZIP analysis, preview, verification | 🔶 US-4.1 + US-4.3 done · 4.2/4.4/4.5/4.6/4.7 not started |
 | **Epic 5: Instrument Alias Mapping** | 5.1 – 5.3 | Tag-to-role resolution for distribution | 🔶 US-5.1 ✅ PR #251 (resolution service); US-5.2/5.3 ⬜ |
-| **Epic 6: Event Integration & Distribution** | 6.1 – 6.6 | Assign to event, generate parts, send | 🔶 US-7.2/6.1 setlist + **US-6.2 part-list generation ✅ merged (PR #252, 2026-09-28)** · delivery (US-6.3+) not started |
+| **Epic 6: Event Integration & Distribution** | 6.1 – 6.6 | Assign to event, generate parts, send | 🔶 US-7.2/6.1 setlist + **US-6.2 part-list generation ✅ merged (PR #252, 2026-09-28)** + **US-6.3 delivery (e-mail) ✅ merged (PR #254, 2026-10-02)** · US-6.4/6.5/6.6 not started |
 | **Epic 7: UI & UX** | 7.0 – 7.9 | Thymeleaf templates, HTMX interactions | 🔶 nav (7.0) + parts panel (7.1) + role-map admin UI (7.3, PR #250) + upload/preview (7.9) done · the rest open |
 
 > **Status legend:** ✅ done · 🔶 partial / open items listed below · ⬜ not started · ❌ deliberately deferred
@@ -552,12 +552,20 @@ Depends on US-3.03's READY gate (the `verifiedBy`/`verifiedAt` audit pair must b
 
 ---
 
-### **US-6.3: Deliver parts to musicians (e-mail or app)** ⬜ Not started
+### **US-6.3: Deliver parts to musicians (e-mail or app)** ✅ (PR #254, merged 2026-10-02)
 > **As a** band manager
 > **I want one click to "send this event's parts" and every member gets their page range / file via the channel they prefer
 > **So that** I don't hand-copy each PDF
 
-Not yet implemented. The infrastructure to lean on already exists in the rest of this repo: `EmailChannel` / `SendGridApiChannel` + `SendGridEmailSender` (adapter-out), `NotificationSender` port, and `ConsentService` (the member's `email_consent` column from V25 is a hard gate — US-6.3 must refuse silently for non-consenting members rather than failing loudly mid-send). The distribution policy (who gets which part, in what order, with what subject line) belongs here and only here; the sender adapters are already generic and reused elsewhere (event invitations, welcome emails).
+**Real implementation (verified in code — merged 2026-10-02):**
+- [x] `EventPartDeliveryCommandService` + `PartDeliveryResult` (`application/command/event/`) — the single delivery policy: builds the per-composition recipient lists from US-6.2's distribution, **mints a share token per part via US-7.11's `PartShareTokenCommandService.tokenFor`** (no new token scheme), renders the e-mail through the existing `EmailSender` port + Thymeleaf (`templates/email/event-part.html`), and returns an honest split of `sent / skipped-no-consent / errors`
+- [x] **Consent is a hard gate** — driven by US-6.2's distribution, every non-consenting member for that part is *skipped silently* (named in the result) rather than failing the whole send; members without a valid address are likewise bucketed into `errors`, so one bad row never blocks the rest
+- [x] Adapter: `EventPageController#deliverParts` (`POST /events/{id}/parts-delivery`) — resolves the acting principal, adds `partDeliveryResult` / `partDeliveryError` to flash, and redirects back; the "Rozdanie głosów" section in `templates/events/detail.html` renders the send button only when a US-6.2 distribution exists, with a confirm modal (using the layout's `openAppModal(id)` convention) and the post-return result banner
+- [x] **Defects found by its own tests and fixed** (each surfaced by a real run, not assumed): (1) `@PathVariable eventId` vs URI `{id}` → `MissingPathVariableException` on *every* POST (hard 500 blocker); (2) non-existent Thymeleaf `#numbers.toString()` truncated the part table mid-render; (3) LAZY `EventComposition.composition` read outside an open session (`open-in-view: false`) → `LazyInitializationException`, closed with a `JOIN FETCH` repository read `findAllWithCompositionByEventId`; (4) `openAppModal(element)` vs `openAppModal(id)` so the confirm modal opens
+- [x] Tests: 8 service-level unit tests (`EventPartDeliveryCommandServiceTest` — happy path, consent gating, no-covering-file, deactivated/no-consent exclusion, token minting, error bucketing), integration tests over Testcontainers PG (`EventPartDeliveryIntegrationTest` — real bean + hermetic `@Primary` mailer: exactly one token per part, e-mail carries band name + working token link, non-consenting members get no mail and are reported skipped), and a Selenium UI test (`EventPartDeliveryUiTest`) asserting the button renders only with a distribution, "brak zgody" flagged before send, the modal opens, the honest banner reports sent + skipped counts, exactly one captured envelope goes to the consenting musician, and exactly one token row exists in `part_share_tokens`
+
+**Story Points:** 8.
+**Dependencies:** US-6.2 (distribution lists), US-7.2 (ordered setlist), US-7.11 (share token mint), US-7.1 / US-4.5 (part rows with page ranges), V25 `email_consent` (consent gate). The sender port/adapter are reused, not re-implemented (event invitations, welcome emails).
 
 ---
 
