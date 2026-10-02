@@ -152,9 +152,55 @@
 <!-- US-6.2 — Rozdanie głosow: kto gra co na jakim zakresie stron + luki "brak muzyka".
      Serwis read-only buduje to w transakcji; DTO jest calkowite skalarnie (Shape C). -->
 <section id="event-parts-panel" th:if="${partsDistribution != null and !partsDistribution.pieces().isEmpty()}" style="margin-bottom:1.5rem;">
+    <!-- US-6.3 — one-click delivery banner: honest per-category breakdown after a send. -->
+    <div th:if="${partDeliveryError}" id="part-delivery-error" role="alert"
+         style="background:var(--pico-error-color); color:var(--pico-color-inverse); padding:0.5rem 0.75rem; border-radius:6px; margin-bottom:0.75rem; font-size:0.9rem;">
+        &#x26A0; <span th:text="${partDeliveryError}">Nie udało się wysłać głosów</span>
+    </div>
+    <div th:if="${partDeliveryResult != null}" id="part-delivery-result" role="status"
+         style="background:var(--pico-background-color); border:1px solid var(--pico-muted-border-color); border-radius:6px; padding:0.5rem 0.75rem; margin-bottom:0.75rem; font-size:0.9rem;">
+        <p style="margin:0 0 0.35rem 0;">
+            &#x2705; Wysłano <strong th:text="${partDeliveryResult.sent()}">0</strong> e-maila
+            <span th:if="${!partDeliveryResult.delivered().isEmpty()}">—
+                <span th:each="d, st : ${partDeliveryResult.delivered()}">
+                    <span th:text="${d.memberName()}">Jan Kowalski</span><span th:if="${!st.last}">, </span>
+                </span>
+            </span>
+        </p>
+        <p th:if="${!partDeliveryResult.skippedNoConsent().isEmpty()}" style="margin:0.2rem 0; color:var(--pico-muted-color);">
+            &#x1F511; Bez zgody na e-mail (pominięto):
+            <span th:each="n, st : ${partDeliveryResult.skippedNoConsent()}">
+                <span th:text="${n}">Anna Nowak</span><span th:if="${!st.last}">, </span>
+            </span>
+        </p>
+        <p th:if="${!partDeliveryResult.skippedNoEmail().isEmpty()}" style="margin:0.2rem 0; color:var(--pico-muted-color);">
+            &#x1F511; Bez adresu e-mail (pominięto):
+            <span th:each="n, st : ${partDeliveryResult.skippedNoEmail()}">
+                <span th:text="${n}">Piotr Zalewski</span><span th:if="${!st.last}">, </span>
+            </span>
+        </p>
+        <p th:if="${!partDeliveryResult.noScoreFile().isEmpty()}" style="margin:0.2rem 0; color:var(--pico-warning-color);">
+            &#x26A0; Brak pliku nut (odmówiono):
+            <span th:each="n, st : ${partDeliveryResult.noScoreFile()}">
+                <span th:text="${n}">Kasia — „Flet 1”</span><span th:if="${!st.last}">, </span>
+            </span>
+        </p>
+        <p th:if="${!partDeliveryResult.failedSend().isEmpty()}" style="margin:0.2rem 0; color:var(--pico-error-color);">
+            &#x26A0; Błąd wysyłki:
+            <span th:each="n, st : ${partDeliveryResult.failedSend()}">
+                <span th:text="${n}">Ewa Wiśniewska</span><span th:if="${!st.last}">, </span>
+            </span>
+        </p>
+    </div>
     <header style="display:flex; align-items:center; gap:0.75rem; margin-bottom:0.5rem; flex-wrap:wrap;">
         <h3 style="margin:0;">&#x1F3BC; Rozdanie głosów</h3>
         <small style="color:var(--pico-muted-color);">kto gra, na jakim zakresie stron — luki oznaczone „brak muzyka”</small>
+        <button type="button" class="primary" id="send-parts-btn"
+                th:if="${!partsDistribution.assignments().isEmpty()}"
+                th:data-deliver-url="@{/events/{id}/parts-delivery(id=${event.id})}"
+                style="margin-left:auto; font-size:0.85rem; padding:0.3rem 0.8rem;">
+            &#x1F4E7; Wyślij głosy muzykom
+        </button>
     </header>
 
     <div th:each="piece : ${partsDistribution.pieces()}"
@@ -177,7 +223,7 @@
             <tbody>
             <tr th:each="part : ${piece.parts()}" style="border-top:1px solid var(--pico-muted-border-color);">
                 <td style="padding:0.4rem 0.5rem 0.4rem 0;" th:text="${part.role()}">Flet 1</td>
-                <td style="padding:0.4rem 0.5rem;" th:text="${#numbers.toString(part.pageFrom()) + '–' + #numbers.toString(part.pageTo())}">5&ndash;8</td>
+                <td style="padding:0.4rem 0.5rem;" th:text="${part.pageFrom()} + '–' + ${part.pageTo()}">5&ndash;8</td>
                 <td style="padding:0.4rem 0.5rem;">
                     <span th:if="${part.isUncovered()}"
                           style="background:var(--pico-error-color); color:var(--pico-color-inverse); padding:0.1rem 0.5rem; border-radius:999px; font-size:0.8rem;"
@@ -379,6 +425,66 @@
         </footer>
     </div>
 </dialog>
+
+<!-- US-6.3 — confirm the one-click delivery of every routed part to the musicians.
+     Own <script> right after the dialog: the page-level DOMContentLoaded script may run
+     before this node exists, so the bindings live here (same guard as every dialog on this
+     page — elements are parsed before this script executes). -->
+<dialog id="send-parts-modal" class="app-modal">
+    <div class="app-modal-content">
+        <header class="app-modal-header">
+            <div class="app-modal-header-text">
+                <h3>Wyślij głosy muzykom</h3>
+            </div>
+            <button type="button" class="app-modal-close" aria-label="Zamknij" data-close>&times;</button>
+        </header>
+        <div class="app-modal-body">
+            <p>Każdy muzyk otrzyma e-mail z linkami do swoich głosów
+                (osobny link per utwór, bez logowania).</p>
+            <p style="font-size:0.85rem; color:var(--pico-muted-color);">
+                Muzyk&oacute;w bez zgody na e-mail pominiemy i oznaczmy w podsumowaniu poniżej.
+            </p>
+        </div>
+        <footer class="app-modal-footer">
+            <button type="button" class="outline" id="send-parts-cancel-btn">Anuluj</button>
+            <button type="button" class="primary" id="send-parts-confirm-btn">&#x1F4E7; Wyślij</button>
+        </footer>
+    </div>
+</dialog>
+<script>
+    // US-6.3 — send-parts confirm flow: open modal from #send-parts-btn, submit the
+    // parts-delivery form on confirm, close on cancel. Pure DOM + form submit (no XHR):
+    // the redirect lands back on the same page where the flash banner renders. The
+    // delivery URL lives in the button's data attribute (th:data-deliver-url) so no
+    // JS inlining is involved.
+    (function () {
+        var openBtn = document.getElementById('send-parts-btn');
+        var modal = document.getElementById('send-parts-modal');
+        var confirmBtn = document.getElementById('send-parts-confirm-btn');
+        var cancelBtn = document.getElementById('send-parts-cancel-btn');
+        if (!modal || !openBtn) { return; }
+        // openAppModal() takes an ELEMENT ID string (layout modal framework, see
+        // fragments/layout.html) — matching the onclick convention used across the app.
+        openBtn.addEventListener('click', function () {
+            if (window.openAppModal) { openAppModal(modal.id); } else { modal.showModal(); }
+        });
+        if (cancelBtn) {
+            cancelBtn.addEventListener('click', function () {
+                if (window.closeAppModal) { closeAppModal(modal); } else { modal.close(); }
+            });
+        }
+        if (confirmBtn) {
+            confirmBtn.addEventListener('click', function () {
+                var form = document.createElement('form');
+                form.method = 'POST';
+                form.action = openBtn.getAttribute('data-deliver-url');
+                form.style.display = 'none';
+                document.body.appendChild(form);
+                form.submit();
+            });
+        }
+    })();
+</script>
 
 </div></section>
 </main>

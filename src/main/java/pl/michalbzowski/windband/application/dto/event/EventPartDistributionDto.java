@@ -51,6 +51,7 @@ public final class EventPartDistributionDto {
         }
     }
 
+
     /** Flat one-member-one-part row, kept for API consumers that want the plain table. */
     public record PartAssignment(
             long memberId,

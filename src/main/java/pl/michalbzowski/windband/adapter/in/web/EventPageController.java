@@ -12,6 +12,8 @@ import org.springframework.web.bind.annotation.*;
 
 import pl.michalbzowski.windband.application.dto.EventDetailDto.ParticipationDto;
 
+import pl.michalbzowski.windband.application.command.event.EventPartDeliveryCommandService;
+import pl.michalbzowski.windband.application.command.event.PartDeliveryResult;
 import pl.michalbzowski.windband.application.query.event.EventCompositionPartsQueryService;
 import pl.michalbzowski.windband.application.query.event.EventQueryService;
 
@@ -34,6 +36,8 @@ public class EventPageController {
     private final EventQueryService eventQueryService;
 
     private final EventCompositionPartsQueryService eventPartsQueryService;
+
+    private final EventPartDeliveryCommandService eventPartDeliveryService;
 
     private final MemberQueryService memberQueryService;
 
@@ -199,5 +203,29 @@ public class EventPageController {
                                       @ModelAttribute("activeTeamId") Long activeTeamId) {
         eventCommandService.unassignComposition(eventId, compositionId);
         return "redirect:/events/" + eventId;
+    }
+
+    // ---- US-6.3 - deliver the event's parts to the musicians ----------------
+
+    /**
+     * One-click delivery of every routed part to the musicians playing it (US-6.3).
+     * E-mail consent (V25) is a hard gate inside the command service: non-consenting members are
+     * skipped silently, the rest of the banner stays honest (sent / no consent / no e-mail /
+     * no covering file / failed).
+     */
+    @PostMapping("/{id}/parts-delivery")
+    public String deliverParts(@PathVariable Long id,
+                               @ModelAttribute("activeTeamId") Long activeTeamId,
+                               @org.springframework.security.core.annotation.AuthenticationPrincipal
+                               org.springframework.security.oauth2.core.oidc.user.OidcUser oidcUser,
+                               org.springframework.web.servlet.mvc.support.RedirectAttributes redirectAttributes) {
+        String actor = oidcUser == null ? null : oidcUser.getEmail();
+        try {
+            PartDeliveryResult result = eventPartDeliveryService.deliverParts(id, activeTeamId, actor);
+            redirectAttributes.addFlashAttribute("partDeliveryResult", result);
+        } catch (RuntimeException ex) {
+            redirectAttributes.addFlashAttribute("partDeliveryError", ex.getMessage());
+        }
+        return "redirect:/events/" + id;
     }
 }
