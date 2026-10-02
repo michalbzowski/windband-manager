@@ -251,9 +251,11 @@ public class EventCommandService {
                 .ifPresent(row -> eventCompositionRepository.delete(row));
     }
 
-    /** All setlist rows for this event (empty list when none yet). */
+    /** All setlist rows for this event, with the LAZY {@code composition} attached (JOIN FETCH) —
+     *  the detail template reads {@code ec.composition.title} and open-in-view is off in every
+     *  profile, so a plain lazy row list would throw on the very first render call. */
     public List<EventComposition> getEventCompositions(Long eventId) {
         eventRepository.findById(eventId).orElseThrow(() -> new EventNotFoundException(eventId));
-        return eventCompositionRepository.findAllByEventIdOrderByOrderInSetAsc(eventId);
+        return eventCompositionRepository.findAllWithCompositionByEventId(eventId);
     }
 }
