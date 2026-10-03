@@ -10,6 +10,7 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.client.RestTemplate;
 import pl.michalbzowski.windband.adapter.in.security.WindbandOidcUser;
 import pl.michalbzowski.windband.application.command.event.*;
+import pl.michalbzowski.windband.application.command.event.PartDeliveryResult;
 import pl.michalbzowski.windband.application.dto.InviteOptionsDto;
 import pl.michalbzowski.windband.application.query.event.EventQueryService;
 import pl.michalbzowski.windband.application.query.team.TeamQueryService;
@@ -27,6 +28,7 @@ public class EventController {
     private final EventQueryService queryService;
     private final TeamQueryService teamQueryService;
     private final NotificationSender notificationSender;
+    private final EventPartDeliveryCommandService partDeliveryService;
     private final RestTemplate restTemplate;
 
     @GetMapping
@@ -143,6 +145,27 @@ public class EventController {
     public ResponseEntity<Map<String, Integer>> sendInvitationsToAll(@PathVariable Long id) {
         int sent = notificationSender.sendToAll(id);
         return ResponseEntity.ok(Map.of("sent", sent));
+    }
+
+    @PostMapping("/{id}/send-all-parts")
+    public ResponseEntity<PartDeliveryResult> sendAllParts(@PathVariable Long id,
+                                                            @AuthenticationPrincipal OidcUser oidcUser,
+                                                            HttpSession session) {
+        Long activeTeamId = resolveActiveTeamId(oidcUser, session);
+        if (activeTeamId == null) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).build();
+        }
+        String actor = oidcUser == null ? null : oidcUser.getEmail();
+        try {
+            PartDeliveryResult result = partDeliveryService.deliverParts(id, activeTeamId, actor);
+            return ResponseEntity.ok(result);
+        } catch (IllegalArgumentException ex) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).build();
+        } catch (IllegalStateException ex) {
+            return ResponseEntity.status(HttpStatus.CONFLICT).build();
+        } catch (RuntimeException ex) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+        }
     }
 
     @GetMapping("/debug/ip")

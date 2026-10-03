@@ -507,40 +507,75 @@
     });
 
     // Send invitations to all members
-    var sendAllBtn = document.getElementById('send-all-btn');
-    if (sendAllBtn) {
-        sendAllBtn.addEventListener('click', function() {
-            var eid = document.querySelector('#events-content[data-event-id]').dataset.eventId;
-            var resultSpan = document.getElementById('send-all-result');
-            
-            this.disabled = true;
-            resultSpan.textContent = 'Wysyłanie...';
-            
-            fetchWithToast('/api/events/' + eid + '/send-all', {
-                toastMessage: 'Wysłano zaproszenia',
-                method: 'POST'
-            }).then(function(response) {
-                if (response.ok) {
-                    response.json().then(function(data) {
-                        resultSpan.textContent = '✅ Wysłano ' + data.sent + ' zaproszeń';
-                    });
-                    // Reload to show updated statuses
-                    setTimeout(function() {
-                        htmx.ajax('GET', '/events/' + eid, {target: '#events-content[data-event-id]', swap: 'outerHTML transition:true'});
-                    }, 1000);
-                } else {
+        var sendAllBtn = document.getElementById('send-all-btn');
+        if (sendAllBtn) {
+            sendAllBtn.addEventListener('click', function() {
+                var eid = document.querySelector('#events-content[data-event-id]').dataset.eventId;
+                var resultSpan = document.getElementById('send-all-result');
+
+                this.disabled = true;
+                resultSpan.textContent = 'Wysyłanie...';
+
+                fetchWithToast('/api/events/' + eid + '/send-all', {
+                    toastMessage: 'Wysłano zaproszenia',
+                    method: 'POST'
+                }).then(function(response) {
+                    if (response.ok) {
+                        response.json().then(function(data) {
+                            resultSpan.textContent = '✅ Wysłano ' + data.sent + ' zaproszeń';
+                        });
+                        // Reload to show updated statuses
+                        setTimeout(function() {
+                            htmx.ajax('GET', '/events/' + eid, {target: '#events-content[data-event-id]', swap: 'outerHTML transition:true'});
+                        }, 1000);
+                    } else {
+                        resultSpan.textContent = '❌ Błąd wysyłki';
+                        sendAllBtn.disabled = false;
+                    }
+                }).catch(function(err) {
+                    console.error('Send all error:', err);
                     resultSpan.textContent = '❌ Błąd wysyłki';
                     sendAllBtn.disabled = false;
-                }
-            }).catch(function(err) {
-                console.error('Send all error:', err);
-                resultSpan.textContent = '❌ Błąd wysyłki';
-                sendAllBtn.disabled = false;
+                });
             });
-        });
-    }
+        }
 
-    // Sticky stats bar (runs after main init)
+        // Send all parts to musicians (US-6.4)
+        var sendAllPartsBtn = document.getElementById('send-all-parts-btn');
+        if (sendAllPartsBtn) {
+            sendAllPartsBtn.addEventListener('click', function() {
+                var eid = document.querySelector('#events-content[data-event-id]').dataset.eventId;
+                var resultSpan = document.getElementById('send-all-parts-result');
+
+                this.disabled = true;
+                resultSpan.textContent = 'Wysyłanie głosów...';
+
+                fetchWithToast('/api/events/' + eid + '/send-all-parts', {
+                    toastMessage: 'Wysłano głosy',
+                    method: 'POST'
+                }).then(function(response) {
+                    if (response.ok) {
+                        response.json().then(function(data) {
+                            var sent = data.sent || 0;
+                            resultSpan.textContent = '✅ Wysłano ' + sent + ' e-maili z głosami';
+                        });
+                        // Reload to show updated result banner
+                        setTimeout(function() {
+                            htmx.ajax('GET', '/events/' + eid, {target: '#events-content[data-event-id]', swap: 'outerHTML transition:true'});
+                        }, 1000);
+                    } else {
+                        resultSpan.textContent = '❌ Błąd wysyłki głosów';
+                        sendAllPartsBtn.disabled = false;
+                    }
+                }).catch(function(err) {
+                    console.error('Send all parts error:', err);
+                    resultSpan.textContent = '❌ Błąd wysyłki głosów';
+                    sendAllPartsBtn.disabled = false;
+                });
+            });
+        }
+
+        // Sticky stats bar (runs after main init)
     var statsBar = document.querySelector('.event-stats');
     var nav = document.querySelector('.top-nav');
     if (!statsBar || !nav) return;

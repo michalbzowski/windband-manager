@@ -39,7 +39,9 @@
             <button type="button" class="outline" id="open-invite-btn">➕ Zaproś</button>
             <th:block th:if="${!eventAlreadyOccurred}">
                 <button class="primary" id="send-all-btn">📧 Wyślij do wszystkich</button>
+                <button class="primary" id="send-all-parts-btn">📮 Wyślij wszystkie głosy</button>
                 <span id="send-all-result" style="font-size:0.9rem;"></span>
+                <span id="send-all-parts-result" style="font-size:0.9rem; margin-left: 0.5rem;"></span>
             </th:block>
         </div>
 
@@ -60,7 +62,7 @@
         if (!bar) return;
         var menu = bar.querySelector('.overflow-menu');
         if (!menu) return;
-        ['open-invite-btn', 'send-all-btn'].forEach(function(id) {
+        ['open-invite-btn', 'send-all-btn', 'send-all-parts-btn'].forEach(function(id) {
             var btn = document.getElementById(id);
             if (!btn || btn.parentNode === menu) return;   // already placed — idempotent
             btn.className = 'overflow-item';               // match the other ⋮ menu items
