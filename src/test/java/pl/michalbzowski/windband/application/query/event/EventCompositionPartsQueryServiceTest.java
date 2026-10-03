@@ -347,6 +347,50 @@ class EventCompositionPartsQueryServiceTest extends BaseIntegrationTest {
         assertThat(after.assignments().get(0).verified()).isTrue();
     }
 
+    // ─────────────── US-6.5 — invalidation hook visible through the Epic 6 read model ─────────────
+
+    /**
+     * US-6.5 — "Regenerate on fly when a composer edits part ranges": the distribution read model is
+     * live and must not cache verification state. The sequence below mirrors the US-6.3 hand-off:
+     * once a librarian confirms (US-6.2 → verified=true), a composer edits that part's page range
+     * (US-7.1 / issue #241 path, {@code CompositionCommandService.updatePart}) — the frozen audit
+     * pair that the "verified" flag is read from is invalidated by the US-6.5 domain hook in
+     * {@code CompositionInstrument.updateMapping}, and the composition's own READY state drops back
+     * to DRAFT (because the "whole-map approved" invariant no longer holds). The very next
+     * {@link EventCompositionPartsQueryService#forEvent} call must already reflect verified=false,
+     * proving there is NO in-flight cache between the write and this read. A fresh US-3.03 pass then
+     * restores both: the flag back to true AND the composition to READY — closing the loop without a
+     * second verification regime.
+     */
+    @Test
+    void editPartAfterVerify_turnsVerifiedFlagsOffLive_untilReverified() {
+        Composition suite = composition(bandA.getId(), "US-6.5 revalidation on edit");
+        CompositionInstrument part = addPart(suite, kornetA, "Trąbka 2", 10, 12);
+        BandEvent e = newEvent(bandA, "Koncert US-6.5");
+        link(e, suite, 1);
+
+        // ① Verified: a librarian stamps the (only) part → Epic 6's read model reports verified=true.
+        compositionCommandService.verifyCompositionParts(suite.getId(), bandA.getId(), "lib@test");
+        Distribution confirmed = service.forEvent(e.getId(), bandA.getId());
+        assertThat(confirmed.assignments().get(0).verified()).as("confirmed before edit").isTrue();
+
+        // ② A composer edits the part's page range (US-7.1 path) AFTER the fact — US-6.5 requires this
+        //    to invalidate the frozen pair, so the *very next* distribution read must show false, with
+        //    no cache in between. This is the entire, observable, non-cache guarantee of the story.
+        compositionCommandService.updatePart(part.getId(), suite.getId(), kornetA.getId(),
+                "Trąbka 2", 14, 19, null, bandA.getId());
+
+        Distribution afterEdit = service.forEvent(e.getId(), bandA.getId());
+        assertThat(afterEdit.assignments().get(0).verified())
+                .as("edit must invalidate the 'verified' flag on the distribution read")
+                .isFalse();
+
+        // ③ Loop closes through the same US-3.03 gate, not a second regime: re-verify restores the flag.
+        compositionCommandService.verifyCompositionParts(suite.getId(), bandA.getId(), "lib2@test");
+        Distribution reconfirmed = service.forEvent(e.getId(), bandA.getId());
+        assertThat(reconfirmed.assignments().get(0).verified()).as("restored after re-verification").isTrue();
+    }
+
     // ─────────────────────────────── helpers ───────────────────────────────
 
     private static PartAssignment rowByRole(Distribution d, String role) {
