@@ -29,6 +29,7 @@ public class EventController {
     private final TeamQueryService teamQueryService;
     private final NotificationSender notificationSender;
     private final EventPartDeliveryCommandService partDeliveryService;
+    private final pl.michalbzowski.windband.application.query.event.EventPartDeliveryQueryService partDeliveryHistoryService;
     private final RestTemplate restTemplate;
 
     @GetMapping
@@ -163,6 +164,24 @@ public class EventController {
         // missing event looked like a server crash (and its real cause never reached the logged
         // 404 shape).
         return ResponseEntity.ok(partDeliveryService.deliverParts(id, activeTeamId, actor));
+    }
+
+    /**
+     * US-6.6 — read the delivery history of an event ("Historia rozdań"): every musician × part
+     * decision from every run, honest outcomes included (consent refusals are audited too).
+     * Same thin-adapter contract as {@link #sendAllParts}: unknown event 404, foreign band 409,
+     * unknown/absent team 400 — all mapped by the GlobalExceptionHandler.
+     */
+    @GetMapping("/{id}/part-deliveries")
+    public ResponseEntity<pl.michalbzowski.windband.application.dto.event.EventPartDeliveryHistoryDto.DeliveryHistory>
+            partDeliveries(@PathVariable Long id,
+                           @AuthenticationPrincipal OidcUser oidcUser,
+                           HttpSession session) {
+        Long activeTeamId = resolveActiveTeamId(oidcUser, session);
+        if (activeTeamId == null) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).build();
+        }
+        return ResponseEntity.ok(partDeliveryHistoryService.historyForEvent(id, activeTeamId));
     }
 
     @GetMapping("/debug/ip")

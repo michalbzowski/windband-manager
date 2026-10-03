@@ -22,6 +22,7 @@ import pl.michalbzowski.windband.domain.composition.ScoreFile;
 import pl.michalbzowski.windband.domain.composition.ScoreFileRepository;
 import pl.michalbzowski.windband.domain.event.BandEvent;
 import pl.michalbzowski.windband.domain.event.EventComposition;
+import pl.michalbzowski.windband.domain.event.EventPartDelivery;
 import pl.michalbzowski.windband.domain.event.EventCompositionRepository;
 import pl.michalbzowski.windband.domain.event.EventRepository;
 import pl.michalbzowski.windband.domain.event.EventType;
@@ -39,6 +40,9 @@ import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+
+import pl.michalbzowski.windband.domain.event.EventPartDeliveryRepository;
+import pl.michalbzowski.windband.application.query.event.EventPartDeliveryQueryService;
 
 /**
  * US-6.3 — delivery of an event's parts to its musicians, over a REAL Spring context and a REAL
@@ -75,6 +79,8 @@ class EventPartDeliveryIntegrationTest extends BaseIntegrationTest {
     @Autowired private EventCompositionRepository eventCompositionRepository;
     @Autowired private PartShareTokenRepository tokenRepository;
     @Autowired private EventPartDeliveryCommandService service;
+    @Autowired private EventPartDeliveryRepository auditRepository;
+    @Autowired private EventPartDeliveryQueryService historyService;
     @Autowired private CapturedMailLog captured;
 
     private Band band;
@@ -252,6 +258,76 @@ class EventPartDeliveryIntegrationTest extends BaseIntegrationTest {
         // Transport saw exactly one envelope, addressed to the right mailbox.
         assertThat(captured.mails).hasSize(1).first()
                 .satisfies(m -> assertThat(m.to).isEqualTo(basia.getEmail()));
+    }
+
+    // ─────────────────────── US-6.6 — audit-trail ITs (real DB) ─────────────────────────
+
+    /**
+     * US-6.6 AC — re-sending is CUMULATIVE: two runs each write a fresh row for every decided
+     * musician/part, so the append-only table holds one row per (musician, run). The query read
+     * model groups them into runs, NEWEST FIRST, and the delivered tally is the sum across runs.
+     */
+    @Test
+    void twoDeliveryRuns_auditRowsAccumulateAndHistoryGroupsNewestFirst() throws Exception {
+        // Seed state: jan (consenting) gets DELIVERED; anna (unconsented) is SKIPPED_NO_CONSENT.
+        assertThat(service.deliverParts(eventId, band.getId(), "admin@test.com").sent()).isEqualTo(1);
+        int afterFirst = auditRepository.findAllByEventIdOrderBySentAtDesc(eventId).size();
+        assertThat(afterFirst).isGreaterThanOrEqualTo(2);
+
+        // Bump the clock by one second so run 2's sentinel is strictly after run 1's.
+        Thread.sleep(1500);
+        this.captured.reset();
+        assertThat(service.deliverParts(eventId, band.getId(), "admin@test.com").sent()).isEqualTo(1);
+
+        var rows = auditRepository.findAllByEventIdOrderBySentAtDesc(eventId);
+        long janRows = rows.stream().filter(r -> jan.getEmail().equals(r.getRecipientEmail())).count();
+        assertThat(janRows).as("the consenting member was audited in BOTH runs").isEqualTo(2);
+        assertThat(rows.size()).isGreaterThanOrEqualTo(afterFirst)
+                .as("second run never overwrites the first — append-only");
+
+        var history = historyService.historyForEvent(eventId, band.getId());
+        assertThat(history.runs().size()).isEqualTo(2).as("two distinct runs → two blocks");
+        // Newest run is at index 0.
+        assertThat(history.runs().get(0).runAt()).isAfterOrEqualTo(history.runs().get(1).runAt());
+        // Jan DELIVERED in BOTH runs → delivered tally counts both, never just the last.
+        assertThat(history.totalDeliveredParts()).isEqualTo(2);
+    }
+
+    /**
+     * US-6.6 AC — EVERY policy decision (not only successful sends) lands a row in the real DB and
+     * surfaces in the query model: the consenting member as DELIVERED, the unconsented one as
+     * SKIPPED_NO_CONSENT. This is what makes the "Historia rozdań" panel honest about refusals.
+     */
+    @Test
+    void singleRun_auditsEveryPolicyDecisionDeliveredAndSkippedNoConsent() {
+        service.deliverParts(eventId, band.getId(), "admin@test.com");
+
+        var rows = auditRepository.findAllByEventIdOrderBySentAtDesc(eventId);
+        assertThat(rows).anyMatch(r -> EventPartDelivery.OUTCOME_DELIVERED.equals(r.getOutcome()));
+        assertThat(rows).anyMatch(r -> EventPartDelivery.OUTCOME_SKIPPED_NO_CONSENT.equals(r.getOutcome()));
+
+        var history = historyService.historyForEvent(eventId, band.getId());
+        List<String> outcomes = new ArrayList<>();
+        history.runs().forEach(b -> b.rows().forEach(r -> outcomes.add(r.outcome())));
+        assertThat(outcomes).contains(EventPartDelivery.OUTCOME_DELIVERED,
+                EventPartDelivery.OUTCOME_SKIPPED_NO_CONSENT);
+        // Counters: 1 delivered + 1 not-delivered.
+        assertThat(history.totalDeliveredParts()).isEqualTo(1);
+        assertThat(history.totalSkippedParts()).isGreaterThanOrEqualTo(1);
+    }
+
+    /**
+     * US-6.6 AC — band isolation on the READ side: a second tenant may not read this band's audit
+     * trail; a foreign band context for a real event fails closed with 409 (IllegalStateException).
+     */
+    @Test
+    void foreignBandAuditRead_failsClosedWithConflict() {
+        var otherBand = bandRepository.save(Band.create("Obcy US66 " + UUID.randomUUID().toString().substring(0, 8), "us66-foreign"));
+        service.deliverParts(eventId, band.getId(), "admin@test.com");
+
+        assertThatThrownBy(() -> historyService.historyForEvent(eventId, otherBand.getId()))
+                .isInstanceOf(IllegalStateException.class)
+                .as("cross-band audit read must fail closed (409), not leak rows");
     }
 
     // ─────────────────────────────── helpers ───────────────────────────────

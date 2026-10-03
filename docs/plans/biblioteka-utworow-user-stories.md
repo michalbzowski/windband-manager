@@ -26,7 +26,7 @@ Create a team-scoped compositions library where band members can catalog pieces,
 | **Epic 3: Composition CRUD (Manual)** | 3.1 – 3.5 + 3.03 | Create/read/update/delete without AI | ✅ All done |
 | **Epic 4: AI-Assisted Score Analysis** | 4.1 – 4.7 | PDF/ZIP analysis, preview, verification | 🔶 US-4.1 + US-4.3 done · 4.2/4.4/4.5/4.6/4.7 not started |
 | **Epic 5: Instrument Alias Mapping** | 5.1 – 5.3 | Tag-to-role resolution for distribution | 🔶 US-5.1 ✅ PR #251 (resolution service); US-5.2/5.3 ⬜ |
-| **Epic 6: Event Integration & Distribution** | 6.1 – 6.6 | Assign to event, generate parts, send | 🔶 US-7.2/6.1 setlist + **US-6.2 part-list generation ✅ (PR #252, 2026-09-28)** + **US-6.3 delivery (e-mail) ✅ (PR #254, 2026-10-02)** + **US-6.4 batch/all-pieces REST + UI ✅ (PR #255, 2026-10-03)** + **US-6.5 invalidation hook on part writes ("regenerate on fly") ✅** · US-6.6 (delivery audit trail) open |
+| **Epic 6: Event Integration & Distribution** | 6.1 – 6.6 | Assign to event, generate parts, send | ✅ FULLY DELIVERED — US-6.3 (PR #254) + US-6.4 (PR #255) + US-6.5 (PR #256) + **US-6.6 delivery audit trail ✅** (branch `feat/us-6.6-delivery-audit-trail`) |
 | **Epic 7: UI & UX** | 7.0 – 7.9 | Thymeleaf templates, HTMX interactions | 🔶 nav (7.0) + parts panel (7.1) + role-map admin UI (7.3, PR #250) + upload/preview (7.9) done · the rest open |
 
 > **Status legend:** ✅ done · 🔶 partial / open items listed below · ⬜ not started · ❌ deliberately deferred
@@ -569,7 +569,7 @@ Depends on US-3.03's READY gate (the `verifiedBy`/`verifiedAt` audit pair must b
 
 ---
 
-### **US-6.4 / US-6.5 — delivered; US-6.6 open** ⬜
+### **US-6.4 / US-6.5 — delivered; US-6.6 ✅ (branch ready, PR pending build)** ⬜
 
 - **US-6.4:** "Send *all* parts for the event, in concert order" (batch version of US-6.3 over the full setlist built in US-7.2's `orderInSet` walk). ✅
 - **US-6.5:** "Regenerate on fly when a composer edits part ranges" (invalidation hook on US-7.1 / US-4.5 writes — the same invalidation *concept* as US-5.2's cache seam, but at the *composition* level and, critically, for the verification/ready-gate that Epic 6's distribution reads are built on). ✅
@@ -592,6 +592,32 @@ Depends on US-3.03's READY gate (the `verifiedBy`/`verifiedAt` audit pair must b
 - `EventCompositionPartsQueryServiceTest` — 1 new **end-to-end** test through Epic 6's own live read model: verified → US-6.2 reports `verified=true`; composer edits the range → the *very next* `forEvent` reports `verified=false` with no cache in between; re-verify → `true` again.
 
 **Dependencies:** US-3.03 (ready-gate — the state being protected), US-6.2/US-6.3 (the readers invalidated on behalf of). No migration: both `verified_by`/`verified_at` are already nullable (`V38`; `DEFAULT NULL`). Story Points: 5.
+
+---
+
+### **US-6.6: "Historia rozdań" — audit trail per delivery run** ✅ (branch `feat/us-6.6-delivery-audit-trail`)
+> **As a** band manager
+> **I want an immutable, per-run history of EVERY delivery decision for an event — who received which part in which run, and for everyone who did NOT (no consent / no e-mail / no covering score file / send failed)**
+> **So that** when someone asks "did X really get their March part?" I can answer with the exact attempt, the exact reason, and who triggered it — without digging through e-mail logs
+
+**Why it was missing:** the US-6.3/6.4 command side computed all five policy buckets (DELIVERED / SKIPPED_NO_CONSENT / SKIPPED_NO_EMAIL / REFUSED_NO_SCORE_FILE / SEND_FAILED) but returned them as a throwaway in-memory `PartDeliveryResult` — after `deliverParts` exits, the only trace is the e-mail inbox. Re-sending silently replaces the story: an honest "refused because no score file" becomes indistinguishable from "never happened".
+
+**Real implementation (this change):**
+- [x] **Migration V46** — new append-only table `event_part_deliveries`: scalar snapshot per decision row (`member_name`, `recipient_email`, `piece_title`, `part_role`, `page_from/to`, `channel`, `outcome`, `reason`, `actor`, `sent_at`) with a single `event_id` FK `ON DELETE CASCADE`. **Denormalized deliberately**: history survives member/part deletion and rename (an audit row must document what was true AT THAT RUN), and zero lazy associations means `open-in-view: false` can never bite the read path.
+- [x] **Append-only entity** — `EventPartDelivery` with **no mutators at all** (no `updateX`, no `modifiedAt`); the repository contract exposes only `save` + `findAllByEventIdOrderBySentAtDesc`. The five outcome constants live here (`OUTCOME_DELIVERED`, …, `OUTCOME_REFUSED_NO_SCORE_FILE`) — single source of truth shared by command + query sides.
+- [x] **Audit hooks inside the delivery loop** — `EventPartDeliveryCommandService` writes a decision row in EVERY bucket: after each successful send (`DELIVERED`), inside the send `catch` before rethrow (`SEND_FAILED`, so the run still fails the API call), and at each skip branch (`SKIPPED_NO_CONSENT`, `SKIPPED_NO_EMAIL`, `REFUSED_NO_SCORE_FILE`). All rows of one run share one `runAt = clock.instant()` captured ONCE at loop start — that is what makes "which attempt?" groupable without a second column.
+- [x] **Best-effort audit, never breaks delivery** — the persist helper (`recordAudit`) catches any persistence failure, logs it, and lets the run continue: an audit outage must not prevent musicians from getting their parts (the result object and the banner still tell the truth about the SEND).
+- [x] **Read model with band isolation** — `EventPartDeliveryQueryService.historyForEvent(eventId, bandId)`: unknown event → 404 (`EventNotFoundException`), foreign band → 409 (`IllegalStateException`), rows grouped into `DeliveryBlock`s newest‑first by the run sentinel, tallies summed across runs (a re-send ADDS one DELIVERED tally per run — cumulative count of decisions, which is what an audit trail means).
+- [x] **REST** — `GET /api/events/{id}/part-deliveries` in `EventController` (thin adapter — no try/catch; `GlobalExceptionHandler` maps the query service's exceptions, same surface as US-6.3/6.4's `sendAllParts`; same active-team resolution from session/principal).
+- [x] **UI panel "📜 Historia rozdań"** in `events/detail.html` — always rendered (never a silent absence): honest empty state "Brak historii"; per-run cards (attempt #, ISO stamp, row count, actor) + a full decision table (date, musician, e-mail, piece, part, pages, per-outcome chip, reason). Wires the scalar DTO straight into record accessors — no lazy entities on the view path.
+
+**Tests (TDD: RED→GREEN, real DB H2/Postgres-mode, `open-in-view: false`):**
+- `EventPartDeliveryCommandServiceTest` +3: every policy decision writes exactly its own row (per-bucket `outcome`/`recipientEmail`/`reason` assertions); SEND_FAILED row is persisted BEFORE the rethrow; audit persistence failure never breaks the delivery itself.
+- `EventPartDeliveryHistoryRestControllerTest` (new, 5 scenarios): 200 success with runs newest‑first + tally math; 404 unknown event; 409 foreign band; 400 missing team; empty-history envelope. (**Lesson pinned into the windband skill:** `@JsonFormat(pattern="y…")` on an `Instant` record field fails Jackson serialization — YearOfEra unsupported; ISO instant is the wire format.)
+- `EventPartDeliveryIntegrationTest` +3 (real context, real DB): two runs ACCUMULATE (append-only verified row-by-row, history grouped into 2 blocks newest‑first, DELIVERED tally counts both); one run lands both the deliver AND every skip decision in the table; cross-band audit read fails closed with 409.
+- `EventDeliveryHistoryRenderTest` (new — the UI seam Selenium can't reach on CI): after a real delivery the detail page renders the panel with tallies, the ✅ chip, the actor, and Jan's row (name/part/pages); a fresh event renders the honest empty state. (This test caught two template defects the REST lane could never see: a `</strong>` closing a `<span>` that silently dropped 4 run-header elements, and `#temporals.toString(Instant)` which does not exist.)
+
+**Dependencies:** US-6.3 (the loop instrumented), US-6.4 (result vocabulary), US-7.10/US-7.11 (gates + token links feeding the audited decisions). Migration: V46, new table only — nothing altered, safe to replay on every environment. **Story Points: 8.**
 
 ---
 

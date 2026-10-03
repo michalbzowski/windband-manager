@@ -90,6 +90,8 @@ class EventBatchPartsDeliveryRestControllerTest {
     @Mock
     private EventPartDeliveryCommandService partDeliveryService;
     @Mock
+    private pl.michalbzowski.windband.application.query.event.EventPartDeliveryQueryService partDeliveryHistoryService;
+    @Mock
     private RestTemplate restTemplate;
 
     private WindbandOidcUser user;
@@ -113,7 +115,8 @@ class EventBatchPartsDeliveryRestControllerTest {
         principalRef.set(user);
 
         mvc = MockMvcBuilders.standaloneSetup(new EventController(commandService, queryService,
-                        teamQueryService, notificationSender, partDeliveryService, restTemplate))
+                        teamQueryService, notificationSender, partDeliveryService,
+                        partDeliveryHistoryService, restTemplate))
                 .setMessageConverters(new MappingJackson2HttpMessageConverter())
                 .setControllerAdvice(new GlobalExceptionHandler())
                 .setCustomArgumentResolvers(principalResolver())
