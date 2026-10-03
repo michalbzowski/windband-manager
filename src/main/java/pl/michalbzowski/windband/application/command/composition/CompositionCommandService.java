@@ -9,6 +9,7 @@ import pl.michalbzowski.windband.domain.composition.Composition;
 import pl.michalbzowski.windband.domain.composition.CompositionInstrument;
 import pl.michalbzowski.windband.domain.composition.CompositionInstrumentRepository;
 import pl.michalbzowski.windband.domain.composition.CompositionRepository;
+import pl.michalbzowski.windband.domain.composition.CompositionStatus;
 import pl.michalbzowski.windband.domain.composition.PartSource;
 import pl.michalbzowski.windband.domain.composition.ScoreFile;
 import pl.michalbzowski.windband.domain.composition.ScoreFileRepository;
@@ -141,7 +142,10 @@ public class CompositionCommandService {
 
         var part = CompositionInstrument.forComposition(
                 composition, instrument, cleanRole, pageFrom, pageTo, null, boundScoreFile, PartSource.MANUAL, score);
-        return instrumentRepository.save(part);
+        var saved = instrumentRepository.save(part);
+        // US-6.5 — a fresh unverified voice breaks the "whole map approved" claim of any READY state.
+        invalidateStaleReadyState(composition);
+        return saved;
     }
 
     /**
@@ -186,8 +190,40 @@ public class CompositionCommandService {
 
         ScoreFile boundScoreFile = (scoreFileId == null) ? null : resolveBoundScoreFile(scoreFileId, compositionId);
 
+        // US-6.5 — editing changes the audit surface: for a READY piece the (now-invalidated) frozen
+        // pair no longer covers this mapping, so the "whole map human-approved" claim of READY breaks.
         part.updateMapping(instrument, role.trim(), pageFrom, pageTo, boundScoreFile);
-        return instrumentRepository.save(part);
+        var saved = instrumentRepository.save(part);
+        invalidateStaleReadyState(composition); // AFTER save: fresh part read must see the cleared pair
+        return saved;
+    }
+
+    // ---- US-6.5 — invalidate stale READY on part writes ---------------------
+
+    /**
+     * US-6.5 — part-writes (a fresh voice, or an edit that invalidates a frozen audit pair) call
+     * this, and it demotes a READY composition back to DRAFT whenever any part now lacks verified
+     * state. That invariant is the entire contract: <b>READY ⇒ every part is human-approved.</b>
+     * A fresh voice arrives unverified by construction; an edited mapping's pair was cleared by the
+     * US-6.5 domain hook in {@link CompositionInstrument#updateMapping}. Either way the part map no
+     * longer satisfies "all verified", so the aggregate re-enters DRAFT until a fresh US-3.03 pass
+     * re-promotes it — and Epic 6's distribution read (which exposes
+     * {@code verified = part.getVerifiedAt() != null}) stops presenting stale rows as approved.
+     *
+     * <p>Idempotent and safe: no-op unless the composition is READY AND still has an unverified
+     * part — a DRAFT/ARCHIVED state is never touched (leaves {@code archive}/{@code restore}
+     * untouched), and if by chance every part is already approved, composition stays READY.</p>
+     */
+    private void invalidateStaleReadyState(Composition composition) {
+        if (composition.getStatus() != CompositionStatus.READY) {
+            return; // DRAFT/ARCHIVED — status semantics unchanged.
+        }
+        boolean anyUnverified = instrumentRepository.findAllByComposition(composition).stream()
+                .anyMatch(p -> p.getVerifiedAt() == null);
+        if (anyUnverified) {
+            composition.markDraft();
+            repository.save(composition);
+        }
     }
 
     // ---- delete (US-1.6 AC) ----------------------------------------------

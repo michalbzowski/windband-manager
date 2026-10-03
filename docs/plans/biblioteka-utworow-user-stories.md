@@ -26,7 +26,7 @@ Create a team-scoped compositions library where band members can catalog pieces,
 | **Epic 3: Composition CRUD (Manual)** | 3.1 – 3.5 + 3.03 | Create/read/update/delete without AI | ✅ All done |
 | **Epic 4: AI-Assisted Score Analysis** | 4.1 – 4.7 | PDF/ZIP analysis, preview, verification | 🔶 US-4.1 + US-4.3 done · 4.2/4.4/4.5/4.6/4.7 not started |
 | **Epic 5: Instrument Alias Mapping** | 5.1 – 5.3 | Tag-to-role resolution for distribution | 🔶 US-5.1 ✅ PR #251 (resolution service); US-5.2/5.3 ⬜ |
-| **Epic 6: Event Integration & Distribution** | 6.1 – 6.6 | Assign to event, generate parts, send | 🔶 US-7.2/6.1 setlist + **US-6.2 part-list generation ✅ merged (PR #252, 2026-09-28)** + **US-6.3 delivery (e-mail) ✅ merged (PR #254, 2026-10-02)** · US-6.4/6.5/6.6 not started |
+| **Epic 6: Event Integration & Distribution** | 6.1 – 6.6 | Assign to event, generate parts, send | 🔶 US-7.2/6.1 setlist + **US-6.2 part-list generation ✅ (PR #252, 2026-09-28)** + **US-6.3 delivery (e-mail) ✅ (PR #254, 2026-10-02)** + **US-6.4 batch/all-pieces REST + UI ✅ (PR #255, 2026-10-03)** + **US-6.5 invalidation hook on part writes ("regenerate on fly") ✅** · US-6.6 (delivery audit trail) open |
 | **Epic 7: UI & UX** | 7.0 – 7.9 | Thymeleaf templates, HTMX interactions | 🔶 nav (7.0) + parts panel (7.1) + role-map admin UI (7.3, PR #250) + upload/preview (7.9) done · the rest open |
 
 > **Status legend:** ✅ done · 🔶 partial / open items listed below · ⬜ not started · ❌ deliberately deferred
@@ -569,10 +569,29 @@ Depends on US-3.03's READY gate (the `verifiedBy`/`verifiedAt` audit pair must b
 
 ---
 
-### **US-6.4 / US-6.5 / US-6.6** ⬜ (not started — not planned in detail by this audit)
-- **US-6.4:** "Send *all* parts for the event, in concert order" (batch version of US-6.3 over the full setlist built in US-7.2's `orderInSet` walk).
-- **US-6.5:** "Regenerate on fly when a composer edits part ranges" (invalidation hook on US-7.1 / US-4.5 writes — see the same invalidation seam as US-5.2 but at the *composition* level instead of the *instrument* level).
-- **US-6.6:** "Audit trail per delivery" (who got which part, when, via which channel; joins into a new `event_part_delivery` table — future migration V44+).
+### **US-6.4 / US-6.5 — delivered; US-6.6 open** ⬜
+
+- **US-6.4:** "Send *all* parts for the event, in concert order" (batch version of US-6.3 over the full setlist built in US-7.2's `orderInSet` walk). ✅
+- **US-6.5:** "Regenerate on fly when a composer edits part ranges" (invalidation hook on US-7.1 / US-4.5 writes — the same invalidation *concept* as US-5.2's cache seam, but at the *composition* level and, critically, for the verification/ready-gate that Epic 6's distribution reads are built on). ✅
+
+### **US-6.5: Regenerate on when a composer edits part ranges (invalidation on write)** ✅
+
+> **As a** band manager or librarian
+> **I want any change to a voice (page range, role, instrument, bound score file) to instantly invalidate its "verified" state and re-enter the US-3.03 ready-gate — live, not on a rebuild or cache flush
+> **So that** Epic 6 never distributes, presents-with-a-working-link, or reports-as-ready a mapping that a human only *previously* approved
+
+**Why it was broken (root cause):** `CompositionInstrument.updateMapping` replaced the range/role/instrument but deliberately left the frozen `verifiedBy`/`verifiedAt` audit pair in place. Because `verify()` freezes on first call and never touches an already-set pair, a READY composition kept reporting its edited voice as verified for every downstream read — US-6.2's distribution `verified` flag (`part.getVerifiedAt() != null`) and the ready-gate both trusted stale data. Editing was effectively invisible to the "human-approved" model the whole Epic 6 hand-off depends on.
+
+**Real implementation (this change):**
+- [x] **Domain-level invalidation** — `CompositionInstrument.updateMapping` now clears `verifiedBy`/`verifiedAt` as part of the write. The hook lives in ONE authoritative seam, so *every* writer (US-7.1 panel, issue #241 voice editor, any future AI ingestion) goes through it automatically; there is no per-call-site wiring to forget, and no cache to flush.
+- [x] **Aggregate status follows the invariant** — `Composition.markDraft()` demotes a stale `READY` back to `DRAFT`; `CompositionCommandService.invalidateStaleReadyState(...)` calls it after `addPart` *and* `updatePart`, but ONLY when the composition is READY and at least one part no longer has a verification pair. DRAFT/ARCHIVED states are untouched, so `archive()`/`restore()` semantics are preserved; if by chance every part is still approved, the piece stays READY. The rule is total: **READY ⇒ every voice has a frozen human audit.**
+- [x] **Re-verify closes the loop** — a fresh US-3.03 pass (`verifyCompositionParts`) re-freezes the audit pair and re-promotes to READY; US-6.5 added no second verification regime, it just makes the existing gate honest again.
+
+**Tests (TDD RED → GREEN, real Postgres via Testcontainers):**
+- `CompositionCommandServiceTest` — 4 new story tests: edit of a verified part clears the frozen pair AND demotes READY→DRAFT; edit of an already-unverified part changes nothing unexpected; adding a voice to a READY piece drops it back (the "whole map approved" claim breaks); re-verify after edit restores READY with a FRESH audit pair (`b@x.com`, not the pre-edit `a@x.com`).
+- `EventCompositionPartsQueryServiceTest` — 1 new **end-to-end** test through Epic 6's own live read model: verified → US-6.2 reports `verified=true`; composer edits the range → the *very next* `forEvent` reports `verified=false` with no cache in between; re-verify → `true` again.
+
+**Dependencies:** US-3.03 (ready-gate — the state being protected), US-6.2/US-6.3 (the readers invalidated on behalf of). No migration: both `verified_by`/`verified_at` are already nullable (`V38`; `DEFAULT NULL`). Story Points: 5.
 
 ---
 

@@ -376,6 +376,93 @@ class CompositionCommandServiceTest extends BaseIntegrationTest {
         assertThat(reloaded.getInstrument().getId()).isEqualTo(trabka.getId());
     }
 
+    // ---- US-6.5 — invalidation hook on part writes (regenerate on fly) ------
+    //
+    // A frozen verification audit pair only covers the mapping that existed at verify time.
+    // Any write to a part AFTERWARDS (new range, role, instrument, score file) must invalidate it,
+    // so Epic 6 (US-6.2 distribution "verified" flag / US-3.03 ready-gate) stops presenting a
+    // stale part as human-approved, and the composition re-promotes only after a fresh verify.
+
+    @Test
+    void updatePart_onVerifiedPart_clearsFrozenAuditPair_andDemotesReady_toDraft() {
+        Long bandId = 1L;
+        var comp = seedComposition(bandId, "US-6.5 edit invalidates verification");
+        Instrument flet = instrumentInBand(bandId, "Flet US65A");
+        var part = commandService.addPart(comp.getId(), flet.getId(), "Flet 1", 1, 4, null, null, bandId);
+
+        // Human-verified → composition promotes to READY (US-3.03 gate).
+        commandService.verifyCompositionParts(comp.getId(), bandId, "first@example.com");
+        Composition before = repository.findByIdAndBandId(comp.getId(), bandId).orElseThrow();
+        assertThat(before.getStatus()).isEqualTo(CompositionStatus.READY);
+        var verifiedPart = compositionInstrumentRepository.findById(part.getId()).orElseThrow();
+        assertThat(verifiedPart.getVerifiedBy()).isEqualTo("first@example.com");
+
+        // US-6.5: the composer edits the page range → the frozen audit pair no longer covers
+        // this mapping; it must be cleared and the READY state demoted (re-verification required).
+        commandService.updatePart(part.getId(), comp.getId(), flet.getId(), "Flet 1", 2, 6, null, bandId);
+
+        var after = compositionInstrumentRepository.findById(part.getId()).orElseThrow();
+        assertThat(after.getVerifiedBy()).as("audit pair invalidated on edit").isNull();
+        assertThat(after.getVerifiedAt()).as("audit pair invalidated on edit").isNull();
+        Composition reloaded = repository.findByIdAndBandId(comp.getId(), bandId).orElseThrow();
+        assertThat(reloaded.getStatus()).isEqualTo(CompositionStatus.DRAFT); // stale READY must not remain
+    }
+
+    @Test
+    void updatePart_onUnverifiedReadyPart_clearsNothingExtra_andStaysDraft() {
+        Long bandId = 1L;
+        var comp = seedComposition(bandId, "US-6.5 edit of unverified part");
+        Instrument flet = instrumentInBand(bandId, "Flet US65B");
+        var part = commandService.addPart(comp.getId(), flet.getId(), "Flet 1", 1, 4, null, null, bandId);
+        // composition is DRAFT and the part was never verified — edit keeps both true.
+        commandService.updatePart(part.getId(), comp.getId(), flet.getId(), "Flet 1", 3, 8, null, bandId);
+
+        var after = compositionInstrumentRepository.findById(part.getId()).orElseThrow();
+        assertThat(after.getVerifiedBy()).isNull();
+        assertThat(after.getPageFrom()).isEqualTo(3);
+        Composition reloaded = repository.findByIdAndBandId(comp.getId(), bandId).orElseThrow();
+        assertThat(reloaded.getStatus()).isEqualTo(CompositionStatus.DRAFT);
+    }
+
+    @Test
+    void addPart_toReadyComposition_demotesItBecauseTheNewPartIsUnverified() {
+        Long bandId = 1L;
+        var comp = seedComposition(bandId, "US-6.5 growth invalidates ready");
+        Instrument flet = instrumentInBand(bandId, "Flet US65C");
+        var part = commandService.addPart(comp.getId(), flet.getId(), "Flet 1", 1, 4, null, null, bandId);
+        commandService.verifyCompositionParts(comp.getId(), bandId, "librarian@example.com");
+        assertThat(repository.findByIdAndBandId(comp.getId(), bandId).orElseThrow().getStatus())
+                .isEqualTo(CompositionStatus.READY);
+
+        // A new voice appears on the score (composer added one) → it is unverified, so the
+        // composition may not claim READY for a part map that no human has approved in full.
+        Instrument trabka = instrumentInBand(bandId, "Trąbka US65C");
+        commandService.addPart(comp.getId(), trabka.getId(), "Trąbka 1", 5, 12, null, null, bandId);
+
+        Composition reloaded = repository.findByIdAndBandId(comp.getId(), bandId).orElseThrow();
+        assertThat(reloaded.getStatus()).isEqualTo(CompositionStatus.DRAFT);
+    }
+
+    @Test
+    void verifyAfterEdit_rePromotesReady_andFreezesFreshAudit() {
+        // The invalidation must be reversible through the US-3.03 gate: re-verify restores READY
+        // with a FRESH audit pair (US-6.5 is a hook, not a second verification regime).
+        Long bandId = 1L;
+        var comp = seedComposition(bandId, "US-6.5 re-verify closes the loop");
+        Instrument flet = instrumentInBand(bandId, "Flet US65D");
+        var part = commandService.addPart(comp.getId(), flet.getId(), "Flet 1", 1, 4, null, null, bandId);
+        commandService.verifyCompositionParts(comp.getId(), bandId, "a@x.com");
+
+        commandService.updatePart(part.getId(), comp.getId(), flet.getId(), "Flet 1", 2, 5, null, bandId);
+        commandService.verifyCompositionParts(comp.getId(), bandId, "b@x.com");
+
+        var after = compositionInstrumentRepository.findById(part.getId()).orElseThrow();
+        assertThat(after.getVerifiedBy()).isEqualTo("b@x.com"); // fresh pair, post-edit
+        assertThat(after.getVerifiedAt()).isNotNull();
+        Composition reloaded = repository.findByIdAndBandId(comp.getId(), bandId).orElseThrow();
+        assertThat(reloaded.getStatus()).isEqualTo(CompositionStatus.READY);
+    }
+
     @Test
     void updatePart_rejectsReversedPageRange() {
         Long bandId = 1L;

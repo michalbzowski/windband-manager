@@ -231,9 +231,18 @@ public class CompositionInstrument {
      * {@code pageCount} covers {@code pageTo}). A null {@code newScoreFile} CLEARS the binding
      * (the row falls back to the legacy "largest covering PDF" read path).
      *
-     * <p>What is deliberately NOT touched: {@code fileRef}, {@code source}, the confidence
-     * score and the {@code verifiedBy/verifiedAt} audit pair — editing the mapping does not
-     * rewrite who approved it (the freeze contract of {@link #verify} stays intact).</p>
+     * <p>What is deliberately NOT touched: {@code fileRef}, {@code source} and the
+     * {@code confidenceScore} — editing the mapping does not rewrite how this voice was produced.</p>
+     *
+     * <p><b>US-6.5 — invalidation hook at the DOMAIN level of every part write:</b> a frozen
+     * {@code verifiedBy}/{@code verifiedAt} pair only covers the mapping that existed when it was
+     * frozen. Editing range/role/instrument means that audit no longer describes this row, so the
+     * pair is cleared here — where the write is authoritative — and re-frozen only through a fresh
+     * US-3.03 {@link #verify}. Clearing at this seam (rather than in each command service) means
+     * every writer — the US-7.1 panel, the issue #241 voice editor, future AI ingestion — shares one
+     * gate; Epic 6's distribution "verified" flag (which reads {@link #getVerifiedAt()}) and the
+     * ready-gate both stop trusting a stale audit pair the moment the mapping changes, without any
+     * extra hook to wire per call site.</p>
      */
     public void updateMapping(Instrument newInstrument, String role, int pageFrom, int pageTo,
                               ScoreFile newScoreFile) {
@@ -263,6 +272,10 @@ public class CompositionInstrument {
         this.pageFrom       = pageFrom;
         this.pageTo         = pageTo;
         this.scoreFile      = newScoreFile;
+        // US-6.5 — the audit pair is a statement about the PRE-edit mapping; invalidate it here so
+        // no downstream reader (Epic 6 distribution "verified" flag, ready-gate) can keep trusting it.
+        this.verifiedBy     = null;
+        this.verifiedAt     = null;
     }
 
     private static boolean bandsAgree(Composition c, Instrument i) {

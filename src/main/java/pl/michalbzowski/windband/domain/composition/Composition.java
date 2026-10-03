@@ -143,6 +143,19 @@ public class Composition {
         this.status = CompositionStatus.READY;
     }
 
+    /**
+     * US-6.5 — demote an invalid READY state back to DRAFT. READY means "every part of this
+     * composition has a human-frozen audit pair"; any part write (a new voice, or an edit that
+     * invalidates its frozen pair) breaks that claim, and the aggregate goes back to DRAFT until a
+     * fresh US-3.03 pass re-promotes it. No-op unless currently READY — DRAFT/ARCHIVED are left
+     * untouched so this never fights {@link #restore()}/{@link #archive()}.
+     */
+    public void markDraft() {
+        if (this.status == CompositionStatus.READY) {
+            this.status = CompositionStatus.DRAFT;
+        }
+    }
+
     public boolean isArchived() {
         return this.status == CompositionStatus.ARCHIVED;
     }
