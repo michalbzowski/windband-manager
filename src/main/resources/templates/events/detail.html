@@ -250,6 +250,83 @@
     <p style="color:var(--pico-muted-color); margin:0;">Brak utworów w setliście tego wydarzenia — dodaj utwory, aby rozdzielić głosy.</p>
 </section>
 
+<!-- US-6.6 — Historia rozdań: immutable audit-trail of every musician × part decision from every
+     run (DELIVERED / SEND_FAILED / SKIPPED_NO_CONSENT / SKIPPED_NO_EMAIL / REFUSED_NO_SCORE_FILE),
+     newest run first. Rendered from the DeliveryHistory DTO (scalar-only entity → lazy-safe, so
+     open-in-view:false never bites here). Visible whether or not the setlist has pieces: a past
+     re-send still leaves its rows even when the setlist is empty, and an EMPTY history renders an
+     honest "nic nie wysłano" state instead of silently disappearing. -->
+<section id="delivery-history-panel" style="margin-bottom:1.5rem;"
+         th:if="${deliveryHistory != null}">
+    <header style="display:flex; align-items:center; gap:0.75rem; margin-bottom:0.5rem; flex-wrap:wrap;">
+        <h3 style="margin:0;">&#x1F4DC; Historia rozdań</h3>
+        <small style="color:var(--pico-muted-color);">
+            Wysłano <strong th:text="${deliveryHistory.totalDeliveredParts}">0</strong> głosów ·
+            Pominięto/odmówiono <strong th:text="${deliveryHistory.totalSkippedParts}">0</strong> ·
+            prób: <strong th:text="${deliveryHistory.runs.size()}">0</strong>
+        </small>
+    </header>
+
+    <th:block th:if="${deliveryHistory.runs.isEmpty()}">
+        <p style="color:var(--pico-muted-color); margin:0.25rem 0 0 0;">
+            Brak historii — głosy jeszcze nie były rozdawane dla tego wydarzenia.
+        </p>
+    </th:block>
+
+    <div th:each="run, runSt : ${deliveryHistory.runs}"
+         style="background:var(--pico-background-color); border:1px solid var(--pico-muted-border-color); border-radius:6px; padding:0.5rem 0.75rem; margin-bottom:0.5rem;">
+        <div style="display:flex; align-items:baseline; gap:0.5rem; margin-bottom:0.25rem; flex-wrap:wrap;">
+            <strong>Próba</strong><span th:text="${runSt.count}">2</span>
+            <code style="font-size:0.8rem;" th:text="${run.runAt}">2026-10-03T18:00:00Z</code>
+            <small th:text="${run.rows.size()} + ' głosu w tej próbie'">1 głosu w tej próbie</small>
+            <small th:if="${not run.rows.isEmpty()}" style="margin-left:auto;"
+                   th:text="'rozpoczął(a): ' + ${run.rows[0].actor}">dyrygent@bandmanager.pl</small>
+        </div>
+
+        <table style="width:100%; border-collapse:collapse; margin-top:0.25rem;">
+            <thead>
+            <tr style="text-align:left; color:var(--pico-muted-color); font-size:0.85rem;">
+                <th>Data</th><th>Muzyk</th><th>E-mail</th><th>Utwór</th><th>Głos</th>
+                <th>Strony</th><th>Status</th><th>Przyczyna</th>
+            </tr>
+            </thead>
+            <tbody>
+            <tr th:each="r : ${run.rows}" style="border-top:1px solid var(--pico-muted-border-color); font-size:0.9rem;">
+                <td data-label="Data" style="padding:0.25rem 0; white-space:nowrap;"
+                    th:text="${#temporals.format(r.sentAt, 'yyyy-MM-dd HH:mm', #locale)}">2026-10-03 18:00</td>
+                <td data-label="Muzyk" style="padding:0.25rem 0;" th:text="${r.deliveredTo}">Jan Kowalski</td>
+                <td data-label="E-mail" style="padding:0.25rem 0;"
+                    th:text="${r.recipientEmail == null} ? '' : ${r.recipientEmail}">jan@test.com</td>
+                <td data-label="Utwór" style="padding:0.25rem 0;" th:text="${r.pieceTitle}">Marsz Radwański</td>
+                <td data-label="Głos" style="padding:0.25rem 0;" th:text="${r.partRole}">Trąbka 1</td>
+                <td data-label="Strony" style="padding:0.25rem 0;">
+                    <span th:if="${r.pageFrom == null or r.pageTo == null}"
+                          style="color:var(--pico-muted-color);">—</span>
+                    <span th:unless="${r.pageFrom == null or r.pageTo == null}">
+                        <span th:text="${r.pageFrom}">1</span>–<span th:text="${r.pageTo}">3</span>
+                    </span>
+                </td>
+                <td data-label="Status" style="padding:0.25rem 0;">
+                    <!-- Honest per-decision chips, reusing the US-6.3 banner vocabulary (one per outcome). -->
+                    <span th:if="${r.outcome == 'DELIVERED'}"
+                          style="color:#2fb344;">✅ Wysłano</span>
+                    <span th:if="${r.outcome == 'SEND_FAILED'}"
+                          style="color:var(--pico-error-color);">&#x26A0; Błąd wysyłki</span>
+                    <span th:if="${r.outcome == 'SKIPPED_NO_CONSENT'}"
+                          style="color:var(--pico-muted-color);">&#x1F511; Bez zgody</span>
+                    <span th:if="${r.outcome == 'SKIPPED_NO_EMAIL'}"
+                          style="color:var(--pico-muted-color);">&#x1F511; Bez e-maila</span>
+                    <span th:if="${r.outcome == 'REFUSED_NO_SCORE_FILE'}"
+                          style="color:var(--pico-warning-color);">&#x26A0; Brak pliku</span>
+                </td>
+                <td data-label="Przyczyna" style="padding:0.25rem 0; color:var(--pico-muted-color);"
+                    th:text="${r.reason}">SMTP down</td>
+            </tr>
+            </tbody>
+        </table>
+    </div>
+</section>
+
 <dialog id="add-composition-dialog" class="app-modal">
     <form method="post" th:action="@{/events/{id}/compositions(id=${event.id})}"
           onsubmit="return submitCompositionAddForm(this)">
