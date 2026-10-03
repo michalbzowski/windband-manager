@@ -21,6 +21,7 @@ import pl.michalbzowski.windband.application.query.band.BandQueryService;
 import pl.michalbzowski.windband.application.service.EmailSender;
 import pl.michalbzowski.windband.domain.band.Band;
 import pl.michalbzowski.windband.domain.event.BandEvent;
+import pl.michalbzowski.windband.domain.event.EventPartDelivery;
 import pl.michalbzowski.windband.domain.event.EventRepository;
 import pl.michalbzowski.windband.domain.event.EventType;
 import pl.michalbzowski.windband.domain.event.PaymentType;
@@ -37,6 +38,7 @@ import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.assertj.core.api.Assertions.tuple;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyString;
@@ -84,6 +86,7 @@ class EventPartDeliveryCommandServiceTest {
     @Mock private BandQueryService bandQueryService;
     @Mock private MemberRepository memberRepository;
     @Mock private EventRepository eventRepository;
+    @Mock private pl.michalbzowski.windband.domain.event.EventPartDeliveryRepository auditRepository;
 
     @Captor private ArgumentCaptor<String> subjectCaptor;
     @Captor private ArgumentCaptor<Context> contextCaptor;
@@ -96,7 +99,7 @@ class EventPartDeliveryCommandServiceTest {
     void setUp() {
         service = new EventPartDeliveryCommandService(
                 partsQueryService, partLinkQueryService, tokenService, emailSender,
-                templateEngine, bandQueryService, memberRepository, eventRepository, BASE_URL);
+                templateEngine, bandQueryService, memberRepository, eventRepository, auditRepository, BASE_URL);
         band = Band.create("Orkiestra Testowa", "orkiestra-testowa");
         event = BandEvent.create(EVENT_NAME, LocalDate.now().plusDays(7), LocalTime.of(18, 0),
                 "Rynek", EventType.CONCERT, band, PaymentType.FREE, null);
@@ -372,5 +375,117 @@ class EventPartDeliveryCommandServiceTest {
         assertThat(result.failedSend()).isEmpty();
         verifyNoInteractions(emailSender, tokenService, partLinkQueryService,
                 memberRepository, eventRepository, templateEngine, bandQueryService);
+    }
+
+    // ───────────────────────────── US-6.6 audit trail ─────────────────────────────
+
+    @Test
+    void everyPolicyDecision_writesAnAuditRowForExactlyTheRightParts() {
+        Member jan = member(101L, "Jan", "Kowalski", "jan@test.com");
+        Member piotr = member(103L, "Piotr", "Zalewski", null);
+        Member kasia = member(104L, "Kasia", "Wilk", "kasia@test.com");
+        when(memberRepository.findById(101L)).thenReturn(Optional.of(jan));
+        when(memberRepository.findById(103L)).thenReturn(Optional.of(piotr));
+        when(memberRepository.findById(104L)).thenReturn(Optional.of(kasia));
+        when(partLinkQueryService.open(1100L, PIECE_ID, BAND_ID)).thenReturn(link(1100L, "Trąbka 1", 1, 3));
+        doThrow(new NoCoveringFileException("brak pliku dla stron 7–9"))
+                .when(partLinkQueryService).open(1102L, PIECE_ID, BAND_ID);
+        when(tokenService.tokenFor(1100L, "band:7")).thenReturn(UUID.randomUUID());
+        stubEvent();
+        stubBand();
+        stubTemplate();
+        when(partsQueryService.forEvent(EVENT_ID, BAND_ID)).thenReturn(distribution(
+                row(101L, "Jan Kowalski", true, 1100L, "Trąbka 1", 1, 3),      // → DELIVERED
+                row(102L, "Anna Nowak", false, 1101L, "Bęben", 4, 6),          // → SKIPPED_NO_CONSENT
+                row(103L, "Piotr Zalewski", true, 1100L, "Trąbka 1", 1, 3),    // → SKIPPED_NO_EMAIL
+                row(104L, "Kasia Wilk", true, 1102L, "Flet 1", 7, 9)));        // → REFUSED_NO_SCORE_FILE
+
+        service.deliverParts(EVENT_ID, BAND_ID, "admin@bandmanager.pl");
+
+        ArgumentCaptor<EventPartDelivery> rows = ArgumentCaptor.forClass(EventPartDelivery.class);
+        verify(auditRepository, times(4)).save(rows.capture());
+        var saved = rows.getAllValues();
+
+        // One row per policy decision — outcomes, names and page ranges exactly as the UI sees them.
+        assertThat(saved)
+                .extracting(EventPartDelivery::getOutcome, EventPartDelivery::getDeliveredTo,
+                        EventPartDelivery::getPartRole)
+                .containsExactlyInAnyOrder(
+                        tuple("DELIVERED", "Jan Kowalski", "Trąbka 1"),
+                        tuple("SKIPPED_NO_CONSENT", "Anna Nowak", "Bęben"),
+                        tuple("SKIPPED_NO_EMAIL", "Piotr Zalewski", "Trąbka 1"),
+                        tuple("REFUSED_NO_SCORE_FILE", "Kasia Wilk", "Flet 1"));
+
+        // Consent refusal is honest: no address by definition (the member was never resolved).
+        EventPartDelivery consentRow = saved.stream()
+                .filter(r -> "SKIPPED_NO_CONSENT".equals(r.getOutcome())).findFirst().orElseThrow();
+        assertThat(consentRow.getRecipientEmail()).isNull();
+        // The explicit refusals DO carry a reason the UI can display verbatim.
+        EventPartDelivery refusedRow = saved.stream()
+                .filter(r -> "REFUSED_NO_SCORE_FILE".equals(r.getOutcome())).findFirst().orElseThrow();
+        assertThat(refusedRow.getReason()).contains("brak pliku");
+
+        // Sender metadata — who, when, via which channel.
+        saved.forEach(r -> {
+            assertThat(r.getEventId()).isEqualTo(EVENT_ID);
+            assertThat(r.getActor()).contains("admin@bandmanager.pl");
+            assertThat(r.getSentAt()).isNotNull();
+        });
+    }
+
+    @Test
+    void sendFailure_auditsEveryPartOfTheFailedEnvelopeWithItsError() {
+        Member jan = member(101L, "Jan", "Kowalski", "jan@test.com");
+        when(memberRepository.findById(101L)).thenReturn(Optional.of(jan));
+        when(partLinkQueryService.open(1100L, PIECE_ID, BAND_ID)).thenReturn(link(1100L, "Trąbka 1", 1, 3));
+        when(partLinkQueryService.open(1101L, PIECE_ID, BAND_ID)).thenReturn(link(1101L, "Bęben", 4, 6));
+        when(tokenService.tokenFor(1100L, "band:7")).thenReturn(UUID.randomUUID());
+        when(tokenService.tokenFor(1101L, "band:7")).thenReturn(UUID.randomUUID());
+        stubEvent();
+        stubBand();
+        stubTemplate();
+        doThrow(new RuntimeException("SMTP down")).when(emailSender)
+                .sendHtmlEmail(anyString(), anyString(), anyString(), anyString());
+        when(partsQueryService.forEvent(EVENT_ID, BAND_ID)).thenReturn(distribution(
+                row(101L, "Jan Kowalski", true, 1100L, "Trąbka 1", 1, 3),
+                row(101L, "Jan Kowalski", true, 1101L, "Bęben", 4, 6)));
+
+        // Every envelope failed → the service rethrows for the UI; the audit rows are written first.
+        assertThatThrownBy(() -> service.deliverParts(EVENT_ID, BAND_ID, "admin@bandmanager.pl"))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("Nie udało się");
+
+        ArgumentCaptor<EventPartDelivery> rows = ArgumentCaptor.forClass(EventPartDelivery.class);
+        verify(auditRepository, times(2)).save(rows.capture());
+        assertThat(rows.getAllValues())
+                .allSatisfy(r -> {
+                    assertThat(r.getOutcome()).isEqualTo("SEND_FAILED");
+                    assertThat(r.getRecipientEmail()).isEqualTo("jan@test.com");
+                    assertThat(r.getReason()).contains("SMTP down");
+                })
+                .extracting(EventPartDelivery::getPartRole)
+                .containsExactlyInAnyOrder("Trąbka 1", "Bęben");
+    }
+
+    @Test
+    void auditWriteFailure_neverBreaksTheDeliveryItself() {
+        Member jan = member(101L, "Jan", "Kowalski", "jan@test.com");
+        when(memberRepository.findById(101L)).thenReturn(Optional.of(jan));
+        when(partLinkQueryService.open(1100L, PIECE_ID, BAND_ID)).thenReturn(link(1100L, "Trąbka 1", 1, 3));
+        when(tokenService.tokenFor(1100L, "band:7")).thenReturn(UUID.randomUUID());
+        stubEvent();
+        stubBand();
+        stubTemplate();
+        doThrow(new RuntimeException("audit db down"))
+                .when(auditRepository).save(any(EventPartDelivery.class));
+        when(partsQueryService.forEvent(EVENT_ID, BAND_ID))
+                .thenReturn(distribution(row(101L, "Jan Kowalski", true, 1100L, "Trąbka 1", 1, 3)));
+
+        // The e-mail still goes out even though the history write is failing.
+        PartDeliveryResult result = service.deliverParts(EVENT_ID, BAND_ID, "admin@bandmanager.pl");
+
+        assertThat(result.sent()).isEqualTo(1);
+        verify(emailSender).sendHtmlEmail(eq("jan@test.com"), anyString(), anyString(), anyString());
+        verify(auditRepository).save(any(EventPartDelivery.class));
     }
 }

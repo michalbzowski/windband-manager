@@ -15,6 +15,7 @@ import pl.michalbzowski.windband.application.dto.EventDetailDto.ParticipationDto
 import pl.michalbzowski.windband.application.command.event.EventPartDeliveryCommandService;
 import pl.michalbzowski.windband.application.command.event.PartDeliveryResult;
 import pl.michalbzowski.windband.application.query.event.EventCompositionPartsQueryService;
+import pl.michalbzowski.windband.application.query.event.EventPartDeliveryQueryService;
 import pl.michalbzowski.windband.application.query.event.EventQueryService;
 
 import pl.michalbzowski.windband.application.query.member.MemberQueryService;
@@ -38,6 +39,7 @@ public class EventPageController {
     private final EventCompositionPartsQueryService eventPartsQueryService;
 
     private final EventPartDeliveryCommandService eventPartDeliveryService;
+    private final EventPartDeliveryQueryService eventPartDeliveryHistoryService;
 
     private final MemberQueryService memberQueryService;
 
@@ -131,6 +133,11 @@ public class EventPageController {
         model.addAttribute("eventCompositions", eventCommandService.getEventCompositions(id));
         // US-6.2 — concrete part list for the event: who plays what, over which pages (Shape C DTO).
         model.addAttribute("partsDistribution", eventPartsQueryService.forEvent(id, activeTeamId));
+        // US-6.6 — delivery history ("Historia rozdań"): every musician × part decision written by
+        // the US-6.3/6.4 command side, runs newest-first. Lazy-safe DTO (scalar-only entity), so
+        // this is safe once outside the send transaction; band isolation (404/409) is enforced in
+        // the query service exactly like the write path.
+        model.addAttribute("deliveryHistory", eventPartDeliveryHistoryService.historyForEvent(id, activeTeamId));
         model.addAttribute("event", eventDetail);
 
         // Determine back URL from Referer header, default to events list
