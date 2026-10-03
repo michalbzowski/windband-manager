@@ -188,6 +188,72 @@ class EventPartDeliveryIntegrationTest extends BaseIntegrationTest {
         assertThat(captured.mails).isEmpty();
     }
 
+    /**
+     * US-6.4 — the batch contract: one musician who plays parts in MORE THAN ONE setlist piece gets
+     * a SINGLE e-mail carrying ALL of those parts, in concert (setlist) order, each with its own
+     * independently-minted, resolvable token link. This is what "all parts for the event" means —
+     * not one part per mail, and not ordered by member/part table id but by the US-7.2
+     * {@code orderInSet} walk that the delivery read model is built on.
+     */
+    @Test
+    void batchDelivery_memberPlayingTwoPieces_getsOneMailWithBoth_inConcertOrderEachResolving() {
+        String suffix = UUID.randomUUID().toString().substring(0, 8);
+        Instrument trumpet = instrumentRepository.save(Instrument.create("TrąbkaUS64" + suffix, band));
+
+        Member basia = member(suffix, "BasiaUS64" + suffix, "basia64-" + suffix + "@test.com", true, trumpet);
+        long basiaId = basia.getId();
+
+        Composition firstPiece  = compositionRepository.save(Composition.create(
+                "Otwarcie US-6.4 " + suffix, "opis", "Kompozytor", "Aranżer", band));
+        Composition secondPiece = compositionRepository.save(Composition.create(
+                "Zanim finał US-6.4 " + suffix, "opis", "Kompozytor2", "Aranżer2", band));
+
+        // Part rows for the SAME musician on BOTH pieces — this is the batch.
+        Long partA = partRepository.save(CompositionInstrument.forComposition(
+                firstPiece, trumpet, "TrąbkaUS64" + suffix, 3, 7, null, PartSource.MANUAL, 1.0)).getId();
+        Long partB = partRepository.save(CompositionInstrument.forComposition(
+                secondPiece, trumpet, "TrąbkaUS64" + suffix, 2, 5, null, PartSource.MANUAL, 1.0)).getId();
+
+        // Covering score files for both (pageCount >= pageTo), so neither trips the US-7.10 gate.
+        scoreFileRepository.save(ScoreFile.forComposition(firstPiece, "application/pdf",
+                "scoreA-" + suffix + ".pdf", 12_345L, sha256("A-" + suffix), "/srv/a.pdf", 9));
+        scoreFileRepository.save(ScoreFile.forComposition(secondPiece, "application/pdf",
+                "scoreB-" + suffix + ".pdf", 22_000L, sha256("B-" + suffix), "/srv/b.pdf", 9));
+
+        // ONE new event on this band with BOTH pieces on the setlist — order pinned by orderInSet.
+        // (Distinct from the seed event so the batch is unambiguous.)
+        BandEvent event = eventRepository.save(BandEvent.create(
+                "Koncert US-6.4 " + suffix, LocalDate.now().plusDays(30), LocalTime.of(19, 30),
+                "Filharmonia", EventType.CONCERT, band, PaymentType.FREE, null));
+        eventCompositionRepository.save(EventComposition.link(event, firstPiece,  1)); // position 1
+        eventCompositionRepository.save(EventComposition.link(event, secondPiece, 2)); // position 2
+
+        this.captured.reset();
+        PartDeliveryResult result = service.deliverParts(event.getId(), band.getId(), "admin@test.com");
+
+        // Exactly ONE envelope for the one musician who plays both pieces — no duplication, no split.
+        assertThat(result.sent()).as("one mail per musician, not one mail per part").isEqualTo(1);
+        PartDeliveryResult.Delivered d = result.delivered().get(0);
+        assertThat(d.memberId()).isEqualTo(basiaId);
+        assertThat(d.parts()).hasSize(2).as("both of the musician's parts travel in that single e-mail");
+
+        // Concert order: the setlist position 1 piece comes before position 2, regardless of the
+        // order I created/inserted the part rows above.
+        PartDeliveryResult.PartDeliveryRow p0 = d.parts().get(0);
+        PartDeliveryResult.PartDeliveryRow p1 = d.parts().get(1);
+        assertThat(p0.pieceTitle()).contains("Otwarcie US-6.4");
+        assertThat(p1.pieceTitle()).contains("Zanim finał US-6.4");
+
+        // Each part carries its OWN live token link and they really are distinct, resolvable rows.
+        assertThat(p0.publicPartLink()).isNotEqualTo(p1.publicPartLink());
+        assertThat(storedTokenFor(p0.publicPartLink()).getPart().getId()).isEqualTo(partA);
+        assertThat(storedTokenFor(p1.publicPartLink()).getPart().getId()).isEqualTo(partB);
+
+        // Transport saw exactly one envelope, addressed to the right mailbox.
+        assertThat(captured.mails).hasSize(1).first()
+                .satisfies(m -> assertThat(m.to).isEqualTo(basia.getEmail()));
+    }
+
     // ─────────────────────────────── helpers ───────────────────────────────
 
     private Member member(String suffix, String firstName, String email, boolean consent, Instrument trumpet) {

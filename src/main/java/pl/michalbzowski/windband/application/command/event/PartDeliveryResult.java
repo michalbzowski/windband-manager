@@ -1,5 +1,6 @@
 package pl.michalbzowski.windband.application.command.event;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import java.util.List;
 import java.util.Objects;
 
@@ -11,8 +12,25 @@ import java.util.Objects;
  * happen (a member who revoked consent must NOT be reported as "delivered"). All names are
  * display strings, never ids — the result is safe to hand to Thymeleaf after the transaction
  * closes.</p>
+ *
+ * <p>A {@link record} so the US-6.4 REST endpoint can serialize it directly: Jackson discovers
+ * every component automatically (a plain class with {@code sent()}-style accessors would fail as
+ * an "empty bean" and return {@code {}} to the client). {@code sendError} is an internal transport
+ * handle — never serialized, since a raw {@link RuntimeException} in a REST body would leak a stack
+ * trace; its message is already folded into {@link #failedSend()} for the honest UI banner.</p>
+ *
+ * <p>Record accessor names ({@code sent()}, {@code delivered()}, …) match the Thymeleaf
+ * expressions in {@code events/detail.html} exactly, so the existing "Rozdanie głosów" banner reads
+ * this object unchanged.</p>
  */
-public final class PartDeliveryResult {
+public record PartDeliveryResult(
+        int sent,
+        List<Delivered> delivered,
+        List<String> skippedNoConsent,
+        List<String> skippedNoEmail,
+        List<String> noScoreFile,
+        List<String> failedSend,
+        @JsonIgnore RuntimeException sendError) {
 
     /** One e-mail actually handed to the transport, with every part it contained. */
     public record Delivered(long memberId, String memberName, String email, List<PartDeliveryRow> parts) {
@@ -32,63 +50,19 @@ public final class PartDeliveryResult {
         }
     }
 
-    private final int sent;
-    private final List<Delivered> delivered;
-    private final List<String> skippedNoConsent;
-    private final List<String> skippedNoEmail;
-    private final List<String> noScoreFile;
-    private final List<String> failedSend;
-    private final RuntimeException sendError;
-
-    private PartDeliveryResult(int sent, List<Delivered> delivered, List<String> skippedNoConsent,
-                               List<String> skippedNoEmail, List<String> noScoreFile,
-                               List<String> failedSend, RuntimeException sendError) {
-        this.sent = sent;
-        this.delivered = List.copyOf(delivered);
-        this.skippedNoConsent = List.copyOf(skippedNoConsent);
-        this.skippedNoEmail = List.copyOf(skippedNoEmail);
-        this.noScoreFile = List.copyOf(noScoreFile);
-        this.failedSend = List.copyOf(failedSend);
-        this.sendError = sendError;
+    /** Canonical form: immutable copies of every list — the delivery result never mutates after the fact. */
+    public PartDeliveryResult {
+        delivered = List.copyOf(delivered);
+        skippedNoConsent = List.copyOf(skippedNoConsent);
+        skippedNoEmail   = List.copyOf(skippedNoEmail);
+        noScoreFile      = List.copyOf(noScoreFile);
+        failedSend       = List.copyOf(failedSend);
     }
 
+    /** Factory preserving the US-6.3 call sites and their argument order. */
     public static PartDeliveryResult of(int sent, List<Delivered> delivered, List<String> skippedNoConsent,
                                         List<String> skippedNoEmail, List<String> noScoreFile,
                                         List<String> failedSend, RuntimeException sendError) {
         return new PartDeliveryResult(sent, delivered, skippedNoConsent, skippedNoEmail, noScoreFile, failedSend, sendError);
-    }
-
-    public int sent() {
-        return sent;
-    }
-
-    public List<Delivered> delivered() {
-        return delivered;
-    }
-
-    public List<String> skippedNoConsent() {
-        return skippedNoConsent;
-    }
-
-    public List<String> skippedNoEmail() {
-        return skippedNoEmail;
-    }
-
-    /**
-     * Parts whose score file does not cover the page range (US-7.10's {@code NoCoveringFileException}).
-     * Delivery is refused for them — better an honest "brak pliku" than a dead public link.
-     */
-    public List<String> noScoreFile() {
-        return noScoreFile;
-    }
-
-    /** Members whose envelope the transport rejected (logged; the send itself did happen). */
-    public List<String> failedSend() {
-        return failedSend;
-    }
-
-    /** The last transport error, when every envelope failed and the caller must surface it. */
-    public RuntimeException sendError() {
-        return sendError;
     }
 }
