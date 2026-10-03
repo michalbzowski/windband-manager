@@ -156,16 +156,13 @@ public class EventController {
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).build();
         }
         String actor = oidcUser == null ? null : oidcUser.getEmail();
-        try {
-            PartDeliveryResult result = partDeliveryService.deliverParts(id, activeTeamId, actor);
-            return ResponseEntity.ok(result);
-        } catch (IllegalArgumentException ex) {
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST).build();
-        } catch (IllegalStateException ex) {
-            return ResponseEntity.status(HttpStatus.CONFLICT).build();
-        } catch (RuntimeException ex) {
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
-        }
+        // US-6.4 — thin adapter: business exceptions propagate and are mapped by the
+        // GlobalExceptionHandler exactly like every other /api endpoint (PartLinkRestController's
+        // precedent) — unknown event 404, foreign band 409, unknown team 400. The blanket
+        // RuntimeException→500 catch removed here was swallowing EventNotFoundException, so a
+        // missing event looked like a server crash (and its real cause never reached the logged
+        // 404 shape).
+        return ResponseEntity.ok(partDeliveryService.deliverParts(id, activeTeamId, actor));
     }
 
     @GetMapping("/debug/ip")
