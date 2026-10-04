@@ -211,6 +211,19 @@ public class CompositionInstrument {
     }
 
     /**
+     * US-7.15 — the score file backing this part's pages was REPLACED (content swap behind the
+     * same row, mappings preserved). The frozen audit pair certified "these pages of THIS file
+     * hold this voice" — about the OLD bytes. Unlike {@link #updateMapping} no mapping field
+     * changes here, so the stale-audit cleanup lives on the file-replacement command service,
+     * which calls this on every affected part; the pair is then re-frozen by a fresh
+     * US-3.03 {@link #verify} against the new notation.
+     */
+    public void invalidateVerification() {
+        this.verifiedBy = null;
+        this.verifiedAt = null;
+    }
+
+    /**
      * Marks this part as verified by the named user at the given moment. Idempotent: once
      * {@code verifiedBy}/{@code verifiedAt} are set, further calls leave them untouched so
      * the first-writer's audit pair is the canonical record (re-verification cannot hijack it).
@@ -274,8 +287,7 @@ public class CompositionInstrument {
         this.scoreFile      = newScoreFile;
         // US-6.5 — the audit pair is a statement about the PRE-edit mapping; invalidate it here so
         // no downstream reader (Epic 6 distribution "verified" flag, ready-gate) can keep trusting it.
-        this.verifiedBy     = null;
-        this.verifiedAt     = null;
+        invalidateVerification();
     }
 
     private static boolean bandsAgree(Composition c, Instrument i) {

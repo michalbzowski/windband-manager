@@ -9,6 +9,7 @@ import org.springframework.web.bind.annotation.RequestPart;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
 import pl.michalbzowski.windband.application.command.composition.ScoreFileCommandService;
+import pl.michalbzowski.windband.application.command.composition.ScoreFileReplaceCommandService;
 import pl.michalbzowski.windband.application.command.composition.ScoreFileUploadRequest;
 import pl.michalbzowski.windband.application.dto.composition.ScoreFileDto;
 import pl.michalbzowski.windband.application.dto.composition.ZipEntryDto;
@@ -37,11 +38,14 @@ import pl.michalbzowski.windband.application.dto.composition.ZipEntryDto;
 public class ScoreFileUploadRestController {
 
     private final ScoreFileCommandService commandService;
+    private final ScoreFileReplaceCommandService replaceCommandService;
     private final UploadedFileAssembler fileAssembler;
 
     public ScoreFileUploadRestController(ScoreFileCommandService commandService,
+                                          ScoreFileReplaceCommandService replaceCommandService,
                                           UploadedFileAssembler fileAssembler) {
         this.commandService = commandService;
+        this.replaceCommandService = replaceCommandService;
         this.fileAssembler = fileAssembler;
     }
 
@@ -53,6 +57,26 @@ public class ScoreFileUploadRestController {
         ScoreFileUploadRequest request = fileAssembler.toRequest(file);
         ScoreFileDto dto = commandService.upload(request, compositionId, bandId);
         return ResponseEntity.status(HttpStatus.CREATED).body(dto);
+    }
+
+    /**
+     * US-7.15 — replace the CONTENT of an existing score file in place ("Wymień plik"): the
+     * librarian edited the piece and re-exported the PDF. The row keeps its id, so every part
+     * mapping stays intact; the command service clears the stale verification audit, demotes
+     * a READY composition to DRAFT and evicts cached thumbnails. Returns the updated row.
+     *
+     * <p>Extra rejection mapping on top of the upload one: ZIP parent → 422, MIME different
+     * from the row's type → 422, new page count breaking a bound mapping → 422.</p>
+     */
+    @PostMapping("/{fileId}/replace")
+    public ResponseEntity<ScoreFileDto> replace(
+            @PathVariable("bandId") Long bandId,
+            @PathVariable("compositionId") Long compositionId,
+            @PathVariable("fileId") Long fileId,
+            @RequestPart(name = "file", required = true) MultipartFile file) {
+        ScoreFileUploadRequest request = fileAssembler.toRequest(file);
+        ScoreFileDto dto = replaceCommandService.replace(request, fileId, compositionId, bandId);
+        return ResponseEntity.ok(dto);
     }
 
     /**

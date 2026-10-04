@@ -79,6 +79,15 @@ public class ScoreFile {
     @Column(name = "parent_file_id")
     private Long parentFileId;
 
+    /**
+     * US-7.15 — moment the bytes behind this row were swapped by a content replacement
+     * ("Wymień plik"). Null when the file was never replaced. The id survives the swap on
+     * purpose (part mappings keep pointing at this row); this column records that the
+     * content behind them changed. See {@link #replaceContent}.
+     */
+    @Column(name = "replaced_at")
+    private Instant replacedAt;
+
     @Column(nullable = false, updatable = false)
     private Instant createdAt;
 
@@ -140,6 +149,36 @@ public class ScoreFile {
         if (pageCount != null && pageCount < 0) {
             throw new IllegalArgumentException("pageCount must be null or >= 0");
         }
+    }
+
+    /**
+     * US-7.15 — swap this row's content IN PLACE: new bytes, new size/sha/path, new page count,
+     * optionally a new display name ({@code newOriginalName} blank/null keeps the old one).
+     * The identity ({@code id}) and the MIME type are deliberately NOT touched — mappings bound
+     * to this row survive the swap, and the command service enforces "same type replaces same
+     * type" before calling. {@code replacedAt} records the moment the content changed.
+     *
+     * <p>Validation mirrors the factory's invariants: blank sha/path and a negative page count
+     * are rejected before the mutation is applied (SpotBugs CT_CONSTRUCTOR_THROW does not apply
+     * to ordinary methods, but a half-swapped row would silently break downloads, so all
+     * arguments are checked first).</p>
+     */
+    public void replaceContent(String newOriginalName, long newSizeBytes,
+                               String newSha256, String newStoragePath, Integer newPageCount) {
+        if (newSizeBytes <= 0) {
+            throw new IllegalArgumentException("newSizeBytes must be > 0");
+        }
+        requireNonNegativePageCount(newPageCount);
+        String sha = requireNotBlank(newSha256, "sha256");
+        String path = requireNotBlank(newStoragePath, "storagePath");
+        this.sizeBytes = newSizeBytes;
+        this.sha256 = sha.toLowerCase();
+        this.storagePath = path;
+        this.pageCount = newPageCount;
+        if (newOriginalName != null && !newOriginalName.isBlank()) {
+            this.originalName = newOriginalName.trim();
+        }
+        this.replacedAt = java.time.Instant.now();
     }
 
     private static String requireNotBlank(String value, String field) {

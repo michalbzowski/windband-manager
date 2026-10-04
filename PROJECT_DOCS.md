@@ -20,6 +20,7 @@
 17. [List Sorting & Past Highlighting](#list-sorting--past-highlighting)
 18. [Unified Focus Highlight & Multi-Member Invite Modal](#18-unified-focus-highlight--multi-member-invite-modal)
 19. [Member Attributes & Groups](#member-attributes--groups)
+20. [Composition Score-File Replacement (US-7.15)](#composition-score-file-replacement-us-715)
 
 ---
 
@@ -825,3 +826,34 @@ by a **modal**:
 `EventListFocusHighlightUiTest`, `EventInviteModalUiTest` (multi-select + highlight),
 plus the existing `EventParticipationInstrumentUiTest` /
 `AttendancePersistenceUiTest` updated to the new modal trigger.
+
+---
+
+## Composition Score-File Replacement (US-7.15)
+
+After the librarian edits a piece and re-exports a part PDF, the file behind an existing
+`score_files` row can be swapped **in place** — the row keeps its id, so every
+`composition_instruments.score_file_id` voice mapping stays valid. The swap invalidates
+only what was a statement about the OLD bytes.
+
+- **Endpoint:** `POST /bands/{b}/compositions/{c}/files/{f}/replace` (multipart part `file`)
+  → `200 ScoreFileDto` of the updated row. Handler: `ScoreFileUploadRestController.replace`.
+- **Service:** `ScoreFileReplaceCommandService` (application/command). Side effects on success:
+  1. `score_files` row gets new name/size/sha256/storage_path/page_count + `replaced_at` (V47);
+  2. verification audit (`verified_by`/`verified_at`) cleared on parts bound to the file AND on
+     legacy unbound parts the read path resolves to it (mirrors `PartLinkQueryService` newest-id
+     rule) — `CompositionInstrument.invalidateVerification()`;
+  3. READY composition demoted to DRAFT via `Composition.markDraft()` (ARCHIVED untouched);
+  4. cached thumbnails evicted — `ScoreFileThumbQueryService.evictFile(fileId)`;
+  5. old on-disk file deleted best-effort after commit-path.
+- **Guards (fail closed before any disk write):** unknown band → 400; foreign/missing file →
+  409; empty body → 400; MIME off-whitelist → 415; ZIP parent row → 422 (children must be
+  replaced individually); different MIME than the row → 422; new page count below a bound
+  part's `pageTo` → 422 listing the blocking voices (protects the `forComposition` page-range
+  invariant).
+- **UI:** "🔁 Wymień" button per file row on `compositions/detail.html` (server rows + JS
+  `appendFileToList`; hidden on ZIP rows), posting via the shared `#score-replace-input`
+  picker, then toast + page reload; row meta shows "wymieniono <date>".
+- **Tests:** `ScoreFileReplaceCommandServiceTest` (13 unit), `ScoreFileReplaceRestControllerTest`
+  (5 standalone MockMvc), `ScoreFileReplaceIT` (2, Testcontainers PG — mapping-FK + audit +
+  status verified against the real schema), `ScoreFileReplaceUiTest` (Selenium end-to-end).
