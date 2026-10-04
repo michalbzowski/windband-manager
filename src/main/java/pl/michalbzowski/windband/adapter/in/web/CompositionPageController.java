@@ -20,6 +20,7 @@ import pl.michalbzowski.windband.application.command.composition.UpdateCompositi
 import org.springframework.web.bind.annotation.RequestAttribute;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 import pl.michalbzowski.windband.adapter.in.security.WindbandOidcUser;
 import pl.michalbzowski.windband.application.command.composition.CompositionCommandService;
 import pl.michalbzowski.windband.application.command.composition.CreateCompositionCommand;
@@ -215,6 +216,57 @@ public class CompositionPageController {
         requireBandAccess(oidcUser, bandId);
         commandService.deleteComposition(id, bandId);
         return "redirect:/bands/" + bandId + "/compositions";
+    }
+
+    /**
+     * US-7.16 — the verification gate in the UI: the only legal way for an operator to
+     * promote a DRAFT composition to READY. Stamps every part row with the current
+     * user's {@code verified_by}/{@code verified_at} audit pair (US-3.03 semantics,
+     * service unchanged) and flips the status — the domain invariant READY ⇒ all
+     * voices verified now has an in-app path, which the manual distribution (US-6.4)
+     * was built on but never had.
+     *
+     * <p>The zero-parts guard lives HERE, not in the service:
+     * {@link CompositionCommandService#verifyCompositionParts} promotes vacuously, so
+     * without the guard a click on an empty composition would produce a "READY with no
+     * parts at all" — silently skipped by distribution. Fail closed instead: the flash
+     * banner tells the operator what is missing.</p>
+     */
+    @PostMapping("/{id}/verify")
+    public String verifyParts(@PathVariable Long bandId,
+                              @PathVariable Long id,
+                              @AuthenticationPrincipal OidcUser oidcUser,
+                              RedirectAttributes redirectAttributes) {
+        requireBandAccess(oidcUser, bandId);
+        var parts = scoreFileListQueryService.partsFor(id, bandId);
+        if (parts.isEmpty()) {
+            redirectAttributes.addFlashAttribute("verifyPartsError",
+                    "Utwór nie ma żadnych głosów — dodaj i oznacz przynajmniej jeden głos przed weryfikacją.");
+            return "redirect:/bands/" + bandId + "/compositions/" + id;
+        }
+        try {
+            commandService.verifyCompositionParts(id, bandId, resolveVerifier(oidcUser));
+            redirectAttributes.addFlashAttribute("verifyPartsResult",
+                    "Zweryfikowano " + parts.size() + " głosów — utwór jest teraz Gotowy i wejdzie do rozdawania głosów.");
+        } catch (IllegalArgumentException | IllegalStateException exception) {
+            redirectAttributes.addFlashAttribute("verifyPartsError", exception.getMessage());
+        }
+        return "redirect:/bands/" + bandId + "/compositions/" + id;
+    }
+
+    /**
+     * Verifier identity for the audit stamp: e-mail first (Keycloak claim), falling back
+     * to the principal name so a login profile without an e-mail claim still produces a
+     * non-blank {@code verified_by} instead of failing the gate with a 400.
+     */
+    private static String resolveVerifier(OidcUser oidcUser) {
+        if (oidcUser instanceof WindbandOidcUser wu && wu.getWbEmail() != null && !wu.getWbEmail().isBlank()) {
+            return wu.getWbEmail();
+        }
+        if (oidcUser.getEmail() != null && !oidcUser.getEmail().isBlank()) {
+            return oidcUser.getEmail();
+        }
+        return oidcUser.getName();
     }
 
     /**

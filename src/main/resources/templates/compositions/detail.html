@@ -307,7 +307,12 @@
             delete:  {title: 'Usuń utwór bezpowrotnie?',
                 body: '„' + compositionTitle + '” wraz z powiązanymi plikami i parts zostanie usunięty. Tej operacji nie można cofnąć.',
                 confirm: '🗑 Usuń bezpowrotnie',
-                url: '/bands/' + bandId + '/compositions/' + compId + '/delete'}
+                url: '/bands/' + bandId + '/compositions/' + compId + '/delete'},
+            verify:  {title: 'Zweryfikować głosy i oznaczyć „Gotowy”?',
+                body: 'Potwierdzasz, że WSZYSTKIE oznaczone głosy w „' + compositionTitle + '” mają poprawne strony i instrumenty. '
+                    + 'Każdy głos dostanie Twój podpis audytu, a utwór wejdzie do rozdawania głosów na wydarzenia.',
+                confirm: '✅ Zweryfikuj i oznacz READY',
+                url: '/bands/' + bandId + '/compositions/' + compId + '/verify'}
         };
         var plan = plans[action];
         if (!plan) { return; }
@@ -1084,6 +1089,19 @@
     <!-- Issue #242: the add-part button lives DIRECTLY under the header (above the table),
          so it is reachable without scrolling past saved rows. -->
     <button type="button" id="open-add-part-modal-btn" class="primary">＋ Dodaj głos</button>
+
+    <!-- US-7.16 — the verification gate (DRAFT → READY) sits with the voices it audits. -->
+    <div style="margin:.5rem 0 1rem; display:flex; align-items:center; gap:.75rem; flex-wrap:wrap;">
+        <button type="button" id="verify-parts-btn" class="primary"
+                th:if="${composition.status.name() == 'DRAFT' and parts != null and !parts.isEmpty()}"
+                onclick="openLifecycleDialog('verify')"
+                title="Zamknij audyt głosów i oznacz utwór jako Gotowy">✅ Zweryfikuj głosy — oznacz jako Gotowy</button>
+        <span id="verify-ready-note" th:if="${composition.status.name() == 'READY'}" style="color:#1b7f3c;">
+            ✅ Wszystkie głosy zweryfikowane — utwór jest gotowy do rozdania.
+        </span>
+        <span id="verify-parts-result" th:if="${verifyPartsResult}" role="status" style="color:#1b7f3c;">✅ <span th:text="${verifyPartsResult}"></span></span>
+        <span id="verify-parts-error" th:if="${verifyPartsError}" role="alert" style="color:#b3261e;">⚠️ <span th:text="${verifyPartsError}"></span></span>
+    </div>
 
     <table id="existing-parts" class="data-table">
         <thead><tr><th>Instrument</th><th>Rola</th><th>Plik nut</th><th>Strony</th><th>Akcje</th></tr></thead>
