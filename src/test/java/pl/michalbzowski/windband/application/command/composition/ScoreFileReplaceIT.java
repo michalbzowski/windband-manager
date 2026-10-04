@@ -1,9 +1,11 @@
 package pl.michalbzowski.windband.application.command.composition;
 
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.jdbc.core.JdbcTemplate;
 import pl.michalbzowski.windband.BaseIntegrationTest;
 import pl.michalbzowski.windband.application.command.composition.UploadValidator.UploadRejectedException;
 import pl.michalbzowski.windband.application.dto.composition.ScoreFileDto;
@@ -42,6 +44,7 @@ class ScoreFileReplaceIT extends BaseIntegrationTest {
     @Autowired private ScoreFileRepository scoreFileRepository;
     @Autowired private CompositionInstrumentRepository instrumentPartRepository;
     @Autowired private InstrumentRepository instrumentRepository;
+    @Autowired private JdbcTemplate jdbcTemplate;
     @Autowired private ScoreFileCommandService uploadService;
     @Autowired private ScoreFileReplaceCommandService replaceService;
 
@@ -56,6 +59,26 @@ class ScoreFileReplaceIT extends BaseIntegrationTest {
         composition = Composition.create("Replace IT " + System.nanoTime(), "opis", "autor", null, band);
         composition = compositionRepository.save(composition);
         trumpet = instrumentRepository.save(Instrument.create("Trąbka Bb " + System.nanoTime(), band));
+    }
+
+    /**
+     * This class COMMITs (like the other non-transactional composition ITs) — and it is the first
+     * to leave {@code composition_instruments.score_file_id} FKs pointing at committed
+     * {@code score_files} rows. The shared-container cleanup in
+     * {@code CompositionCommandServiceTest} / {@code CompositionRepositoryIT} /
+     * {@code CompositionQueryServiceIT} runs a bare {@code DELETE FROM score_files}, which the FK
+     * then rejects. Delete our own children first, then files, then this test's rows.
+     */
+    @AfterEach
+    void cleanUpOwnRows() {
+        if (composition.getId() != null) {
+            jdbcTemplate.update("DELETE FROM composition_instruments WHERE composition_id = ?", composition.getId());
+            jdbcTemplate.update("DELETE FROM score_files WHERE composition_id = ?", composition.getId());
+            jdbcTemplate.update("DELETE FROM compositions WHERE id = ?", composition.getId());
+        }
+        if (trumpet.getId() != null) {
+            jdbcTemplate.update("DELETE FROM instruments WHERE id = ?", trumpet.getId());
+        }
     }
 
     private ScoreFileDto uploadPdf(String name, int pages) {

@@ -74,6 +74,8 @@ class CompositionCommandServiceTest extends BaseIntegrationTest {
      */
     @BeforeEach
     void cleanCompositions() {
+        // children before parents: bound parts keep score_files alive via FK6JYX…
+        jdbcTemplate.execute("DELETE FROM composition_instruments");
         jdbcTemplate.execute("DELETE FROM score_files");
         jdbcTemplate.execute("DELETE FROM compositions");
     }
