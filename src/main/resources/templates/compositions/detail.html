@@ -164,6 +164,7 @@
                                 <span th:text="${T(pl.michalbzowski.windband.util.ByteSizeFormatter).human(f.sizeBytes)}">1.4 MB</span>
                                 <span th:if="${f.pageCount != null}" class="meta-pages"> · <span th:text="${f.pageCount}"></span> stron</span>
                                 <span th:if="${f.createdAt != null}" class="meta-date"> · <span th:text="${#temporals.format(f.createdAt, 'dd.MM.yyyy')}"></span></span>
+                                <span th:if="${f.replacedAt != null}" class="meta-replaced"> · wymieniono <span th:text="${#temporals.format(f.replacedAt, 'dd.MM.yyyy')}"></span></span>
                             </span>
 
                             <span class="file-actions" role="toolbar" aria-label="Akcje pliku">
@@ -173,6 +174,15 @@
                                 <a class="secondary" download
                                    th:href="@{/bands/{bandId}/compositions/{compId}/files/{fileId}(bandId=${bandId}, compId=${composition.id}, fileId=${f.id})}"
                                    th:title="'Pobierz ' + ${f.originalName} + ' na dysk'">⬇️</a>
+                                <!-- US-7.15: content swap keeps the row id, so voice mappings survive.
+                                     ZIP archives are excluded — their extracted children would keep
+                                     serving stale entries; replace those children instead. -->
+                                <button type="button" class="secondary file-replace-btn"
+                                        th:if="${f.mimeType != 'application/zip'}"
+                                        th:data-url="@{/bands/{bandId}/compositions/{compId}/files/{fileId}/replace(bandId=${bandId}, compId=${composition.id}, fileId=${f.id})}"
+                                        th:data-file-name="${f.originalName}"
+                                        th:data-mime="${f.mimeType}"
+                                        th:title="'Wymień ' + ${f.originalName} + ' na nowy plik — mapowania głosów zostaną zachowane, utwór wróci do szkicu'">🔁 Wymień</button>
                                 <button type="button" class="secondary danger file-delete-btn"
                                         th:data-url="@{/bands/{bandId}/compositions/{compId}/files/{fileId}(bandId=${bandId}, compId=${composition.id}, fileId=${f.id})}"
                                         th:data-file-name="${f.originalName}"
@@ -199,6 +209,9 @@
                             </div>
                         </li>
                     </ul>
+                    <!-- US-7.15 — hidden picker reused by every "Wymień" button; JS sets its
+                         accept + data-url per click before opening it, mirroring score-file-input. -->
+                    <input type="file" id="score-replace-input" class="visually-hidden" aria-hidden="true" tabindex="-1">
                 </div>
             </article>
 
@@ -892,6 +905,20 @@
         dl.textContent = '⬇️';
         actions.appendChild(dl);
 
+        // US-7.15 — "Wymień" mirrors the server-rendered rows; ZIP parents stay un-replaceable
+        // (their extracted children would keep serving stale entries).
+        if (!dto.isZip) {
+            var rep = document.createElement('button');
+            rep.type = 'button';
+            rep.className = 'secondary file-replace-btn';
+            rep.setAttribute('data-url', url + '/replace');
+            rep.setAttribute('data-file-name', name);
+            rep.setAttribute('data-mime', dto.mimeType || 'application/pdf');
+            rep.title = 'Wymień ' + name + ' na nowy plik — mapowania głosów zostaną zachowane, utwór wróci do szkicu';
+            rep.textContent = '🔁 Wymień';
+            actions.appendChild(rep);
+        }
+
         var del = document.createElement('button');
         del.type = 'button';
         del.className = 'secondary danger file-delete-btn';
@@ -966,6 +993,73 @@
         var btn = target.closest('.file-delete-btn');
         if (btn) deleteFile(btn);
     });
+
+    // ---- Per-file REPLACE (delegated) — US-7.15 --------------------------------
+    // Edited score → new PDF behind the SAME row: mappings survive, the stale
+    // verification audit falls and the composition drops to "Szkic". All three are
+    // server-rendered facts, so on success we toast briefly and reload the page.
+    (function () {
+        var replaceInput = document.getElementById('score-replace-input');
+        var pendingBtn = null;
+        if (!replaceInput) return;
+
+        document.addEventListener('click', function(event) {
+            var target = event.target;
+            if (!target || typeof target.closest !== 'function') return;
+            var btn = target.closest('.file-replace-btn');
+            if (!btn || btn.disabled) return;
+            var url = btn.getAttribute('data-url');
+            if (!url) return;
+            pendingBtn = btn;
+            replaceInput.setAttribute('data-url', url);
+            replaceInput.setAttribute('data-file-name', btn.getAttribute('data-file-name') || 'pliku');
+            var mime = btn.getAttribute('data-mime') || 'application/pdf';
+            replaceInput.accept = mime === 'image/jpeg' ? '.jpg,.jpeg,image/jpeg'
+                    : (mime === 'image/png' ? '.png,image/png' : 'application/pdf,.pdf');
+            replaceInput.value = ''; // same file re-picked must fire 'change'
+            replaceInput.click();
+        });
+
+        replaceInput.addEventListener('change', function() {
+            var file = replaceInput.files && replaceInput.files[0];
+            var url = replaceInput.getAttribute('data-url');
+            if (!file || !url) return;
+            var btn = pendingBtn;
+            var name = replaceInput.getAttribute('data-file-name') || 'pliku';
+            if (btn) btn.disabled = true;
+
+            var csrfToken = getCookieLocal('XSRF-TOKEN');
+            var headers = {};
+            if (csrfToken) { headers['X-XSRF-TOKEN'] = decodeURIComponent(csrfToken); }
+            var fd = new FormData();
+            fd.append('file', file);
+
+            fetch(url, { method: 'POST', body: fd, headers: headers, credentials: 'same-origin' })
+                .then(function (resp) {
+                    return resp.text().then(function (text) {
+                        return { ok: resp.ok, status: resp.status, text: text };
+                    });
+                })
+                .then(function (res) {
+                    if (res.ok) {
+                        showToast('Zamieniono plik „' + name + '” — utwór wrócił do szkicu, a głosy wymagają ponownej weryfikacji.', 'success');
+                        setTimeout(function () { location.reload(); }, 1200);
+                        return;
+                    }
+                    var msg = 'Nie udało się zamienić pliku.';
+                    try {
+                        var dto = JSON.parse(res.text);
+                        msg = (dto && (dto.message || dto.error)) || ('HTTP ' + res.status);
+                    } catch (e) { /* non-JSON error body — keep the default copy */ }
+                    showToast(msg, 'error');
+                    if (btn) btn.disabled = false;
+                })
+                .catch(function () {
+                    showToast('Błąd sieci podczas zamiany pliku.', 'error');
+                    if (btn) btn.disabled = false;
+                });
+        });
+    })();
 
     // ---- Thumbnail fallback -------------------------------------------------
     document.querySelectorAll('.preview-grid .file-thumb').forEach(function(img) {

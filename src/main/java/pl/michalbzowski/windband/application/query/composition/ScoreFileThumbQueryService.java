@@ -108,6 +108,21 @@ public class ScoreFileThumbQueryService {
         return jpeg;
     }
 
+    /**
+     * US-7.15 — drop every cached thumbnail of one file. Called right after a content
+     * replacement: the cache key identifies (band, composition, file, page, width) but NOT
+     * the bytes behind the row, so without eviction the page-picker would keep rendering
+     * the pre-swap pages of the replaced score.
+     */
+    public void evictFile(Long fileId) {
+        if (fileId == null) {
+            return;
+        }
+        synchronized (cache) {
+            cache.keySet().removeIf(k -> fileId.equals(k.fileId()));
+        }
+    }
+
     private byte[] cacheGet(ThumbKey key) {
         synchronized (cache) {
             return cache.get(key);
