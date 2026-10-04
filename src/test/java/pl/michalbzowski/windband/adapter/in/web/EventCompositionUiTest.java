@@ -69,9 +69,11 @@ class EventCompositionUiTest extends UiTestBase {
 
         // Binding fixed: the POST 302s back and the setlist table now carries the row.
         // (Pre-fix this stalled here — the browser landed on a 500 error page.)
+        // Text is polled through a stale-safe reader: EC#textToBePresent* dies on the
+        // "Node does not belong to the document" inspector error Chrome throws while the
+        // POST navigation swaps the DOM mid-poll (CI race seen on run 37229913645).
         wait.until(ExpectedConditions.urlContains("/events/" + eventId));
-        wait.until(ExpectedConditions.textToBePresentInElementLocated(
-                By.id("event-setlist-panel"), "Marsz " + mark));
+        wait.until(d -> panelText().contains("Marsz " + mark));
 
         Long rowCount = jdbcTemplate.queryForObject(
                 "SELECT COUNT(*) FROM event_compositions WHERE event_id = ? AND composition_id = ?",
@@ -97,8 +99,8 @@ class EventCompositionUiTest extends UiTestBase {
         assertThat(afterDelete).isZero();
 
         driver.navigate().refresh();
-        WebElement panel = wait.until(ExpectedConditions.presenceOfElementLocated(By.id("event-setlist-panel")));
-        assertThat(panel.getText()).doesNotContain("Marsz " + mark);
+        wait.until(ExpectedConditions.presenceOfElementLocated(By.id("event-setlist-panel")));
+        assertThat(panelText()).doesNotContain("Marsz " + mark);
     }
 
     /** Cross-band refusal: a foreign band's composition cannot be linked (409 fail-closed, no row). */
@@ -165,5 +167,16 @@ class EventCompositionUiTest extends UiTestBase {
                         + ".then(function(response) { done(response.status); }, function(error) { done(-1); });",
                 path, method);
         return ((Number) status).intValue();
+    }
+
+    /** Stale-safe panel text: re-locates the node each poll and swallows navigation-time DOM swaps. */
+    private String panelText() {
+        try {
+            return driver.findElement(By.id("event-setlist-panel")).getText();
+        } catch (org.openqa.selenium.WebDriverException race) {
+            // StaleElementReferenceException and the "node does not belong to the document"
+            // inspector error both land here while the POST navigation swaps the DOM.
+            return "";
+        }
     }
 }
