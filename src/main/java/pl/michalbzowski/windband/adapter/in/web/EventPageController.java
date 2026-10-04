@@ -196,7 +196,7 @@ public class EventPageController {
 
     /** Links a composition into this event's setlist (POST from the detail-page dialog). */
     @PostMapping("/{id}/compositions")
-    public String assignComposition(@PathVariable Long eventId,
+    public String assignComposition(@PathVariable("id") Long eventId,
                                     @RequestParam("compositionId") Long compositionId,
                                     @ModelAttribute("activeTeamId") Long activeTeamId) {
         eventCommandService.assignComposition(eventId, compositionId);
@@ -205,7 +205,7 @@ public class EventPageController {
 
     /** Unlinks ONE specific composition from this event's setlist. */
     @DeleteMapping("/{id}/compositions/{cid}")
-    public String unassignComposition(@PathVariable Long eventId,
+    public String unassignComposition(@PathVariable("id") Long eventId,
                                       @PathVariable("cid") Long compositionId,
                                       @ModelAttribute("activeTeamId") Long activeTeamId) {
         eventCommandService.unassignComposition(eventId, compositionId);
