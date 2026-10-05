@@ -137,11 +137,17 @@
 
     <table th:if="${eventCompositions != null and !eventCompositions.isEmpty()}"
            class="data-table" style="max-width:600px;">
-        <thead><tr><th>#</th><th>Tytul utworu</th></tr></thead>
+        <thead><tr><th>#</th><th>Tytul utworu</th><th>Akcja</th></tr></thead>
         <tbody>
             <tr th:each="ec, st : ${eventCompositions}">
                 <td th:text="${st.count}" data-label="Pozycja">1</td>
                 <td th:text="${ec.composition.title}" data-label="Tytul utworu">Marsz Testowy</td>
+                <td data-label="Akcja">
+                    <button type="button" class="outline" data-remove-setlist-btn
+                            th:data-cid="${ec.composition.id}"
+                            title="Usuń z programu"
+                            aria-label="Usuń utwór z programu">🗑 Usuń</button>
+                </td>
             </tr>
         </tbody>
     </table>
@@ -346,6 +352,27 @@
     </form>
 </dialog>
 
+<!-- US-7.2b — confirmation dialog for removing a composition from the event setlist.
+     Mirrors add-composition-dialog above; opened by the per-row "Usuń" button, the
+     DELETE fetch + reload lives in the inline script of this panel. -->
+<dialog id="remove-setlist-modal" class="app-modal">
+    <div class="app-modal-content">
+        <header class="app-modal-header">
+            <div class="app-modal-header-text">
+                <h3>Usuń utwór z programu</h3>
+            </div>
+            <button type="button" class="app-modal-close" aria-label="Zamknij" data-close>×</button>
+        </header>
+        <div class="app-modal-body">
+            <p>Czy na pewno chcesz usunąć ten utwór z programu wydarzenia? Tej operacji nie można cofnąć.</p>
+        </div>
+        <footer class="app-modal-footer">
+            <button type="button" class="outline" id="remove-setlist-cancel-btn">Anuluj</button>
+            <button type="button" class="primary danger" id="remove-setlist-confirm-btn">Tak, usuń</button>
+        </footer>
+    </div>
+</dialog>
+
 <h3>Uczestnicy</h3>
 
 <script th:inline="javascript">
@@ -361,6 +388,66 @@
     // submitCompositionAddForm is referenced from th:action / onsubmit above; the POST body
     // sends compositionId as a form-encoded field, and the controller saves + 302-redirects back.
     window.submitCompositionAddForm = function (form) { return true; };
+})();
+
+// US-7.2b — "Usuń z programu": an HTML form cannot issue DELETE, so the per-row button opens
+// the remove-setlist-modal and the confirm button drives the DELETE route with fetch.
+// IMPORTANT fetch nuance (pinned by US-7.2 tests): the route answers 302 and a followed DELETE
+// keeps its method on redirect — re-hitting /events/{id} (unmapped) would yield 405/500. So we
+// use redirect:'manual': status 0 == "opaqueredirect" == the delete succeeded (the row is gone
+// server-side), and we then reload the page ourselves so the setlist row disappears visually.
+// Mirrors the delete-event-modal handler pattern used elsewhere on this page.
+(function () {
+    var dialog = document.getElementById('remove-setlist-modal');
+    if (!dialog) return;
+    var pendingCid = null;
+
+    Array.prototype.forEach.call(document.querySelectorAll('[data-remove-setlist-btn]'), function (btn) {
+        btn.addEventListener('click', function () {
+            pendingCid = btn.getAttribute('data-cid');
+            if (typeof openAppModal === 'function') {
+                openAppModal('remove-setlist-modal');
+            } else {
+                dialog.showModal();
+            }
+        });
+    });
+
+    function closeRemoveModal() {
+        if (typeof closeAppModal === 'function') {
+            closeAppModal(dialog);
+        } else {
+            dialog.close();
+        }
+    }
+
+    var cancelBtn = document.getElementById('remove-setlist-cancel-btn');
+    if (cancelBtn) { cancelBtn.addEventListener('click', closeRemoveModal); }
+    var headerCloseBtn = dialog.querySelector('.app-modal-close');
+    if (headerCloseBtn) { headerCloseBtn.addEventListener('click', closeRemoveModal); }
+
+    var confirmBtn = document.getElementById('remove-setlist-confirm-btn');
+    if (confirmBtn) {
+        confirmBtn.addEventListener('click', function () {
+            if (!pendingCid) return;
+            var eventId = window.location.pathname.split('/')[2];
+            closeRemoveModal();
+            fetch('/events/' + eventId + '/compositions/' + pendingCid,
+                    {method: 'DELETE', credentials: 'same-origin', redirect: 'manual'})
+                .then(function (response) {
+                    if (response.status === 0 || response.ok) {
+                        window.location.href = '/events/' + eventId;
+                    } else if (typeof showToast === 'function') {
+                        showToast('Nie udało się usunąć utworu z programu', 'error');
+                    }
+                })
+                .catch(function () {
+                    if (typeof showToast === 'function') {
+                        showToast('Wystąpił błąd podczas usuwania utworu z programu', 'error');
+                    }
+                });
+        });
+    }
 })();
 </script>
 

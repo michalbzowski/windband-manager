@@ -25,8 +25,8 @@ import static org.assertj.core.api.Assertions.assertThat;
  * ({@code MissingPathVariableException}). This class is the regression net:
  * <ol>
  *   <li>happy path — dialog add persists an {@code event_compositions} row and the
- *       browser comes back to the panel showing it in order; XHR DELETE removes it
- *       (the remove route has no UI button yet, so it is driven directly);</li>
+ *       browser comes back to the panel showing it in order; the US-7.2b per-row
+ *       "Usuń" button + confirm modal removes it through the real UI;</li>
  *   <li>cross-band refusal — a composition of another band fails closed with 409
  *       and NO row is written (pre-fix the binding failure hid this entirely).</li>
  * </ol>
@@ -85,22 +85,23 @@ class EventCompositionUiTest extends UiTestBase {
                 Integer.class, eventId, compositionId);
         assertThat(orderInSet).isBetween(1, 100);
 
-        // US-7.2 remove route — no UI button exists yet, so hit the endpoint directly.
-        // Note the fetch-spec nuance: on a 3xx redirect only POST converts to GET;
-        // a followed DELETE keeps its method and would re-hit /events/{id} (unmapped,
-        // 500) — so use redirect:'manual': status 0 == "opaqueredirect", i.e. the route
-        // answered with the 303 it is designed to answer with (pre-fix it answered 500).
-        int deleteResult = fetchManual("DELETE", "/events/" + eventId + "/compositions/" + compositionId);
-        assertThat(deleteResult).as("DELETE route returned a redirect (opaqueredirect)").isZero();
+        // US-7.2b — the per-row "Usuń" button + confirm modal now drive the DELETE
+        // route through the real UI (fetch DELETE → controller 302 → JS reload). Poll
+        // the panel text through the stale-safe reader because the reload swaps the
+        // DOM mid-navigation (same Chrome inspector race as the add flow above).
+        WebElement removeBtn = driver.findElement(By.cssSelector("[data-remove-setlist-btn]"));
+        assertThat(removeBtn.getAttribute("data-cid")).isEqualTo(String.valueOf(compositionId));
+        removeBtn.click();
+        WebElement confirmBtn = wait.until(ExpectedConditions.visibilityOfElementLocated(
+                By.id("remove-setlist-confirm-btn")));
+        confirmBtn.click();
+        wait.until(d -> panelText().length() > 0);
+        wait.until(d -> !panelText().contains("Marsz " + mark));
 
         Long afterDelete = jdbcTemplate.queryForObject(
                 "SELECT COUNT(*) FROM event_compositions WHERE event_id = ? AND composition_id = ?",
                 Long.class, eventId, compositionId);
         assertThat(afterDelete).isZero();
-
-        driver.navigate().refresh();
-        wait.until(ExpectedConditions.presenceOfElementLocated(By.id("event-setlist-panel")));
-        assertThat(panelText()).doesNotContain("Marsz " + mark);
     }
 
     /** Cross-band refusal: a foreign band's composition cannot be linked (409 fail-closed, no row). */
@@ -156,16 +157,6 @@ class EventCompositionUiTest extends UiTestBase {
                         + "xhr.send(arguments[2] || null);"
                         + "return xhr.status;",
                 method, path, body);
-        return ((Number) status).intValue();
-    }
-
-    /** Same-origin fetch that does NOT follow redirects: 0 = 3xx received, 500 = server error. */
-    private int fetchManual(String method, String path) {
-        Object status = ((JavascriptExecutor) driver).executeAsyncScript(
-                "var done = arguments[arguments.length - 1];"
-                        + "fetch(arguments[0], {method: arguments[1], redirect: 'manual'})"
-                        + ".then(function(response) { done(response.status); }, function(error) { done(-1); });",
-                path, method);
         return ((Number) status).intValue();
     }
 
