@@ -436,12 +436,22 @@ This is the "verify-gate" that US-1.6 deliberately deferred to Epic 3. It is als
 
 ---
 
-### **US-4.4: AI preview — page mapping shown for user review** ⬜ Not started
+### **US-4.4: AI preview — page mapping shown for user review** 🔶 Partial (2026-10-05)
 > **As a** band manager or librarian
 > **I want the AI's part→page proposal rendered as an editable table I can adjust before accepting
 > **So that** I can catch wrong page ranges (the pipeline is heuristic) before they become "trusted" data
 
 Not yet implemented. The `score_analysis` artefacts (`arrangement_json_path`, `validation_txt_path`) are the natural input for this screen; US-4.5's accept/verify flow gates the READY transition (see US-3.03) so US-4.4 can focus purely on rendering + editing, not on promotion semantics.
+
+**Done so far:** `JsonAiProposals` (committed `a8e41a3a`/`19d352ca`) — dependency-free reader of the arrangement JSON artefact (role/page/confidence, order-insensitive, role-required, SpotBugs clean); `application/dto/scoreanalysis/AIProposals` + `application/query/scoreanalysis/AiProposalPreview` drafted (untracked, not integrated).
+
+**Remaining work (next increment):**
+1. `ScoreAnalysisQueryService` method: load latest `ScoreAnalysis` for a composition → read `arrangement_json_path` via `JsonAiProposals` → resolve each proposed role to a part row (reuse `InstrumentRoleResolutionQueryService` + `PartLinkQueryService` read paths; band roster from `CompositionInstrumentRepository`) → return `List<AiProposalPreview>` (role label, pages, confidence, resolved part, `PartSource` it would stamp).
+2. Thymeleaf section on the composition detail (or event parts panel) rendering the proposal table read-only, per-row confidence badge, "Akceptuj" gated behind US-4.5.
+3. Tests: query-service unit (mock JSON artefact), `CompositionDetailUiTest`-style Selenium check that the table renders for a seeded analysis row (stub runner can seed the artefact directly).
+4. **Gating reality unchanged:** the runner is still `StubAiAnalysisRunner` (501). Real model integration (OpenRouter VLM) is deliberately deferred; the preview must be built against a seeded artefact fixture, not a live runner.
+
+US-4.5 (accept → write `composition_instruments` with `PartSource.AI`/`.HYBRID` + verifiedBy/At stamp) stays NOT started and depends on (1)-(2) above.
 
 ---
 
@@ -811,3 +821,4 @@ Not planned in the original US list; listed here only to keep the "Epic 7" secti
 *Re-checked against `origin/main` HEAD `fb22c38` on 2026-09-29: US-7.3 merged (PR #250), US-5.1 merged (PR #251), **US-6.2 merged (PR #252)**; PR #253 (voice editing, issue #241) also merged. US-6.3 (delivery) is the next story.*
 *Re-checked against `origin/main` HEAD `6ac1c3ac` on 2026-10-04: Epic 6 fully closed (PRs #254–#257); US-7.14 (via PR #211, never recorded here before), US-7.15 (PR #259) and US-7.16 verification gate (PR #261) on `main`; production setlist-binding 500 hotfixed (PR #260) and `EventCompositionUiTest` re-enabled as its regression net. Next in line: US-7.2b (remove-from-setlist button) → US-5.3 → US-4.4/4.5 gated on a real `windband-ai` runner.*
 *Shipped 2026-10-05: **US-7.2b remove-from-setlist button** — per-row "🗑 Usuń" + `#remove-setlist-modal` confirm dialog in `events/detail.html`; JS fetch DELETE (`redirect: manual`, then page reload); `EventCompositionUiTest` happy-path upgraded to drive the real UI. Next in line: US-5.3 → US-4.4/4.5 (gated on a real `windband-ai` runner); US-7.4–7.8 remain open polish items.*
+*2026-10-05 (US-4.4 status): reclassified ⬜→🔶. `JsonAiProposals` reader + SpotBugs fix on `main` (`a8e41a3a`, `19d352ca`); preview query-service/UI/tests remain — see "Remaining work" under US-4.4. Runner still the 501 stub; VLM/OpenRouter integration deliberately deferred.*

@@ -6,6 +6,7 @@ import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.TestInstance;
 import org.openqa.selenium.By;
+import org.openqa.selenium.TimeoutException;
 import org.openqa.selenium.WebDriver;
 import org.openqa.selenium.WebElement;
 import org.openqa.selenium.chrome.ChromeDriver;
@@ -362,12 +363,26 @@ public abstract class UiTestBase {
     protected void loginAndNavigateTo(String path) {
         // Reuse the login flow for consistency, then navigate.
         doLogin();
-        driver.get(baseUrl() + path);
-        new WebDriverWait(driver, Duration.ofSeconds(30)).pollingEvery(Duration.ofMillis(100))
-            .until(ExpectedConditions.or(
-                    ExpectedConditions.presenceOfElementLocated(By.id("content")),
-                    ExpectedConditions.presenceOfElementLocated(By.id("compositions-content")),
-                    ExpectedConditions.presenceOfElementLocated(By.id("composition-detail"))));
+        // Under shared-Chrome contention a fresh driver.get() can intermittently land on a
+        // blank/redirect page (session cookie still propagating), so give the target page
+        // one reload before declaring timeout — the page ids render on the second GET.
+        for (int attempt = 1; attempt <= 2; attempt++) {
+            driver.get(baseUrl() + path);
+            try {
+                new WebDriverWait(driver, Duration.ofSeconds(30)).pollingEvery(Duration.ofMillis(100))
+                    .until(ExpectedConditions.or(
+                            ExpectedConditions.presenceOfElementLocated(By.id("content")),
+                            ExpectedConditions.presenceOfElementLocated(By.id("compositions-content")),
+                            ExpectedConditions.presenceOfElementLocated(By.id("composition-detail"))));
+                return;
+            } catch (TimeoutException e) {
+                if (attempt == 2) {
+                    throw e;
+                }
+                // Session may have expired mid-suite — force re-auth for the retry.
+                sessionEstablished = false;
+            }
+        }
     }
 
     /**
@@ -407,22 +422,37 @@ public abstract class UiTestBase {
         if (sessionEstablished) {
             return; // session persists across the test class's browser instance
         }
-        driver.get(baseUrl() + "/login");
-        new WebDriverWait(driver, Duration.ofSeconds(10)).pollingEvery(Duration.ofMillis(100))
-                .until(ExpectedConditions.presenceOfElementLocated(By.cssSelector("form[action='/login'] input[name='username']")));
+        // Under CI (forkCount=1, dozens of UI classes on one shared Chrome session) the
+        // login form intermittently renders later than the single 10s window, producing
+        // random TimeoutExceptions in loginAndNavigateTo. Retry the whole login — every
+        // attempt is idempotent (re-GET /login), so the retry only pays off when the
+        // first attempt timed out.
+        TimeoutException last = null;
+        for (int attempt = 1; attempt <= 3; attempt++) {
+            try {
+                driver.get(baseUrl() + "/login");
+                new WebDriverWait(driver, Duration.ofSeconds(20)).pollingEvery(Duration.ofMillis(100))
+                        .until(ExpectedConditions.presenceOfElementLocated(By.cssSelector("form[action='/login'] input[name='username']")));
 
-        FluentWait<WebDriver> w = new WebDriverWait(driver, Duration.ofSeconds(10)).pollingEvery(Duration.ofMillis(100));
-        WebElement usernameField = w.until(ExpectedConditions.visibilityOfElementLocated(By.cssSelector("form[action='/login'] input[name='username']")));
-        usernameField.clear();
-        usernameField.sendKeys("admin");
+                FluentWait<WebDriver> w = new WebDriverWait(driver, Duration.ofSeconds(15)).pollingEvery(Duration.ofMillis(100));
+                WebElement usernameField = w.until(ExpectedConditions.visibilityOfElementLocated(By.cssSelector("form[action='/login'] input[name='username']")));
+                usernameField.clear();
+                usernameField.sendKeys("admin");
 
-        WebElement passwordField = w.until(ExpectedConditions.visibilityOfElementLocated(By.name("password")));
-        passwordField.clear();
-        passwordField.sendKeys("admin");
+                WebElement passwordField = w.until(ExpectedConditions.visibilityOfElementLocated(By.name("password")));
+                passwordField.clear();
+                passwordField.sendKeys("admin");
 
-        driver.findElement(By.cssSelector("button[type='submit']")).click();
-        w.until(ExpectedConditions.not(ExpectedConditions.urlContains("/login")));
-        sessionEstablished = true;
+                driver.findElement(By.cssSelector("button[type='submit']")).click();
+                w.until(ExpectedConditions.not(ExpectedConditions.urlContains("/login")));
+                sessionEstablished = true;
+                return;
+            } catch (TimeoutException e) {
+                last = e;
+                sessionEstablished = false;
+            }
+        }
+        throw new IllegalStateException("UI login failed after 3 attempts", last);
     }
 
     /**
