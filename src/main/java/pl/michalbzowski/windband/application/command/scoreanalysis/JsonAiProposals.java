@@ -64,15 +64,15 @@ public final class JsonAiProposals {
                 case "PAGEFROM":
                 case "PAGE_FROM":
                 case "FROM":
-                    applyPage(value, pageFrom);
+                    pageFrom = applyPage(value, pageFrom);
                     break;
                 case "PAGETO":
                 case "PAGE_TO":
                 case "TO":
-                    applyPage(value, pageTo);
+                    pageTo = applyPage(value, pageTo);
                     break;
                 case "CONFIDENCE":
-                    applyConfidence(value, confidence);
+                    confidence = applyConfidence(value, confidence);
                     break;
                 default:
                     break;
@@ -89,24 +89,28 @@ public final class JsonAiProposals {
                 PartSource.AI);
     }
 
-    private static void applyPage(String value, int current) {
+    private static int applyPage(String value, int fallback) {
         if (isInteger(value)) {
             try {
-                current = Integer.parseInt(value);
+                return Integer.parseInt(value);
             } catch (NumberFormatException ignored) {
-                // keep current
+                // keep fallback
+                return fallback;
             }
         }
+        return fallback;
     }
 
-    private static void applyConfidence(String value, double current) {
+    private static double applyConfidence(String value, double fallback) {
         if (isDecimal(value)) {
             try {
-                current = Double.parseDouble(value);
+                return Double.parseDouble(value);
             } catch (NumberFormatException ignored) {
-                // keep current
+                // keep fallback
+                return fallback;
             }
         }
+        return fallback;
     }
 
     private static List<String> splitTopLevelArray(String json) {
