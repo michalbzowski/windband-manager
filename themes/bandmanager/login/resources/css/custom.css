@@ -315,6 +315,23 @@ hr {
     margin-right: auto;
 }
 
+/* ── Registration form (register.ftl) ─────────────────────────── */
+/* Required-field asterisk rendered by Keycloak's userProfileFormFields macro */
+span.required {
+    color: var(--pico-primary);
+    font-weight: 700;
+    margin-left: 0.15rem;
+}
+
+/* Per-field validation errors (spans with id="input-error-<field>") */
+span[id^="input-error-"] {
+    display: block;
+    margin-top: 0.35rem;
+    color: #fca5a5;
+    font-size: 0.85rem;
+    line-height: 1.4;
+}
+
 /* ── Remember me row ──────────────────────────────────────────── */
 .remember-me-row {
     display: flex;
