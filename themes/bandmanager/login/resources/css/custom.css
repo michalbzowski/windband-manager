@@ -43,7 +43,8 @@ body {
     background: linear-gradient(135deg, #0f0f1a 0%, #1a1a2e 50%, #0f0f1a 100%);
     min-height: 100vh;
     display: flex;
-    align-items: stretch;
+    flex-direction: column;          /* karta + stopka w jednym pionowym przepływie — bez "rozjechania" w kolumny */
+    align-items: stretch;           /* stretch na środkowym osi (dla column = pełna szerokość); auto-centrowanie robi margin:auto w .login-card */
 }
 
 /* override PicoCSS body defaults */
