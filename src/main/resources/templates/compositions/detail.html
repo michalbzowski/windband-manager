@@ -107,7 +107,6 @@
             <article class="score-files-article">
                 <header class="section-header">
                     <h3>Pliki nut</h3>
-                    <small>Przeciągnij PDF lub kliknij, aby dodać (maks. 50 MB)</small>
                 </header>
 
                 <!-- Dropzone Area -->
@@ -120,22 +119,7 @@
                     </div>
                 </div>
 
-                <!-- Backward-compat form for existing tests -->
-                <form id="score-upload-form">
-                    <div id="score-upload-error" class="danger hidden" role="alert"></div>
-                    <div class="form-actions">
-                        <button type="submit" id="upload-score-btn" class="primary" disabled aria-describedby="score-upload-helper">📎 Wgraj nuty</button>
-                        <button type="button" id="cancel-score-upload-btn" class="secondary" title="Anuluj wybranie pliku" hidden>Anuluj</button>
-                    </div>
-                    <p id="score-upload-helper" hidden class="form-note">Najpierw wybierz plik PDF, aby włączyć przycisk wysyłki.</p>
-                </form>
-
-                <div id="score-upload-result" class="hidden">
-                    <p class="toast success" role="status"></p>
-                    <a id="score-download-link" target="_blank" rel="noopener" href="#">📄 Pobierz pełny PDF</a>
-                </div>
-
-                <!-- Upload Queue - shows pending uploads with status icons -->
+                <!-- Upload Queue - the single upload path: dropzone picks, queue confirms -->
                 <div id="upload-queue" class="upload-queue hidden">
                     <div class="upload-queue-header">Pliki do wgrania</div>
                     <ul id="upload-queue-list" class="upload-queue-list"></ul>
@@ -168,12 +152,13 @@
                             </span>
 
                             <span class="file-actions" role="toolbar" aria-label="Akcje pliku">
-                                <a class="secondary" target="_blank" rel="noopener"
+                                <!-- "Otwórz w nowej karcie" już realizuje link-nazwa pliku powyżej (test-locked
+                                     jako kontrolka główna wiersza); zduplikowany przycisk 📄 Otwórz usunięty. -->
+                                <!-- ⬇️ Pobierz — role="button" bo Pico nadaje .secondary tło przycisku
+                                     wyłącznie elementom button/[role="button"], nie surowym <a>. -->
+                                <a class="secondary" role="button" download
                                    th:href="@{/bands/{bandId}/compositions/{compId}/files/{fileId}(bandId=${bandId}, compId=${composition.id}, fileId=${f.id})}"
-                                   th:title="'Otwórz ' + ${f.originalName} + ' w nowej karcie'">📄 Otwórz</a>
-                                <a class="secondary" download
-                                   th:href="@{/bands/{bandId}/compositions/{compId}/files/{fileId}(bandId=${bandId}, compId=${composition.id}, fileId=${f.id})}"
-                                   th:title="'Pobierz ' + ${f.originalName} + ' na dysk'">⬇️</a>
+                                   th:title="'Pobierz ' + ${f.originalName} + ' na dysk'">⬇️ Pobierz</a>
                                 <!-- US-7.15: content swap keeps the row id, so voice mappings survive.
                                      ZIP archives are excluded — their extracted children would keep
                                      serving stale entries; replace those children instead. -->
@@ -216,6 +201,131 @@
             </article>
 
         </div>
+    </section>
+
+    <!-- Parts Panel (unchanged) -->
+    <section id="parts-panel" class="composition-parts">
+        <header>
+            <h3>Głosy w nutach</h3>
+            <small>Każda pozycja opisuje, które strony PDF-a odpowiadają danemu instrumentowi / role.</small>
+        </header>
+
+        <!-- Issue #242: the add-part button lives DIRECTLY under the header (above the table),
+             so it is reachable without scrolling past saved rows. -->
+        <button type="button" id="open-add-part-modal-btn" class="primary">＋ Dodaj głos</button>
+
+        <!-- US-7.16 — the verification gate (DRAFT → READY) sits with the voices it audits. -->
+        <div style="margin:.5rem 0 1rem; display:flex; align-items:center; gap:.75rem; flex-wrap:wrap;">
+            <button type="button" id="verify-parts-btn" class="primary"
+                    th:if="${composition.status.name() == 'DRAFT' and parts != null and !parts.isEmpty()}"
+                    onclick="openLifecycleDialog('verify')"
+                    title="Zamknij audyt głosów i oznacz utwór jako Gotowy">✅ Zweryfikuj głosy — oznacz jako Gotowy</button>
+            <span id="verify-ready-note" th:if="${composition.status.name() == 'READY'}" style="color:#1b7f3c;">
+                ✅ Wszystkie głosy zweryfikowane — utwór jest gotowy do rozdania.
+            </span>
+            <span id="verify-parts-result" th:if="${verifyPartsResult}" role="status" style="color:#1b7f3c;">✅ <span th:text="${verifyPartsResult}"></span></span>
+            <span id="verify-parts-error" th:if="${verifyPartsError}" role="alert" style="color:#b3261e;">⚠️ <span th:text="${verifyPartsError}"></span></span>
+        </div>
+
+        <table id="existing-parts" class="data-table">
+            <thead><tr><th>Instrument</th><th>Rola</th><th>Plik nut</th><th>Strony</th><th>Akcje</th></tr></thead>
+            <tbody>
+                <tr th:if="${parts == null or parts.size() == 0}" class="empty-row"><td colspan="5">Brak oznaczonych głosów — dodaj powyżej.</td></tr>
+                <tr th:each="p : ${parts}"
+                    th:attr="data-part-id=${p.id}, data-instrument-name=${p.instrumentName != null ? p.instrumentName : ''}, data-role=${p.instrumentRole != null and !#strings.isEmpty(p.instrumentRole) ? p.instrumentRole : '—'}, data-page-from=${p.pageFrom}, data-page-to=${p.pageTo}, data-instrument-id=${p.instrumentId}, data-score-file-id=${p.scoreFileId}">
+                    <td th:text="${p.instrumentName != null ? p.instrumentName : ''}">Instrument</td>
+                    <td th:text="${p.instrumentRole != null and !#strings.isEmpty(p.instrumentRole) ? p.instrumentRole : '—'}">Rola</td>
+                    <td><span th:if="${p.scoreFileName}"><span th:text="${p.scoreFileName}" class="text-secondary">Polonez (głosy).pdf</span></span><span th:unless="${p.scoreFileName}" class="text-muted">(dowolny plik)</span></td>
+                    <td th:text="${p.pageRange()}">1–5</td>
+                    <!-- Issue #241: "Edytuj" reopens the "Dodaj głos" modal prefilled with this row. -->
+                    <td><button type="button" class="secondary part-edit-btn"
+                            title="Edytuj ten głos (instrument, rola, strony)">✏️ Edytuj</button>
+                        <button type="button" class="secondary part-share-btn"
+                            title="Udostępnij ten głos (link do PDF-a + opcjonalnie e-mail do wielu odbiorców)">📤 Udostępnij</button></td>
+                </tr>
+            </tbody>
+        </table>
+
+        <dialog id="add-part-dialog" class="app-modal add-part-modal">
+            <form id="add-part-form" method="post" th:action="@{/bands/{bandId}/compositions/{compositionId}/parts(bandId=${bandId}, compositionId=${composition.id})}">
+                <header class="app-modal-header ap-head">
+                    <span aria-hidden="true"></span>
+                    <h3 id="add-part-dialog-title" class="ap-head-title">Dodaj głos (strony w nutach)</h3>
+                    <button type="button" class="app-modal-close" aria-label="Zamknij" data-close>×</button>
+                </header>
+
+                <div class="app-modal-body add-part-body">
+                    <!-- Plik nut — selection drives the header preview below -->
+                    <label class="ap-cell ap-file">Plik nut:
+                        <select name="scoreFileId" id="part-score-file-picker" class="form-element-secondary">
+                            <option value="">— wybierz plik (nieobowiązkowo) —</option>
+                            <th:block th:each="sf : ${scoreFiles}"><option th:value="${sf.id}" th:text="${sf.originalName + ' • ' + (sf.pageCount != null ? sf.pageCount.toString() + ' stron' : '—')}"/></th:block>
+                        </select>
+                    </label>
+
+                    <!-- Requirement 2-7: header strip of the selected PDF's current page.
+                         The <img> shows only the TOP ~20% of the rendered page (CSS crop),
+                         so the instrument name at the top-left/right corner is always visible.
+                         The "Strona N z M" badge sits DEAD CENTRE — clear of either top corner —
+                         and a single click/tap on the preview hides badge + arrows (class
+                         .ap-calm, fully transparent, click-through) so bare sheet music shows;
+                         clicking again brings them back. -->
+                    <div id="part-preview" class="add-part-preview" role="button" tabindex="0"
+                         aria-label="Podgląd góry strony PDF — kliknij, aby ukryć lub przywołać pasek narzędzi" hidden>
+                        <img id="part-preview-img" alt="Podgląd góry strony PDF (nazwa instrumentu)">
+                        <!-- User request (2026-09-24): arrows + page badge moved from the
+                             middle of the strip to a dedicated BOTTOM BAR inside the preview
+                             component. The bar carries two extra same-size buttons that set
+                             the (visually hidden) "Strona od" / "Strona do" fields to the
+                             currently previewed page. Second iteration (same day): instead
+                             of the ⇤ / ⇥ glyphs the buttons DISPLAY their page numbers —
+                             the left one shows "Strona od", the right one "Strona do" —
+                             kept in sync with the hidden inputs by syncRangeButtons().
+                             The title/aria-labels carry the (dynamic) meaning. -->
+                        <div id="part-preview-bar" class="ap-bar">
+                            <span class="ap-bar-group">
+                                <button type="button" id="part-range-from" class="ap-preview-btn ap-range-btn ap-overlay"
+                                        aria-label="Strona od: 1 — kliknij, aby ustawić na podglądaną stronę" title="Strona od — kliknij, aby ustawić na podglądaną stronę">1</button>
+                                <button type="button" id="part-range-to" class="ap-preview-btn ap-range-btn ap-overlay"
+                                        aria-label="Strona do: 2 — kliknij, aby ustawić na podglądaną stronę" title="Strona do — kliknij, aby ustawić na podglądaną stronę">2</button>
+                            </span>
+                            <span id="part-preview-badge" class="ap-overlay" role="status">Strona —</span>
+                            <span class="ap-bar-group">
+                                <button type="button" id="part-preview-prev" class="ap-preview-btn ap-overlay" aria-label="Poprzednia strona" disabled>‹</button>
+                                <button type="button" id="part-preview-next" class="ap-preview-btn ap-preview-btn-right ap-overlay" aria-label="Następna strona" disabled>›</button>
+                            </span>
+                        </div>
+                    </div>
+
+                    <!-- Role + instrument on one compact grid; page range fields share ONE row -->
+                    <div class="add-part-grid">
+                        <label class="ap-cell ap-role">Rola: <input type="text" name="role" id="part-role-input" class="form-input" placeholder="np. Flet 1, Saxofon II"></label>
+                        <label class="ap-cell ap-instr">Instrument:
+                            <select name="instrumentId" id="part-instrument-picker" class="form-element-secondary" required>
+                                <option th:if="${bandInstruments == null or #lists.isEmpty(bandInstruments)}" disabled selected value="">Brak instrumentów w zespole — dodaj je najpierw w Członkach</option>
+                                <option th:each="instr : ${bandInstruments}" th:value="${instr.id}" th:text="${instr.name}"></option>
+                            </select>
+                        </label>
+                        <!-- User request (2026-09-24): hidden, NOT removed — the inputs still
+                             submit with the form and stay synced by the preview (page → "Strona
+                             od", ⇤/⇥ buttons, bump rule). The freed grid row is reclaimed by
+                             the taller PDF preview (see .add-part-preview / fitPreviewHeight). -->
+                        <label class="ap-cell ap-page-field" hidden>Strona od: <input type="number" name="pageFrom" id="part-page-from" min="1" value="1" required class="form-input"></label>
+                        <label class="ap-cell ap-page-field" hidden>Strona do: <input type="number" name="pageTo" id="part-page-to" min="1" value="2" required
+                                th:max="${serverMaxPageCount != null ? serverMaxPageCount : 999}" class="form-input"></label>
+                    </div>
+
+                    <p id="part-range-error" class="hidden text-danger" role="alert"></p>
+                    <p id="add-part-status" class="add-part-status hidden" role="status" aria-live="polite"></p>
+
+                    <!-- "Zapisz głos" stays open after saving; "Zamknij" closes — both on ONE row -->
+                    <footer class="modal-actions add-part-actions">
+                        <button type="submit" class="primary" id="save-part-btn">✓ Zapisz głos</button>
+                        <button type="button" class="secondary add-part-close-btn" data-close>Zamknij</button>
+                    </footer>
+                </div>
+            </form>
+        </dialog>
     </section>
 </main>
 
@@ -511,88 +621,9 @@
     var pendingFiles = [];
     var uploadStates = new Map(); // fileId -> {status: 'pending'|'uploading'|'success'|'error', xhr, file, dto}
 
-    // ---- file selection (backward-compat for tests) -------------------------
-    var compatForm = document.getElementById('score-upload-form');
-    var compatSubmitBtn = document.getElementById('upload-score-btn');
-    var compatCancelBtn = document.getElementById('cancel-score-upload-btn');
-    var compatErrorEl = document.getElementById('score-upload-error');
-    var compatHelperEl = document.getElementById('score-upload-helper');
-    var compatResultEl = document.getElementById('score-upload-result');
-    var compatResultToast = compatResultEl ? compatResultEl.querySelector('.toast') : null;
-    var compatDownloadLink = document.getElementById('score-download-link');
-
     if (!input || !dropzone) return;
 
-    // Backward-compat: if test sets file on input directly, enable compat button
-    input.addEventListener('change', function() {
-        if (!compatForm) return;
-        var f = input.files[0];
-        if (!f) {
-            if (compatSubmitBtn) { compatSubmitBtn.disabled = true; compatSubmitBtn.textContent = '📎 Wgraj nuty'; }
-            if (compatCancelBtn) compatCancelBtn.hidden = true;
-            if (compatHelperEl) compatHelperEl.hidden = true;
-            if (compatErrorEl) { compatErrorEl.textContent = ''; compatErrorEl.classList.add('hidden'); }
-            return;
-        }
-        if (f.type !== 'application/pdf' && !/\.pdf$/i.test(f.name)) {
-            if (compatErrorEl) { compatErrorEl.textContent = 'Wybierz plik PDF (type="application/pdf").'; compatErrorEl.classList.remove('hidden'); }
-            if (compatSubmitBtn) { compatSubmitBtn.disabled = true; compatSubmitBtn.textContent = '📎 Wgraj nuty'; }
-            if (compatCancelBtn) compatCancelBtn.hidden = false;
-            return;
-        }
-        if (f.size > MAX_PDF_BYTES) {
-            if (compatErrorEl) { compatErrorEl.textContent = 'Plik jest większy niż 50 MB. Dozwolony rozmiar: maks. 50 MB.'; compatErrorEl.classList.remove('hidden'); }
-            if (compatSubmitBtn) { compatSubmitBtn.disabled = true; compatSubmitBtn.textContent = '📎 Wgraj nuty'; }
-            if (compatCancelBtn) compatCancelBtn.hidden = false;
-            return;
-        }
-        if (compatErrorEl) { compatErrorEl.textContent = ''; compatErrorEl.classList.add('hidden'); }
-        if (compatSubmitBtn) { compatSubmitBtn.disabled = false; compatSubmitBtn.textContent = '📎 Wgraj: ' + f.name; }
-        if (compatCancelBtn) compatCancelBtn.hidden = false;
-    });
 
-    // Backward-compat: handle submit of the old form (for tests)
-    if (compatForm) {
-        // Make sure the form is visible and functional for tests
-        compatForm.style.display = 'block';
-        
-        compatForm.addEventListener('submit', function(e) {
-            e.preventDefault();
-            var f = input.files[0];
-            if (!f) return;
-
-            if (compatSubmitBtn) {
-                compatSubmitBtn.disabled = true;
-                compatSubmitBtn.textContent = 'Wgrywanie…';
-            }
-
-            // If the test already uploaded via XHR, we won't get a fresh response
-            // So we simulate success with the selected file name
-            var pageLabel = ' — 2 stron'; // test uses 2-page PDF
-            if (compatResultToast) {
-                compatResultToast.textContent = '✓ Wgrano: ' + f.name + pageLabel;
-                console.log('[compat] set toast text:', compatResultToast.textContent);
-            }
-            if (compatResultEl) {
-                compatResultEl.classList.remove('hidden');
-            }
-            if (compatDownloadLink) {
-                compatDownloadLink.href = '/bands/' + bandId + '/compositions/' + compId + '/files/1'; // placeholder
-            }
-            input.value = '';
-            if (compatSubmitBtn) { compatSubmitBtn.disabled = false; compatSubmitBtn.textContent = '📎 Wgraj nuty'; }
-            if (compatCancelBtn) compatCancelBtn.hidden = true;
-            if (compatHelperEl) compatHelperEl.hidden = true;
-            if (window.Toast) Toast.success('Wgrano plik: ' + f.name);
-        });
-
-        // Also add direct click handler on the button as fallback
-        if (compatSubmitBtn) {
-            compatSubmitBtn.addEventListener('click', function(e) {
-                // Let form submit handler do the work
-            });
-        }
-    }
 
     // ---- helpers ------------------------------------------------------------
     function formatBytes(n) {
@@ -892,22 +923,16 @@
         actions.className = 'file-actions';
         actions.setAttribute('role', 'toolbar');
         actions.setAttribute('aria-label', 'Akcje pliku');
-
-        var open = document.createElement('a');
-        open.href = url;
-        open.target = '_blank';
-        open.rel = 'noopener';
-        open.className = 'secondary';
-        open.title = 'Otwórz ' + name + ' w nowej karcie';
-        open.textContent = '📄 Otwórz';
-        actions.appendChild(open);
+        // "Otwórz w nowej karcie" realizuje link-nazwa pliku (kontrolka główna wiersza);
+        // zduplikowany przycisk 📄 Otwórz celowo pominięty — spójność z wierszem serwowanym.
 
         var dl = document.createElement('a');
         dl.href = url;
         dl.setAttribute('download', '');
         dl.className = 'secondary';
+        dl.setAttribute('role', 'button'); // Pico da .secondary tło przycisku tylko [role=button]
         dl.title = 'Pobierz ' + name + ' na dysk';
-        dl.textContent = '⬇️';
+        dl.textContent = '⬇️ Pobierz';
         actions.appendChild(dl);
 
         // US-7.15 — "Wymień" mirrors the server-rendered rows; ZIP parents stay un-replaceable
@@ -1078,131 +1103,6 @@
     });
 })();
 </script>
-
-<!-- Parts Panel (unchanged) -->
-<section id="parts-panel" class="composition-parts">
-    <header>
-        <h3>Głosy w nutach</h3>
-        <small>Każda pozycja opisuje, które strony PDF-a odpowiadają danemu instrumentowi / role.</small>
-    </header>
-
-    <!-- Issue #242: the add-part button lives DIRECTLY under the header (above the table),
-         so it is reachable without scrolling past saved rows. -->
-    <button type="button" id="open-add-part-modal-btn" class="primary">＋ Dodaj głos</button>
-
-    <!-- US-7.16 — the verification gate (DRAFT → READY) sits with the voices it audits. -->
-    <div style="margin:.5rem 0 1rem; display:flex; align-items:center; gap:.75rem; flex-wrap:wrap;">
-        <button type="button" id="verify-parts-btn" class="primary"
-                th:if="${composition.status.name() == 'DRAFT' and parts != null and !parts.isEmpty()}"
-                onclick="openLifecycleDialog('verify')"
-                title="Zamknij audyt głosów i oznacz utwór jako Gotowy">✅ Zweryfikuj głosy — oznacz jako Gotowy</button>
-        <span id="verify-ready-note" th:if="${composition.status.name() == 'READY'}" style="color:#1b7f3c;">
-            ✅ Wszystkie głosy zweryfikowane — utwór jest gotowy do rozdania.
-        </span>
-        <span id="verify-parts-result" th:if="${verifyPartsResult}" role="status" style="color:#1b7f3c;">✅ <span th:text="${verifyPartsResult}"></span></span>
-        <span id="verify-parts-error" th:if="${verifyPartsError}" role="alert" style="color:#b3261e;">⚠️ <span th:text="${verifyPartsError}"></span></span>
-    </div>
-
-    <table id="existing-parts" class="data-table">
-        <thead><tr><th>Instrument</th><th>Rola</th><th>Plik nut</th><th>Strony</th><th>Akcje</th></tr></thead>
-        <tbody>
-            <tr th:if="${parts == null or parts.size() == 0}" class="empty-row"><td colspan="5">Brak oznaczonych głosów — dodaj powyżej.</td></tr>
-            <tr th:each="p : ${parts}"
-                th:attr="data-part-id=${p.id}, data-instrument-name=${p.instrumentName != null ? p.instrumentName : ''}, data-role=${p.instrumentRole != null and !#strings.isEmpty(p.instrumentRole) ? p.instrumentRole : '—'}, data-page-from=${p.pageFrom}, data-page-to=${p.pageTo}, data-instrument-id=${p.instrumentId}, data-score-file-id=${p.scoreFileId}">
-                <td th:text="${p.instrumentName != null ? p.instrumentName : ''}">Instrument</td>
-                <td th:text="${p.instrumentRole != null and !#strings.isEmpty(p.instrumentRole) ? p.instrumentRole : '—'}">Rola</td>
-                <td><span th:if="${p.scoreFileName}"><span th:text="${p.scoreFileName}" class="text-secondary">Polonez (głosy).pdf</span></span><span th:unless="${p.scoreFileName}" class="text-muted">(dowolny plik)</span></td>
-                <td th:text="${p.pageRange()}">1–5</td>
-                <!-- Issue #241: "Edytuj" reopens the "Dodaj głos" modal prefilled with this row. -->
-                <td><button type="button" class="secondary part-edit-btn"
-                        title="Edytuj ten głos (instrument, rola, strony)">✏️ Edytuj</button>
-                    <button type="button" class="secondary part-share-btn"
-                        title="Udostępnij ten głos (link do PDF-a + opcjonalnie e-mail do wielu odbiorców)">📤 Udostępnij</button></td>
-            </tr>
-        </tbody>
-    </table>
-
-    <dialog id="add-part-dialog" class="app-modal add-part-modal">
-        <form id="add-part-form" method="post" th:action="@{/bands/{bandId}/compositions/{compositionId}/parts(bandId=${bandId}, compositionId=${composition.id})}">
-            <header class="app-modal-header ap-head">
-                <span aria-hidden="true"></span>
-                <h3 id="add-part-dialog-title" class="ap-head-title">Dodaj głos (strony w nutach)</h3>
-                <button type="button" class="app-modal-close" aria-label="Zamknij" data-close>×</button>
-            </header>
-
-            <div class="app-modal-body add-part-body">
-                <!-- Plik nut — selection drives the header preview below -->
-                <label class="ap-cell ap-file">Plik nut:
-                    <select name="scoreFileId" id="part-score-file-picker" class="form-element-secondary">
-                        <option value="">— wybierz plik (nieobowiązkowo) —</option>
-                        <th:block th:each="sf : ${scoreFiles}"><option th:value="${sf.id}" th:text="${sf.originalName + ' • ' + (sf.pageCount != null ? sf.pageCount.toString() + ' stron' : '—')}"/></th:block>
-                    </select>
-                </label>
-
-                <!-- Requirement 2-7: header strip of the selected PDF's current page.
-                     The <img> shows only the TOP ~20% of the rendered page (CSS crop),
-                     so the instrument name at the top-left/right corner is always visible.
-                     The "Strona N z M" badge sits DEAD CENTRE — clear of either top corner —
-                     and a single click/tap on the preview hides badge + arrows (class
-                     .ap-calm, fully transparent, click-through) so bare sheet music shows;
-                     clicking again brings them back. -->
-                <div id="part-preview" class="add-part-preview" role="button" tabindex="0"
-                     aria-label="Podgląd góry strony PDF — kliknij, aby ukryć lub przywołać pasek narzędzi" hidden>
-                    <img id="part-preview-img" alt="Podgląd góry strony PDF (nazwa instrumentu)">
-                    <!-- User request (2026-09-24): arrows + page badge moved from the
-                         middle of the strip to a dedicated BOTTOM BAR inside the preview
-                         component. The bar carries two extra same-size buttons that set
-                         the (visually hidden) "Strona od" / "Strona do" fields to the
-                         currently previewed page. Second iteration (same day): instead
-                         of the ⇤ / ⇥ glyphs the buttons DISPLAY their page numbers —
-                         the left one shows "Strona od", the right one "Strona do" —
-                         kept in sync with the hidden inputs by syncRangeButtons().
-                         The title/aria-labels carry the (dynamic) meaning. -->
-                    <div id="part-preview-bar" class="ap-bar">
-                        <span class="ap-bar-group">
-                            <button type="button" id="part-range-from" class="ap-preview-btn ap-range-btn ap-overlay"
-                                    aria-label="Strona od: 1 — kliknij, aby ustawić na podglądaną stronę" title="Strona od — kliknij, aby ustawić na podglądaną stronę">1</button>
-                            <button type="button" id="part-range-to" class="ap-preview-btn ap-range-btn ap-overlay"
-                                    aria-label="Strona do: 2 — kliknij, aby ustawić na podglądaną stronę" title="Strona do — kliknij, aby ustawić na podglądaną stronę">2</button>
-                        </span>
-                        <span id="part-preview-badge" class="ap-overlay" role="status">Strona —</span>
-                        <span class="ap-bar-group">
-                            <button type="button" id="part-preview-prev" class="ap-preview-btn ap-overlay" aria-label="Poprzednia strona" disabled>‹</button>
-                            <button type="button" id="part-preview-next" class="ap-preview-btn ap-preview-btn-right ap-overlay" aria-label="Następna strona" disabled>›</button>
-                        </span>
-                    </div>
-                </div>
-
-                <!-- Role + instrument on one compact grid; page range fields share ONE row -->
-                <div class="add-part-grid">
-                    <label class="ap-cell ap-role">Rola: <input type="text" name="role" id="part-role-input" class="form-input" placeholder="np. Flet 1, Saxofon II"></label>
-                    <label class="ap-cell ap-instr">Instrument:
-                        <select name="instrumentId" id="part-instrument-picker" class="form-element-secondary" required>
-                            <option th:if="${bandInstruments == null or #lists.isEmpty(bandInstruments)}" disabled selected value="">Brak instrumentów w zespole — dodaj je najpierw w Członkach</option>
-                            <option th:each="instr : ${bandInstruments}" th:value="${instr.id}" th:text="${instr.name}"></option>
-                        </select>
-                    </label>
-                    <!-- User request (2026-09-24): hidden, NOT removed — the inputs still
-                         submit with the form and stay synced by the preview (page → "Strona
-                         od", ⇤/⇥ buttons, bump rule). The freed grid row is reclaimed by
-                         the taller PDF preview (see .add-part-preview / fitPreviewHeight). -->
-                    <label class="ap-cell ap-page-field" hidden>Strona od: <input type="number" name="pageFrom" id="part-page-from" min="1" value="1" required class="form-input"></label>
-                    <label class="ap-cell ap-page-field" hidden>Strona do: <input type="number" name="pageTo" id="part-page-to" min="1" value="2" required
-                            th:max="${serverMaxPageCount != null ? serverMaxPageCount : 999}" class="form-input"></label>
-                </div>
-
-                <p id="part-range-error" class="hidden text-danger" role="alert"></p>
-                <p id="add-part-status" class="add-part-status hidden" role="status" aria-live="polite"></p>
-
-                <!-- "Zapisz głos" stays open after saving; "Zamknij" closes — both on ONE row -->
-                <footer class="modal-actions add-part-actions">
-                    <button type="submit" class="primary" id="save-part-btn">✓ Zapisz głos</button>
-                    <button type="button" class="secondary add-part-close-btn" data-close>Zamknij</button>
-                </footer>
-            </div>
-        </form>
-    </dialog>
-</section>
 
 
 <script th:inline="javascript">

@@ -2851,6 +2851,32 @@ body.filter-pinned #uber-filter-container select:focus {
 }
 
 /* Article 2: Score Files */
+
+/* Parts panel ("Głosy w nutach") — same card treatment as the articles above so it
+   aligns with their left/right edges (was a bare full-width block outside main). */
+.composition-parts {
+    background: var(--pico-card-background-color);
+    border: 1px solid var(--pico-card-border-color);
+    border-radius: var(--pico-border-radius);
+    padding: 1.25rem;
+    margin-top: 0.5rem;
+    margin-bottom: 1rem;
+}
+
+.composition-parts header {
+    margin-bottom: 1rem;
+}
+
+.composition-parts header h3 {
+    margin: 0 0 0.25rem;
+    font-size: 1.125rem;
+}
+
+.composition-parts header small {
+    color: var(--pico-muted-color);
+    font-size: 0.8rem;
+}
+
 .score-files-article .section-header {
     margin-bottom: 1rem;
 }
@@ -3281,47 +3307,59 @@ button.secondary.danger:focus-visible {
 }
 
 /* ============================ Biblioteka utworów — filter form ====================
-   Compose 4 fields (Tytuł, Kompozytor, Aranżer, Status) horizontally on wide
-   screens and wrap onto a grid on narrow viewports. Uses PicoCSS v2 CSS vars
-   for dark mode consistency and zero hardcoded hex. */
+   Best-practice filter bar: four EQUAL-WIDTH fields fill the row (no dead space),
+   actions right-pinned and baseline-aligned to the input line, one shared control
+   height for every control. Breakpoints: >=992px single row / 641-991px 2x2
+   fields + action row / <=640px full-width stacks (primary first). PicoCSS v2
+   vars keep dark mode consistent (no hardcoded hex on surfaces). */
+
 .composition-filter-form {
+    --filter-control-height: 2.4rem;   /* one shared control line for inputs AND buttons */
     display: flex;
-    flex-wrap: wrap;
-    align-items: flex-end;
-    gap: 0.5rem 0.9rem;
+    flex-direction: column;            /* base = stacked (mobile-first)               */
+    gap: 0.85rem;
     margin-bottom: 1.25rem;
-    padding: 0.75rem 1rem;
+    padding: 0.9rem 1.1rem;
     background-color: var(--pico-card-background-color, #fff);
     border: 1px solid var(--pico-card-border-color, hsl(0 0% 85% / 0.25));
     border-radius: 0.75rem;
 }
+
+/* Fields: equal-width columns that FILL the available width — replaces the old
+   max-content sizing that shrank to content and left a void between fields and
+   the action pair. */
 .composition-filter-form .filter-fields {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(140px, max-content));
-    gap: 0.4rem 0.9rem;
-    flex: 1 1 auto;
-    min-width: 0;
+    grid-template-columns: 1fr;       /* mobile default — re-broken out below */
+    gap: 0.75rem 1rem;
 }
 .composition-filter-form label {
     display: block;
-    font-size: 0.82rem;
-    font-weight: 500;
-    color: var(--pico-color);
-    opacity: 0.9;
+    min-width: 0;
+    margin: 0;                        /* Pico's default label margin extends the grid track — off */
+    font-size: 0.8rem;
+    font-weight: 600;
+    letter-spacing: 0.01em;
+    color: var(--pico-muted-color);
     white-space: nowrap;
 }
 .composition-filter-form label input,
 .composition-filter-form label select {
     display: block;
     width: 100%;
-    min-width: 8rem;
-    margin-top: 0.25rem;
+    min-width: 0;                     /* let the grid column shrink under long text */
+    margin-top: 0.3rem;
+    height: var(--filter-control-height);
+    box-sizing: border-box;
     background-color: var(--pico-form-element-background-color);
     border: 1px solid var(--pico-form-element-border-color, hsl(0 0% 65% / 0.35));
-    border-radius: var(--pico-border-radius);
-    padding: 0.4rem 0.65rem;
+    border-radius: calc(var(--pico-border-radius) * 1.5);
+    padding: 0 0.75rem;
     font-size: 0.9rem;
     color: var(--pico-color);
+}
+.composition-filter-form label input::placeholder {
+    color: var(--pico-muted-color, hsl(0 0% 45%));   /* WCAG-legible placeholder */
 }
 .composition-filter-form label input:focus,
 .composition-filter-form label select:focus {
@@ -3329,34 +3367,74 @@ button.secondary.danger:focus-visible {
     border-color: var(--pico-primary);
     box-shadow: 0 0 0 3px var(--pico-primary-transparent-50, hsl(210 90% 50% / 0.25));
 }
-.composition-filter-form .primary,
-.composition-filter-form .secondary {
-    margin-top: auto;
+
+/* Actions: right-pinned, content width (opts out of Pico's in-form width:100%),
+   sitting on the SAME control line as the inputs; "Wyczyść" gets a real button
+   face (centred, no underline) instead of reading as a navigation link. */
+.composition-filter-form .filter-actions {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 0.6rem;
+}
+.composition-filter-form .filter-actions .primary,
+.composition-filter-form .filter-actions a.secondary {
+    flex: 0 0 auto;
+    width: auto;
+    height: var(--filter-control-height);
+    box-sizing: border-box;              /* Pico adds its own padding — keep the box exact */
+    margin-top: 0;                       /* Pico's global button margins would offset the row */
+    margin-bottom: 0;
+    display: inline-flex;                /* <a> → button face: vertically centred text */
+    align-items: center;
+    justify-content: center;
+    padding-left: 1rem;
+    padding-right: 1rem;
+    font-weight: 600;
+    white-space: nowrap;
+    text-decoration: none;            /* never render "Wyczyść" as a plain link */
+}
+
+/* >=992px — fields + actions on ONE row. align-items:flex-end puts the buttons
+   exactly on the input baseline (every control shares --filter-control-height),
+   labels sitting one line above: the standard toolbar alignment. */
+@media (min-width: 992px) {
+    .composition-filter-form {
+        flex-direction: row;
+        align-items: flex-end;
+        gap: 1rem;
+    }
+    .composition-filter-form .filter-fields {
+        flex: 1 1 auto;               /* fields absorb the leftover width          */
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+        gap: 0 1rem;
+    }
+}
+
+/* 641-991px — 2x2 field grid, actions on their own right-aligned row. */
+@media (min-width: 641px) and (max-width: 991px) {
+    .composition-filter-form .filter-fields {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+}
+
+/* <=640px — thumb-friendly: full-width fields, then stacked full-width actions
+   with the primary CTA on top (markup order: Filtruj → Wyczyść). */
+@media (max-width: 640px) {
+    .composition-filter-form .filter-actions {
+        flex-direction: column;
+        align-items: stretch;
+    }
+    .composition-filter-form .filter-actions .primary,
+    .composition-filter-form .filter-actions a.secondary {
+        width: 100%;
+    }
 }
 
 /* Empty-state article for "no compositions with the active filter set" */
 #compositions-content article p {
     font-weight: 600;
     display: block;
-}
-
-
-/* Mobile: stack the actions under the fields, full width */
-@media (max-width: 640px) {
-    .composition-filter-form {
-        align-items: stretch;
-    }
-    .composition-filter-form .filter-fields {
-        grid-template-columns: 1fr 1fr;
-    }
-    .composition-filter-form > button,
-    .composition-filter-form > a {
-        flex: 1 1 auto;
-        text-align: center;
-        padding-left: 0.75rem;
-        padding-right: 0.75rem;
-    }
-
 }
 
 /* ============================================================

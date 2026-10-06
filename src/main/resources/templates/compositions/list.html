@@ -31,8 +31,10 @@
                             <option value="ARCHIVED" th:selected="${filterStatus != null and filterStatus eq 'ARCHIVED'}" >Zarchiwizowany</option>
                         </select></label>
                 </div>
-                <button type="submit" class="primary small">Filtruj</button>
-                <a class="secondary small" th:href="@{/bands/{bandId}/compositions(bandId=${bandId})}">Wyczyść</a>
+                <div class="filter-actions">
+                    <button type="submit" class="primary small">Filtruj</button>
+                    <a class="secondary small" role="button" th:href="@{/bands/{bandId}/compositions(bandId=${bandId})}">Wyczyść</a>
+                </div>
             </form>
 
             <article th:if="${#lists.isEmpty(compositions)}">
