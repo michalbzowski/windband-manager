@@ -11,7 +11,7 @@
         <div id="members-content" 
                      th:data-show-inactive="${showingInactiveMembers}"
                      th:data-show-resigned="${showingInactiveMembers}" 
-                     th:data-focus-id="${focusMemberId}"
+                     th:data-focus-id="${focusMemberId != null ? focusMemberId : ''}"
                      data-active-count="<span th:text='${active != null ? #lists.size(active) : members != null ? #lists.size(members) : 0}'/>"
                      data-focus-prefix="member">
            
@@ -210,14 +210,22 @@
 
             function toggleMemberView() {
                 event.preventDefault();
-       
+    
                 var newShowState = !isShowingInactive;
                 isShowingInactive = newShowState;
                 contentDiv.setAttribute('data-show-inactive', newShowState);
                 contentDiv.setAttribute('data-show-resigned', newShowState);
-       
-                // Use HTMX to fetch new view without full page reload
-                htmx.ajax('GET', '/members/list?showInactive=' + newShowState + '&focus=' + contentDiv.getAttribute('data-focus-id'), {
+    
+                // Use HTMX to fetch new view without full page reload.
+                // Issue #117: only forward a focused member when one is actually
+                // set — appending '&focus=null' sent the literal string "null"
+                // which Spring cannot bind to Long and the toggle request 500'd,
+                // so the button visibly did nothing.
+                var focusId = contentDiv.getAttribute('data-focus-id');
+                if (focusId === 'null') { focusId = ''; }
+                var url = '/members/list?showInactive=' + newShowState;
+                if (focusId) { url += '&focus=' + encodeURIComponent(focusId); }
+                htmx.ajax('GET', url, {
                     target: '#members-content', 
                     swap: 'innerHTML transition:true'
                 });
