@@ -13,9 +13,10 @@ import java.time.LocalDate;
 import java.util.Objects;
 
 /**
- * Base entity for all inventory items. Uses single-table inheritance (SINGLE_TABLE)
- * with a discriminator column (item_type) to store all item types in one table.
- * This enables unified queries, reporting, and polymorphic associations.
+ * Concrete entity for all inventory items (single model, per unified-inventory plan).
+ * Uses single-table inheritance (SINGLE_TABLE) with a discriminator column
+ * (item_type) so every item type is one row; per-type specifics live in
+ * {@code item_attribute_defs/values}, not in Java subclasses.
  */
 @Entity
 @Table(name = "inventory_items")
@@ -24,7 +25,7 @@ import java.util.Objects;
 @Getter
 @Setter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
-public abstract class InventoryItem {
+public class InventoryItem {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
