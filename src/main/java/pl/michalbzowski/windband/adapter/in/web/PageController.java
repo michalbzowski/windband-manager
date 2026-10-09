@@ -14,7 +14,7 @@ import pl.michalbzowski.windband.application.query.band.BandQueryService;
 import pl.michalbzowski.windband.application.query.band.MemberAttributeQueryService;
 import pl.michalbzowski.windband.application.dto.UpcomingItemDto;
 import pl.michalbzowski.windband.application.query.event.EventQueryService;
-import pl.michalbzowski.windband.application.query.inventory.InventoryQueryService;
+import pl.michalbzowski.windband.application.query.inventory.UnifiedInventoryItemQueryService;
 import pl.michalbzowski.windband.application.query.member.MemberQueryService;
 import pl.michalbzowski.windband.application.query.rehearsal.RehearsalQueryService;
 import pl.michalbzowski.windband.application.query.team.TeamQueryService;
@@ -35,7 +35,7 @@ public class PageController {
     private final MemberQueryService memberQueryService;
     private final RehearsalQueryService rehearsalQueryService;
     private final EventQueryService eventQueryService;
-    private final InventoryQueryService inventoryQueryService;
+    private final UnifiedInventoryItemQueryService inventoryQueryService;
     private final BandQueryService bandQueryService;
     private final TeamQueryService teamQueryService;
     private final MemberAttributeQueryService attributeQueryService;
@@ -112,17 +112,12 @@ public class PageController {
         // Events - używamy countBetween
         long upcomingEvents = eventQueryService.getEventCountBetween(today, LocalDate.of(2099, 12, 31), activeTeamId);
 
-        // Inventory - filtered by activeTeamId
-        var orders = inventoryQueryService.getAllOrders(activeTeamId);
-        long activeOrders = orders.stream()
-                .filter(o -> "SUBMITTED".equals(o.status()) ||
-                            "PENDING_APPROVAL".equals(o.status()) ||
-                            "IN_PRODUCTION".equals(o.status()) ||
-                            "SHIPPED".equals(o.status()))
-                .count();
-
-        long totalUniforms = inventoryQueryService.getAllUniformItems(activeTeamId).size();
-        long totalInstruments = inventoryQueryService.getAllInstrumentItems(activeTeamId).size();
+        // Inventory (legacy order/uniform/instrument model removed in F2 S1 — unified in S2/S3)
+        long activeOrders = 0L;
+        pl.michalbzowski.windband.domain.inventory.ItemType uniformType = pl.michalbzowski.windband.domain.inventory.ItemType.UNIFORM;
+        pl.michalbzowski.windband.domain.inventory.ItemType instrumentType = pl.michalbzowski.windband.domain.inventory.ItemType.INSTRUMENT;
+        long totalUniforms = inventoryQueryService.getItemsByBandAndType(activeTeamId, uniformType).size();
+        long totalInstruments = inventoryQueryService.getItemsByBandAndType(activeTeamId, instrumentType).size();
 
         model.addAttribute("totalMembers", totalMembers);
         model.addAttribute("activeMembers", activeMembers);

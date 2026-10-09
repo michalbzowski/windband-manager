@@ -17,7 +17,7 @@ import java.util.Objects;
 
 /**
  * Unified need/request for inventory items.
- * Replaces and extends InventoryOrder - covers the full lifecycle from need reporting
+ * Replaces and extends the legacy inventory-order model - covers the full lifecycle from need reporting
  * through procurement to delivery and inventory registration.
  * Can be for any ItemType, not just uniforms/instruments.
  */
