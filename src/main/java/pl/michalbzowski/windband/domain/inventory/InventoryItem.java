@@ -14,14 +14,14 @@ import java.util.Objects;
 
 /**
  * Concrete entity for all inventory items (single model, per unified-inventory plan).
- * Uses single-table inheritance (SINGLE_TABLE) with a discriminator column
- * (item_type) so every item type is one row; per-type specifics live in
- * {@code item_attribute_defs/values}, not in Java subclasses.
+ * One table, one row per item; the {@code item_type} column is a plain STRING enum —
+ * per-type specifics live in {@code item_attribute_defs/values}, not in Java subclasses.
+ * (No Hibernate inheritance: a SINGLE_TABLE discriminator on this single class made
+ * Hibernate write its own type name ('InventoryItem') into {@code item_type} instead of
+ * the enum value, breaking every read.)
  */
 @Entity
 @Table(name = "inventory_items")
-@Inheritance(strategy = InheritanceType.SINGLE_TABLE)
-@DiscriminatorColumn(name = "item_type", discriminatorType = DiscriminatorType.STRING)
 @Getter
 @Setter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
@@ -37,7 +37,7 @@ public class InventoryItem {
     private String description;
 
     @Enumerated(EnumType.STRING)
-    @Column(name = "item_type", insertable = false, updatable = false, nullable = false)
+    @Column(name = "item_type", nullable = false)
     private ItemType type;
 
     @ManyToOne(fetch = FetchType.LAZY)
@@ -113,6 +113,14 @@ public class InventoryItem {
         this.band = Objects.requireNonNull(band, "band required");
         this.lifecycleStatus = ItemLifecycleStatus.AVAILABLE;
         this.condition = ItemCondition.GOOD;
+    }
+
+    /**
+     * Factory for the unified model (F2 S2). All items enter stock as {@code AVAILABLE}
+     * in {@code GOOD} condition.
+     */
+    public static InventoryItem create(String name, ItemType type, OwnershipStatus ownershipStatus, Band band) {
+        return new InventoryItem(name, type, ownershipStatus, band);
     }
 
     public void assignTo(Member member) {

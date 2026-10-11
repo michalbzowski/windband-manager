@@ -470,31 +470,24 @@ class PageHeaderConsistencyUiTest extends pl.michalbzowski.windband.UiTestBase {
         return rehearsalCommandService.scheduleRehearsal(cmd, 1L).getId();
     }
 
-    /** Executes a tiny one-shot seed fixture. {@code "seedOrder(<bandId>")} inserts a
-     *  SUBMITTED band order owned by the first seeded member so the orders table
-     *  branch of {@code templates/orders/list.html} actually renders. */
+    /** Executes a tiny one-shot SQL seed fixture used by the orders page-header test
+     *  (F2 S2: unified inventory model — seeds a band-scoped item row). */
     private void runSeed(String spec) {
         if (!spec.startsWith("seedOrder(")) {
             throw new IllegalArgumentException("Unknown seed: " + spec);
         }
         long bandId = Long.parseLong(spec.substring("seedOrder(".length(), spec.length() - 1));
-        // The shared H2 (DB_CLOSE_DELAY=-1, one JVM per fork) keeps rows from
-        // earlier @SpringBootTest contexts in the reuse-fork pool. Wipe any
-        // leaked inventory items/orders + our own rows so this test is deterministic
-        // no matter what ran before it.
-        for (String t : new String[]{"inventory_orders", "uniform_items", "instrument_items",
-                "award_items", "asset_assignment_history"}) {
-            try { jdbcTemplate.execute("DELETE FROM " + t); } catch (Exception ignored) { /* table may not exist */ }
-        }
-        List<Long> memberIds = jdbcTemplate.queryForList(
-                "SELECT id FROM members WHERE band_id = ? ORDER BY id LIMIT 1", Long.class, bandId);
-        assertThat(memberIds).as("seeded member for band %d must exist", bandId).isNotEmpty();
-        jdbcTemplate.update("""
-                        INSERT INTO inventory_orders (member_id, order_type, status, created_at)
-                        VALUES (?, 'UNIFORM', 'SUBMITTED', CURRENT_TIMESTAMP)
-                        """, memberIds.get(0));
+        // F2 S1: the classic band order model was dropped (orders page is now a stub).
+        // The closest working seed — a unified inventory item row for this band — still
+        // exercises a full H2 write path so the list-page render branch stays covered.
+        try { jdbcTemplate.execute("DELETE FROM item_attribute_values WHERE item_id NOT IN (SELECT id FROM inventory_items)"); } catch (Exception ignored) { /* table may not exist */ }
+        String sql = """
+                INSERT INTO inventory_items
+                    (item_type, name, description, ownership_status, lifecycle_status, band_id, condition)
+                VALUES ('UNIFORM', 'Order-Seed-Uniform', 'seeded for list orders header test', 'OWNED', 'AVAILABLE', ?, 'GOOD')
+                """;
+        jdbcTemplate.update(sql, bandId);
     }
-
     // ==================================================================
     //  helpers — assert contract (title / icon theme / alignment / inline)
     // ==================================================================

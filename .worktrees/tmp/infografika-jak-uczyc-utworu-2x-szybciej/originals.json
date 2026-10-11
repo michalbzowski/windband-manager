@@ -1,0 +1,15 @@
+[
+  {"id": "title", "tekst": "Jak nauczyć się utworu 2x szybciej?"},
+  {"id": "subtitle", "tekst": "5 zasad mądrej nauki na pianinie"},
+  {"id": "s1h", "tekst": "Poznaj teren"},
+  {"id": "s1t", "tekst": "Przejrzyj nuty, sprawdź tonację, metrum i tempo. Zaznacz trudne miejsca."},
+  {"id": "s2h", "tekst": "Zacznij od trudnych miejsc"},
+  {"id": "s2t", "tekst": "Nie graj od początku. Ćwicz fragmenty, które naprawdę sprawiają problem."},
+  {"id": "s3h", "tekst": "Graj wolno"},
+  {"id": "s3t", "tekst": "Tak wolno, żeby się nie mylić. Błędy zatrzymuj i poprawiaj od razu."},
+  {"id": "s4h", "tekst": "Powtarzaj świadomie"},
+  {"id": "s4t", "tekst": "Zmieniaj tempo, dynamikę i artykulację. Nagrywaj się i odsłuchuj."},
+  {"id": "s5h", "tekst": "Buduj system"},
+  {"id": "s5t", "tekst": "Ćwicz regularnie, nawet 5 minut dziennie. System wygrywa z motywacją."},
+  {"id": "close", "tekst": "Nie ćwicz więcej. Ćwicz mądrzej."}
+]

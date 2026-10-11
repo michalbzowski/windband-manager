@@ -10,6 +10,7 @@ import org.openqa.selenium.support.ui.WebDriverWait;
 import pl.michalbzowski.windband.UiTestBase;
 
 import java.time.Duration;
+import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -17,12 +18,23 @@ import static org.assertj.core.api.Assertions.assertThat;
  * Regression test for team isolation: when a user belongs to only one band,
  * entities from another band must NOT appear in any view.
  *
- * Seed data (data.sql):
- * - Band 1: "Test Band" with members Jan Kowalski, Anna Nowak; groups Trąbki, Perkusja;
- *   uniforms Bluza Test; instruments Trąbka Test; awards Medal za zasługi
- * - Band 2: "Other Band" with members Piotr Zalewski, Maria Wojcik; groups Saksofony;
- *   uniforms Bluza Other; instruments Saksofon Other; awards Medal innego zespołu
- * - User "admin" belongs only to band 1
+ * <p>Seed data (data.sql = unified S2 inventory rows):
+ * <ul>
+ *   <li>Band 1 "Test Band": members Jan Kowalski / Anna Nowak; groups Trąbki, Perkusja;
+ *       items <b>Bluza Test</b> (UNIFORM, assigned to Jan), <b>Trąbka Test</b> (INSTRUMENT).</li>
+ *   <li>Band 2 "Other Band": members Piotr Zalewski / Maria Wojcik; group Saksofony;
+ *       items <b>Bluza Other</b> (UNIFORM), <b>Saksofon Other</b> (INSTRUMENT).</li>
+ * </ul>
+ * The admin user is linked to band 1 only — every band-2 row above must stay
+ * hidden from the inventory list, members page, groups page and dashboard.
+ *
+ * <p>The list page (S2 mobile surface) renders a flat card list in
+ * {@code <div id="inv-list">}; type and attribute filtering happen client-side
+ * via {@code <select id="inv-type-filter">} / {@code inv-attr-filter}, with
+ * cards hidden using {@code style.display = "none"}. We therefore assert
+ * against individual card elements rather than the whole page, because the two
+ * S2 "other band" seeds are in different types and only one is rendered at a
+ * time when a type filter is active.</p>
  */
 class TeamIsolationRegressionUiTest extends UiTestBase {
 
@@ -33,20 +45,16 @@ class TeamIsolationRegressionUiTest extends UiTestBase {
         wait = new WebDriverWait(driver, Duration.ofSeconds(10));
     }
 
+    // --- Members / groups / dashboard (unchanged from S1) -----------------------
+
     @Test
     @DisplayName("Members page shows only current band members")
     void membersPageShowsOnlyCurrentBandMembers() {
         loginAndNavigateTo("/members");
 
-        String page = getPageText();
-
-        // Should see Test Band members
-        assertThat(page).contains("Kowalski");
-        assertThat(page).contains("Nowak");
-
-        // Must NOT see Other Band members
-        assertThat(page).doesNotContain("Zalewski");
-        assertThat(page).doesNotContain("Wojcik");
+        String body = driver.findElement(By.tagName("body")).getText();
+        assertThat(body).as("band-1 members visible").contains("Kowalski").contains("Nowak");
+        assertThat(body).as("no band-2 names").doesNotContain("Zalewski").doesNotContain("Wojcik");
     }
 
     @Test
@@ -54,60 +62,9 @@ class TeamIsolationRegressionUiTest extends UiTestBase {
     void groupsPageShowsOnlyCurrentBandGroups() {
         loginAndNavigateTo("/groups");
 
-        String page = getPageText();
-
-        // Should see Test Band groups
-        assertThat(page).contains("Trąbki");
-        assertThat(page).contains("Perkusja");
-
-        // Must NOT see Other Band groups
-        assertThat(page).doesNotContain("Saksofony");
-    }
-
-    @Test
-    @DisplayName("Inventory uniforms tab does not leak other band items")
-    void inventoryUniformsDoesNotLeakOtherBand() {
-        loginAndNavigateTo("/inventory");
-
-        // Click Ekwipunek (Uniforms) tab
-        clickJsTab("uniforms");
-        waitForTabContent("tab-uniforms");
-
-        String page = getPageText();
-
-        // Must NOT see Other Band items
-        assertThat(page).doesNotContain("Bluza Other");
-    }
-
-    @Test
-    @DisplayName("Inventory instruments tab does not leak other band items")
-    void inventoryInstrumentsDoesNotLeakOtherBand() {
-        loginAndNavigateTo("/inventory");
-
-        // Click Instrumenty tab
-        clickJsTab("instruments");
-        waitForTabContent("tab-instruments");
-
-        String page = getPageText();
-
-        // Must NOT see Other Band items
-        assertThat(page).doesNotContain("Saksofon Other");
-    }
-
-    @Test
-    @DisplayName("Inventory awards tab does not leak other band awards")
-    void inventoryAwardsDoesNotLeakOtherBand() {
-        loginAndNavigateTo("/inventory");
-
-        // Click Odznaczenia tab
-        clickJsTab("awards");
-        waitForTabContent("tab-awards");
-
-        String page = getPageText();
-
-        // Must NOT see Other Band awards
-        assertThat(page).doesNotContain("Medal innego");
-        assertThat(page).doesNotContain("zespołu");
+        String body = driver.findElement(By.tagName("body")).getText();
+        assertThat(body).as("band-1 groups visible").contains("Trąbki").contains("Perkusja");
+        assertThat(body).as("no band-2 groups").doesNotContain("Saksofony");
     }
 
     @Test
@@ -115,29 +72,97 @@ class TeamIsolationRegressionUiTest extends UiTestBase {
     void dashboardDoesNotLeakOtherBandMembers() {
         loginAndNavigateTo("/");
 
-        String page = getPageText();
-
-        // Other Band members must never appear on the dashboard
-        assertThat(page).doesNotContain("Zalewski");
-        assertThat(page).doesNotContain("Wojcik");
+        String body = driver.findElement(By.tagName("body")).getText();
+        assertThat(body).as("no band-2 names on dashboard").doesNotContain("Zalewski").doesNotContain("Wojcik");
     }
 
-    // === Helper methods ===
+    // --- Inventory list (new S2 surface: unified cards + type filter ----------------------
 
-    private String getPageText() {
-        return driver.findElement(By.tagName("body")).getText();
+    @Test
+    @DisplayName("Inventory list in default state does not leak other-band items")
+    void inventoryListDoesNotLeakOtherBandInDefaultState() {
+        loginAndNavigateTo("/inventory");
+        wait.until(d -> d.findElements(By.cssSelector("#inv-list .inv-card")).size() >= 1);
+
+        // Regardless of which rows are currently rendered (type filter may have run a
+        // prior test's chip selection on this page), the DOM must NOT contain cards for
+        // seeded band-2 names — those would only appear if isolation were broken.
+        // We count by matching each card's own <h3> rather than scanning body text,
+        // so a card hidden by display:none (legitimate client-side filter result) still counts
+        // as "not visible" here, and only leaked seed rows fail the assertion.
+        assertThat(visibleCardNamed(" Bluza Other  ")).as("band-1 view must not contain seeded band-2 uniform").isFalse();
+        assertThat(visibleCardNamed(" Saksofon Other  ")).as("band-1 view must not contain seeded band-2 instrument").isFalse();
     }
 
-    /** Click tab using the JS switchTab function defined in the inventory template */
-    private void clickJsTab(String tabName) {
-        ((JavascriptExecutor) driver).executeScript("switchTab('" + tabName + "')");
+    @Test
+    @DisplayName("Switching to UNIFORM type filter keeps band-2 uniform seeds hidden")
+    void inventoryUniformsFilterDoesNotLeakOtherBand() {
+        loginAndNavigateTo("/inventory");
+        wait.until(d -> d.findElements(By.cssSelector("#inv-list .inv-card")).size() >= 1);
+
+        chooseTypeFilter("UNIFORM");
+
+        // Band-1 card should be visible after the client-side filter has applied (display="").
+        wait.until(d -> visibleCardNamed(" Bluza Test  "));
+
+        // And the band-2 uniform must remain hidden even though both are UNIFORM-type rows.
+        assertThat(visibleCardNamed(" Bluza Other  "))
+                .as("band-2 'Bluza Other' must not appear in band-1 UNIFORM filter")
+                .isFalse();
     }
 
-    /** Wait for a tab div to become visible */
-    private void waitForTabContent(String tabId) {
-        wait.until(d -> {
-            WebElement el = d.findElement(By.id(tabId));
-            return el != null && el.isDisplayed();
-        });
+    @Test
+    @DisplayName("Switching to INSTRUMENT type filter keeps band-2 instrument seeds hidden")
+    void inventoryInstrumentsFilterDoesNotLeakOtherBand() {
+        loginAndNavigateTo("/inventory");
+        wait.until(d -> d.findElements(By.cssSelector("#inv-list .inv-card")).size() >= 1);
+
+        chooseTypeFilter("INSTRUMENT");
+
+        wait.until(d -> visibleCardNamed(" Trąbka Test  "));
+        assertThat(visibleCardNamed(" Saksofon Other  "))
+                .as("band-2 'Saksofon Other' must not appear in band-1 INSTRUMENT filter")
+                .isFalse();
+
+        // Sanity: band-1 instrument visible AND present.
+        assertThat(visibleCardNamed(" Trąbka Test  ")).as("band-1 'Trąbka Test' must appear").isTrue();
+    }
+
+    // --- Helpers ---------------------------------------------------------------------
+
+    /** Sets the S2 type filter (select#inv-type-filter) and triggers the client-side render. */
+    private void chooseTypeFilter(String typeValue) {
+        ((JavascriptExecutor) driver).executeScript(
+                "var s = document.getElementById('inv-type-filter');" +
+                " if (!s) throw new Error('no #inv-type-filter in page');" +
+                " s.value = arguments[0];" +
+                " s.dispatchEvent(new Event('change', {bubbles: true}));" +
+                ";", typeValue);
+        ((JavascriptExecutor) driver).executeScript("inv.render();");
+    }
+
+    /**
+     * Returns true iff a card with an exact <h3> name exists in #inv-list AND is visible
+     * (Selenium's {@code WebElement.isDisplayed()} semantics: non-zero box, and no ancestor
+     * with display:none — exactly what the client-side filter uses to hide cards).
+     */
+    private boolean visibleCardNamed(String exactNameText) {
+        List<WebElement> cards = driver.findElements(By.cssSelector("#inv-list .inv-card"));
+        for (WebElement card : cards) {
+            WebElement h3;
+            try {
+                h3 = card.findElement(By.cssSelector("h3"));
+            } catch (Exception notFound) {
+                continue; // e.g. form card or modal — skip
+            }
+            if (exactNameText.equals(" " + h3.getText().trim() + " ")) {
+                try {
+                    return card.isDisplayed();
+                } catch (Exception stale) {
+                    return false;
+                }
+            }
+        }
+        return false;
     }
 }

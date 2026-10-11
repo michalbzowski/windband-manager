@@ -65,7 +65,7 @@
                             Atrybut nadrzędny
                             <select name="dependsOnAttributeId" style="font-size:0.85rem;">
                                 <option value="">— brak —</option>
-                                <option th:each="attr : ${availableAttributes}" th:value="${attr.id()}" th:text="${attr.name()}">Atrybut</option>
+                                <option th:each="attr : ${availableAttributes}" th:value="${attr.id}" th:text="${attr.name}">Atrybut</option>
                             </select>
                         </label>
                         <label>
@@ -134,7 +134,7 @@
                             Atrybut nadrzędny
                             <select name="dependsOnAttributeId" style="font-size:0.85rem;">
                                 <option value="">— brak —</option>
-                                <option th:each="attr : ${availableAttributes}" th:value="${attr.id()}" th:text="${attr.name()}" th:selected="${attr.id() == attributeDef?.dependsOnAttributeId}">Atrybut</option>
+                                <option th:each="attr : ${availableAttributes}" th:value="${attr.id}" th:text="${attr.name}" th:selected="${attr.id == attributeDef?.dependsOnAttributeId}">Atrybut</option>
                             </select>
                         </label>
                         <label>

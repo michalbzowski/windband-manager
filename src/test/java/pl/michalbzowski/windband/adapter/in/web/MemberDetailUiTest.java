@@ -33,17 +33,9 @@ class MemberDetailUiTest extends UiTestBase {
     @Autowired
     private InstrumentRepository instrumentRepository;
 
+    /** F2 S2: unified inventory port replaces the legacy per-type repositories. */
     @Autowired
-    private InventoryRepository inventoryRepository;
-
-    @Autowired
-    private AwardItemRepository awardItemRepository;
-
-    @Autowired
-    private AwardAttributeDefRepository awardAttributeDefRepository;
-
-    @Autowired
-    private AwardAttributeValueRepository awardAttrValueRepo;
+    private InventoryItemRepository inventoryItemRepository;
 
     @Test
     void shouldOpenMemberDetailAndShowBasicInfoAndInventory() {
@@ -84,31 +76,29 @@ class MemberDetailUiTest extends UiTestBase {
 
             memberId = readMemberIdFromEditButton(wait, firstName + " " + lastName);
 
-            // === STEP 2: Assign inventory items to the member ===
+            // === STEP 2: Assign inventory items to the member (F2 S2 unified model) ===
             Member member = memberRepository.findById(memberId).orElseThrow();
 
-            UniformItem uniformItem = inventoryRepository.saveUniformItem(
-                    UniformItem.createOwned("Uniform-" + unique, band));
+            InventoryItem uniformItem = inventoryItemRepository.save(
+                    InventoryItem.create("Uniform-" + unique, ItemType.UNIFORM, OwnershipStatus.OWNED, band));
             uniformItem.assignTo(member);
-            inventoryRepository.saveUniformItem(uniformItem);
+            inventoryItemRepository.save(uniformItem);
             uniformItemId = uniformItem.getId();
 
-            InstrumentItem instrItem = inventoryRepository.saveInstrumentItem(
-                    InstrumentItem.createOwned("Instr-" + unique, band));
+            InventoryItem instrItem = inventoryItemRepository.save(
+                    InventoryItem.create("Instr-" + unique, ItemType.INSTRUMENT, OwnershipStatus.OWNED, band));
             instrItem.assignTo(member);
-            inventoryRepository.saveInstrumentItem(instrItem);
+            inventoryItemRepository.save(instrItem);
             instrumentItemId = instrItem.getId();
 
-            AwardItem awardItem = awardItemRepository.save(AwardItem.create(band));
+            // Award: the legacy AwardAttributeDef/Value pair was removed in F2 S2 — the unified
+            // award row carries its distinguishing text in the description (rendered by the detail
+            // template), so we no longer seed per-award attribute definitions for this assertion.
+            InventoryItem awardItem = inventoryItemRepository.save(
+                    InventoryItem.create("Award-" + unique, ItemType.AWARD, OwnershipStatus.OWNED, band));
+            awardItem.updateDescription("Award-" + unique);
             awardItem.assignTo(member);
-            // Add an attribute value for the award so it shows in the UI
-            // First create an award attribute definition in the database with displayInList=true
-            // Method signature: create(Band band, String name, String type, boolean required, boolean displayInList, int displayOrder, String options)
-            AwardAttributeDef attrDef = AwardAttributeDef.create(band, "Nazwa", "TEXT", false, true, 0, null);
-            attrDef = awardAttributeDefRepository.save(attrDef);
-            AwardAttributeValue attrValue = AwardAttributeValue.create(awardItem, attrDef, "Award-" + unique);
-            awardAttrValueRepo.save(attrValue);
-            awardItemRepository.save(awardItem);
+            inventoryItemRepository.save(awardItem);
             awardItemId = awardItem.getId();
 
             // === STEP 3: Navigate to member detail page via member name link ===
@@ -158,31 +148,17 @@ class MemberDetailUiTest extends UiTestBase {
             assertThat(editBtn).isNotNull();
 
         } finally {
-            // Cleanup
+            // Cleanup (F2 S2: unified inventory rows — unassign before delete)
             if (memberId != null) {
                 deleteMemberViaApi(memberId);
             }
-            if (uniformItemId != null) {
-                inventoryRepository.findUniformItemById(uniformItemId)
-                        .ifPresent(i -> {
-                            i.unassign();
-                            inventoryRepository.deleteUniformItem(i);
-                        });
-            }
-            if (instrumentItemId != null) {
-                inventoryRepository.findInstrumentItemById(instrumentItemId)
-                        .ifPresent(i -> {
-                            i.unassign();
-                            inventoryRepository.deleteInstrumentItem(i);
-                        });
-            }
-            if (awardItemId != null) {
-                final Long finalAwardItemId = awardItemId;
-                awardItemRepository.findById(finalAwardItemId).ifPresent(awardItem -> {
-                    // Delete award attribute values first (FK constraint)
-                    awardAttrValueRepo.findByAwardItemId(finalAwardItemId).forEach(awardAttrValueRepo::delete);
-                    awardItemRepository.delete(awardItem);
-                });
+            for (Long itemId : new Long[]{uniformItemId, instrumentItemId, awardItemId}) {
+                if (itemId != null) {
+                    inventoryItemRepository.findById(itemId).ifPresent(i -> {
+                        i.unassign();
+                        inventoryItemRepository.delete(i);
+                    });
+                }
             }
         }
     }

@@ -4,1035 +4,186 @@
 <body class="dashboard-page">
 <div th:replace="~{fragments/layout :: dialogs}"></div>
 
-    <main class="container" id="content">
-        <section class="dashboard-upcoming">
-            <header th:replace="~{fragments/layout :: dashboard-header}"></header>
+<main class="container" id="content">
+<section class="dashboard-upcoming">
+    <header th:replace="~{fragments/layout :: dashboard-header}"></header>
 
-        <div id="debug-info" style="display:none;" th:text="${debugInfo}"></div>
-        <div id="inventory-content">
-            <nav th:replace="~{fragments/page-header :: page-header-b(
-                                null, 'Zasoby',
-                                null, null, null, null, null,
-                                null, null, null, null)}"></nav>
+    <nav th:replace="~{fragments/page-header :: page-header-b(
+                        null, 'Zasoby',
+                        null, null, null, null, null,
+                        null, null, null, null)}"></nav>
 
-            <!-- Tabs: tab buttons carry their own visual identity (primary/secondary state)
-                 and stay as plain <button>; the icon policy applies to titles/action bars. -->
-            <div id="inventory-tabs" style="display:flex; gap:0.5rem; margin-bottom:1rem; border-bottom:1px solid #ddd;">
-                <button class="tab-btn primary" data-tab="orders"
-                        onclick="switchTab('orders')">Zamówienia</button>
-                <button class="tab-btn secondary" data-tab="uniforms"
-                        onclick="switchTab('uniforms')">Ekwipunek</button>
-                <button class="tab-btn secondary" data-tab="instruments"
-                        onclick="switchTab('instruments')">Instrumenty</button>
-                <button class="tab-btn secondary" data-tab="awards"
-                        onclick="switchTab('awards')">Odznaczenia</button>
+    <!-- ============================================================
+         Unified inventory (F2 S2): one item list, type filter chips,
+         attribute filters, mobile-first cards (tap targets >= 44px).
+         Data: model.bandItems + model.filterableDefs (InventoryPageController);
+         actions go through fetchWithToast() -> /api/inventory/items/*.
+         ============================================================ -->
+    <div id="inventory-content">
+
+        <!-- Attribute definitions (JSON) driving the two-step create form and attribute filter.
+             th:utext (NOT th:text): this is a <script type="application/json"> tag; Thymeleaf's
+             HTML escaping (th:text) turns quotes into &quot;, so JSON.parse would fail at runtime. -->
+        <script id="inv-defs-json" type="application/json" th:utext="${attributeDefsJson}"></script>
+
+        <!-- Toolbar: add button, filters, search -->
+        <div class="inv-toolbar">
+            <button type="button" class="inv-add-btn" id="inv-add-open" onclick="inv.toggleForm(true)">
+                <th:block th:insert="~{fragments/icons :: plus}"></th:block>
+                <span>Dodaj rzecz</span>
+            </button>
+
+            <div class="inv-filters">
+                <select class="inv-filter" id="inv-type-filter" onchange="inv.render()">
+                    <option value="" selected>Wszystkie typy</option>
+                    <option value="UNIFORM">Strój</option>
+                    <option value="INSTRUMENT">Instrument</option>
+                </select>
+
+                <select class="inv-filter" id="inv-attr-filter" onchange="inv.render()">
+                    <option value="">Filtruj po atrybucie…</option>
+                </select>
+
+                <input type="search" class="inv-search" id="inv-search" placeholder="Szukaj (nazwa, numer seryjny)…" oninput="inv.render()" />
             </div>
-
-            <!-- ===== ORDERS TAB ===== -->
-            <div id="tab-orders">
-                <div id="orders-content">
-                    <h3 class="section-heading">Zamówienia</h3>
-                    <button class="ph-secondary-action" onclick="showOrderForm()">
-                        <th:block th:insert="~{fragments/icons :: plus}"></th:block>
-                        Nowe zamówienie
-                    </button>
-
-                    <!-- New order form (hidden by default) -->
-                    <div id="order-form" style="display:none; margin-bottom:1rem;">
-                        <article>
-                            <h4>Nowe zamówienie</h4>
-                            <div style="display:flex; gap:0.5rem; flex-wrap:wrap; align-items:flex-end;">
-                                <div>
-                                    <label for="order-member">Członek</label>
-                                    <select id="order-member">
-                                        <option value="">Wybierz...</option>
-                                        <option th:each="m : ${members}" th:value="${m.id}"
-                                                th:text="${m.firstName} + ' ' + ${m.lastName}">Jan Kowalski</option>
-                                    </select>
-                                </div>
-                                <div>
-                                    <label for="order-type">Typ</label>
-                                    <select id="order-type">
-                                        <option value="UNIFORM">Stroj</option>
-                                        <option value="INSTRUMENT">Instrument</option>
-                                    </select>
-                                </div>
-                            </div>
-                            <!-- Dynamic attribute fields for orders (updated by JS based on type) -->
-                            <div id="order-attributes" style="margin-top:1rem; display:flex; gap:0.5rem; flex-wrap:wrap; align-items:flex-end;">
-                                <span style="color:var(--pico-muted-color); font-size:0.8rem;">Wybierz typ, aby zobaczyć atrybuty...</span>
-                            </div>
-                            <div style="display:flex; gap:0.5rem; margin-top:1rem;">
-                                <button class="primary small" onclick="submitOrder()">Złóż zamówienie</button>
-                                <button class="secondary small" onclick="hideOrderForm()">Anuluj</button>
-                            </div>
-                        </article>
-                    </div>
-
-                    <div th:if="${#lists.isEmpty(orders)}">
-                        <article><p>Brak zamówień.</p></article>
-                    </div>
-
-                    <div th:unless="${#lists.isEmpty(orders)}">
-                        <table role="grid">
-                            <thead>
-                                <tr>
-                                    <th>Data</th>
-                                    <th>Składający</th>
-                                    <th>Typ</th>
-                                    <th>Status</th>
-                                    <th>Nr zamówienia</th>
-                                    <!-- Dynamic attribute columns for orders with displayInList=true -->
-                                    <th th:each="attr : ${uniformAttributeDefs}" th:if="${attr.displayInList}" th:text="${attr.name}">Attr</th>
-                                    <th th:each="attr : ${instrumentAttributeDefs}" th:if="${attr.displayInList}" th:text="${attr.name}">Attr</th>
-                                    <th>Akcje</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                <tr th:each="o : ${orders}">
-                                    <td data-label="Data" th:text="${#temporals.format(o.createdAt, 'dd.MM.yyyy HH:mm')}">01.01.2025</td>
-                                    <td data-label="Składający" th:text="${o.requesterName}">Jan Kowalski</td>
-                                    <td data-label="Typ" th:text="${o.orderType}">UNIFORM</td>
-                                    <td data-label="Status">
-                                        <span th:switch="${o.status}">
-                                            <span th:case="'SUBMITTED'" class="badge info">Złożono</span>
-                                            <span th:case="'PENDING_APPROVAL'" class="badge warning">Do akceptacji</span>
-                                            <span th:case="'IN_PRODUCTION'" class="badge warning">W realizacji</span>
-                                            <span th:case="'SHIPPED'" class="badge info">Wysłano</span>
-                                            <span th:case="'DELIVERED'" class="badge success">Odebrano</span>
-                                            <span th:case="'CANCELLED'" class="badge error">Anulowano</span>
-                                        </span>
-                                    </td>
-                                    <td data-label="Nr zamówienia" th:text="${o.orderNumber != null ? o.orderNumber : '-'}">ORD-1-20250101</td>
-                                    <!-- Dynamic attribute cells - show uniform attrs for UNIFORM orders, instrument attrs for INSTRUMENT orders -->
-                                    <td th:each="attr : ${uniformAttributeDefs}" th:if="${attr.displayInList}" 
-                                        th:text="${orderAttributeValues?.get(o.id)?.get(attr.id)}">-</td>
-                                    <td th:each="attr : ${instrumentAttributeDefs}" th:if="${attr.displayInList}" 
-                                        th:text="${orderAttributeValues?.get(o.id)?.get(attr.id)}">-</td>
-                                    <td data-label="Akcje">
-                                        <div style="display:flex; gap:0.25rem; flex-wrap:wrap;">
-                                            <button th:if="${o.status == 'SUBMITTED'}"
-                                                    class="outline small"
-                                                    th:onclick="'advanceOrder(' + ${o.id} + ', \'approve\')'">Akceptuj</button>
-                                            <button th:if="${o.status == 'PENDING_APPROVAL'}"
-                                                    class="outline small"
-                                                    th:onclick="'advanceOrder(' + ${o.id} + ', \'produce\')'">Realizuj</button>
-                                            <button th:if="${o.status == 'IN_PRODUCTION'}"
-                                                    class="outline small"
-                                                    th:onclick="'advanceOrder(' + ${o.id} + ', \'ship\')'">Wyślij</button>
-                                            <button th:if="${o.status == 'SHIPPED'}"
-                                                    class="outline small"
-                                                    th:onclick="'advanceOrder(' + ${o.id} + ', \'deliver\')'">Odebrano</button>
-                                            <button th:if="${o.status != 'DELIVERED' and o.status != 'CANCELLED'}"
-                                                    class="outline small secondary"
-                                                    th:onclick="'advanceOrder(' + ${o.id} + ', \'cancel\')'">Anuluj</button>
-                                        </div>
-                                    </td>
-                                </tr>
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-            </div>
-
-            <!-- ===== UNIFORMS TAB ===== -->
-            <div id="tab-uniforms" style="display:none;">
-                <div id="uniforms-content">
-                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem;">
-                        <h3>Ekwipunek</h3>
-                        <button class="primary small" onclick="showUniformForm()">+ Dodaj ekwipunek</button>
-                    </div>
-
-                    <!-- Add form (hidden) -->
-                    <div id="uniform-form" style="display:none; margin-bottom:1rem;">
-                        <article>
-                            <h4>Nowy element ekwipunku</h4>
-                            <div style="display:flex; gap:0.5rem; flex-wrap:wrap; align-items:flex-end;">
-                                <div>
-                                    <label for="uni-member">Przydziel do</label>
-                                    <select id="uni-member">
-                                        <option value="">— Wolny —</option>
-                                        <option th:each="m : ${members}" th:value="${m.id}"
-                                                th:text="${m.firstName} + ' ' + ${m.lastName}">Jan</option>
-                                    </select>
-                                </div>
-                            </div>
-                            <!-- Dynamic attribute fields for uniforms -->
-                            <div id="uniform-attributes" style="margin-top:1rem; display:flex; gap:0.5rem; flex-wrap:wrap; align-items:flex-end;" th:if="${!#lists.isEmpty(uniformAttributeDefs)}">
-                                <th:block th:each="attrDef : ${uniformAttributeDefs}">
-                                    <div th:switch="${attrDef.type()}"
-                                         th:attr="data-depends-on=${attrDef.dependsOnAttributeId()}, data-depends-value=${attrDef.dependsOnValue()}"
-                                         class="attr-field" th:classappend="${attrDef.dependsOnAttributeId() != null} ? 'conditional'">
-                                        <label th:case="'BOOLEAN'" class="checkbox-label" style="display:flex; align-items:center; gap:0.25rem;">
-                                            <input type="checkbox" th:id="'uni-attr-' + ${attrDef.id()}" th:name="'attr_' + ${attrDef.id()}">
-                                            <span th:text="${attrDef.name()}">Atrybut</span>
-                                        </label>
-                                        <div th:case="'SELECT'" style="display:flex; flex-direction:column; gap:0.25rem;">
-                                            <label th:text="${attrDef.name()}">Atrybut</label>
-                                            <select th:id="'uni-attr-' + ${attrDef.id()}" th:name="'attr_' + ${attrDef.id()}" class="parent-attr-select">
-                                                <option value="">Wybierz...</option>
-                                                <option th:each="opt : ${#strings.arraySplit(#strings.replace(attrDef.options(), '[', '').replace(']', ''), ',')}" th:value="${opt.trim()}" th:text="${opt.trim()}">Opcja</option>
-                                            </select>
-                                        </div>
-                                        <div th:case="'MULTI_SELECT'" style="display:flex; flex-direction:column; gap:0.25rem;">
-                                            <label th:text="${attrDef.name()}">Atrybut</label>
-                                            <select th:id="'uni-attr-' + ${attrDef.id()}" th:name="'attr_' + ${attrDef.id()}" multiple style="min-width:150px;">
-                                                <option th:each="opt : ${#strings.arraySplit(#strings.replace(attrDef.options(), '[', '').replace(']', ''), ',')}" th:value="${opt.trim()}" th:text="${opt.trim()}">Opcja</option>
-                                            </select>
-                                        </div>
-                                        <div th:case="'DATE'" style="display:flex; flex-direction:column; gap:0.25rem;">
-                                            <label th:text="${attrDef.name()}">Atrybut</label>
-                                            <input type="date" th:id="'uni-attr-' + ${attrDef.id()}" th:name="'attr_' + ${attrDef.id()}">
-                                        </div>
-                                        <div th:case="'NUMBER'" style="display:flex; flex-direction:column; gap:0.25rem;">
-                                            <label th:text="${attrDef.name()}">Atrybut</label>
-                                            <input type="number" th:id="'uni-attr-' + ${attrDef.id()}" th:name="'attr_' + ${attrDef.id()}" step="any">
-                                        </div>
-                                        <div th:case="*" style="display:flex; flex-direction:column; gap:0.25rem;">
-                                            <label th:text="${attrDef.name()}">Atrybut</label>
-                                            <input type="text" th:id="'uni-attr-' + ${attrDef.id()}" th:name="'attr_' + ${attrDef.id()}">
-                                        </div>
-                                    </div>
-                                </th:block>
-                            </div>
-                            <div style="display:flex; gap:0.5rem; margin-top:1rem;">
-                                <button class="primary small" onclick="submitUniform()">Dodaj</button>
-                                <button class="secondary small" onclick="hideUniformForm()">Anuluj</button>
-                            </div>
-                        </article>
-                    </div>
-
-                    <div th:if="${#lists.isEmpty(uniformItems)}">
-                        <article><p>Brak elementów ekwipunku.</p></article>
-                    </div>
-
-                    <table th:unless="${#lists.isEmpty(uniformItems)}" role="grid">
-                        <thead>
-                            <tr>
-                                <th th:each="attr : ${uniformAttributeDefs}" th:if="${attr.displayInList}" th:text="${attr.name}">Nazwa</th>
-                                <th>Przydzielony do</th>
-                                <th>Akcje</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            <tr th:each="u : ${uniformItems}">
-                                <td th:each="attr : ${uniformAttributeDefs}" th:if="${attr.displayInList}" th:with="val=${uniformAttributeValues?.get(u.id)?.get(attr.id)}">
-                                    <span th:text="${val != null ? val : '—'}" style="color:#999;">—</span>
-                                </td>
-                                <td>
-                                    <span th:if="${u.assignedMemberName != null}" th:text="${u.assignedMemberName}">Jan</span>
-                                    <span th:if="${u.assignedMemberName == null}" style="color:#999;">— Wolny —</span>
-                                </td>
-                                <td>
-                                    <div style="display:flex; gap:0.25rem; flex-wrap:wrap;">
-                                        <button th:if="${u.assignedMemberName == null && u.lifecycleStatus != 'DISPOSED'}"
-                                                class="outline small"
-                                                th:onclick="'assignUniform(' + ${u.id} + ')'">Przydziel</button>
-                                        <button th:if="${u.assignedMemberName != null}"
-                                                class="outline small"
-                                                th:onclick="'returnUniform(' + ${u.id} + ')'">↩ Zwróć</button>
-                                        <button th:if="${u.lifecycleStatus == 'AVAILABLE'}"
-                                                class="outline small secondary"
-                                                th:onclick="'retireUniform(' + ${u.id} + ')'">Likwiduj ze stanu</button>
-                                        <button th:if="${u.lifecycleStatus != 'DISPOSED' && u.assignedMemberName == null}"
-                                                class="outline small secondary"
-                                                th:onclick="'disposeUniform(' + ${u.id} + ')'">Zlikwiduj</button>
-                                        <button th:if="${u.lifecycleStatus != 'DISPOSED'}"
-                                                class="outline small"
-                                                th:onclick="'showUniformHistory(' + ${u.id} + ')'">Historia</button>
-                                    </div>
-                                </td>
-                            </tr>
-                        </tbody>
-                    </table>
-
-                    <!-- Assign modal -->
-                    <div id="uni-assign-modal" style="display:none; margin-top:1rem;">
-                        <article>
-                            <h4>Przydziel ekwipunek</h4>
-                            <input type="hidden" id="uni-assign-item-id">
-                            <div style="display:flex; gap:0.5rem; align-items:flex-end; flex-wrap:wrap;">
-                                <div>
-                                    <label for="uni-assign-member">Członek</label>
-                                    <select id="uni-assign-member">
-                                        <option value="">Wybierz...</option>
-                                        <option th:each="m : ${members}" th:value="${m.id}"
-                                                th:text="${m.firstName} + ' ' + ${m.lastName}">Jan</option>
-                                    </select>
-                                </div>
-                                <div>
-                                    <label for="uni-assign-condition">Stan przy przydzieleniu</label>
-                                    <input type="text" id="uni-assign-condition" placeholder="Np. nowy, dobry, używany">
-                                </div>
-                                <button class="primary small" onclick="confirmAssignUniform()">OK</button>
-                                <button class="secondary small" onclick="closeUniAssignModal()">Anuluj</button>
-                            </div>
-                        </article>
-                    </div>
-                </div>
-            </div>
-
-            <!-- ===== INSTRUMENTS TAB ===== -->
-            <div id="tab-instruments" style="display:none;">
-                <div id="instruments-content">
-                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem;">
-                        <h3>Instrumenty</h3>
-                        <button class="primary small" onclick="showInstrumentForm()">+ Dodaj instrument</button>
-                    </div>
-
-                    <!-- Add form (hidden) -->
-                    <div id="instrument-form" style="display:none; margin-bottom:1rem;">
-                        <article>
-                            <h4>Nowy instrument</h4>
-                            <div style="display:flex; gap:0.5rem; flex-wrap:wrap; align-items:flex-end;">
-                                <div>
-                                    <label for="inst-member">Przydziel do</label>
-                                    <select id="inst-member">
-                                        <option value="">— Wolny —</option>
-                                        <option th:each="m : ${members}" th:value="${m.id}"
-                                                th:text="${m.firstName} + ' ' + ${m.lastName}">Jan</option>
-                                    </select>
-                                </div>
-                            </div>
-                            <!-- Dynamic attribute fields for instruments -->
-                            <div id="instrument-attributes" style="margin-top:1rem; display:flex; gap:0.5rem; flex-wrap:wrap; align-items:flex-end;" th:if="${!#lists.isEmpty(instrumentAttributeDefs)}">
-                                <th:block th:each="attrDef : ${instrumentAttributeDefs}">
-                                    <div th:switch="${attrDef.type()}"
-                                         th:attr="data-depends-on=${attrDef.dependsOnAttributeId()}, data-depends-value=${attrDef.dependsOnValue()}"
-                                         class="attr-field" th:classappend="${attrDef.dependsOnAttributeId() != null} ? 'conditional'">
-                                        <label th:case="'BOOLEAN'" class="checkbox-label" style="display:flex; align-items:center; gap:0.25rem;">
-                                            <input type="checkbox" th:id="'inst-attr-' + ${attrDef.id()}" th:name="'attr_' + ${attrDef.id()}">
-                                            <span th:text="${attrDef.name()}">Atrybut</span>
-                                        </label>
-                                        <div th:case="'SELECT'" style="display:flex; flex-direction:column; gap:0.25rem;">
-                                            <label th:text="${attrDef.name()}">Atrybut</label>
-                                            <select th:id="'inst-attr-' + ${attrDef.id()}" th:name="'attr_' + ${attrDef.id()}" class="parent-attr-select">
-                                                <option value="">Wybierz...</option>
-                                                <option th:each="opt : ${#strings.arraySplit(#strings.replace(attrDef.options(), '[', '').replace(']', ''), ',')}" th:value="${opt.trim()}" th:text="${opt.trim()}">Opcja</option>
-                                            </select>
-                                        </div>
-                                        <div th:case="'MULTI_SELECT'" style="display:flex; flex-direction:column; gap:0.25rem;">
-                                            <label th:text="${attrDef.name()}">Atrybut</label>
-                                            <select th:id="'inst-attr-' + ${attrDef.id()}" th:name="'attr_' + ${attrDef.id()}" multiple style="min-width:150px;">
-                                                <option th:each="opt : ${#strings.arraySplit(#strings.replace(attrDef.options(), '[', '').replace(']', ''), ',')}" th:value="${opt.trim()}" th:text="${opt.trim()}">Opcja</option>
-                                            </select>
-                                        </div>
-                                        <div th:case="'DATE'" style="display:flex; flex-direction:column; gap:0.25rem;">
-                                            <label th:text="${attrDef.name()}">Atrybut</label>
-                                            <input type="date" th:id="'inst-attr-' + ${attrDef.id()}" th:name="'attr_' + ${attrDef.id()}">
-                                        </div>
-                                        <div th:case="'NUMBER'" style="display:flex; flex-direction:column; gap:0.25rem;">
-                                            <label th:text="${attrDef.name()}">Atrybut</label>
-                                            <input type="number" th:id="'inst-attr-' + ${attrDef.id()}" th:name="'attr_' + ${attrDef.id()}" step="any">
-                                        </div>
-                                        <div th:case="*" style="display:flex; flex-direction:column; gap:0.25rem;">
-                                            <label th:text="${attrDef.name()}">Atrybut</label>
-                                            <input type="text" th:id="'inst-attr-' + ${attrDef.id()}" th:name="'attr_' + ${attrDef.id()}">
-                                        </div>
-                                    </div>
-                                </th:block>
-                            </div>
-                            <div style="display:flex; gap:0.5rem; margin-top:1rem;">
-                                <button class="primary small" onclick="submitInstrument()">Dodaj</button>
-                                <button class="secondary small" onclick="hideInstrumentForm()">Anuluj</button>
-                            </div>
-                        </article>
-                    </div>
-
-                    <div th:if="${#lists.isEmpty(instrumentItems)}">
-                        <article><p>Brak instrumentów.</p></article>
-                    </div>
-
-                    <table th:unless="${#lists.isEmpty(instrumentItems)}" role="grid">
-                        <thead>
-                            <tr>
-                                <th th:each="attr : ${instrumentAttributeDefs}" th:if="${attr.displayInList}" th:text="${attr.name}">Nazwa</th>
-                                <th>Przydzielony do</th>
-                                <th>Akcje</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            <tr th:each="i : ${instrumentItems}">
-                                <td th:each="attr : ${instrumentAttributeDefs}" th:if="${attr.displayInList}" th:with="val=${instrumentAttributeValues?.get(i.id)?.get(attr.id)}">
-                                    <span th:text="${val != null ? val : '—'}" style="color:#999;">—</span>
-                                </td>
-                                <td>
-                                    <span th:if="${i.assignedMemberName != null}" th:text="${i.assignedMemberName}">Jan</span>
-                                    <span th:if="${i.assignedMemberName == null}" style="color:#999;">— Wolny —</span>
-                                </td>
-                                <td>
-                                    <div style="display:flex; gap:0.25rem; flex-wrap:wrap;">
-                                        <button th:if="${i.assignedMemberName == null && i.lifecycleStatus != 'DISPOSED'}"
-                                                class="outline small"
-                                                th:onclick="'assignInstrument(' + ${i.id} + ')'">Przydziel</button>
-                                        <button th:if="${i.assignedMemberName != null}"
-                                                class="outline small"
-                                                th:onclick="'returnInstrument(' + ${i.id} + ')'">↩ Zwróć</button>
-                                        <button th:if="${i.lifecycleStatus == 'AVAILABLE'}"
-                                                class="outline small secondary"
-                                                th:onclick="'retireInstrument(' + ${i.id} + ')'">Likwiduj ze stanu</button>
-                                        <button th:if="${i.lifecycleStatus != 'DISPOSED' && i.assignedMemberName == null}"
-                                                class="outline small secondary"
-                                                th:onclick="'disposeInstrument(' + ${i.id} + ')'">Zlikwiduj</button>
-                                        <button th:if="${i.lifecycleStatus != 'DISPOSED'}"
-                                                class="outline small"
-                                                th:onclick="'showInstrumentHistory(' + ${i.id} + ')'">Historia</button>
-                                    </div>
-                                </td>
-                            </tr>
-                        </tbody>
-                    </table>
-
-                    <!-- Assign modal -->
-                    <div id="inst-assign-modal" style="display:none; margin-top:1rem;">
-                        <article>
-                            <h4>Przydziel instrument</h4>
-                            <input type="hidden" id="inst-assign-item-id">
-                            <div style="display:flex; gap:0.5rem; align-items:flex-end; flex-wrap:wrap;">
-                                <div>
-                                    <label for="inst-assign-member">Członek</label>
-                                    <select id="inst-assign-member">
-                                        <option value="">Wybierz...</option>
-                                        <option th:each="m : ${members}" th:value="${m.id}"
-                                                th:text="${m.firstName} + ' ' + ${m.lastName}">Jan</option>
-                                    </select>
-                                </div>
-                                <div>
-                                    <label for="inst-assign-condition">Stan przy przydzieleniu</label>
-                                    <input type="text" id="inst-assign-condition" placeholder="Np. nowy, dobry, używany">
-                                </div>
-                                <button class="primary small" onclick="confirmAssignInstrument()">OK</button>
-                                <button class="secondary small" onclick="closeInstAssignModal()">Anuluj</button>
-                            </div>
-                        </article>
-                    </div>
-                </div>
-            </div>
-
-            <!-- ===== AWARDS TAB ===== -->
-            <div id="tab-awards" style="display:none;">
-                <div id="awards-content">
-                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem;">
-                        <h3>Odznaczenia</h3>
-                        <button class="primary small" onclick="showAwardForm()">+ Dodaj odznaczenie</button>
-                    </div>
-
-                    <!-- Add form (hidden) -->
-                    <div id="award-form" style="display:none; margin-bottom:1rem;">
-                        <article>
-                            <h4>Nowe odznaczenie</h4>
-                            <div style="display:flex; gap:0.5rem; flex-wrap:wrap; align-items:flex-end;">
-                                <div>
-                                    <label for="award-member">Przydziel do</label>
-                                    <select id="award-member">
-                                        <option value="">— Wolny —</option>
-                                        <option th:each="m : ${members}" th:value="${m.id}"
-                                                th:text="${m.firstName} + ' ' + ${m.lastName}">Jan</option>
-                                    </select>
-                                </div>
-                            </div>
-                            <!-- Dynamic attribute fields for awards -->
-                            <div id="award-attributes" style="margin-top:1rem; display:flex; gap:0.5rem; flex-wrap:wrap; align-items:flex-end;" th:if="${!#lists.isEmpty(awardAttributeDefs)}">
-                                <th:block th:each="attrDef : ${awardAttributeDefs}">
-                                    <div th:switch="${attrDef.type()}"
-                                         th:attr="data-depends-on=${attrDef.dependsOnAttributeId()}, data-depends-value=${attrDef.dependsOnValue()}"
-                                         class="attr-field" th:classappend="${attrDef.dependsOnAttributeId() != null} ? 'conditional'">
-                                        <label th:case="'BOOLEAN'" class="checkbox-label" style="display:flex; align-items:center; gap:0.25rem;">
-                                            <input type="checkbox" th:id="'award-attr-' + ${attrDef.id()}" th:name="'attr_' + ${attrDef.id()}">
-                                            <span th:text="${attrDef.name()}">Atrybut</span>
-                                        </label>
-                                        <div th:case="'SELECT'" style="display:flex; flex-direction:column; gap:0.25rem;">
-                                            <label th:text="${attrDef.name()}">Atrybut</label>
-                                            <select th:id="'award-attr-' + ${attrDef.id()}" th:name="'attr_' + ${attrDef.id()}" class="parent-attr-select">
-                                                <option value="">Wybierz...</option>
-                                                <option th:each="opt : ${#strings.arraySplit(#strings.replace(attrDef.options(), '[', '').replace(']', ''), ',')}" th:value="${opt.trim()}" th:text="${opt.trim()}">Opcja</option>
-                                            </select>
-                                        </div>
-                                        <div th:case="'MULTI_SELECT'" style="display:flex; flex-direction:column; gap:0.25rem;">
-                                            <label th:text="${attrDef.name()}">Atrybut</label>
-                                            <select th:id="'award-attr-' + ${attrDef.id()}" th:name="'attr_' + ${attrDef.id()}" multiple style="min-width:150px;">
-                                                <option th:each="opt : ${#strings.arraySplit(#strings.replace(attrDef.options(), '[', '').replace(']', ''), ',')}" th:value="${opt.trim()}" th:text="${opt.trim()}">Opcja</option>
-                                            </select>
-                                        </div>
-                                        <div th:case="'DATE'" style="display:flex; flex-direction:column; gap:0.25rem;">
-                                            <label th:text="${attrDef.name()}">Atrybut</label>
-                                            <input type="date" th:id="'award-attr-' + ${attrDef.id()}" th:name="'attr_' + ${attrDef.id()}">
-                                        </div>
-                                        <div th:case="'NUMBER'" style="display:flex; flex-direction:column; gap:0.25rem;">
-                                            <label th:text="${attrDef.name()}">Atrybut</label>
-                                            <input type="number" th:id="'award-attr-' + ${attrDef.id()}" th:name="'attr_' + ${attrDef.id()}" step="any">
-                                        </div>
-                                        <div th:case="*" style="display:flex; flex-direction:column; gap:0.25rem;">
-                                            <label th:text="${attrDef.name()}">Atrybut</label>
-                                            <input type="text" th:id="'award-attr-' + ${attrDef.id()}" th:name="'attr_' + ${attrDef.id()}">
-                                        </div>
-                                    </div>
-                                </th:block>
-                            </div>
-                            <div style="display:flex; gap:0.5rem; margin-top:1rem;">
-                                <button class="primary small" onclick="submitAward()">Dodaj</button>
-                                <button class="secondary small" onclick="hideAwardForm()">Anuluj</button>
-                            </div>
-                        </article>
-                    </div>
-
-                    <div th:if="${#lists.isEmpty(awardItems)}">
-                        <article><p>Brak odznaczeń.</p></article>
-                    </div>
-
-                    <table th:unless="${#lists.isEmpty(awardItems)}" role="grid">
-                        <thead>
-                            <tr>
-                                <th th:each="attr : ${awardAttributeDefs}" th:if="${attr.displayInList}" th:text="${attr.name}">Nazwa</th>
-                                <th>Opis</th>
-                                <th>Przydzielony do</th>
-                                <th>Akcje</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            <tr th:each="a : ${awardItems}">
-                                <td th:each="attr : ${awardAttributeDefs}" th:if="${attr.displayInList}" th:with="val=${awardAttributeValues?.get(a.id)?.get(attr.id)}">
-                                    <span th:text="${val != null ? val : '—'}" style="color:#999;">—</span>
-                                </td>
-                                <td th:text="${a.description}">Opis</td>
-                                <td>
-                                    <span th:if="${a.assignedMemberName != null}" th:text="${a.assignedMemberName}">Jan</span>
-                                    <span th:if="${a.assignedMemberName == null}" style="color:#999;">— Wolny —</span>
-                                </td>
-                                <td>
-                                    <div style="display:flex; gap:0.25rem; flex-wrap:wrap;">
-                                        <button th:if="${a.assignedMemberName == null}"
-                                                class="outline small"
-                                                th:onclick="'assignAward(' + ${a.id} + ')'">Przydziel</button>
-                                        <button th:if="${a.assignedMemberName != null}"
-                                                class="outline small"
-                                                th:onclick="'returnAward(' + ${a.id} + ')'">↩ Zwróć</button>
-                                        <button class="outline small secondary"
-                                                th:onclick="'disposeAward(' + ${a.id} + ')'">Zlikwiduj</button>
-                                    </div>
-                                </td>
-                            </tr>
-                        </tbody>
-                    </table>
-
-                    <!-- Assign modal -->
-                    <div id="award-assign-modal" style="display:none; margin-top:1rem;">
-                        <article>
-                            <h4>Przydziel odznaczenie</h4>
-                            <input type="hidden" id="award-assign-item-id">
-                            <div style="display:flex; gap:0.5rem; align-items:flex-end;">
-                                <div>
-                                    <label for="award-assign-member">Członek</label>
-                                    <select id="award-assign-member">
-                                        <option value="">Wybierz...</option>
-                                        <option th:each="m : ${members}" th:value="${m.id}"
-                                                th:text="${m.firstName} + ' ' + ${m.lastName}">Jan</option>
-                                    </select>
-                                </div>
-                                <button class="primary small" onclick="confirmAssignAward()">OK</button>
-                                <button class="secondary small" onclick="closeAwardAssignModal()">Anuluj</button>
-                            </div>
-                        </article>
-                    </div>
-                </div>
-            </div>
-
         </div>
-    </main>
 
-       <footer th:replace="~{fragments/layout :: footer}"></footer>
-    <div th:insert="~{fragments/layout :: toast-container}"></div>
-<div th:insert="~{fragments/layout :: footer-scripts}"></div>
+        <!-- Two-step create form -->
+        <article class="inv-card inv-form" id="inv-form" hidden>
+            <header><h4>Dodaj rzecz do zasobów</h4></header>
 
-    <style>
-        .badge { padding:0.15rem 0.5rem; border-radius:0.25rem; font-size:0.75rem; font-weight:600; }
-        .badge.info { background:#e3f2fd; color:#1565c0; }
-        .badge.warning { background:#fff3e0; color:#e65100; }
-        .badge.success { background:#e8f5e9; color:#2e7d32; }
-        .badge.error { background:#ffebee; color:#c62828; }
-        .tab-btn { padding:0.5rem 1rem; border:none; cursor:pointer; border-radius:0.25rem 0.25rem 0 0; }
-        /* Conditional attributes - hidden by default */
-        .attr-field.conditional { display: none; }
-    </style>
+            <div class="inv-field">
+                <label for="inv-f-type">Typ <span class="inv-req">*</span></label>
+                <select id="inv-f-type" onchange="inv.onTypeChange()">
+                    <option value="">— wybierz typ —</option>
+                    <option value="UNIFORM">Strój</option>
+                    <option value="INSTRUMENT">Instrument</option>
+                </select>
+            </div>
 
-    <script th:inline="javascript">
-        // === Tab switching ===
-        function switchTab(tab) {
-            document.querySelectorAll('[id^="tab-"]').forEach(function(el) { el.style.display = 'none'; });
-            document.getElementById('tab-' + tab).style.display = 'block';
-            document.querySelectorAll('.tab-btn').forEach(function(btn) {
-                btn.classList.remove('primary'); btn.classList.add('secondary');
-            });
-            document.querySelector('[data-tab="' + tab + '"]').classList.add('primary');
-            document.querySelector('[data-tab="' + tab + '"]').classList.remove('secondary');
-        }
+            <div class="inv-field">
+                <label for="inv-f-name">Nazwa <span class="inv-req">*</span></label>
+                <input type="text" id="inv-f-name" placeholder="np. Bluza, Trąbka B…" />
+            </div>
 
-        // Expose attribute defs to global scope for order form
-        // Debug: log what Thymeleaf outputs
-        var uniformRaw = /*[[${uniformAttributeDefsJson}]]*/ "[]";
-        var instrumentRaw = /*[[${instrumentAttributeDefsJson}]]*/ "[]";
-        console.log("uniformRaw:", uniformRaw);
-        console.log("instrumentRaw:", instrumentRaw);
-        
-        try {
-            window.uniformOrderAttributeDefs = JSON.parse(uniformRaw);
-            window.instrumentOrderAttributeDefs = JSON.parse(instrumentRaw);
-        } catch(e) {
-            console.error("Failed to parse attribute JSON:", e);
-            window.uniformOrderAttributeDefs = [];
-            window.instrumentOrderAttributeDefs = [];
-        }
-        console.log("Parsed uniforms:", window.uniformOrderAttributeDefs);
-        
-        // Listen for order type changes to update attributes
-        document.addEventListener('DOMContentLoaded', function() {
-            var orderTypeSelect = document.getElementById('order-type');
-            if (orderTypeSelect) {
-                orderTypeSelect.addEventListener('change', updateOrderAttributes);
-            }
-            
-            // Initialize conditional attribute visibility
-            initConditionalAttributes();
-        });
+            <div class="inv-grid2">
+                <div class="inv-field">
+                    <label for="inv-f-condition">Stan</label>
+                    <select id="inv-f-condition">
+                        <option value="NEW">Nowy</option>
+                        <option value="GOOD" selected>Dobry</option>
+                        <option value="FAIR">Przeciętny</option>
+                        <option value="POOR">Słaby</option>
+                        <option value="DAMAGED">Uszkodzony</option>
+                    </select>
+                </div>
+                <div class="inv-field">
+                    <label for="inv-f-serial">Numer seryjny</label>
+                    <input type="text" id="inv-f-serial" placeholder="SN…" />
+                </div>
+            </div>
 
-        // === Conditional attributes logic ===
-        function initConditionalAttributes() {
-            // Find all parent attribute selects and add listeners
-            document.querySelectorAll('.parent-attr-select').forEach(function(select) {
-                select.addEventListener('change', function() {
-                    updateAllConditionalFields(this.closest('#uniform-attributes, #instrument-attributes, #order-attributes'));
-                });
-                // Initial check - run after DOM is fully loaded
-                setTimeout(function() {
-                    updateAllConditionalFields(select.closest('#uniform-attributes, #instrument-attributes, #order-attributes'));
-                }, 100);
-            });
-        }
-        
-        function updateOrderConditionalFields() {
-            var container = document.getElementById('order-attributes');
-            if (!container) return;
-            
-            // Add listeners to parent selects
-            container.querySelectorAll('.parent-attr-select').forEach(function(select) {
-                select.addEventListener('change', function() {
-                    updateOrderConditionalFields();
-                });
-            });
-            
-            var parentSelects = container.querySelectorAll('.parent-attr-select');
-            var parentValues = {};
-            parentSelects.forEach(function(select) {
-                parentValues[select.id] = select.value ? select.value.toLowerCase().trim() : '';
-            });
-            
-            var conditionalFields = container.querySelectorAll('.conditional');
-            conditionalFields.forEach(function(field) {
-                var dependsOnAttrId = field.getAttribute('data-depends-on');
-                var dependsOnValue = field.getAttribute('data-depends-value');
-                
-                if (!dependsOnAttrId) {
-                    field.style.display = '';
-                    return;
-                }
-                
-                var parentInputId = 'order-attr-' + dependsOnAttrId;
-                var parentValue = parentValues[parentInputId] || '';
-                
-                var allowedValues = dependsOnValue ? dependsOnValue.toLowerCase().split(',').map(function(v) { return v.trim(); }) : [];
-                
-                var shouldShow = allowedValues.length === 0 || allowedValues.some(function(allowed) {
-                    return parentValue === allowed;
-                });
-                
-                if (!shouldShow) {
-                    field.style.display = 'none';
-                } else {
-                    field.style.display = 'flex';
-                }
-            });
-        }
-        
-        function updateAllConditionalFields(container) {
-            if (!container) return;
-            var containerId = container.id;
-            var prefix = containerId === 'uniform-attributes' ? 'uni-attr-' : 'inst-attr-';
-            
-            // Get current values of all parent selects
-            var parentSelects = container.querySelectorAll('.parent-attr-select');
-            var parentValues = {};
-            parentSelects.forEach(function(select) {
-                parentValues[select.id] = select.value ? select.value.toLowerCase().trim() : '';
-            });
-            
-            // Update all conditional fields
-            var conditionalFields = container.querySelectorAll('.conditional');
-            conditionalFields.forEach(function(field) {
-                var dependsOnAttrId = field.getAttribute('data-depends-on');
-                var dependsOnValue = field.getAttribute('data-depends-value');
-                
-                if (!dependsOnAttrId) {
-                    // No dependency - always show
-                    field.style.display = '';
-                    return;
-                }
-                
-                // Build parent input ID
-                var parentInputId = prefix + dependsOnAttrId;
-                
-                // Get parent value
-                var parentValue = parentValues[parentInputId] || '';
-                
-                // Parse allowed values (comma-separated)
-                var allowedValues = dependsOnValue ? dependsOnValue.toLowerCase().split(',').map(function(v) { return v.trim(); }) : [];
-                
-                // Check if current parent value matches any allowed value
-                var shouldShow = allowedValues.length === 0 || allowedValues.some(function(allowed) {
-                    return parentValue === allowed;
-                });
-                
-                // Show/hide field
-                if (!shouldShow) {
-                    field.style.display = 'none';
-                } else {
-                    // Determine proper display type
-                    var checkboxLabel = field.querySelector('.checkbox-label');
-                    if (checkboxLabel) {
-                        field.style.display = 'flex';
-                    } else {
-                        field.style.display = 'flex';
-                    }
-                }
-            });
-        }
+            <div class="inv-grid2">
+                <div class="inv-field">
+                    <label for="inv-f-manufacturer">Producent</label>
+                    <input type="text" id="inv-f-manufacturer" placeholder="np. Yamaha" />
+                </div>
+                <div class="inv-field">
+                    <label for="inv-f-model">Model</label>
+                    <input type="text" id="inv-f-model" placeholder="np. YTR-2335" />
+                </div>
+            </div>
 
-        // === Order form ===
-        function showOrderForm() { 
-            document.getElementById('order-form').style.display = 'block'; 
-            updateOrderAttributes();
-        }
-        function hideOrderForm() { document.getElementById('order-form').style.display = 'none'; }
-        function updateOrderAttributes() {
-            var type = document.getElementById('order-type').value;
-            var container = document.getElementById('order-attributes');
-            var attrDefs = type === 'UNIFORM' ? window.uniformOrderAttributeDefs : window.instrumentOrderAttributeDefs;
-            
-            console.log('Order type:', type, 'attrDefs:', attrDefs);
-            
-            if (!attrDefs || attrDefs.length === 0) {
-                container.innerHTML = '<span style="color:var(--pico-muted-color); font-size:0.8rem;">Brak atrybutów dla tego typu</span>';
-                return;
-            }
-            var html = '';
-            attrDefs.forEach(function(attrDef) {
-                var fieldId = 'order-attr-' + attrDef.id;
-                var isParent = attrDef.type === 'SELECT';
-                var wrapperClass = attrDef.dependsOnAttributeId ? 'conditional' : '';
-                var dependsOnAttr = attrDef.dependsOnAttributeId ? 'data-depends-on="' + attrDef.dependsOnAttributeId + '"' : '';
-                var dependsOnValue = attrDef.dependsOnValue ? 'data-depends-value="' + attrDef.dependsOnValue + '"' : '';
-                
-                if (attrDef.type === 'BOOLEAN') {
-                    html += '<div class="' + wrapperClass + '" ' + dependsOnAttr + ' ' + dependsOnValue + ' style="display:flex; flex-direction:column; gap:0.25rem;">';
-                    html += '<label class="checkbox-label" style="display:flex; align-items:center; gap:0.25rem;">';
-                    html += '<input type="checkbox" id="' + fieldId + '" name="attr_' + attrDef.id + '">';
-                    html += '<span>' + attrDef.name + '</span></label></div>';
-                } else if (attrDef.type === 'SELECT') {
-                    html += '<div class="' + wrapperClass + '" ' + dependsOnAttr + ' ' + dependsOnValue + ' style="display:flex; flex-direction:column; gap:0.25rem;">';
-                    html += '<label>' + attrDef.name + '</label>';
-                    var selectClass = isParent ? 'class="parent-attr-select"' : '';
-                    html += '<select id="' + fieldId + '" name="attr_' + attrDef.id + '" ' + selectClass + '>';
-                    html += '<option value="">Wybierz...</option>';
-                    var opts = attrDef.options ? attrDef.options.replace('[','').replace(']','').split(',') : [];
-                    opts.forEach(function(opt) { html += '<option value="' + opt.trim() + '">' + opt.trim() + '</option>'; });
-                    html += '</select></div>';
-                } else if (attrDef.type === 'DATE') {
-                    html += '<div class="' + wrapperClass + '" ' + dependsOnAttr + ' ' + dependsOnValue + ' style="display:flex; flex-direction:column; gap:0.25rem;">';
-                    html += '<label>' + attrDef.name + '</label>';
-                    html += '<input type="date" id="' + fieldId + '" name="attr_' + attrDef.id + '"></div>';
-                } else if (attrDef.type === 'NUMBER') {
-                    html += '<div class="' + wrapperClass + '" ' + dependsOnAttr + ' ' + dependsOnValue + ' style="display:flex; flex-direction:column; gap:0.25rem;">';
-                    html += '<label>' + attrDef.name + '</label>';
-                    html += '<input type="number" id="' + fieldId + '" name="attr_' + attrDef.id + '" step="any"></div>';
-                } else {
-                    html += '<div class="' + wrapperClass + '" ' + dependsOnAttr + ' ' + dependsOnValue + ' style="display:flex; flex-direction:column; gap:0.25rem;">';
-                    html += '<label>' + attrDef.name + '</label>';
-                    html += '<input type="text" id="' + fieldId + '" name="attr_' + attrDef.id + '"></div>';
-                }
-            });
-            container.innerHTML = html;
-            
-            // Initialize conditional attributes for order form
-            setTimeout(function() {
-                updateOrderConditionalFields();
-            }, 100);
-        }
-        function submitOrder() {
-            var memberId = document.getElementById('order-member').value;
-            var type = document.getElementById('order-type').value;
-            if (!memberId) { alert('Wybierz członka'); return; }
-            
-            // Collect attribute values
-            var attributes = {};
-            var attrInputs = document.querySelectorAll('#order-attributes input[id^="order-attr-"], #order-attributes select[id^="order-attr-"]');
-            attrInputs.forEach(function(input) {
-                var attrId = input.id.replace('order-attr-', '');
-                if (input.type === 'checkbox') {
-                    attributes[attrId] = input.checked ? 'true' : 'false';
-                } else if (input.value) {
-                    attributes[attrId] = input.value;
-                }
-            });
-            
-            var url = type === 'UNIFORM' ? '/api/inventory/orders/uniform' : '/api/inventory/orders/instrument';
-            fetchWithToast(url, { toastMessage: 'Zamówienie zostało złożone', method:'POST', headers:{'Content-Type':'application/json'},
-                body: JSON.stringify({memberId: parseInt(memberId), attributes: attributes})
-            }).then(function(r) { if(r.ok) { hideOrderForm(); refreshTab('orders'); } });
-        }
-        function advanceOrder(id, action) {
-            fetchWithToast('/api/inventory/orders/' + id + '/' + action, {method:'POST', toastMessage: 'Zamówienie zaktualizowane'})
-            .then(function(r) { if(r.ok) refreshTab('orders'); });
-        }
+            <div class="inv-field">
+                <label for="inv-f-description">Opis</label>
+                <textarea id="inv-f-description" rows="2" placeholder="Dowolny opis…"></textarea>
+            </div>
 
-        // === Uniform form ===
-        function showUniformForm() { document.getElementById('uniform-form').style.display = 'block'; }
-        function hideUniformForm() { document.getElementById('uniform-form').style.display = 'none'; }
-        function submitUniform() {
-            var memberId = document.getElementById('uni-member').value;
+            <!-- Step 2: attribute definitions rendered in displayOrder, input type by AttributeDataType -->
+            <div id="inv-attr-step">
+                <p class="inv-hint">Najpierw wybierz typ — pokażemy wymagane atrybuty.</p>
+            </div>
 
-            // Collect attribute values
-            var attributes = {};
-            var attrInputs = document.querySelectorAll('#uniform-attributes input[id^="uni-attr-"], #uniform-attributes select[id^="uni-attr-"]');
-            attrInputs.forEach(function(input) {
-                var attrId = input.id.replace('uni-attr-', '');
-                if (input.type === 'checkbox') {
-                    attributes[attrId] = input.checked ? 'true' : 'false';
-                } else if (input.value) {
-                    attributes[attrId] = input.value;
-                }
-            });
+            <div class="inv-actions">
+                <button type="button" class="primary" id="inv-f-submit" onclick="inv.submitCreate()" disabled>Zapisz rzecz</button>
+                <button type="button" class="secondary" onclick="inv.toggleForm(false)">Anuluj</button>
+            </div>
+        </article>
 
-            var payload = {memberId:memberId?parseInt(memberId):null, attributes:attributes};
-            console.log('[DEBUG submitUniform] payload:', JSON.stringify(payload));
+        <!-- Items cards (server-rendered, stable ids for tests) -->
+        <div id="inv-list">
+            <article class="inv-card" th:each="c : ${cards}" th:with="it=${c.item}"
+                     th:id="|inv-item-${it.id}|"
+                     th:attr="data-type=${it.type.name()}, data-band=${it.band.id}, data-search=${#strings.toLowerCase((it.name ?: '') + ' ' + (it.serialNumber ?: ''))}">
 
-            fetchWithToast('/api/inventory/uniforms', { toastMessage: 'Dodano uniform', method:'POST', headers:{'Content-Type':'application/json'},
-                body: JSON.stringify(payload)
-            }).then(function(r) {
-                console.log('[DEBUG submitUniform] response status:', r.status);
-                if(r.ok) { hideUniformForm(); refreshTab('uniforms'); }
-            }).catch(function(err) { console.error('[DEBUG submitUniform] error:', err); });
-        }
+                <header class="inv-card-head">
+                    <h3 th:text="${it.name}">Rzecz</h3>
+                    <span class="inv-badge inv-badge-type" th:classappend="'inv-type-' + ${it.type.name()}" th:text="${it.type.displayName}">Strój</span>
+                </header>
 
-        // === Instrument form ===
-        function showInstrumentForm() { document.getElementById('instrument-form').style.display = 'block'; }
-        function hideInstrumentForm() { document.getElementById('instrument-form').style.display = 'none'; }
-        function submitInstrument() {
-            var memberId = document.getElementById('inst-member').value;
-            
-            // Collect attribute values
-            var attributes = {};
-            var attrInputs = document.querySelectorAll('#instrument-attributes input[id^="inst-attr-"], #instrument-attributes select[id^="inst-attr-"]');
-            attrInputs.forEach(function(input) {
-                var attrId = input.id.replace('inst-attr-', '');
-                if (input.type === 'checkbox') {
-                    attributes[attrId] = input.checked ? 'true' : 'false';
-                } else if (input.value) {
-                    attributes[attrId] = input.value;
-                }
-            });
-            
-            fetchWithToast('/api/inventory/instruments', { toastMessage: 'Dodano instrument', method:'POST', headers:{'Content-Type':'application/json'},
-                body: JSON.stringify({memberId:memberId?parseInt(memberId):null, attributes:attributes})
-            }).then(function(r) { if(r.ok) { hideInstrumentForm(); refreshTab('instruments'); } });
-        }
+                <p class="inv-meta" th:if="${it.description != null and !#strings.isEmpty(it.description)}" th:text="${it.description}"></p>
+                <p class="inv-meta" th:if="${it.serialNumber != null and !#strings.isEmpty(it.serialNumber)}">Nr seryjny: <strong th:text="${it.serialNumber}"></strong></p>
 
-        // === Assign / Return / Retire / Dispose ===
-        function assignUniform(id) {
-            document.getElementById('uni-assign-item-id').value = id;
-            document.getElementById('uni-assign-modal').style.display = 'block';
-        }
-        function confirmAssignUniform() {
-            var itemId = document.getElementById('uni-assign-item-id').value;
-            var memberId = document.getElementById('uni-assign-member').value;
-            var condition = document.getElementById('uni-assign-condition').value;
-            if (!memberId) { alert('Wybierz członka'); return; }
-            fetchWithToast('/api/inventory/uniforms/' + itemId + '/assign', { toastMessage: 'Uniform przydzielony', method:'POST', headers:{'Content-Type':'application/json'},
-                body: JSON.stringify({memberId: parseInt(memberId), conditionAtAssign: condition})
-            }).then(function(r) { if(r.ok) { closeUniAssignModal(); refreshTab('uniforms'); } });
-        }
-        function closeUniAssignModal() { document.getElementById('uni-assign-modal').style.display = 'none'; }
-        function returnUniform(id) {
-            if (!confirm('Zwróć ekwipunek do magazynu?')) return;
-            var condition = prompt('Stan przy zwrocie (opcjonalnie):', '');
-            fetchWithToast('/api/inventory/uniforms/' + id + '/return', { toastMessage: 'Uniform zwrócony', method:'POST', headers:{'Content-Type':'application/json'},
-                body: JSON.stringify({conditionAtReturn: condition})})
-            .then(function(r) { if(r.ok) refreshTab('uniforms'); });
-        }
-        function retireUniform(id) {
-            if (!confirm('Zlikwidować ze stanu?')) return;
-            fetchWithToast('/api/inventory/uniforms/' + id + '/retire', { toastMessage: 'Uniform zlikwidowany ze stanu', method:'POST' })
-            .then(function(r) { if(r.ok) refreshTab('uniforms'); });
-        }
-        function disposeUniform(id) {
-            if (!confirm('Zlikwidować fizycznie?')) return;
-            fetchWithToast('/api/inventory/uniforms/' + id + '/dispose', { toastMessage: 'Uniform fizycznie zlikwidowany', method:'POST' })
-            .then(function(r) { if(r.ok) refreshTab('uniforms'); });
-        }
+                <div class="inv-attr-list">
+                    <span class="inv-attr" th:each="chip : ${c.chips}"
+                          th:attr="data-def-id=${chip.id}, data-def-name=${chip.name}, data-def-value=${chip.value}">
+                        <span class="inv-attr-name" th:text="${chip.name}"></span>
+                        <span class="inv-attr-value" th:text="${chip.value}"></span>
+                    </span>
+                </div>
 
-        function assignInstrument(id) {
-            document.getElementById('inst-assign-item-id').value = id;
-            document.getElementById('inst-assign-modal').style.display = 'block';
-        }
-        function confirmAssignInstrument() {
-            var itemId = document.getElementById('inst-assign-item-id').value;
-            var memberId = document.getElementById('inst-assign-member').value;
-            var condition = document.getElementById('inst-assign-condition').value;
-            if (!memberId) { alert('Wybierz członka'); return; }
-            fetchWithToast('/api/inventory/instruments/' + itemId + '/assign', { toastMessage: 'Instrument przydzielony', method:'POST', headers:{'Content-Type':'application/json'},
-                body: JSON.stringify({memberId: parseInt(memberId), conditionAtAssign: condition})
-            }).then(function(r) { if(r.ok) { closeInstAssignModal(); refreshTab('instruments'); } });
-        }
-        function closeInstAssignModal() { document.getElementById('inst-assign-modal').style.display = 'none'; }
-        function returnInstrument(id) {
-            if (!confirm('Zwróć instrument do magazynu?')) return;
-            var condition = prompt('Stan przy zwrocie (opcjonalnie):', '');
-            fetchWithToast('/api/inventory/instruments/' + id + '/return', { toastMessage: 'Instrument zwrócony', method:'POST', headers:{'Content-Type':'application/json'},
-                body: JSON.stringify({conditionAtReturn: condition})})
-            .then(function(r) { if(r.ok) refreshTab('instruments'); });
-        }
-        function retireInstrument(id) {
-            if (!confirm('Zlikwidować ze stanu?')) return;
-            fetchWithToast('/api/inventory/instruments/' + id + '/retire', { toastMessage: 'Instrument zlikwidowany ze stanu', method:'POST' })
-            .then(function(r) { if(r.ok) refreshTab('instruments'); });
-        }
-        function disposeInstrument(id) {
-            if (!confirm('Zlikwidować fizycznie?')) return;
-            fetchWithToast('/api/inventory/instruments/' + id + '/dispose', { toastMessage: 'Instrument fizycznie zlikwidowany', method:'POST' })
-            .then(function(r) { if(r.ok) refreshTab('instruments'); });
-        }
+                <footer class="inv-card-foot">
+                    <!-- Assignment state: member name when assigned, stock badge otherwise. -->
+                    <span th:if="${it.assignedMember != null}" class="inv-assigned"
+                          th:with="m=${it.assignedMember}">Przydzielone: <strong th:text="${m.firstName + ' ' + m.lastName}"></strong></span>
+                    <span th:if="${it.assignedMember == null}" class="inv-stock">W magazynie</span>
 
-        // === History ===
-        function showUniformHistory(id) {
-            fetchWithToast('/api/inventory/uniforms/' + id + '/history')
-            .then(function(r) { return r.json(); })
-            .then(function(data) { showHistoryModal('uniform', data); });
-        }
-        function showInstrumentHistory(id) {
-            fetchWithToast('/api/inventory/instruments/' + id + '/history')
-            .then(function(r) { return r.json(); })
-            .then(function(data) { showHistoryModal('instrument', data); });
-        }
-        function showHistoryModal(type, data) {
-            var html = '<article><h4>Historia przypisań</h4>';
-            if (!data || data.length === 0) { html += '<p>Brak historii.</p>'; }
-            else {
-                html += '<table role="grid"><thead><tr><th>Członek</th><th>Przydzielił</th><th>Od</th><th>Do</th><th>Stan przy przydz.</th><th>Stan przy zwrot.</th><th>Status</th></tr></thead><tbody>';
-                data.forEach(function(h) {
-                    html += '<tr><td>' + h.memberName + '</td><td>' +
-                        (h.assignedByName || '—') + '</td><td>' + h.assignedAt + '</td><td>' +
-                        (h.returnedAt || '<em>aktywne</em>') + '</td><td>' +
-                        (h.conditionAtAssign || '—') + '</td><td>' +
-                        (h.conditionAtReturn || '—') + '</td><td>' +
-                        (h.active ? '<span class="badge success">Aktywne</span>' : '<span class="badge">Zwrócone</span>') +
-                        '</td></tr>';
-                });
-                html += '</tbody></table>';
-            }
-            html += '<button class="secondary small" onclick="closeHistoryModal()">Zamknij</button></article>';
-            var modal = document.createElement('div');
-            modal.id = 'history-modal';
-            modal.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:1000;';
-            modal.innerHTML = '<div style="background:white;padding:1rem;border-radius:0.5rem;max-width:800px;width:90%;max-height:80vh;overflow:auto;">' + html + '</div>';
-            document.body.appendChild(modal);
-        }
-        function closeHistoryModal() {
-            var modal = document.getElementById('history-modal');
-            if (modal) modal.remove();
-        }
+                    <div class="inv-actions">
+                        <button th:if="${it.assignedMember != null}" type="button" class="outline inv-tap"
+                                data-action="return" th:attr="data-item-id=${it.id}">Zwrot</button>
+                        <button th:if="${it.isAvailable() and it.assignedMember == null}" type="button" class="outline inv-tap"
+                                data-action="assign" th:attr="data-item-id=${it.id}">Przydziel</button>
+                    </div>
+                </footer>
+            </article>
 
-        // === Refresh ===
-        function refreshTab(tab) {
-            var urls = {
-                orders: '/inventory/orders',
-                uniforms: '/inventory/uniforms/fragment',
-                instruments: '/inventory/instruments/fragment',
-                awards: '/inventory/awards/fragment'
-            };
-            console.log('[DEBUG refreshTab] fetching:', urls[tab]);
-            fetchWithToast(urls[tab])
-            .then(function(r) { return r.text(); })
-            .then(function(html) {
-                console.log('[DEBUG refreshTab] response length:', html.length, 'preview:', html.substring(0, 200));
-                var targetId = tab === 'orders' ? 'orders-content' : (tab === 'uniforms' ? 'uniforms-content' : (tab === 'awards' ? 'awards-content' : 'instruments-content'));
-                var target = document.getElementById(targetId);
-                if (!target) {
-                    console.error('[DEBUG refreshTab] target not found:', targetId);
-                    return;
-                }
-                var wrapper = document.createElement('div');
-                wrapper.innerHTML = html;
-                var newContent = wrapper.firstElementChild;
-                target.replaceWith(newContent);
-                console.log('[DEBUG refreshTab] replaced:', targetId);
-            })
-            .catch(function(err) { console.error('Refresh error:', err); });
-        }
+            <p id="inv-empty" class="inv-hint" th:if="${#lists.isEmpty(cards)}">Brak rzeczy w zasobach. Dodaj pierwszą przyciskiem „Dodaj rzecz”.</p>
+        </div>
 
-        // === Award form ===
-        function showAwardForm() { document.getElementById('award-form').style.display = 'block'; }
-        function hideAwardForm() { document.getElementById('award-form').style.display = 'none'; }
-        function submitAward() {
-            var memberId = document.getElementById('award-member').value;
-            // No name validation needed - everything is attribute-based now
+        <!-- Assign/return modal (single shared form, JS-filled; one code path) -->
+        <article class="inv-card inv-modal" id="inv-assign-modal" hidden>
+            <header><h4 id="inv-a-title">Przydziel do członka</h4></header>
+            <div class="inv-field">
+                <label for="inv-a-member" id="inv-a-member-label">Członek <span class="inv-req">*</span></label>
+                <select id="inv-a-member">
+                    <option value="">— wybierz członka —</option>
+                    <option th:each="m : ${members}" th:value="${m.id}" th:text="${m.firstName + ' ' + m.lastName}"></option>
+                </select>
+            </div>
+            <div class="inv-field">
+                <label for="inv-a-condition">Stan w momencie przydziału</label>
+                <select id="inv-a-condition">
+                    <option value="">bez zmiany</option>
+                    <option value="NEW">Nowy</option>
+                    <option value="GOOD">Dobry</option>
+                    <option value="FAIR">Przeciętny</option>
+                    <option value="POOR">Słaby</option>
+                    <option value="DAMAGED">Uszkodzony</option>
+                </select>
+            </div>
+            <div class="inv-field" id="inv-a-notes-wrap">
+                <label for="inv-a-notes">Notatka</label>
+                <input type="text" id="inv-a-notes" placeholder="opcjonalna notatka…" />
+            </div>
+            <div class="inv-actions">
+                <button type="button" class="primary" id="inv-a-submit">Potwierdź</button>
+                <button type="button" class="secondary" id="inv-a-close">Anuluj</button>
+            </div>
+        </article>
 
-            var attributes = {};
-            var attrInputs = document.querySelectorAll('#award-attributes input[id^="award-attr-"], #award-attributes select[id^="award-attr-"]');
-            attrInputs.forEach(function(input) {
-                var attrId = input.id.replace('award-attr-', '');
-                if (input.type === 'checkbox') {
-                    attributes[attrId] = input.checked ? 'true' : 'false';
-                } else if (input.value) {
-                    attributes[attrId] = input.value;
-                }
-            });
-
-            fetchWithToast('/api/inventory/awards', { toastMessage: 'Dodano odznaczenie', method: 'POST',
-                headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({teamId: /*[[${activeTeamId}]]*/ null, description: '', memberId: memberId ? parseInt(memberId) : null, attributes: attributes})
-            }).then(function(r) { if(r.ok) { hideAwardForm(); refreshTab('awards'); } });
-        }
-        function assignAward(awardId) {
-            document.getElementById('award-assign-item-id').value = awardId;
-            document.getElementById('award-assign-modal').style.display = 'block';
-        }
-        function confirmAssignAward() {
-            var awardId = document.getElementById('award-assign-item-id').value;
-            var memberId = document.getElementById('award-assign-member').value;
-            if (!memberId) { alert('Wybierz członka'); return; }
-            fetchWithToast('/api/inventory/awards/' + awardId + '/assign', { toastMessage: 'Odznaczenie przydzielone',
-                method: 'POST',
-                headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({memberId: parseInt(memberId)})
-            }).then(function(r) { if(r.ok) { closeAwardAssignModal(); refreshTab('awards'); } });
-        }
-        function closeAwardAssignModal() { document.getElementById('award-assign-modal').style.display = 'none'; }
-        function returnAward(awardId) {
-            fetchWithToast('/api/inventory/awards/' + awardId + '/return', {method: 'POST', toastMessage: 'Odznaczenie zwrócone'})
-            .then(function(r) { if(r.ok) refreshTab('awards'); });
-        }
-        function disposeAward(awardId) {
-            if (!confirm('Czy na pewno chcesz zlikwidować to odznaczenie?')) return;
-            fetchWithToast('/api/inventory/awards/' + awardId + '/dispose', {method: 'POST', toastMessage: 'Odznaczenie zlikwidowane'})
-            .then(function(r) { if(r.ok) refreshTab('awards'); });
-        }
-    </script>
-
-    </section>
+    </div>
+</section>
 </main>
-
-<footer th:replace="~{fragments/layout :: footer}"></footer>
-<div th:insert="~{fragments/layout :: toast-container}"></div>
-<div th:insert="~{fragments/layout :: footer-scripts}"></div>
-
-<div th:insert="~{fragments/layout :: dashboard-header-morph}"></div>
+<script th:replace="~{inventory/fragments/list-js :: script}"></script>
 </body>
 </html>

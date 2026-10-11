@@ -10,7 +10,9 @@ import pl.michalbzowski.windband.domain.inventory.ItemAttributeDefRepository;
 import pl.michalbzowski.windband.domain.inventory.ItemAttributeValue;
 import pl.michalbzowski.windband.domain.inventory.ItemAttributeValueRepository;
 import pl.michalbzowski.windband.domain.inventory.ItemCondition;
+import pl.michalbzowski.windband.domain.inventory.ItemType;
 import pl.michalbzowski.windband.domain.inventory.InventoryItemRepository;
+import pl.michalbzowski.windband.domain.inventory.OwnershipStatus;
 import pl.michalbzowski.windband.domain.member.Member;
 import pl.michalbzowski.windband.application.command.member.MemberNotFoundException;
 import pl.michalbzowski.windband.domain.member.MemberRepository;
@@ -37,6 +39,48 @@ public class UnifiedInventoryItemCommandService {
     private final ItemAttributeValueRepository itemAttributeValueRepository;
     private final MemberRepository memberRepository;
     private final pl.michalbzowski.windband.domain.band.BandRepository bandRepository;
+
+    /**
+     * Creates a unified {@link InventoryItem} and persists its attribute values in one
+     * transaction (F2 S2). Enforces the definition's {@code required} flag: every active
+     * required definition for the item's band+type must have a non-blank value in
+     * {@code attributes}, otherwise an {@link IllegalArgumentException} is raised (400).
+     *
+     * @throws IllegalArgumentException when name/type is missing or a required attribute value is absent
+     */
+    @Transactional
+    public InventoryItem createItem(Band band, String name, ItemType type, ItemCondition condition,
+                                    String description, String serialNumber, String manufacturer, String model,
+                                    Map<Long, String> attributes) {
+        if (band == null) throw new IllegalArgumentException("band is required");
+        if (name == null || name.isBlank()) throw new IllegalArgumentException("name is required");
+        if (type == null) throw new IllegalArgumentException("type is required");
+
+        Map<Long, String> values = attributes != null ? new HashMap<>(attributes) : new HashMap<>();
+
+        // Required-attribute validation against the band's active definitions.
+        List<ItemAttributeDef> defs = resolveActiveDefs(band, type);
+        for (ItemAttributeDef def : defs) {
+            if (!def.isRequired()) continue;
+            String v = values.get(def.getId());
+            if (v == null || v.isBlank()) {
+                throw new IllegalArgumentException("Brak wymaganej wartości atrybutu: " + def.getName());
+            }
+        }
+
+        InventoryItem item = InventoryItem.create(name, type, OwnershipStatus.OWNED, band);
+        if (condition != null) item.setCondition(condition);
+        if (description != null) item.updateDescription(description);
+        if (serialNumber != null) item.setSerialNumber(serialNumber);
+        if (manufacturer != null) item.setManufacturer(manufacturer);
+        if (model != null) item.setModel(model);
+        InventoryItem saved = inventoryItemRepository.save(item);
+
+        if (!values.isEmpty()) {
+            updateItemAttributes(saved.getId(), values, band.getId());
+        }
+        return saved;
+    }
 
     @Transactional
     public InventoryItem assignItem(Long itemId, Long memberId, ItemCondition conditionAtAssign, String notes) {
@@ -164,6 +208,33 @@ public class UnifiedInventoryItemCommandService {
     }
 
     // === Helpers ===
+
+    /** Field update for the REST PUT /items/{id} (F2 S2). Null fields are left untouched. */
+    @Transactional
+    public InventoryItem updateItemFields(Long itemId, String name, String description,
+                                          ItemCondition condition, String serialNumber,
+                                          String manufacturer, String model) {
+        InventoryItem item = getItemOrThrow(itemId);
+        if (name != null && !name.isBlank()) {
+            item.setName(name);
+        }
+        if (description != null) {
+            item.updateDescription(description);
+        }
+        if (condition != null) {
+            item.setCondition(condition);
+        }
+        if (serialNumber != null) {
+            item.setSerialNumber(serialNumber);
+        }
+        if (manufacturer != null) {
+            item.setManufacturer(manufacturer);
+        }
+        if (model != null) {
+            item.setModel(model);
+        }
+        return inventoryItemRepository.save(item);
+    }
 
     private InventoryItem getItemOrThrow(Long id) {
         if (id == null) {

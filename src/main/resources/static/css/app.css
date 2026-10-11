@@ -3725,3 +3725,204 @@ button.secondary.danger:focus-visible {
     width: auto;
 }
 
+
+/* ============================================================
+   inventory/list.html — F2 S2 unified inventory, mobile-first.
+   Constraints: tap targets >= 44px; no horizontal overflow at 360px.
+   ============================================================ */
+
+#inventory-content {
+    max-width: 100%;
+    overflow-wrap: anywhere;
+}
+
+/* ------------------------------------------------------------------
+   Toolbar: add button + filters wrap without overflow on 360px
+   ------------------------------------------------------------------ */
+.inv-toolbar {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem 0.75rem;
+    align-items: center;
+    margin-bottom: 1rem;
+}
+
+.inv-add-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.4rem;
+    min-height: 44px;
+    padding: 0 1rem;
+    font-weight: 600;
+}
+
+.inv-filters {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem 0.75rem;
+    align-items: center;
+    flex: 1 1 100%;
+}
+
+.inv-filter,
+.inv-search {
+    min-height: 44px;
+    padding: 0.4rem 0.65rem;
+    font-size: 1rem;
+    max-width: 100%;
+}
+
+/* ------------------------------------------------------------------
+   Cards
+   ------------------------------------------------------------------ */
+.inv-card {
+    border-radius: var(--pico-border-radius, 0.75rem);
+    padding: 0.9rem 1rem;
+    margin-bottom: 0.85rem;
+    overflow-wrap: anywhere;
+}
+
+.inv-card-head {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.4rem 0.6rem;
+    align-items: baseline;
+    justify-content: space-between;
+    margin-bottom: 0.35rem;
+}
+
+.inv-card-head h3 {
+    margin: 0;
+    font-size: 1.05rem;
+    overflow-wrap: anywhere;
+}
+
+.inv-badge {
+    display: inline-block;
+    padding: 0.25rem 0.6rem;
+    border-radius: 999px;
+    font-size: 0.78rem;
+    font-weight: 600;
+    background: var(--pico-primary-light-background, #dbeafe);
+    color: var(--pico-primary-background, #1d4ed8);
+}
+
+.inv-type-INSTRUMENT { background: #fde9c8; color: #9a5b00; }
+.inv-type-AWARD      { background: #f3d5f3; color: #86198f; }
+
+.inv-meta {
+    margin: 0.15rem 0;
+    color: var(--pico-muted-color, #667);
+    font-size: 0.92rem;
+    overflow-wrap: anywhere;
+}
+
+/* attribute chips */
+.inv-attr-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.4rem;
+    margin: 0.5rem 0;
+}
+
+.inv-attr {
+    display: inline-flex;
+    gap: 0.35rem;
+    align-items: baseline;
+    background: var(--pico-card-background-color, #f5f6fa);
+    border-radius: 999px;
+    padding: 0.28rem 0.7rem;
+    font-size: 0.85rem;
+    max-width: 100%;
+    overflow-wrap: anywhere;
+}
+
+.inv-attr-name { color: var(--pico-muted-color, #667); }
+.inv-attr-value { font-weight: 600; }
+
+/* card footer: state + actions */
+.inv-card-foot {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem 0.9rem;
+    align-items: center;
+    justify-content: space-between;
+    margin-top: 0.6rem;
+}
+
+.inv-assigned { font-size: 0.92rem; }
+.inv-stock {
+    font-size: 0.85rem;
+    color: var(--pico-muted-color, #667);
+}
+
+.inv-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+}
+
+/* All tappable controls meet the >= 44px target */
+.inv-tap,
+.inv-modal .primary,
+.inv-modal .secondary,
+#inv-a-member,
+#inv-a-condition {
+    min-height: 44px;
+    padding: 0.5rem 1rem;
+}
+
+/* ------------------------------------------------------------------
+   Create form + modal
+   ------------------------------------------------------------------ */
+.inv-form,
+.inv-modal {
+    border-left-width: 4px;
+}
+
+.inv-field {
+    margin-bottom: 0.8rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.3rem;
+    min-width: 0; /* let long labels wrap under 360px */
+}
+
+.inv-field label { font-weight: 600; font-size: 0.95rem; }
+.inv-req { color: #b91c1c; }
+
+.inv-field select,
+.inv-field input[type='text'],
+.inv-field textarea,
+#inv-a-member,
+#inv-a-condition {
+    min-height: 44px;
+    width: 100%;
+    max-width: 100%;
+    box-sizing: border-box;
+    padding: 0.4rem 0.65rem;
+}
+
+.inv-grid2 {
+    display: grid;
+    gap: 0 0.85rem;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+}
+
+.inv-hint {
+    color: var(--pico-muted-color, #667);
+    font-size: 0.92rem;
+}
+
+.inv-actions {
+    display: flex;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+    margin-top: 0.9rem;
+}
+
+.inv-actions .primary,
+.inv-actions .secondary { min-height: 44px; }
+
+.hidden-seed { display: none; }

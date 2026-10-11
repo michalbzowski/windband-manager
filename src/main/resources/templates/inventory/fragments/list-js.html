@@ -1,0 +1,295 @@
+<script th:fragment="script">
+(function () {
+    'use strict';
+
+    // ---- State loaded from server-rendered seeds ----
+    var defs = [];         // all ItemAttributeDef for this band (array, JSON)
+    try {
+        defs = JSON.parse(document.getElementById('inv-defs-json').textContent || '[]');
+    } catch (e) {
+        defs = [];
+    }
+
+    function defsFor(type) {
+        return defs.filter(function (d) { return d.itemType === type && d.active !== false; })
+                   .sort(function (a, b) { return a.displayOrder - b.displayOrder; });
+    }
+
+    // ---- Create form: two steps ----
+    var form = document.getElementById('inv-form');
+    var submitBtn = document.getElementById('inv-f-submit');
+    var selectedType = null;
+
+    function toggleForm(show) {
+        form.hidden = !show;
+        if (show) {
+            form.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        }
+    }
+
+    function inputFor(datatype, name, defId, required, optionsList) {
+        var d = document.createElement('div');
+        d.className = 'inv-field';
+        d.setAttribute('data-def-id', defId);
+
+        var label = document.createElement('label');
+        label.setAttribute('for', 'inv-a-' + defId);
+        label.textContent = name;
+        if (required) {
+            var star = document.createElement('span');
+            star.className = 'inv-req';
+            star.textContent = ' *';
+            label.appendChild(star);
+        }
+        d.appendChild(label);
+
+        var el;
+        switch (datatype) {
+            case 'TEXTAREA': el = document.createElement('textarea'); el.rows = 2; break;
+            case 'INTEGER':
+            case 'DECIMAL': el = document.createElement('input'); el.type = 'number'; break;
+            case 'BOOLEAN': el = document.createElement('select');
+                el.innerHTML = '<option value="">—</option><option value="true">Tak</option><option value="false">Nie</option>'; break;
+            case 'DATE': el = document.createElement('input'); el.type = 'date'; break;
+            case 'MULTISELECT':
+            case 'SELECT': el = document.createElement('select');
+                el.innerHTML = '<option value="">— wybierz —</option>';
+                (optionsList || []).forEach(function (opt) {
+                    var o = document.createElement('option');
+                    o.value = opt; o.textContent = opt;
+                    el.appendChild(o);
+                });
+                break;
+            case 'FILE': el = document.createElement('input'); el.type = 'file'; break;
+            case 'COLOR': el = document.createElement('input'); el.type = 'color'; break;
+            case 'EMAIL': el = document.createElement('input'); el.type = 'email'; break;
+            case 'URL': el = document.createElement('input'); el.type = 'url'; break;
+            default: el = document.createElement('input'); el.type = 'text';
+        }
+        el.id = 'inv-a-' + defId;
+        if (required) el.setAttribute('required', 'required');
+        d.appendChild(el);
+        return d;
+    }
+
+    function refreshCreateValidity() {
+        var typeEl = document.getElementById('inv-f-type');
+        var nameEl = document.getElementById('inv-f-name');
+        var ok = typeEl.value !== '' && nameEl.value.trim() !== '';
+        if (ok) {
+            defsFor(typeEl.value).forEach(function (def) {
+                if (!def.required) return;
+                var input = document.getElementById('inv-a-' + def.id);
+                if (!input || !input.value.trim()) ok = false;
+            });
+        }
+        submitBtn.disabled = !ok;
+    }
+
+    function onTypeChange() {
+        selectedType = document.getElementById('inv-f-type').value || null;
+        var stepEl = document.getElementById('inv-attr-step');
+        stepEl.innerHTML = '';
+        if (!selectedType) {
+            var hint = document.createElement('p');
+            hint.className = 'inv-hint';
+            hint.textContent = 'Najpierw wybierz typ — pokażemy wymagane atrybuty.';
+            stepEl.appendChild(hint);
+            refreshCreateValidity();
+            return true;
+        }
+        var list = defsFor(selectedType);
+        if (list.length === 0) {
+            var empty = document.createElement('p');
+            empty.className = 'inv-hint';
+            empty.textContent = 'Ten typ nie ma zdefiniowanych atrybutów.';
+            stepEl.appendChild(empty);
+        }
+        list.forEach(function (def) {
+            stepEl.appendChild(inputFor(def.dataType, def.name, def.id, !!def.required, def.optionsList));
+        });
+        // listen for value changes on the freshly-rendered inputs
+        Array.prototype.forEach.call(stepEl.querySelectorAll('input, select, textarea'), function (n) {
+            n.addEventListener('input', refreshCreateValidity);
+            n.addEventListener('change', refreshCreateValidity);
+        });
+        refreshCreateValidity();
+    }
+
+    // ---- Create submission (POST /api/inventory/items) ----
+    function submitCreate() {
+        if (submitBtn.disabled) return false;
+        var payload = {
+            name: document.getElementById('inv-f-name').value.trim(),
+            type: selectedType,
+            condition: document.getElementById('inv-f-condition').value,
+            description: document.getElementById('inv-f-description').value || null,
+            serialNumber: document.getElementById('inv-f-serial').value || null,
+            manufacturer: document.getElementById('inv-f-manufacturer').value || null,
+            model: document.getElementById('inv-f-model').value || null,
+            attributes: {}
+        };
+        defsFor(selectedType).forEach(function (def) {
+            var input = document.getElementById('inv-a-' + def.id);
+            if (input && input.value.trim()) {
+                payload.attributes[String(def.id)] = input.value;
+            }
+        });
+
+        submitBtn.disabled = true;
+        var originalLabel = submitBtn.textContent;
+        submitBtn.textContent = 'Zapisywanie…';
+        return fetchWithToast('/api/inventory/items', {
+            method: 'POST',
+            toastMessage: 'Dodano rzecz do zasobów',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        }).then(function (r) {
+            if (!r.ok) return r.text().then(function (body) { throw new Error('HTTP ' + r.status + ': ' + body); });
+            // reload the list to pick up the new card (simplest consistent state)
+            location.reload();
+        }).catch(function (err) {
+            submitBtn.disabled = false;
+            submitBtn.textContent = originalLabel;
+            Toast ? Toast.error('Nie udało się dodać: ' + err.message) : console.error(err);
+            return false;
+        });
+    }
+
+    // ---- Assign / Return modal (event delegation on #inv-list cards) ----
+    var modal = document.getElementById('inv-assign-modal');
+    var modalAction = null;      // 'assign' | 'return'
+    var modalItemId = null;
+
+    function openModal(action, itemId) {
+        modalAction = action;
+        modalItemId = itemId;
+        var titleEl = document.getElementById('inv-a-title');
+        var notesWrap = document.getElementById('inv-a-notes-wrap');
+        if (action === 'assign') {
+            titleEl.textContent = 'Przydziel do członka';
+            document.getElementById('inv-a-member-label').style.display = '';
+            document.getElementById('inv-a-member').required = true;
+            notesWrap.style.display = 'none';
+            document.getElementById('inv-a-notes').value = '';
+        } else {
+            titleEl.textContent = 'Zwrot do magazynu';
+            document.getElementById('inv-a-member-label').style.display = 'none';
+            document.getElementById('inv-a-member').required = false;
+            notesWrap.style.display = '';
+            document.getElementById('inv-a-notes').value = '';
+        }
+        document.getElementById('inv-a-condition').value = '';
+        modal.hidden = false;
+    }
+
+    function closeModal() {
+        modal.hidden = true;
+    }
+
+    function confirmAssignReturn() {
+        var payload = {};
+        if (modalAction === 'assign') {
+            var memberId = document.getElementById('inv-a-member').value;
+            if (!memberId) { Toast && Toast.error('Wybierz członka'); return false; }
+            payload.memberId = Number(memberId);
+            var cond = document.getElementById('inv-a-condition').value;
+            if (cond) payload.conditionAtAssign = cond;
+        } else {
+            var cond2 = document.getElementById('inv-a-condition').value;
+            if (cond2) payload.conditionAtReturn = cond2;
+            var notes = (document.getElementById('inv-a-notes') || {}).value;
+            if (notes) payload.notes = notes;
+        }
+
+        var url = '/api/inventory/items/' + modalItemId + '/' + modalAction;
+        return fetchWithToast(url, {
+            method: 'POST',
+            toastMessage: modalAction === 'assign' ? 'Rzecz przydzielona' : 'Rzecz zwrócona do magazynu',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        }).then(function (r) {
+            if (!r.ok) return r.text().then(function (body) { throw new Error('HTTP ' + r.status + ': ' + body); });
+            location.reload();
+        }).catch(function (err) {
+            Toast && Toast.error('Operacja nie powiodła się: ' + err.message);
+            return false;
+        });
+    }
+
+    document.getElementById('inv-list').addEventListener('click', function (evt) {
+        var btn = evt.target.closest ? evt.target.closest('button[data-action]') : null;
+        if (!btn) return;
+        openModal(btn.getAttribute('data-action'), btn.getAttribute('data-item-id'));
+    });
+
+    document.getElementById('inv-a-submit').addEventListener('click', confirmAssignReturn);
+    document.getElementById('inv-a-close').addEventListener('click', closeModal);
+
+    // ---- Filters (type + attribute filter) ----
+    var attrFilterEl = document.getElementById('inv-attr-filter');
+    function populateAttributeFilter() {
+        var seen = {};
+        defs.forEach(function (d) {
+            if (!d.filterable || seen[d.id]) return;
+            seen[d.id] = true;
+            var o = document.createElement('option');
+            o.value = d.name;
+            o.textContent = d.name;
+            attrFilterEl.appendChild(o);
+        });
+    }
+
+    function renderList() {
+        var typeF = document.getElementById('inv-type-filter').value;       // '' | UNIFORM | INSTRUMENT
+        var attrName = attrFilterEl.value;                                  // '' | def name
+        var q = (document.getElementById('inv-search').value || '').trim().toLowerCase();
+        var cards = Array.prototype.slice.call(document.querySelectorAll('#inv-list .inv-card'));
+        cards.forEach(function (card) {
+            if (!card.id || card.id.indexOf('inv-item-') !== 0) return;
+            var visible = true;
+            if (typeF && card.getAttribute('data-type') !== typeF) visible = false;
+            if (visible && q) {
+                var hay = card.getAttribute('data-search') || '';
+                // also search rendered attribute names/values
+                Array.prototype.forEach.call(card.querySelectorAll('.inv-attr'), function (a) {
+                    hay += ' ' + (a.textContent || '').toLowerCase();
+                });
+                if (hay.toLowerCase().indexOf(q) === -1) visible = false;
+            }
+            if (visible && attrName) {
+                var matched = Array.prototype.some.call(card.querySelectorAll('.inv-attr'), function (a) {
+                    var n = a.getAttribute('data-def-name');
+                    var v = a.getAttribute('data-def-value');
+                    return n === attrName && v && v.trim().length > 0;
+                });
+                if (!matched) visible = false;
+            }
+            card.style.display = visible ? '' : 'none';
+        });
+
+        // toggle empty state hint
+        var empty = document.getElementById('inv-empty');
+        if (empty) {
+            var anyVisible = cards.some(function (c) { return c.id.indexOf('inv-item-') === 0 && c.style.display !== 'none'; });
+            empty.style.display = anyVisible ? 'none' : '';
+        }
+    }
+
+    // boot
+    document.getElementById('inv-f-type').addEventListener('change', onTypeChange);
+    populateAttributeFilter();
+
+    window.inv = {
+        toggleForm: toggleForm,
+        render: renderList,
+        submitCreate: submitCreate,
+        openModal: openModal,
+        closeModal: closeModal,
+        defsFor: defsFor,
+        onTypeChange: onTypeChange
+    };
+    renderList();
+})();
+</script>
+<!-- inventory/fragments/list-js :: script -->

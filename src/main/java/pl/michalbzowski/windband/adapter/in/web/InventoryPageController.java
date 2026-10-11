@@ -14,16 +14,17 @@ import pl.michalbzowski.windband.domain.inventory.InventoryItem;
 import pl.michalbzowski.windband.domain.inventory.ItemAttributeDef;
 import pl.michalbzowski.windband.domain.inventory.ItemType;
 
-import java.time.LocalDate;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
 /**
- * Inventory list page (F2 S1 stub over the unified item model).
- * The legacy UniformItem/InstrumentItem/AwardItem/InventoryOrder views are removed;
- * this controller now serves unified {@link InventoryItem} + {@link ItemAttributeDef}
- * data. Full template/data switch lands in S2/S3.
+ * Inventory list page (F2 S2) over the unified item model.
+ *
+ * <p>One view: {@code inventory/list} renders all band items as mobile-first cards,
+ * attribute definitions (driving the two-step create form + attribute filter) and
+ * per-item value maps. Actions run client-side against the unified REST API
+ * ({@code /api/inventory/items/*}).</p>
  */
 @Controller
 @RequestMapping("/inventory")
@@ -35,198 +36,113 @@ public class InventoryPageController {
     private final BandQueryService bandQueryService;
     private final ObjectMapper objectMapper;
 
-    private Band getActiveBand(Long activeTeamId) {
-        if (activeTeamId == null) {
-            return null;
-        }
-        return bandQueryService.getBandById(activeTeamId);
-    }
-
     @GetMapping
     public String listPage(@ModelAttribute("activeTeamId") Long activeTeamId, Model model) throws JsonProcessingException {
-        Band band = getActiveBand(activeTeamId);
-        Long teamId = activeTeamId;
+        Band band = activeTeamId != null ? bandQueryService.getBandById(activeTeamId) : null;
 
-        // If no team, show empty inventory
         if (band == null) {
-            model.addAttribute("uniformItems", List.of());
-            model.addAttribute("instrumentItems", List.of());
-            model.addAttribute("orders", List.of());
-            model.addAttribute("awardItems", List.of());
+            // No team context — render empty state
+            model.addAttribute("cards", List.of());
             model.addAttribute("members", List.of());
-            model.addAttribute("orderStatuses", List.of());
-            model.addAttribute("uniformAttributeDefs", List.of());
-            model.addAttribute("instrumentAttributeDefs", List.of());
-            model.addAttribute("orderAttributeDefs", List.of());
-            model.addAttribute("awardAttributeDefs", List.of());
-            model.addAttribute("uniformAttributeValues", Map.of());
-            model.addAttribute("instrumentAttributeValues", Map.of());
-            model.addAttribute("orderAttributeValues", Map.of());
-            model.addAttribute("awardAttributeValues", Map.of());
-            model.addAttribute("today", LocalDate.now());
+            model.addAttribute("attributeDefsJson", "[]");
+            model.addAttribute("attrValueMaps", Map.of());
             return "inventory/list";
         }
 
-        // Unified attribute definitions (global + band-scoped, active)
-        List<ItemAttributeDef> uniformDefs = inventoryQueryService.getAttributeDefsForType(teamId, ItemType.UNIFORM);
-        List<ItemAttributeDef> instrumentDefs = inventoryQueryService.getAttributeDefsForType(teamId, ItemType.INSTRUMENT);
-        List<ItemAttributeDef> awardDefs = inventoryQueryService.getAttributeDefsForType(teamId, ItemType.AWARD);
+        // All items of the band (single unified model), display order: UNIFORM then other types.
+        List<InventoryItem> bandItems = new java.util.ArrayList<>(inventoryQueryService.getAllItemsByBand(band.getId()));
 
-        // Get all items filtered by team (single unified model)
-        List<InventoryItem> uniformItems = inventoryQueryService.getItemsByBandAndType(teamId, ItemType.UNIFORM);
-        List<InventoryItem> instrumentItems = inventoryQueryService.getItemsByBandAndType(teamId, ItemType.INSTRUMENT);
-        List<InventoryItem> awardItems = inventoryQueryService.getItemsByBandAndType(teamId, ItemType.AWARD);
-
-        // Build attribute values map: itemId -> {attrId -> value}
-        Map<Long, Map<Long, String>> uniformAttrValues = new HashMap<>();
-        for (InventoryItem item : uniformItems) {
-            uniformAttrValues.put(item.getId(), inventoryQueryService.getAttributeValueMap(item));
+        // Attribute definitions across all item types — used by both the create form
+        // (rendered per selected type in displayOrder) and the attribute filter chips.
+        // Built as plain JSON-friendly maps: ItemAttributeDef has a LAZY Band ref and a
+        // circular values↔attributeDef graph, neither of which Jackson may serialize here.
+        java.util.ArrayList<Map<String, Object>> defs = new java.util.ArrayList<>();
+        for (ItemType type : ItemType.values()) {
+            for (ItemAttributeDef d : inventoryQueryService.getAttributeDefsForType(band.getId(), type)) {
+                if (!d.isActive()) {
+                    continue;
+                }
+                Map<String, Object> m = new HashMap<>();
+                m.put("id", d.getId());
+                m.put("name", d.getName());
+                m.put("dataType", d.getDataType() != null ? d.getDataType().name() : "TEXT");
+                m.put("itemType", type.name());
+                m.put("required", d.isRequired());
+                m.put("filterable", d.isFilterable());
+                m.put("displayInList", d.isDisplayInList());
+                m.put("displayOrder", d.getDisplayOrder());
+                m.put("options", d.getOptions());
+                m.put("optionsList", d.getOptionsList());
+                m.put("active", true);
+                m.put("bandScoped", d.getBand() != null && band.getId().equals(idOf(d.getBand())));
+                defs.add(m);
+            }
         }
+        defs.sort((a, b) -> Integer.compare((Integer) a.get("displayOrder"), (Integer) b.get("displayOrder")));
 
-        Map<Long, Map<Long, String>> instrumentAttrValues = new HashMap<>();
-        for (InventoryItem item : instrumentItems) {
-            instrumentAttrValues.put(item.getId(), inventoryQueryService.getAttributeValueMap(item));
+        model.addAttribute("itemDefs", defs);
+        model.addAttribute("members", memberQueryService.getAllActiveMembers(band.getId()));
+        model.addAttribute("attributeDefsJson", objectMapper.writeValueAsString(defs));
+
+        // Cards: a flat list of view objects {item, chips} — pure property navigation in the
+        // template (no Thymeleaf map lookup by dynamic key; see codebase SpEL lesson).
+        List<CardView> cards = new java.util.ArrayList<>();
+        for (InventoryItem item : bandItems) {
+            ItemType t = item.getType();
+            String typeKey = t != null ? t.name() : null;
+            Map<Long, String> values = inventoryQueryService.getAttributeValueMap(item);
+            List<DefChip> chips = new java.util.ArrayList<>();
+            for (Map<String, Object> d : defs) {
+                if (typeKey == null || !typeKey.equals(String.valueOf(d.get("itemType")))) {
+                    continue;
+                }
+                Long defId = asLong(d.get("id"));
+                String val = defId != null ? values.get(defId) : null;
+                if (val != null && !val.isBlank()) {
+                    chips.add(new DefChip(defId, asString(d.get("name")), val));
+                }
+            }
+            cards.add(new CardView(item, chips));
         }
-
-        Map<Long, Map<Long, String>> awardAttrValues = new HashMap<>();
-        for (InventoryItem item : awardItems) {
-            awardAttrValues.put(item.getId(), inventoryQueryService.getAttributeValueMap(item));
-        }
-
-        // Legacy order model removed in F2 S1 — orders view is emptied out until S2/S3.
-        List<Object> orders = List.of();
-        Map<Long, Map<Long, String>> orderAttrValues = Map.of();
-
-        model.addAttribute("uniformItems", uniformItems);
-        model.addAttribute("instrumentItems", instrumentItems);
-        model.addAttribute("orders", orders);
-        model.addAttribute("members", memberQueryService.getAllActiveMembers(teamId));
-        model.addAttribute("orderStatuses", List.of());
-        model.addAttribute("uniformAttributeDefs", uniformDefs);
-        model.addAttribute("uniformAttributeValues", uniformAttrValues);
-        model.addAttribute("instrumentAttributeDefs", instrumentDefs);
-        model.addAttribute("instrumentAttributeValues", instrumentAttrValues);
-        model.addAttribute("orderAttributeDefs", List.of());
-        model.addAttribute("orderAttributeValues", orderAttrValues);
-        model.addAttribute("awardItems", awardItems);
-        model.addAttribute("awardAttributeDefs", awardDefs);
-        model.addAttribute("awardAttributeValues", awardAttrValues);
-
-        // JSON versions for JavaScript
-        String uniformJson = objectMapper.writeValueAsString(uniformDefs);
-        String instrumentJson = objectMapper.writeValueAsString(instrumentDefs);
-        String awardJson = objectMapper.writeValueAsString(awardDefs);
-        model.addAttribute("uniformAttributeDefsJson", uniformJson);
-        model.addAttribute("instrumentAttributeDefsJson", instrumentJson);
-        model.addAttribute("awardAttributeDefsJson", awardJson);
-
+        model.addAttribute("cards", cards);
         return "inventory/list";
     }
 
-    @GetMapping("/orders")
-    public String ordersFragment(@ModelAttribute("activeTeamId") Long activeTeamId, Model model) {
-        // Legacy order model removed in F2 S1 — fragment is empty until S2/S3.
-        model.addAttribute("orders", List.of());
-        model.addAttribute("members", memberQueryService.getAllActiveMembers(activeTeamId));
-        model.addAttribute("orderStatuses", List.of());
-        model.addAttribute("today", LocalDate.now());
-        return "inventory/list :: #orders-content";
+    private static Long asLong(Object o) {
+        if (o instanceof Number n) { return n.longValue(); }
+        if (o != null) { try { return Long.valueOf(String.valueOf(o)); } catch (NumberFormatException ignored) { /* not numeric */ } }
+        return null;
     }
 
-    @GetMapping("/uniforms/fragment")
-    public String uniformsFragment(@ModelAttribute("activeTeamId") Long activeTeamId, Model model) {
-        Band band = getActiveBand(activeTeamId);
-        Long teamId = activeTeamId;
+    private static String asString(Object o) { return o == null ? "" : String.valueOf(o); }
 
-        if (band == null) {
-            model.addAttribute("uniformItems", List.of());
-            model.addAttribute("uniformAttributeDefs", List.of());
-            model.addAttribute("uniformAttributeValues", Map.of());
-            model.addAttribute("members", List.of());
-            model.addAttribute("today", LocalDate.now());
-            return "inventory/list :: #uniforms-content";
+    /** A single list card: the domain item plus its computed attribute chips. */
+    public static class CardView {
+        private final InventoryItem item;
+        private final List<DefChip> chips;
+
+        public CardView(InventoryItem item, List<DefChip> chips) {
+            this.item = item;
+            this.chips = chips;
         }
 
-        List<InventoryItem> uniformItems = inventoryQueryService.getItemsByBandAndType(teamId, ItemType.UNIFORM);
-        List<ItemAttributeDef> uniformDefs = inventoryQueryService.getAttributeDefsForType(teamId, ItemType.UNIFORM);
-
-        Map<Long, Map<Long, String>> uniformAttrValues = new HashMap<>();
-        for (InventoryItem item : uniformItems) {
-            uniformAttrValues.put(item.getId(), inventoryQueryService.getAttributeValueMap(item));
-        }
-
-        model.addAttribute("uniformItems", uniformItems);
-        model.addAttribute("uniformAttributeDefs", uniformDefs);
-        model.addAttribute("uniformAttributeValues", uniformAttrValues);
-        model.addAttribute("members", memberQueryService.getAllActiveMembers(teamId));
-        model.addAttribute("today", LocalDate.now());
-        return "inventory/list :: #uniforms-content";
+        public InventoryItem getItem() { return item; }
+        public List<DefChip> getChips() { return chips; }
     }
 
-    @GetMapping("/instruments/fragment")
-    public String instrumentsFragment(@ModelAttribute("activeTeamId") Long activeTeamId, Model model) {
-        Band band = getActiveBand(activeTeamId);
-        Long teamId = activeTeamId;
+    /** A rendered attribute chip: definition id, label and this item's stored value. */
+    public static class DefChip {
+        private final Long id;
+        private final String name;
+        private final String value;
 
-        if (band == null) {
-            model.addAttribute("instrumentItems", List.of());
-            model.addAttribute("instrumentAttributeDefs", List.of());
-            model.addAttribute("instrumentAttributeValues", Map.of());
-            model.addAttribute("members", List.of());
-            model.addAttribute("today", LocalDate.now());
-            return "inventory/list :: #instruments-content";
-        }
+        public DefChip(Long id, String name, String value) { this.id = id; this.name = name; this.value = value; }
 
-        List<InventoryItem> instrumentItems = inventoryQueryService.getItemsByBandAndType(teamId, ItemType.INSTRUMENT);
-        List<ItemAttributeDef> instrumentDefs = inventoryQueryService.getAttributeDefsForType(teamId, ItemType.INSTRUMENT);
-
-        Map<Long, Map<Long, String>> instrumentAttrValues = new HashMap<>();
-        for (InventoryItem item : instrumentItems) {
-            instrumentAttrValues.put(item.getId(), inventoryQueryService.getAttributeValueMap(item));
-        }
-
-        model.addAttribute("instrumentItems", instrumentItems);
-        model.addAttribute("instrumentAttributeDefs", instrumentDefs);
-        model.addAttribute("instrumentAttributeValues", instrumentAttrValues);
-        model.addAttribute("members", memberQueryService.getAllActiveMembers(teamId));
-        model.addAttribute("today", LocalDate.now());
-        return "inventory/list :: #instruments-content";
+        public Long getId() { return id; }
+        public String getName() { return name; }
+        public String getValue() { return value; }
     }
-
-    @GetMapping("/awards/fragment")
-    public String awardsFragment(@ModelAttribute("activeTeamId") Long activeTeamId, Model model) {
-        Band band = getActiveBand(activeTeamId);
-        Long teamId = activeTeamId;
-
-        if (band == null) {
-            model.addAttribute("awardItems", List.of());
-            model.addAttribute("awardAttributeDefs", List.of());
-            model.addAttribute("awardAttributeValues", Map.of());
-            model.addAttribute("members", List.of());
-            model.addAttribute("today", LocalDate.now());
-            return "inventory/list :: #awards-content";
-        }
-
-        List<InventoryItem> awardItems = inventoryQueryService.getItemsByBandAndType(teamId, ItemType.AWARD);
-        List<ItemAttributeDef> awardDefs = inventoryQueryService.getAttributeDefsForType(teamId, ItemType.AWARD);
-
-        Map<Long, Map<Long, String>> awardAttrValues = new HashMap<>();
-        for (InventoryItem item : awardItems) {
-            awardAttrValues.put(item.getId(), inventoryQueryService.getAttributeValueMap(item));
-        }
-
-        model.addAttribute("awardItems", awardItems);
-        model.addAttribute("awardAttributeDefs", awardDefs);
-        model.addAttribute("awardAttributeValues", awardAttrValues);
-        model.addAttribute("members", memberQueryService.getAllActiveMembers(teamId));
-        model.addAttribute("today", LocalDate.now());
-        return "inventory/list :: #awards-content";
-    }
-
-    @GetMapping("/orders/{id}/history")
-    public String orderHistory(@PathVariable Long id, Model model) {
-        // Legacy order model removed in F2 S1 — history view is empty until S2/S3.
-        model.addAttribute("order", null);
-        return "inventory/order-detail";
+    private Long idOf(Band band) {
+        return band != null ? band.getId() : null;
     }
 }
