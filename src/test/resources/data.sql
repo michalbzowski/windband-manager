@@ -128,3 +128,38 @@ VALUES (2, 1, 'PRESENT');
 INSERT INTO attendances (rehearsal_id, member_id, status)
 VALUES (2, 2, 'UNEXCUSED');
 -- Rehearsal 3 (id=3): no attendance yet
+
+-- ============================================================
+-- F2 Unified Inventory: seed data for new tables (warehouses,
+-- warehouse_transfers, instrument_service_records,
+-- private_possession_declarations, inventory_needs) — needed for
+-- TeamIsolationRegressionUiTest / InventoryUiTest / PageHeader.
+-- ============================================================
+
+-- Warehouses (band 1 = Test Band, band 2 = Other Band for isolation)
+INSERT INTO warehouses (id, name, description, type, band_id, address, contact_person, active)
+VALUES (1, 'Główny Magazyn', 'Magazyn główny orkiestry', 'INTERNAL', 1, 'Sala prób 1', 'Admin', true);
+INSERT INTO warehouses (id, name, description, type, band_id, active)
+VALUES (2, 'Magazyn Inn. Z.', 'Magazyn innego zespołu', 'INTERNAL', 2, false);
+ALTER TABLE warehouses ALTER COLUMN id RESTART WITH 5;
+
+-- Warehouse transfer: item 2 (Trąbka Test, band 1) moved to warehouse 2
+-- (to show transfer history exists without affecting item assignment)
+INSERT INTO warehouse_transfers (id, item_id, from_warehouse_id, to_warehouse_id, transferred_by_user_id, transfer_date, transfer_datetime, reason, notes, band_id)
+VALUES (1, 2, 1, 2, 1, CURRENT_DATE, CURRENT_TIMESTAMP, 'Zamiana lokalizacji', 'Z magazynu głównego do zewnętrznego', 1);
+ALTER TABLE warehouse_transfers ALTER COLUMN id RESTART WITH 5;
+
+-- Instrument service record: item 2 (Trąbka Test) — completed review
+INSERT INTO instrument_service_records (id, instrument_id, service_type, service_date, completed_date, service_provider, description, status, notes, next_service_date, requested_by_user_id, completed_by_user_id, band_id)
+VALUES (1, 2, 'REVIEW', CURRENT_DATE, CURRENT_DATE, 'Serwis Orkiestry', 'Przegląd roczny trąbki', 'COMPLETED', 'Wymiana korka, czyszczenie', CURRENT_DATE + 365, 1, 1, 1);
+ALTER TABLE instrument_service_records ALTER COLUMN id RESTART WITH 5;
+
+-- Private possession declaration: Jan (member 1) declares private cap (uniform)
+INSERT INTO private_possession_declarations (id, member_id, external_owner_type, external_owner_name, item_name, item_description, item_type, condition, declared_date, valid_from, status, band_id, declared_by_user_id)
+VALUES (1, 1, 'PRIVATE', 'Jan Kowalski', 'Czapka rogatywka', 'Własna czapka członka', 'UNIFORM', 'GOOD', CURRENT_DATE - 30, CURRENT_DATE - 30, 'VERIFIED', 1, 1);
+ALTER TABLE private_possession_declarations ALTER COLUMN id RESTART WITH 5;
+
+-- Inventory need: new instrument request for member 1 (band 1)
+INSERT INTO inventory_needs (id, item_type, item_name, item_description, quantity, estimated_unit_cost, priority, status, requested_by_member_id, requested_by_user_id, approved_by_user_id, notes, band_id)
+VALUES (1, 'INSTRUMENT', 'Puzon tenorowy', 'Nowy instrument dla sekcji', 1, 4500.00, 'HIGH', 'NEW', 1, 1, NULL, 'Brak instrumentu w zespole', 1);
+ALTER TABLE inventory_needs ALTER COLUMN id RESTART WITH 5;
