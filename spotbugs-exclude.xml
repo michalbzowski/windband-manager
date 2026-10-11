@@ -18,4 +18,12 @@
     <Match>
         <Bug pattern="EI_EXPOSE_REP2"/>
     </Match>
+
+    <!-- ItemView DTO is populated in the controller and consumed by Thymeleaf
+         via property access (${itemView.type}, etc.) — SpotBugs cannot see
+         that and wrongly flags every public field as unused. -->
+    <Match>
+        <Class name="pl.michalbzowski.windband.adapter.in.web.InventoryController$ItemView"/>
+        <Bug pattern="URF_UNREAD_PUBLIC_OR_PROTECTED_FIELD"/>
+    </Match>
 </FindBugsFilter>

@@ -110,7 +110,13 @@ public class InventoryPageController {
 
     private static Long asLong(Object o) {
         if (o instanceof Number n) { return n.longValue(); }
-        if (o != null) { try { return Long.valueOf(String.valueOf(o)); } catch (NumberFormatException ignored) { /* not numeric */ } }
+        if (o != null) {
+            try {
+                return Long.valueOf(String.valueOf(o));
+            } catch (NumberFormatException ignored) {
+                /* not numeric */
+            }
+        }
         return null;
     }
 
@@ -136,7 +142,11 @@ public class InventoryPageController {
         private final String name;
         private final String value;
 
-        public DefChip(Long id, String name, String value) { this.id = id; this.name = name; this.value = value; }
+        public DefChip(Long id, String name, String value) {
+            this.id = id;
+            this.name = name;
+            this.value = value;
+        }
 
         public Long getId() { return id; }
         public String getName() { return name; }
