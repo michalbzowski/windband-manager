@@ -208,9 +208,10 @@ class PageHeaderConsistencyUiTest extends pl.michalbzowski.windband.UiTestBase {
         // via stable rendered facts (row present + requester name from data.sql).
         WebElement content = driver.findElement(By.cssSelector("#content"));
         List<WebElement> rows = content.findElements(By.cssSelector("table tbody tr"));
-        assertThat(rows).as("seeded order must render as a table row").isNotEmpty();
-        assertThat(content.getText()).as("seeded order belongs to band-1 member Jan")
-                .contains("Jan Kowalski");
+        // F2 S2: orders model removed (stub page) — table is empty (no legacy orders).
+        assertThat(rows).as("orders stub: no legacy orders, table empty").isEmpty();
+        // The seed writes to inventory_items (unified model); the orders stub shows empty message.
+        assertThat(content.getText()).as("orders stub: empty message visible").contains("Brak zamówień");
     }
 
     @Test void listEvents_noEmojiHeadings()      { assertListPageHeadingsNoEmoji("/events"); }

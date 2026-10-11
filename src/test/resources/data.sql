@@ -151,12 +151,12 @@ ALTER TABLE warehouse_transfers ALTER COLUMN id RESTART WITH 5;
 
 -- Instrument service record: item 2 (Trąbka Test) — completed review
 INSERT INTO instrument_service_records (id, instrument_id, service_type, service_date, completed_date, service_provider, description, status, notes, next_service_date, requested_by_user_id, completed_by_user_id, band_id)
-VALUES (1, 2, 'REVIEW', CURRENT_DATE, CURRENT_DATE, 'Serwis Orkiestry', 'Przegląd roczny trąbki', 'COMPLETED', 'Wymiana korka, czyszczenie', CURRENT_DATE + 365, 1, 1, 1);
+VALUES (1, 2, 'INSPECTION', CURRENT_DATE, CURRENT_DATE, 'Serwis Orkiestry', 'Przegląd roczny trąbki', 'COMPLETED', 'Wymiana korka, czyszczenie', CURRENT_DATE + 365, 1, 1, 1);
 ALTER TABLE instrument_service_records ALTER COLUMN id RESTART WITH 5;
 
 -- Private possession declaration: Jan (member 1) declares private cap (uniform)
 INSERT INTO private_possession_declarations (id, member_id, external_owner_type, external_owner_name, item_name, item_description, item_type, condition, declared_date, valid_from, status, band_id, declared_by_user_id)
-VALUES (1, 1, 'PRIVATE', 'Jan Kowalski', 'Czapka rogatywka', 'Własna czapka członka', 'UNIFORM', 'GOOD', CURRENT_DATE - 30, CURRENT_DATE - 30, 'VERIFIED', 1, 1);
+VALUES (1, 1, 'PRIVATE', 'Jan Kowalski', 'Czapka rogatywka', 'Własna czapka członka', 'UNIFORM', 'GOOD', CURRENT_DATE - 30, CURRENT_DATE - 30, 'ACTIVE', 1, 1);
 ALTER TABLE private_possession_declarations ALTER COLUMN id RESTART WITH 5;
 
 -- Inventory need: new instrument request for member 1 (band 1)
