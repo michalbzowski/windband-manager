@@ -4,6 +4,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.web.bind.annotation.ControllerAdvice;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import pl.michalbzowski.windband.application.command.event.EventNotFoundException;
@@ -11,6 +12,7 @@ import pl.michalbzowski.windband.application.command.inventory.InventoryItemNotF
 import pl.michalbzowski.windband.application.command.member.InstrumentCommandService.InstrumentInUseException;
 import pl.michalbzowski.windband.application.command.member.MemberNotFoundException;
 import pl.michalbzowski.windband.application.command.rehearsal.RehearsalNotFoundException;
+import pl.michalbzowski.windband.application.query.team.BandInventoryApiQueryService;
 
 import java.time.LocalDateTime;
 import java.util.Map;
@@ -49,6 +51,23 @@ public class GlobalExceptionHandler {
     public ResponseEntity<Map<String, Object>> handlePartTokenNotFound(
             pl.michalbzowski.windband.application.query.composition.PublicPartLinkQueryService.TokenNotFoundException ex) {
         return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                .body(errorBody(ex.getMessage()));
+    }
+
+    /**
+     * v1 inventory integration contract: requesting user has no membership in the
+     * target band → 403 (uniform body, no band existence leak).
+     */
+    @ExceptionHandler(BandInventoryApiQueryService.NotBandMemberException.class)
+    public ResponseEntity<Map<String, Object>> handleNotBandMember(
+            BandInventoryApiQueryService.NotBandMemberException ex) {
+        return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                .body(errorBody(ex.getMessage()));
+    }
+
+    @ExceptionHandler(AccessDeniedException.class)
+    public ResponseEntity<Map<String, Object>> handleAccessDenied(AccessDeniedException ex) {
+        return ResponseEntity.status(HttpStatus.FORBIDDEN)
                 .body(errorBody(ex.getMessage()));
     }
 
