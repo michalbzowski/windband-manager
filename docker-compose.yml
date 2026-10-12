@@ -133,6 +133,17 @@ services:
       KEYCLOAK_REALM: ${KEYCLOAK_REALM:-windband}
       KEYCLOAK_CLIENT_ID: ${KEYCLOAK_CLIENT_ID:-windband-local}
       KEYCLOAK_CLIENT_SECRET: ${KEYCLOAK_CLIENT_SECRET:-windband-local-secret}
+      # Inside the container `localhost` is the container itself (the JVM tries
+      # 127.0.0.1 before the host-gateway /etc/hosts entry), so the app's OWN
+      # HTTP calls to Keycloak must use container DNS. Browser-facing URLs
+      # (authorization-uri, redirect) and the trusted `iss` claim stay
+      # localhost:8180 — same realm, reachable by the browser.
+      SPRING_SECURITY_OAUTH2_CLIENT_PROVIDER_KEYCLOAK_TOKEN_URI: http://keycloak:8180/realms/${KEYCLOAK_REALM:-windband}/protocol/openid-connect/token
+      SPRING_SECURITY_OAUTH2_CLIENT_PROVIDER_KEYCLOAK_JWK_SET_URI: http://keycloak:8180/realms/${KEYCLOAK_REALM:-windband}/protocol/openid-connect/certs
+      SPRING_SECURITY_OAUTH2_CLIENT_PROVIDER_KEYCLOAK_USER_INFO_URI: http://keycloak:8180/realms/${KEYCLOAK_REALM:-windband}/protocol/openid-connect/userinfo
+      # Bearer JWT validation for /api/v1/** — explicit jwk-set avoids OIDC
+      # discovery through the unreachable-from-container localhost URL.
+      SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_JWK_SET_URI: http://keycloak:8180/realms/${KEYCLOAK_REALM:-windband}/protocol/openid-connect/certs
       # Score-file upload root (persisted in the `scores` volume).
       SCORES_ROOT_PATH: /srv/windband-scores
     volumes:
