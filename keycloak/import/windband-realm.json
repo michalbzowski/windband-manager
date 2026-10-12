@@ -43,9 +43,9 @@
       ]
     },
     {
-      "clientId": "windband-inventory-local",
-      "name": "Windband Inventory Local (SPA)",
-      "description": "Public PKCE OIDC client for windband-inventory React SPA (local dev; Bearer against /api/v1 integration API)",
+      "clientId": "windband-inventory",
+      "name": "Windband Inventory (SPA)",
+      "description": "Public PKCE OIDC client for the windband-inventory React SPA — canonical client_id in every environment (local + production; Bearer against /api/v1 integration API)",
       "enabled": true,
       "protocol": "openid-connect",
       "publicClient": true,
