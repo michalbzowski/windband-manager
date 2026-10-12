@@ -11,6 +11,10 @@ public interface UserTeamRoleRepository {
 
     List<UserTeamRole> findByUserId(Long userId);
 
+    /** User's role entries with their bands preloaded (eager): callers outside a
+     * Hibernate session must read band fields without lazy-init failure. */
+    List<UserTeamRole> loadWithBandsByUserId(Long userId);
+
     List<UserTeamRole> findByTeamId(Long teamId);
 
     Optional<UserTeamRole> findByInvitationToken(String token);

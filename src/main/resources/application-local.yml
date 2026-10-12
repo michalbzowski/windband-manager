@@ -39,6 +39,15 @@ spring:
   # Override OIDC URLs for localhost (plain HTTP, no HTTPS)
   security:
     oauth2:
+      # v1 integration API (/api/v1/**): validate Bearer JWTs against the realm JWKS.
+      # issuer-uri = trusted iss claim value. jwk-set-uri = where THIS process fetches
+      # signing keys — must be reachable from the app runtime (container DNS in compose,
+      # NOT the host port mapping consumed by browsers on localhost).
+      # Production: set SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_ISSUER_URI and
+      # WINDBAND_INVENTORY_API_JWK_SET_URI to the deployed Keycloak realm endpoints.
+      resourceserver:
+        jwt:
+          issuer-uri: http://localhost:8180/realms/${KEYCLOAK_REALM:windband}
       client:
         registration:
           keycloak:
@@ -84,3 +93,12 @@ app:
     client-id: ${KEYCLOAK_CLIENT_ID:windband-local}
     client-secret: ${KEYCLOAK_CLIENT_SECRET}
     registration-redirect-url: "http://localhost:8180/realms/${KEYCLOAK_REALM:windband}/protocol/openid-connect/registrations?client_id=${KEYCLOAK_CLIENT_ID:windband-local}&redirect_uri=http://localhost:8080/register&response_type=code&scope=openid%20profile%20email"
+
+# v1 integration API (windband-inventory): where this process fetches the realm's
+# signing keys. Must be reachable from inside the app runtime — container DNS in
+# docker-compose, not the localhost host-port mapping browsers use. Trusted issuer
+# (iss claim) stays spring.security.oauth2.resourceserver.jwt.issuer-uri above.
+windband:
+  inventory:
+    api:
+      jwk-set-uri: http://keycloak:8180/realms/${KEYCLOAK_REALM:windband}/protocol/openid-connect/certs

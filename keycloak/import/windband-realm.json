@@ -41,6 +41,31 @@
         "roles",
         "email"
       ]
+    },
+    {
+      "clientId": "windband-inventory-local",
+      "name": "Windband Inventory Local (SPA)",
+      "description": "Public PKCE OIDC client for windband-inventory React SPA (local dev; Bearer against /api/v1 integration API)",
+      "enabled": true,
+      "protocol": "openid-connect",
+      "publicClient": true,
+      "standardFlowEnabled": true,
+      "implicitFlowEnabled": false,
+      "directAccessGrantsEnabled": false,
+      "serviceAccountsEnabled": false,
+      "fullScopeAllowed": true,
+      "redirectUris": [
+        "http://localhost:5173/*"
+      ],
+      "webOrigins": [
+        "http://localhost:5173"
+      ],
+      "defaultClientScopes": [
+        "web-origins",
+        "profile",
+        "roles",
+        "email"
+      ]
     }
   ],
   "users": [

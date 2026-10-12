@@ -3,6 +3,7 @@ package pl.michalbzowski.windband.adapter.in.security;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.oauth2.client.oidc.userinfo.OidcUserRequest;
 import org.springframework.security.oauth2.client.oidc.userinfo.OidcUserService;
 import org.springframework.security.oauth2.core.OAuth2AuthenticationException;
@@ -14,9 +15,13 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import pl.michalbzowski.windband.domain.user.AppUser;
 import pl.michalbzowski.windband.domain.user.AppUserRepository;
+import pl.michalbzowski.windband.domain.user.TeamRole;
+import pl.michalbzowski.windband.domain.user.UserTeamRole;
 import pl.michalbzowski.windband.domain.user.UserTeamRoleRepository;
 
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 /**
  * Custom OAuth2UserService that bridges Keycloak OIDC authentication
@@ -67,69 +72,85 @@ public class KeycloakOAuth2UserService extends OidcUserService {
             // Load team roles
             var teamRoles = userTeamRoleRepository.findByUserId(appUser.getId());
 
-            // Build authorities: always ROLE_USER, plus ROLE_ADMIN if user has ADMIN role in any team,
-            // plus ROLE_SYSTEM_ADMIN if user is system admin
-            java.util.Set<org.springframework.security.core.authority.SimpleGrantedAuthority> authorities =
-                    new java.util.HashSet<>();
-            authorities.add(new org.springframework.security.core.authority.SimpleGrantedAuthority("ROLE_USER"));
-            boolean isAdmin = teamRoles.stream().anyMatch(r -> r.getRole().name().equals("ADMIN"));
-            if (isAdmin) {
-                authorities.add(new org.springframework.security.core.authority.SimpleGrantedAuthority("ROLE_ADMIN"));
-            }
-            if (appUser.isSystemAdmin()) {
-                authorities.add(new org.springframework.security.core.authority.SimpleGrantedAuthority("ROLE_SYSTEM_ADMIN"));
-            }
-
             // Build OidcUser from ID Token only — skip userinfo endpoint
             OidcUserInfo userInfo = new OidcUserInfo(idToken.getClaims());
-            oidcUser = new DefaultOidcUser(authorities, idToken, userInfo);
+            oidcUser = new DefaultOidcUser(authoritiesFor(appUser, teamRoles), idToken, userInfo);
 
-            log.info("OIDC user loaded: subject={}, email={}, admin={}", oidcUser.getSubject(), oidcUser.getEmail(), isAdmin);
-
-            Long activeTeamId = teamRoles.stream()
-                    .filter(r -> r.isAdmin())
-                    .map(r -> r.getTeam().getId())
-                    .findFirst()
-                    .orElseGet(() -> teamRoles.stream()
-                            .map(r -> r.getTeam().getId())
-                            .findFirst()
-                            .orElse(null));
-
-            String activeTeamSlug = null;
-            String activeTeamRole = null;
-
-            if (activeTeamId != null) {
-                var role = teamRoles.stream()
-                        .filter(r -> r.getTeam().getId().equals(activeTeamId))
-                        .findFirst();
-                if (role.isPresent()) {
-                    activeTeamSlug = role.get().getTeam().getSlug();
-                    activeTeamRole = role.get().getRole().name();
-                }
-            }
-
-            List<Long> teamIds = teamRoles.stream()
-                    .map(r -> r.getTeam().getId())
-                    .toList();
+            log.info("OIDC user loaded: subject={}, email={}, admin={}", oidcUser.getSubject(), oidcUser.getEmail(),
+                    teamRoles.stream().anyMatch(r -> r.getRole() == TeamRole.ADMIN));
 
             // Build enriched OidcUser that also carries our domain data
-            return new WindbandOidcUser(
-                    oidcUser,
-                    appUser.getId(),
-                    appUser.getUsername(),
-                    email,
-                    appUser.isActive(),
-                    appUser.isSystemAdmin(),
-                    activeTeamId,
-                    activeTeamSlug,
-                    activeTeamRole,
-                    teamIds
-            );
+            return enrich(oidcUser, appUser, teamRoles);
         } catch (Exception e) {
             log.error("Error building OidcUser from ID Token: {}", e.getMessage(), e);
             throw new OAuth2AuthenticationException(
                     new org.springframework.security.oauth2.core.OAuth2Error("load_user_error", e.getMessage(), null), e);
         }
+    }
+
+    /**
+     * Role authorities shared by session logins and Bearer-token API calls:
+     * always ROLE_USER, plus ROLE_ADMIN when the user is ADMIN in any team,
+     * plus ROLE_SYSTEM_ADMIN for system admins.
+     */
+    static Set<SimpleGrantedAuthority> authoritiesFor(AppUser appUser, List<UserTeamRole> teamRoles) {
+        Set<SimpleGrantedAuthority> authorities = new HashSet<>();
+        authorities.add(new SimpleGrantedAuthority("ROLE_USER"));
+        boolean isAdmin = teamRoles.stream().anyMatch(r -> r.getRole() == TeamRole.ADMIN);
+        if (isAdmin) {
+            authorities.add(new SimpleGrantedAuthority("ROLE_ADMIN"));
+        }
+        if (appUser.isSystemAdmin()) {
+            authorities.add(new SimpleGrantedAuthority("ROLE_SYSTEM_ADMIN"));
+        }
+        return authorities;
+    }
+
+    /**
+     * Wraps a base OidcUser with windband-domain team data (active team, roles,
+     * team ids). Shared by the session-login path and
+     * {@link BearerOidcUserConverter}; behaviour identical to the pre-refactor
+     * inline logic in {@code loadUser}.
+     */
+    static WindbandOidcUser enrich(OidcUser base, AppUser appUser, List<UserTeamRole> teamRoles) {
+        Long activeTeamId = teamRoles.stream()
+                .filter(UserTeamRole::isAdmin)
+                .map(r -> r.getTeam().getId())
+                .findFirst()
+                .orElseGet(() -> teamRoles.stream()
+                        .map(r -> r.getTeam().getId())
+                        .findFirst()
+                        .orElse(null));
+
+        String activeTeamSlug = null;
+        String activeTeamRole = null;
+
+        if (activeTeamId != null) {
+            var role = teamRoles.stream()
+                    .filter(r -> r.getTeam().getId().equals(activeTeamId))
+                    .findFirst();
+            if (role.isPresent()) {
+                activeTeamSlug = role.get().getTeam().getSlug();
+                activeTeamRole = role.get().getRole().name();
+            }
+        }
+
+        List<Long> teamIds = teamRoles.stream()
+                .map(r -> r.getTeam().getId())
+                .toList();
+
+        return new WindbandOidcUser(
+                base,
+                appUser.getId(),
+                appUser.getUsername(),
+                base.getEmail(),
+                appUser.isActive(),
+                appUser.isSystemAdmin(),
+                activeTeamId,
+                activeTeamSlug,
+                activeTeamRole,
+                teamIds
+        );
     }
 
     private AppUser findOrCreateAppUser(String subjectId, String email, String username,
