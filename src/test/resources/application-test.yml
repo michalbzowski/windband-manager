@@ -74,6 +74,9 @@ server:
 
 app:
   base-url: http://localhost:8080
+  # Marker value for InventoryExternalLinkUiTest — proves the menu link URL comes
+  # from configuration (app.inventory-url), not from a hard-coded template path.
+  inventory-url: http://inventory.test.local:5173/
   keycloak:
     url: http://localhost:8180
     realm: windband

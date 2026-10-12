@@ -56,8 +56,10 @@ public class BearerOidcUserConverter implements Converter<Jwt, AbstractAuthentic
             authorities = List.of();
             log.warn("Bearer token of unresolvable or inactive WM user (subject={}); denying v1 API access",
                     jwt.getSubject());
+            // Deny-path principal naming only — identity stays unproven, no ROLE_*.
             String label = firstNonNull(jwt.getClaims().get("preferred_username"), jwt.getClaims().get("email"));
-            principal = new DefaultOidcUser(authorities, toIdToken(jwt, label), toUserInfo(jwt));
+            principal = new DefaultOidcUser(authorities, toIdToken(jwt,
+                    label != null ? label : "unknown-inventory-user"), toUserInfo(jwt));
         }
 
         return new BearerOidcAuthentication(principal, authorities);
@@ -96,7 +98,7 @@ public class BearerOidcUserConverter implements Converter<Jwt, AbstractAuthentic
                 return v.toString();
             }
         }
-        return "unknown-inventory-user";
+        return null;
     }
 
     private OidcUserInfo toUserInfo(Jwt jwt) {
