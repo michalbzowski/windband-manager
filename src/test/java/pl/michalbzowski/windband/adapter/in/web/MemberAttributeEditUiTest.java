@@ -50,7 +50,7 @@ class MemberAttributeEditUiTest extends UiTestBase {
             loginAndNavigateTo("/members");
 
             // === STEP 2: Navigate to the edit URL directly via the browser ===
-            String editUrl = "/band/inventory-attributes/" + attrId + "/edit?type=MEMBER";
+            String editUrl = "/band/attributes/" + attrId + "/edit?type=MEMBER";
             System.out.println("[TEST] Navigating to edit URL: " + editUrl);
             driver.get(baseUrl() + editUrl);
 

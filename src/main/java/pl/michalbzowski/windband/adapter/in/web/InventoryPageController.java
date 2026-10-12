@@ -6,245 +6,153 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
-import pl.michalbzowski.windband.application.dto.InstrumentAttributeDefDto;
-import pl.michalbzowski.windband.application.dto.AwardAttributeDefDto;
-import pl.michalbzowski.windband.application.dto.InventoryItemDto;
-import pl.michalbzowski.windband.application.dto.InventoryOrderDto;
-import pl.michalbzowski.windband.application.dto.OrderAttributeDefDto;
-import pl.michalbzowski.windband.application.dto.UniformAttributeDefDto;
 import pl.michalbzowski.windband.application.query.band.BandQueryService;
-import pl.michalbzowski.windband.application.query.inventory.InventoryQueryService;
-import pl.michalbzowski.windband.application.query.inventory.InventoryAttributeQueryService;
+import pl.michalbzowski.windband.application.query.inventory.UnifiedInventoryItemQueryService;
 import pl.michalbzowski.windband.application.query.member.MemberQueryService;
 import pl.michalbzowski.windband.domain.band.Band;
-import pl.michalbzowski.windband.domain.inventory.AwardItem;
-import pl.michalbzowski.windband.domain.inventory.InventoryOrder;
-import pl.michalbzowski.windband.domain.inventory.InstrumentItem;
-import pl.michalbzowski.windband.domain.inventory.OrderStatus;
-import pl.michalbzowski.windband.domain.inventory.UniformItem;
+import pl.michalbzowski.windband.domain.inventory.InventoryItem;
+import pl.michalbzowski.windband.domain.inventory.ItemAttributeDef;
+import pl.michalbzowski.windband.domain.inventory.ItemType;
 
-import java.time.LocalDate;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+/**
+ * Inventory list page (F2 S2) over the unified item model.
+ *
+ * <p>One view: {@code inventory/list} renders all band items as mobile-first cards,
+ * attribute definitions (driving the two-step create form + attribute filter) and
+ * per-item value maps. Actions run client-side against the unified REST API
+ * ({@code /api/inventory/items/*}).</p>
+ */
 @Controller
 @RequestMapping("/inventory")
 @RequiredArgsConstructor
 public class InventoryPageController {
 
-    private final InventoryQueryService inventoryQueryService;
-    private final InventoryAttributeQueryService inventoryAttributeQueryService;
+    private final UnifiedInventoryItemQueryService inventoryQueryService;
     private final MemberQueryService memberQueryService;
     private final BandQueryService bandQueryService;
     private final ObjectMapper objectMapper;
 
-    private Band getActiveBand(Long activeTeamId) {
-        if (activeTeamId == null) {
-            return null;
-        }
-        return bandQueryService.getBandById(activeTeamId);
-    }
-
     @GetMapping
     public String listPage(@ModelAttribute("activeTeamId") Long activeTeamId, Model model) throws JsonProcessingException {
-        Band band = getActiveBand(activeTeamId);
-        Long teamId = activeTeamId;
+        Band band = activeTeamId != null ? bandQueryService.getBandById(activeTeamId) : null;
 
-        System.out.println("[DEBUG InventoryPageController] teamId=" + teamId + " band=" + (band != null ? band.getId() : "null"));
-
-        // If no team, show empty inventory
         if (band == null) {
-            model.addAttribute("uniformItems", List.of());
-            model.addAttribute("instrumentItems", List.of());
-            model.addAttribute("orders", List.of());
+            // No team context — render empty state
+            model.addAttribute("cards", List.of());
             model.addAttribute("members", List.of());
-            model.addAttribute("orderStatuses", OrderStatus.values());
-            model.addAttribute("today", LocalDate.now());
+            model.addAttribute("attributeDefsJson", "[]");
+            model.addAttribute("attrValueMaps", Map.of());
             return "inventory/list";
         }
 
-        // Get attribute definitions
-        List<UniformAttributeDefDto> uniformDefs = inventoryAttributeQueryService.getUniformAttributeDefs(band);
-        List<InstrumentAttributeDefDto> instrumentDefs = inventoryAttributeQueryService.getInstrumentAttributeDefs(band);
-        List<OrderAttributeDefDto> orderDefs = inventoryAttributeQueryService.getOrderAttributeDefs(band);
-        List<AwardAttributeDefDto> awardDefs = inventoryAttributeQueryService.getAwardAttributeDefs(band);
+        // All items of the band (single unified model), display order: UNIFORM then other types.
+        List<InventoryItem> bandItems = new java.util.ArrayList<>(inventoryQueryService.getAllItemsByBand(band.getId()));
 
-        System.out.println("[DEBUG InventoryPageController] uniformDefs=" + uniformDefs.size() + " instrumentDefs=" + instrumentDefs.size());
-
-        // Get all items filtered by team
-        List<UniformItem> uniformItemsEntities = inventoryQueryService.getAllUniformItemsEntities(teamId);
-        List<InstrumentItem> instrumentItemsEntities = inventoryQueryService.getAllInstrumentItemsEntities(teamId);
-        List<InventoryItemDto> uniformItems = inventoryQueryService.getAllUniformItems(teamId);
-        List<InventoryItemDto> instrumentItems = inventoryQueryService.getAllInstrumentItems(teamId);
-        List<InventoryItemDto> awardItems = inventoryQueryService.getAllAwardItems(teamId);
-        List<AwardItem> awardItemsEntities = inventoryQueryService.getAllAwardItemsEntities(teamId);
-
-        // Build attribute values map: itemId -> {attrId -> value}
-        Map<Long, Map<Long, String>> uniformAttrValues = new HashMap<>();
-        for (UniformItem item : uniformItemsEntities) {
-            uniformAttrValues.put(item.getId(), inventoryAttributeQueryService.getUniformAttributeValues(item));
+        // Attribute definitions across all item types — used by both the create form
+        // (rendered per selected type in displayOrder) and the attribute filter chips.
+        // Built as plain JSON-friendly maps: ItemAttributeDef has a LAZY Band ref and a
+        // circular values↔attributeDef graph, neither of which Jackson may serialize here.
+        java.util.ArrayList<Map<String, Object>> defs = new java.util.ArrayList<>();
+        for (ItemType type : ItemType.values()) {
+            for (ItemAttributeDef d : inventoryQueryService.getAttributeDefsForType(band.getId(), type)) {
+                if (!d.isActive()) {
+                    continue;
+                }
+                Map<String, Object> m = new HashMap<>();
+                m.put("id", d.getId());
+                m.put("name", d.getName());
+                m.put("dataType", d.getDataType() != null ? d.getDataType().name() : "TEXT");
+                m.put("itemType", type.name());
+                m.put("required", d.isRequired());
+                m.put("filterable", d.isFilterable());
+                m.put("displayInList", d.isDisplayInList());
+                m.put("displayOrder", d.getDisplayOrder());
+                m.put("options", d.getOptions());
+                m.put("optionsList", d.getOptionsList());
+                m.put("active", true);
+                m.put("bandScoped", d.getBand() != null && band.getId().equals(idOf(d.getBand())));
+                defs.add(m);
+            }
         }
+        defs.sort((a, b) -> Integer.compare((Integer) a.get("displayOrder"), (Integer) b.get("displayOrder")));
 
-        model.addAttribute("today", LocalDate.now());
+        model.addAttribute("itemDefs", defs);
+        model.addAttribute("members", memberQueryService.getAllActiveMembers(band.getId()));
+        model.addAttribute("attributeDefsJson", objectMapper.writeValueAsString(defs));
 
-        Map<Long, Map<Long, String>> instrumentAttrValues = new HashMap<>();
-        for (InstrumentItem item : instrumentItemsEntities) {
-            instrumentAttrValues.put(item.getId(), inventoryAttributeQueryService.getInstrumentAttributeValues(item));
+        // Cards: a flat list of view objects {item, chips} — pure property navigation in the
+        // template (no Thymeleaf map lookup by dynamic key; see codebase SpEL lesson).
+        List<CardView> cards = new java.util.ArrayList<>();
+        for (InventoryItem item : bandItems) {
+            ItemType t = item.getType();
+            String typeKey = t != null ? t.name() : null;
+            Map<Long, String> values = inventoryQueryService.getAttributeValueMap(item);
+            List<DefChip> chips = new java.util.ArrayList<>();
+            for (Map<String, Object> d : defs) {
+                if (typeKey == null || !typeKey.equals(String.valueOf(d.get("itemType")))) {
+                    continue;
+                }
+                Long defId = asLong(d.get("id"));
+                String val = defId != null ? values.get(defId) : null;
+                if (val != null && !val.isBlank()) {
+                    chips.add(new DefChip(defId, asString(d.get("name")), val));
+                }
+            }
+            cards.add(new CardView(item, chips));
         }
-
-        // Get orders with attribute values - filtered by team
-        List<InventoryOrder> ordersEntities = inventoryQueryService.getAllOrdersEntities(teamId);
-        List<InventoryOrderDto> orders = inventoryQueryService.getAllOrders(teamId);
-        Map<Long, Map<Long, String>> orderAttrValues = new HashMap<>();
-        for (InventoryOrder order : ordersEntities) {
-            orderAttrValues.put(order.getId(), inventoryAttributeQueryService.getOrderAttributeValues(order));
-        }
-
-        Map<Long, Map<Long, String>> awardAttrValues = new HashMap<>();
-        for (AwardItem item : awardItemsEntities) {
-            awardAttrValues.put(item.getId(), inventoryAttributeQueryService.getAwardAttributeValues(item));
-        }
-
-        model.addAttribute("uniformItems", uniformItems);
-        model.addAttribute("instrumentItems", instrumentItems);
-        model.addAttribute("orders", orders);
-        model.addAttribute("members", memberQueryService.getAllActiveMembers(teamId));
-        model.addAttribute("orderStatuses", OrderStatus.values());
-        model.addAttribute("uniformAttributeDefs", uniformDefs);
-        model.addAttribute("uniformAttributeValues", uniformAttrValues);
-        model.addAttribute("instrumentAttributeDefs", instrumentDefs);
-        model.addAttribute("instrumentAttributeValues", instrumentAttrValues);
-        model.addAttribute("orderAttributeDefs", orderDefs);
-        model.addAttribute("orderAttributeValues", orderAttrValues);
-        model.addAttribute("awardItems", awardItems);
-        model.addAttribute("awardAttributeDefs", awardDefs);
-        model.addAttribute("awardAttributeValues", awardAttrValues);
-
-        // JSON versions for JavaScript
-        String uniformJson = objectMapper.writeValueAsString(uniformDefs);
-        String instrumentJson = objectMapper.writeValueAsString(instrumentDefs);
-        String awardJson = objectMapper.writeValueAsString(awardDefs);
-        model.addAttribute("uniformAttributeDefsJson", uniformJson);
-        model.addAttribute("instrumentAttributeDefsJson", instrumentJson);
-        model.addAttribute("awardAttributeDefsJson", awardJson);
-
-        // Debug info for troubleshooting attribute visibility
-        String debugInfo = "teamId=" + teamId + " band=" + band.getId()
-                + " uniformDefs=" + uniformDefs.size()
-                + " instrumentDefs=" + instrumentDefs.size()
-                + " orderDefs=" + orderDefs.size()
-                + " awardDefs=" + awardDefs.size();
-        model.addAttribute("debugInfo", debugInfo);
-        System.out.println("[DEBUG InventoryPageController] " + debugInfo);
-
+        model.addAttribute("cards", cards);
         return "inventory/list";
     }
 
-    @GetMapping("/orders")
-    public String ordersFragment(@ModelAttribute("activeTeamId") Long activeTeamId, Model model) {
-        model.addAttribute("orders", inventoryQueryService.getAllOrders(activeTeamId));
-        model.addAttribute("members", memberQueryService.getAllActiveMembers(activeTeamId));
-        model.addAttribute("orderStatuses", OrderStatus.values());
-        model.addAttribute("today", LocalDate.now());
-        return "inventory/list :: #orders-content";
+    private static Long asLong(Object o) {
+        if (o instanceof Number n) { return n.longValue(); }
+        if (o != null) {
+            try {
+                return Long.valueOf(String.valueOf(o));
+            } catch (NumberFormatException ignored) {
+                /* not numeric */
+            }
+        }
+        return null;
     }
 
-    @GetMapping("/uniforms/fragment")
-    public String uniformsFragment(@ModelAttribute("activeTeamId") Long activeTeamId, Model model) {
-        Band band = getActiveBand(activeTeamId);
-        Long teamId = activeTeamId;
+    private static String asString(Object o) { return o == null ? "" : String.valueOf(o); }
 
-        System.out.println("[DEBUG uniformsFragment] teamId=" + teamId + " band=" + (band != null ? band.getId() : "null"));
+    /** A single list card: the domain item plus its computed attribute chips. */
+    public static class CardView {
+        private final InventoryItem item;
+        private final List<DefChip> chips;
 
-        if (band == null) {
-            model.addAttribute("uniformItems", List.of());
-            model.addAttribute("uniformAttributeDefs", List.of());
-            model.addAttribute("uniformAttributeValues", Map.of());
-            model.addAttribute("members", List.of());
-            model.addAttribute("today", LocalDate.now());
-            return "inventory/list :: #uniforms-content";
+        public CardView(InventoryItem item, List<DefChip> chips) {
+            this.item = item;
+            this.chips = chips;
         }
 
-        List<UniformItem> uniformItems = inventoryQueryService.getAllUniformItemsEntities(teamId);
-        List<UniformAttributeDefDto> uniformDefs = inventoryAttributeQueryService.getUniformAttributeDefs(band);
-
-        Map<Long, Map<Long, String>> uniformAttrValues = new HashMap<>();
-        for (UniformItem item : uniformItems) {
-            uniformAttrValues.put(item.getId(), inventoryAttributeQueryService.getUniformAttributeValues(item));
-        }
-
-        model.addAttribute("uniformItems", uniformItems);
-        model.addAttribute("uniformAttributeDefs", uniformDefs);
-        model.addAttribute("uniformAttributeValues", uniformAttrValues);
-        model.addAttribute("members", memberQueryService.getAllActiveMembers(teamId));
-        model.addAttribute("today", LocalDate.now());
-        return "inventory/list :: #uniforms-content";
+        public InventoryItem getItem() { return item; }
+        public List<DefChip> getChips() { return chips; }
     }
 
-    @GetMapping("/instruments/fragment")
-    public String instrumentsFragment(@ModelAttribute("activeTeamId") Long activeTeamId, Model model) {
-        Band band = getActiveBand(activeTeamId);
-        Long teamId = activeTeamId;
+    /** A rendered attribute chip: definition id, label and this item's stored value. */
+    public static class DefChip {
+        private final Long id;
+        private final String name;
+        private final String value;
 
-        if (band == null) {
-            model.addAttribute("instrumentItems", List.of());
-            model.addAttribute("instrumentAttributeDefs", List.of());
-            model.addAttribute("instrumentAttributeValues", Map.of());
-            model.addAttribute("members", List.of());
-            model.addAttribute("today", LocalDate.now());
-            return "inventory/list :: #instruments-content";
+        public DefChip(Long id, String name, String value) {
+            this.id = id;
+            this.name = name;
+            this.value = value;
         }
 
-        List<InstrumentItem> instrumentItems = inventoryQueryService.getAllInstrumentItemsEntities(teamId);
-        List<InstrumentAttributeDefDto> instrumentDefs = inventoryAttributeQueryService.getInstrumentAttributeDefs(band);
-
-        Map<Long, Map<Long, String>> instrumentAttrValues = new HashMap<>();
-        for (InstrumentItem item : instrumentItems) {
-            instrumentAttrValues.put(item.getId(), inventoryAttributeQueryService.getInstrumentAttributeValues(item));
-        }
-
-        model.addAttribute("instrumentItems", instrumentItems);
-        model.addAttribute("instrumentAttributeDefs", instrumentDefs);
-        model.addAttribute("instrumentAttributeValues", instrumentAttrValues);
-        model.addAttribute("members", memberQueryService.getAllActiveMembers(teamId));
-        model.addAttribute("today", LocalDate.now());
-        return "inventory/list :: #instruments-content";
+        public Long getId() { return id; }
+        public String getName() { return name; }
+        public String getValue() { return value; }
     }
-
-    @GetMapping("/awards/fragment")
-    public String awardsFragment(@ModelAttribute("activeTeamId") Long activeTeamId, Model model) {
-        Band band = getActiveBand(activeTeamId);
-        Long teamId = activeTeamId;
-
-        if (band == null) {
-            model.addAttribute("awardItems", List.of());
-            model.addAttribute("awardAttributeDefs", List.of());
-            model.addAttribute("awardAttributeValues", Map.of());
-            model.addAttribute("members", List.of());
-            model.addAttribute("today", LocalDate.now());
-            return "inventory/list :: #awards-content";
-        }
-
-        List<AwardItem> awardItems = inventoryQueryService.getAllAwardItemsEntities(teamId);
-        List<AwardAttributeDefDto> awardDefs = inventoryAttributeQueryService.getAwardAttributeDefs(band);
-
-        Map<Long, Map<Long, String>> awardAttrValues = new HashMap<>();
-        for (AwardItem item : awardItems) {
-            awardAttrValues.put(item.getId(), inventoryAttributeQueryService.getAwardAttributeValues(item));
-        }
-
-        model.addAttribute("awardItems", awardItems);
-        model.addAttribute("awardAttributeDefs", awardDefs);
-        model.addAttribute("awardAttributeValues", awardAttrValues);
-        model.addAttribute("members", memberQueryService.getAllActiveMembers(teamId));
-        model.addAttribute("today", LocalDate.now());
-        return "inventory/list :: #awards-content";
-    }
-
-    @GetMapping("/orders/{id}/history")
-    public String orderHistory(@PathVariable Long id, Model model) {
-        model.addAttribute("order", inventoryQueryService.getOrderById(id));
-        return "inventory/order-detail";
+    private Long idOf(Band band) {
+        return band != null ? band.getId() : null;
     }
 }

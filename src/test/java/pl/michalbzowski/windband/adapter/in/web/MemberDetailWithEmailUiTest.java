@@ -33,12 +33,6 @@ class MemberDetailWithEmailUiTest extends UiTestBase {
     @Autowired
     private InstrumentRepository instrumentRepository;
 
-    @Autowired
-    private InventoryRepository inventoryRepository;
-
-    @Autowired
-    private AwardItemRepository awardItemRepository;
-
     @Test
     void shouldOpenMemberDetailWithEmailAndShowConsentStatus() {
         String unique = UUID.randomUUID().toString().substring(0, 8);

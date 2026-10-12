@@ -7,27 +7,28 @@ import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
 import pl.michalbzowski.windband.application.command.band.MemberAttributeCommandService;
-import pl.michalbzowski.windband.application.command.inventory.AwardAttributeCommandService;
-import pl.michalbzowski.windband.application.command.inventory.InstrumentAttributeCommandService;
-import pl.michalbzowski.windband.application.command.inventory.UniformAttributeCommandService;
+import pl.michalbzowski.windband.application.command.inventory.ItemAttributeDefCommandService;
 import pl.michalbzowski.windband.application.query.band.BandQueryService;
 import pl.michalbzowski.windband.application.query.band.MemberAttributeQueryService;
-import pl.michalbzowski.windband.application.query.inventory.InventoryAttributeQueryService;
+import pl.michalbzowski.windband.application.query.inventory.UnifiedInventoryItemQueryService;
 import pl.michalbzowski.windband.domain.band.Band;
 
 import java.util.List;
 
+/**
+ * Band attribute management (F2 S1): member attributes keep their legacy endpoints,
+ * inventory item attributes are served through the unified {@code ItemAttributeDef}
+ * model and {@link ItemAttributeDefCommandService}.
+ */
 @Controller
 @RequestMapping("/band/attributes")
 @RequiredArgsConstructor
 public class MemberAttributeController {
 
     private final MemberAttributeCommandService memberCommandService;
-    private final UniformAttributeCommandService uniformCommandService;
-    private final InstrumentAttributeCommandService instrumentCommandService;
-    private final AwardAttributeCommandService awardCommandService;
+    private final ItemAttributeDefCommandService itemAttributeCommandService;
     private final MemberAttributeQueryService memberQueryService;
-    private final InventoryAttributeQueryService inventoryQueryService;
+    private final UnifiedInventoryItemQueryService inventoryQueryService;
     private final BandQueryService bandQueryService;
 
     private Band getActiveBand(Long activeTeamId) {
@@ -40,14 +41,10 @@ public class MemberAttributeController {
     // --- Page endpoints (HTMX fragments) ---
 
     @GetMapping
-    public String attributesPage(@ModelAttribute("activeTeamId") Long activeTeamId, @RequestParam(defaultValue = "MEMBER") String type, Model model) {
-        // Redirect to the canonical /band/inventory-attributes endpoint.
-        // This ensures backward compatibility for any old links/bookmarks.
+    public String attributesPage(@ModelAttribute("activeTeamId") Long activeTeamId,
+                                 @RequestParam(defaultValue = "MEMBER") String type, Model model) {
         return "redirect:/band/inventory-attributes?type=" + type;
     }
-
-    // --- Legacy redirect for GET /band/attributes without type param ---
-    // (removed — the redirect above replaces the old inline rendering)
 
     @GetMapping("/list")
     public String attributeList(@ModelAttribute("activeTeamId") Long activeTeamId, Model model) {
@@ -61,7 +58,8 @@ public class MemberAttributeController {
     }
 
     @GetMapping("/new")
-    public String newAttributeForm(@ModelAttribute("activeTeamId") Long activeTeamId, @RequestParam(defaultValue = "MEMBER") String type, Model model) {
+    public String newAttributeForm(@ModelAttribute("activeTeamId") Long activeTeamId,
+                                   @RequestParam(defaultValue = "MEMBER") String type, Model model) {
         model.addAttribute("type", type);
         model.addAttribute("attributeDef", new AttributeDefForm("", "BOOLEAN", false, false, 0, null, null, null));
         model.addAttribute("attributeDefId", null);
@@ -74,16 +72,17 @@ public class MemberAttributeController {
         if (band == null) {
             return List.of();
         }
-        return switch (type) {
-            case "UNIFORM" -> inventoryQueryService.getUniformAttributeDefs(band);
-            case "INSTRUMENT" -> inventoryQueryService.getInstrumentAttributeDefs(band);
-            case "AWARD" -> inventoryQueryService.getAwardAttributeDefs(band);
-            default -> memberQueryService.getAttributeDefsForBand(band);
-        };
+        switch (type) {
+            case "UNIFORM" -> { return inventoryQueryService.getAttributeDefsForType(band.getId(), pl.michalbzowski.windband.domain.inventory.ItemType.UNIFORM); }
+            case "INSTRUMENT" -> { return inventoryQueryService.getAttributeDefsForType(band.getId(), pl.michalbzowski.windband.domain.inventory.ItemType.INSTRUMENT); }
+            case "AWARD" -> { return inventoryQueryService.getAttributeDefsForType(band.getId(), pl.michalbzowski.windband.domain.inventory.ItemType.AWARD); }
+            default -> { return memberQueryService.getAttributeDefsForBand(band); }
+        }
     }
 
     @GetMapping("/{id}/edit")
-    public String editAttributeForm(@PathVariable Long id, @ModelAttribute("activeTeamId") Long activeTeamId, @RequestParam(defaultValue = "MEMBER") String type, Model model) {
+    public String editAttributeForm(@PathVariable Long id, @ModelAttribute("activeTeamId") Long activeTeamId,
+                                    @RequestParam(defaultValue = "MEMBER") String type, Model model) {
         model.addAttribute("type", type);
         model.addAttribute("availableAttributes", getAvailableAttributes(activeTeamId, type));
 
@@ -96,37 +95,16 @@ public class MemberAttributeController {
         Long dependsOnAttributeId = null;
         String dependsOnValue = null;
 
-        Object cmdService = getCommandService(type);
-        if (cmdService instanceof UniformAttributeCommandService svc) {
-            var def = svc.getAttributeDefById(id);
+        if ("UNIFORM".equals(type) || "INSTRUMENT".equals(type) || "AWARD".equals(type)) {
+            var def = itemAttributeCommandService.getAttributeDefById(id);
             name = def.getName();
-            attrType = def.getType();
+            attrType = def.getDataType().name();
             required = def.isRequired();
             displayInList = def.isDisplayInList();
             displayOrder = def.getDisplayOrder();
             options = def.getOptions();
-            dependsOnAttributeId = def.getDependsOnAttributeId();
-            dependsOnValue = def.getDependsOnValue();
-        } else if (cmdService instanceof InstrumentAttributeCommandService svc) {
-            var def = svc.getAttributeDefById(id);
-            name = def.getName();
-            attrType = def.getType();
-            required = def.isRequired();
-            displayInList = def.isDisplayInList();
-            displayOrder = def.getDisplayOrder();
-            options = def.getOptions();
-            dependsOnAttributeId = def.getDependsOnAttributeId();
-            dependsOnValue = def.getDependsOnValue();
-        } else if (cmdService instanceof AwardAttributeCommandService svc) {
-            var def = svc.getAttributeDefById(id);
-            name = def.getName();
-            attrType = def.getType();
-            required = def.isRequired();
-            displayInList = def.isDisplayInList();
-            displayOrder = def.getDisplayOrder();
-            options = def.getOptions();
-            dependsOnAttributeId = def.getDependsOnAttributeId();
-            dependsOnValue = def.getDependsOnValue();
+            dependsOnAttributeId = def.getDependsOnDefId();
+            dependsOnValue = def.getConditionalValue();
         } else {
             var def = memberCommandService.getAttributeDefById(id);
             name = def.getName();
@@ -143,47 +121,40 @@ public class MemberAttributeController {
     }
 
     @PostMapping
-    public ResponseEntity<Void> createAttribute(@ModelAttribute("activeTeamId") Long activeTeamId, @RequestParam(defaultValue = "MEMBER") String type, @ModelAttribute AttributeDefForm form) {
+    public ResponseEntity<Void> createAttribute(@ModelAttribute("activeTeamId") Long activeTeamId,
+                                                @RequestParam(defaultValue = "MEMBER") String type,
+                                                @ModelAttribute AttributeDefForm form) {
         Band band = getActiveBand(activeTeamId);
         if (band == null) {
             return ResponseEntity.badRequest().build();
         }
 
         switch (type) {
-            case "UNIFORM" -> uniformCommandService.createAttributeDef(band, form.getName(), form.getType(), form.isRequired(), form.isDisplayInList(), form.getDisplayOrder(), form.getOptions(), form.getDependsOnAttributeId(), form.getDependsOnValue());
-            case "INSTRUMENT" -> instrumentCommandService.createAttributeDef(band, form.getName(), form.getType(), form.isRequired(), form.isDisplayInList(), form.getDisplayOrder(), form.getOptions(), form.getDependsOnAttributeId(), form.getDependsOnValue());
-            case "AWARD" -> awardCommandService.createAttributeDef(band, form.getName(), form.getType(), form.isRequired(), form.isDisplayInList(), form.getDisplayOrder(), form.getOptions(), form.getDependsOnAttributeId(), form.getDependsOnValue());
+            case "UNIFORM" -> itemAttributeCommandService.createAttributeDef(band, pl.michalbzowski.windband.domain.inventory.ItemType.UNIFORM, form.getName(), form.getType(), form.isRequired(), form.isDisplayInList(), form.getDisplayOrder(), form.getOptions(), form.getDependsOnAttributeId(), form.getDependsOnValue());
+            case "INSTRUMENT" -> itemAttributeCommandService.createAttributeDef(band, pl.michalbzowski.windband.domain.inventory.ItemType.INSTRUMENT, form.getName(), form.getType(), form.isRequired(), form.isDisplayInList(), form.getDisplayOrder(), form.getOptions(), form.getDependsOnAttributeId(), form.getDependsOnValue());
+            case "AWARD" -> itemAttributeCommandService.createAttributeDef(band, pl.michalbzowski.windband.domain.inventory.ItemType.AWARD, form.getName(), form.getType(), form.isRequired(), form.isDisplayInList(), form.getDisplayOrder(), form.getOptions(), form.getDependsOnAttributeId(), form.getDependsOnValue());
             default -> memberCommandService.createAttributeDef(band, form.getName(), form.getType(), form.isRequired(), form.isDisplayInList(), form.getDisplayOrder(), form.getOptions());
         }
         return ResponseEntity.ok().header("HX-Redirect", "/band/attributes?type=" + type).build();
     }
 
     @PutMapping("/{id}")
-    public ResponseEntity<Void> updateAttribute(@PathVariable Long id, @RequestParam(defaultValue = "MEMBER") String type, @ModelAttribute AttributeDefForm form) {
-        Object cmdService = getCommandService(type);
-        if (cmdService instanceof UniformAttributeCommandService) {
-            ((UniformAttributeCommandService) cmdService).updateAttributeDef(id, form.getName(), form.getType(), form.isRequired(), form.isDisplayInList(), form.getDisplayOrder(), form.getOptions(), form.getDependsOnAttributeId(), form.getDependsOnValue());
-        } else if (cmdService instanceof InstrumentAttributeCommandService) {
-            ((InstrumentAttributeCommandService) cmdService).updateAttributeDef(id, form.getName(), form.getType(), form.isRequired(), form.isDisplayInList(), form.getDisplayOrder(), form.getOptions(), form.getDependsOnAttributeId(), form.getDependsOnValue());
-        } else if (cmdService instanceof AwardAttributeCommandService) {
-            ((AwardAttributeCommandService) cmdService).updateAttributeDef(id, form.getName(), form.getType(), form.isRequired(), form.isDisplayInList(), form.getDisplayOrder(), form.getOptions(), form.getDependsOnAttributeId(), form.getDependsOnValue());
-        } else {
-            memberCommandService.updateAttributeDef(id, form.getName(), form.getType(), form.isRequired(), form.isDisplayInList(), form.getDisplayOrder(), form.getOptions());
+    public ResponseEntity<Void> updateAttribute(@PathVariable Long id,
+                                                @RequestParam(defaultValue = "MEMBER") String type,
+                                                @ModelAttribute AttributeDefForm form) {
+        switch (type) {
+            case "UNIFORM", "INSTRUMENT", "AWARD" -> itemAttributeCommandService.updateAttributeDef(id, form.getName(), form.getType(), form.isRequired(), form.isDisplayInList(), form.getDisplayOrder(), form.getOptions(), form.getDependsOnAttributeId(), form.getDependsOnValue());
+            default -> memberCommandService.updateAttributeDef(id, form.getName(), form.getType(), form.isRequired(), form.isDisplayInList(), form.getDisplayOrder(), form.getOptions());
         }
         return ResponseEntity.ok().header("HX-Redirect", "/band/attributes?type=" + type).build();
     }
 
     @DeleteMapping("/{id}")
-    public ResponseEntity<Void> deleteAttribute(@PathVariable Long id, @RequestParam(defaultValue = "MEMBER") String type) {
-        Object cmdService = getCommandService(type);
-        if (cmdService instanceof UniformAttributeCommandService) {
-            ((UniformAttributeCommandService) cmdService).deleteAttributeDef(id);
-        } else if (cmdService instanceof InstrumentAttributeCommandService) {
-            ((InstrumentAttributeCommandService) cmdService).deleteAttributeDef(id);
-        } else if (cmdService instanceof AwardAttributeCommandService) {
-            ((AwardAttributeCommandService) cmdService).deleteAttributeDef(id);
-        } else {
-            memberCommandService.deleteAttributeDef(id);
+    public ResponseEntity<Void> deleteAttribute(@PathVariable Long id,
+                                                @RequestParam(defaultValue = "MEMBER") String type) {
+        switch (type) {
+            case "UNIFORM", "INSTRUMENT", "AWARD" -> itemAttributeCommandService.deleteAttributeDef(id);
+            default -> memberCommandService.deleteAttributeDef(id);
         }
         return ResponseEntity.ok().header("HX-Redirect", "/band/attributes?type=" + type).build();
     }
@@ -201,7 +172,8 @@ public class MemberAttributeController {
 
         public AttributeDefForm() {}
 
-        public AttributeDefForm(String name, String type, boolean required, boolean displayInList, int displayOrder, String options, Long dependsOnAttributeId, String dependsOnValue) {
+        public AttributeDefForm(String name, String type, boolean required, boolean displayInList, int displayOrder,
+                                String options, Long dependsOnAttributeId, String dependsOnValue) {
             this.name = name;
             this.type = type;
             this.required = required;
@@ -219,14 +191,5 @@ public class MemberAttributeController {
         private String type = "BOOLEAN";
         private boolean required;
         private int displayOrder;
-    }
-
-    private Object getCommandService(String type) {
-        return switch (type) {
-            case "UNIFORM" -> uniformCommandService;
-            case "INSTRUMENT" -> instrumentCommandService;
-            case "AWARD" -> awardCommandService;
-            default -> memberCommandService;
-        };
     }
 }

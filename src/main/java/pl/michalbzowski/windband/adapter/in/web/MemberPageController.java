@@ -8,11 +8,11 @@ import pl.michalbzowski.windband.application.dto.MemberDto;
 import pl.michalbzowski.windband.application.query.band.BandQueryService;
 import pl.michalbzowski.windband.application.query.band.MemberAttributeQueryService;
 import pl.michalbzowski.windband.application.query.instrument.InstrumentQueryService;
-import pl.michalbzowski.windband.application.query.inventory.InventoryQueryService;
-import pl.michalbzowski.windband.application.query.inventory.InventoryAttributeQueryService;
+import pl.michalbzowski.windband.application.query.inventory.UnifiedInventoryItemQueryService;
 import pl.michalbzowski.windband.application.query.member.MemberQueryService;
 import pl.michalbzowski.windband.domain.band.Band;
-import pl.michalbzowski.windband.domain.inventory.AwardItem;
+import pl.michalbzowski.windband.domain.inventory.InventoryItem;
+import pl.michalbzowski.windband.domain.inventory.ItemType;
 import pl.michalbzowski.windband.domain.member.Member;
 
 import java.time.LocalDate;
@@ -29,8 +29,7 @@ public class MemberPageController {
     private final InstrumentQueryService instrumentQueryService;
     private final BandQueryService bandQueryService;
     private final MemberAttributeQueryService attributeQueryService;
-    private final InventoryQueryService inventoryQueryService;
-    private final InventoryAttributeQueryService inventoryAttributeQueryService;
+    private final UnifiedInventoryItemQueryService inventoryQueryService;
 
     @GetMapping
     public String listPage(@ModelAttribute("activeTeamId") Long activeTeamId, Model model,
@@ -131,22 +130,42 @@ public class MemberPageController {
         }
         MemberDto dto = memberQueryService.getMemberById(id);
         model.addAttribute("member", dto);
-        model.addAttribute("uniformItems", inventoryQueryService.getUniformItemsByMember(id, activeTeamId));
-        model.addAttribute("instrumentItems", inventoryQueryService.getInstrumentItemsByMember(id, activeTeamId));
-        model.addAttribute("awardItems", inventoryQueryService.getAwardItemsByMember(id, activeTeamId));
-        // Award attributes for detail view
+        // Unified inventory items assigned to this member (S2 will render per-type panels)
+        List<InventoryItem> assigned = inventoryQueryService.getItemsAssignedToMember(id);
+        List<InventoryItem> uniformItems = filterByType(assigned, ItemType.UNIFORM).stream()
+                .filter(i -> bandIdOf(i, activeTeamId)).toList();
+        List<InventoryItem> instrumentItems = filterByType(assigned, ItemType.INSTRUMENT).stream()
+                .filter(i -> bandIdOf(i, activeTeamId)).toList();
+        List<InventoryItem> awardItems = filterByType(assigned, ItemType.AWARD).stream()
+                .filter(i -> bandIdOf(i, activeTeamId)).toList();
+        model.addAttribute("uniformItems", uniformItems);
+        model.addAttribute("instrumentItems", instrumentItems);
+        model.addAttribute("awardItems", awardItems);
+        // Award attributes for detail view (S2 fills definitions from unified catalog)
         Band band = bandQueryService.getBandById(activeTeamId);
-        if (band != null) {
-            model.addAttribute("awardAttributeDefs", inventoryAttributeQueryService.getAwardAttributeDefs(band));
-            List<AwardItem> awards = inventoryQueryService.getAwardItemsByMember(id, activeTeamId);
+        if (band != null && !awardItems.isEmpty()) {
+            model.addAttribute("awardAttributeDefs", inventoryQueryService.getAttributeDefsForType(activeTeamId, ItemType.AWARD));
             Map<Long, Map<Long, String>> awardAttrValues = new HashMap<>();
-            for (AwardItem item : awards) {
-                awardAttrValues.put(item.getId(), inventoryAttributeQueryService.getAwardAttributeValues(item));
+            for (InventoryItem item : awardItems) {
+                awardAttrValues.put(item.getId(), inventoryQueryService.getAttributeValueMap(item));
             }
             model.addAttribute("awardAttributeValues", awardAttrValues);
+        } else {
+            model.addAttribute("awardAttributeDefs", List.of());
+            model.addAttribute("awardAttributeValues", Map.of());
         }
         model.addAttribute("today", LocalDate.now());
         return "members/detail :: member-detail-content";
+    }
+
+    private List<InventoryItem> filterByType(List<InventoryItem> items, ItemType type) {
+        if (items == null) return List.of();
+        return items.stream().filter(i -> i.getType() == type).toList();
+    }
+
+    private boolean bandIdOf(InventoryItem item, Long teamId) {
+        if (teamId == null || item == null || item.getBand() == null) return true;
+        return item.getBand().getId().equals(teamId);
     }
 
     private MemberDto emptyMemberDto() {
