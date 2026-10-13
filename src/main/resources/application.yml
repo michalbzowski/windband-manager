@@ -112,3 +112,22 @@ windband:
     root-path: ${SCORES_ROOT_PATH:/srv/windband-scores}
     max-file-size-bytes: 52428800        # 50 MB (PDF/JPEG/PNG)
     max-zip-file-size-bytes: 209715200  # 200 MB (ZIP)
+
+  # v1 integration API: where THIS process fetches the windband realm's signing keys.
+  # Must be the INTERNALLY REACHABLE Keycloak URL — in production that resolves to
+  # the Railway internal service DNS used by the provider jwk-set-uri above. Override
+  # with WINDBAND_INVENTORY_API_JWK_SET_URI only if your network layout differs.
+  inventory:
+    api:
+      jwk-set-uri: http://${KEYCLOAK_INTERNAL_URL}/realms/${KEYCLOAK_REALM}/protocol/openid-connect/certs
+
+---
+spring:
+  config:
+    activate:
+      on-profile: "!test"
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          issuer-uri: https://${KEYCLOAK_PUBLIC_URL}/realms/${KEYCLOAK_REALM}
