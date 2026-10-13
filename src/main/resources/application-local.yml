@@ -87,6 +87,9 @@ logging:
 
 app:
   base-url: ${BASE_URL:http://localhost:8080}
+  # windband-inventory dev server (vite, port 5173 — matches the Keycloak
+  # client's valid redirect URI http://localhost:5173/*).
+  inventory-url: ${INVENTORY_URL:http://localhost:5173}
   keycloak:
     url: http://localhost:8180
     realm: ${KEYCLOAK_REALM:windband}

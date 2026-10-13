@@ -85,6 +85,11 @@ logging:
 app:
   base-url: ${BASE_URL}
   mail-from: ${MAIL_FROM:windband@localhost}
+  # External windband-inventory service (menu "Inwentaryzacja", new tab).
+  # Production overrides via the INVENTORY_URL Railway variable; the default
+  # already matches the public domain so the link works even before the
+  # variable is set. Local dev is pinned in application-local.yml.
+  inventory-url: ${INVENTORY_URL:https://inventory.bandmanager.pl}
   keycloak:
     url: https://${KEYCLOAK_PUBLIC_URL}
     realm: ${KEYCLOAK_REALM}

@@ -8,6 +8,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.GrantedAuthority;
+import org.springframework.security.oauth2.core.oidc.user.OidcUser;
 import org.springframework.security.oauth2.jwt.Jwt;
 import pl.michalbzowski.windband.domain.band.Band;
 import pl.michalbzowski.windband.domain.user.AppUser;
@@ -16,6 +17,7 @@ import pl.michalbzowski.windband.domain.user.UserTeamRole;
 import pl.michalbzowski.windband.domain.user.UserTeamRoleRepository;
 
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -139,5 +141,60 @@ class BearerOidcUserConverterTest {
         assertThat(principal.getAuthorities())
                 .extracting(GrantedAuthority::getAuthority)
                 .containsExactlyInAnyOrder("ROLE_USER");
+    }
+
+    // ------------------------------------------------------------------
+    //  Synthetic "sub" naming chain. Keycloak access tokens of the PUBLIC
+    //  inventory client carry NO "sub" claim while DefaultOidcUser requires
+    //  one as name attribute. Chain: externalId -> token labels -> synthetic
+    //  local id. The label-less tests build tokens WITHOUT .subject(...) —
+    //  exactly what the real public-client JWT looks like.
+    // ------------------------------------------------------------------
+
+    private static String subOf(Authentication result) {
+        return (String) ((OidcUser) result.getPrincipal()).getIdToken().getClaims().get("sub");
+    }
+
+    private static Jwt publicClientToken(Map<String, Object> claims) {
+        Jwt.Builder b = Jwt.withTokenValue("t").header("alg", "RS256");
+        claims.forEach(b::claim);
+        return b.build();
+    }
+
+    @Test
+    @DisplayName("label-less token for legacy user row: synthetic wm-local-<id> sub, no crash")
+    void subFallsBackToSyntheticLocalSubject() {
+        AppUser user = appUser("ghost");
+        org.springframework.test.util.ReflectionTestUtils.setField(user, "id", 42L);
+        when(appUserRepository.findByEmail("")).thenReturn(Optional.of(user));
+        when(userTeamRoleRepository.loadWithBandsByUserId(42L)).thenReturn(List.of());
+
+        // blank email claim is the only lookup key; no preferred_username, no sub
+        Authentication result = converter.convert(publicClientToken(Map.of("email", "")));
+
+        assertThat(subOf(result)).isEqualTo("wm-local-42");
+    }
+
+    @Test
+    @DisplayName("deny path with label-less token names the principal unknown-inventory-user")
+    void denyPathUsesUnknownLabel() {
+        // Jwt requires at least one claim; "jti" carries no identity labels.
+        Authentication result = converter.convert(publicClientToken(Map.of("jti", "bare-token")));
+
+        assertThat(result.getPrincipal()).isNotInstanceOf(WindbandOidcUser.class);
+        assertThat(subOf(result)).isEqualTo("unknown-inventory-user");
+    }
+
+    @Test
+    @DisplayName("public-client token (no sub claim): sub synthesized from preferred_username")
+    void subSynthesizedFromPreferredUsername() {
+        AppUser user = appUser("michal"); // externalId NULL — legacy rows exist
+        when(appUserRepository.findByEmail("michal@example.com")).thenReturn(Optional.of(user));
+        when(userTeamRoleRepository.loadWithBandsByUserId(null)).thenReturn(List.of());
+
+        Authentication result = converter.convert(publicClientToken(Map.of(
+                "preferred_username", "michal", "email", "michal@example.com")));
+
+        assertThat(subOf(result)).isEqualTo("michal");
     }
 }

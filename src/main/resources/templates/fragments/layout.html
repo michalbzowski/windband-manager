@@ -433,7 +433,10 @@
                     <li sec:authorize="hasAnyRole('ADMIN', 'SYSTEM_ADMIN')"><a th:href="@{/groups}" hx-target="#content" hx-swap="innerHTML transition:true" data-close>👥 Grupy</a></li>
                     <li sec:authorize="hasAnyRole('ADMIN', 'SYSTEM_ADMIN')"><a th:href="@{/tags}" hx-target="#content" hx-swap="innerHTML transition:true" data-close>🏷 Tagi</a></li>
                     <li sec:authorize="isAuthenticated()"><a th:href="${activeTeamId} != null ? @{/bands/{bandId}/compositions(bandId=${activeTeamId})} : @{/}" hx-target="#content" hx-swap="innerHTML transition:true" data-close>🎼 Utwory</a></li>
-                    <li><a th:href="@{/inventory}" hx-target="#content" hx-swap="innerHTML transition:true" data-close>📦 Zasoby</a></li>
+                    <!-- Inwentaryzacja wydzielona do zewnętrznej usługi windband-inventory
+                         (decyzja B11: kierunek WM -> inventory, nowa karta). URL per
+                         środowisko: app.inventory-url (prod: INVENTORY_URL, local: :5173). -->
+                    <li><a id="nav-inventory-external" th:href="${inventoryExternalUrl}" target="_blank" rel="noopener" data-close>📦 Inwentaryzacja</a></li>
                 </ul>
 
                 <p class="app-modal-section">Wgląd</p>
