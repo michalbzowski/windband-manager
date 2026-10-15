@@ -58,7 +58,7 @@ public class PageController {
         if (oidcUser == null) {
             // Not authenticated — redirect to Keycloak registration page
             if (keycloakRegistrationUrl != null && !keycloakRegistrationUrl.isBlank()) {
-                return "redirect:" + keycloakRegistrationUrl;
+                return "redirect:" + normalizeLeadingScheme(keycloakRegistrationUrl);
             }
             return "redirect:/";
         }
@@ -68,6 +68,24 @@ public class PageController {
             model.addAttribute("username", wu.getWbUsername());
         }
         return "register";
+    }
+
+    /**
+     * Strip a doubled leading scheme ("https://https://host") that production can
+     * produce when the configured base already carries its own scheme. Clean URLs
+     * (single scheme, either protocol) pass through unchanged.
+     *
+     * @param rawUrl configured value; guaranteed non-null at the call site
+     * @return URL with exactly one leading scheme
+     */
+    private String normalizeLeadingScheme(String rawUrl) {
+        if (rawUrl.startsWith("https://https:")) {
+            return rawUrl.substring(8);
+        }
+        if (rawUrl.startsWith("http://http:")) {
+            return rawUrl.substring(7);
+        }
+        return rawUrl;
     }
 
 @GetMapping("/")
