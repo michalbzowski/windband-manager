@@ -437,6 +437,7 @@
                          (decyzja B11: kierunek WM -> inventory, nowa karta). URL per
                          środowisko: app.inventory-url (prod: INVENTORY_URL, local: :5173). -->
                     <li><a id="nav-inventory-external" th:href="${inventoryExternalUrl}" target="_blank" rel="noopener" data-close>📦 Inwentaryzacja</a></li>
+                    <li><a th:href="@{/inventory}" hx-target="#content" hx-swap="innerHTML transition:true" data-close>📦 Zasoby</a></li>
                 </ul>
 
                 <p class="app-modal-section">Wgląd</p>

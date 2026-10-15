@@ -90,6 +90,8 @@ app:
   # already matches the public domain so the link works even before the
   # variable is set. Local dev is pinned in application-local.yml.
   inventory-url: ${INVENTORY_URL:https://inventory.bandmanager.pl}
+  # Cutover B2 §6.2: freeze WM inventory writes (410 Gone). Rollback lever, no code change.
+  inventory-write-freeze: ${INVENTORY_WRITE_FREEZE:true}
   keycloak:
     url: https://${KEYCLOAK_PUBLIC_URL}
     realm: ${KEYCLOAK_REALM}
@@ -113,6 +115,9 @@ sendgrid:
 # host's mounted volume (/mnt/sda1/my_media) — see deployment docs for how to
 # persist it across Railway restarts.
 windband:
+  # Cutover B2 §6.2 (inventory analysis doc): freeze WM inventory writes — the app is
+  # feature-complete at https://inventory.bandmanager.pl. Rollback lever = env override,
+  # no code change. Reads (legacy data browsing) stay available until the PR-2 removal.
   scores:
     root-path: ${SCORES_ROOT_PATH:/srv/windband-scores}
     max-file-size-bytes: 52428800        # 50 MB (PDF/JPEG/PNG)
