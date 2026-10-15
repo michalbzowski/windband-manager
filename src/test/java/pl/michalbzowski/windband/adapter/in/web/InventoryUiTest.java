@@ -3,6 +3,7 @@ package pl.michalbzowski.windband.adapter.in.web;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.Disabled;
 import org.openqa.selenium.By;
 import org.openqa.selenium.JavascriptExecutor;
 import org.openqa.selenium.NoSuchElementException;
@@ -52,6 +53,9 @@ class InventoryUiTest extends UiTestBase {
 
     // ==================== 1. CREATE (two-step form → submit → new card) ==================
 
+    // Cutover B2 §6.2 (2026-10-15): UI writes hit InventoryWriteFreezeFilter (410 Gone) by design.
+    // They go away for good with the PR-2 legacy-module removal — not by unfreezing.
+    @Disabled("inventory cutover B2: WM writes frozen 410 (InventoryWriteFreezeFilter)")
     @Test
     @DisplayName("Create: two-step INSTRUMENT form — name + Obój value, submit, card with the attribute chip")
     void shouldCreateInstrumentThroughTwoStepFormAndSeeCard() {
@@ -114,6 +118,7 @@ class InventoryUiTest extends UiTestBase {
 
     // ==================== 2. ASSIGN / RETURN flow =========================================
 
+    @Disabled("inventory cutover B2: WM writes frozen 410 (InventoryWriteFreezeFilter)")
     @Test
     @DisplayName("Assign to seeded member + return: modal → Jan Kowalski, JDBC lifecycle, seed back in AVAILABLE")
     void shouldAssignSeededInstrumentToMemberThenReturnIt() {

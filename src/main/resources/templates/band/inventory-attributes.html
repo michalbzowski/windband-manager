@@ -8,6 +8,8 @@
     <main class="container" id="content">
         <h2>🏷️ Atrybuty</h2>
 
+        <div th:replace="~{fragments/inventory-frozen :: frozen-banner}"></div>
+
         <!-- Responsive tabs - client-side switching like inventory view -->
         <div id="attribute-tabs" style="display:flex; gap:0.5rem; margin-bottom:1rem; border-bottom:1px solid #ddd; flex-wrap:wrap;">
             <button class="tab-btn" th:classappend="${type == 'UNIFORM'} ? 'primary' : 'secondary'" data-tab="uniforms">🎖️ Ubrania</button>

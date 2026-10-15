@@ -1,0 +1,21 @@
+<!DOCTYPE html>
+<html lang="pl" xmlns:th="http://www.thymeleaf.org">
+<body>
+<!-- Cutover B2 (§6.2/§6.4): WM inventory module is read-only since v1.x moved to the
+     standalone Inventory app. InventoryWriteFreezeFilter answers 410 on every write;
+     this banner tells users where to go. Rendered only while the freeze switch is on. -->
+<div th:fragment="frozen-banner"
+     th:if="${@environment.getProperty('app.inventory-write-freeze', 'true') == 'true'}"
+     role="note"
+     style="display:flex; align-items:center; gap:.6rem; flex-wrap:wrap;
+            background:#fff7e0; border:1px solid #f0c36d; border-radius:.6rem;
+            padding:.7rem .9rem; margin:0 0 1rem; font-size:.95rem;">
+    <span aria-hidden="true">📦</span>
+    <span>Ekwipunek jest w Windband Manager <b>tylko do odczytu</b> — dawne wpisy możesz tu przeglądać,
+        ale dodawanie, edycja i spisy zeszły do osobnej aplikacji Inventory.</span>
+    <a th:href="${inventoryExternalUrl != null and !inventoryExternalUrl.isEmpty() ? inventoryExternalUrl : 'https://inventory.bandmanager.pl'}"
+       target="_blank" rel="noopener"
+       style="margin-left:auto; white-space:nowrap; font-weight:600;">Otwórz Inventory ↗</a>
+</div>
+</body>
+</html>
