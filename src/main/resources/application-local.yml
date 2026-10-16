@@ -95,7 +95,6 @@ app:
     realm: ${KEYCLOAK_REALM:windband}
     client-id: ${KEYCLOAK_CLIENT_ID:windband-local}
     client-secret: ${KEYCLOAK_CLIENT_SECRET}
-    registration-redirect-url: "http://localhost:8180/realms/${KEYCLOAK_REALM:windband}/protocol/openid-connect/registrations?client_id=${KEYCLOAK_CLIENT_ID:windband-local}&redirect_uri=http://localhost:8080/register&response_type=code&scope=openid%20profile%20email"
 
 # v1 integration API (windband-inventory): where this process fetches the realm's
 # signing keys. Must be reachable from inside the app runtime — container DNS in
