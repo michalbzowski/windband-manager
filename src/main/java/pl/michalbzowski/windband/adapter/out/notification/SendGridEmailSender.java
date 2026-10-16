@@ -5,6 +5,7 @@ import com.fasterxml.jackson.databind.node.ObjectNode;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
@@ -17,11 +18,13 @@ import pl.michalbzowski.windband.application.service.EmailSender;
 /**
  * Sends transactional emails via the SendGrid v3 REST API (HTTPS, port 443).
  *
- * <p>Used for messages that must not depend on outbound SMTP (which is blocked on
- * the hosting platform). The companion {@link SendGridApiChannel} covers event
- * invitations through the same transport.
+ * <p>The SMTP alternative ({@link SmtpEmailSender}) takes over when
+ * {@code app.mail.transport=smtp} (e.g. on Railway PRO, where outbound SMTP is
+ * allowed); then this bean is not created at all. The companion
+ * {@link SendGridApiChannel} covers event invitations through the same transport.
  */
 @Component
+@ConditionalOnProperty(name = "app.mail.transport", havingValue = "sendgrid", matchIfMissing = true)
 public class SendGridEmailSender implements EmailSender {
 
     private static final Logger log = LoggerFactory.getLogger(SendGridEmailSender.class);
