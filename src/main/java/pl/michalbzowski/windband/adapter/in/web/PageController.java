@@ -1,6 +1,5 @@
 package pl.michalbzowski.windband.adapter.in.web;
 
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.oauth2.core.oidc.user.OidcUser;
 import org.springframework.stereotype.Controller;
@@ -45,22 +44,20 @@ public class PageController {
         return bandQueryService.getDefaultBand();
     }
 
-    @Value("${app.keycloak.registration-redirect-url:}")
-    private String keycloakRegistrationUrl;
-
     /**
-     * Registration page. In OIDC mode, unauthenticated users are redirected
-     * to Keycloak registration. Authenticated users (with or without a team)
-     * see the team creation form to create additional teams.
+     * Registration page. Unauthenticated users are sent through the native
+     * Spring OAuth2 flow ({@code /oauth2/authorization/keycloak}) so the
+     * authorization request (incl. state) is persisted in the session. The
+     * Keycloak login page offers a "Zarejestruj" link which completes the
+     * same authorization session; after creating the account Keycloak
+     * redirects back to {@code /login/oauth2/code/keycloak} and Spring logs
+     * the new user in. Authenticated users (with or without a team) see the
+     * team creation form to create additional teams.
      */
     @GetMapping("/register")
     public String register(@AuthenticationPrincipal OidcUser oidcUser, Model model) {
         if (oidcUser == null) {
-            // Not authenticated — redirect to Keycloak registration page
-            if (keycloakRegistrationUrl != null && !keycloakRegistrationUrl.isBlank()) {
-                return "redirect:" + normalizeLeadingScheme(keycloakRegistrationUrl);
-            }
-            return "redirect:/";
+            return "redirect:/oauth2/authorization/keycloak";
         }
 
         if (oidcUser instanceof WindbandOidcUser wu) {
@@ -68,24 +65,6 @@ public class PageController {
             model.addAttribute("username", wu.getWbUsername());
         }
         return "register";
-    }
-
-    /**
-     * Strip a doubled leading scheme ("https://https://host") that production can
-     * produce when the configured base already carries its own scheme. Clean URLs
-     * (single scheme, either protocol) pass through unchanged.
-     *
-     * @param rawUrl configured value; guaranteed non-null at the call site
-     * @return URL with exactly one leading scheme
-     */
-    private String normalizeLeadingScheme(String rawUrl) {
-        if (rawUrl.startsWith("https://https:")) {
-            return rawUrl.substring(8);
-        }
-        if (rawUrl.startsWith("http://http:")) {
-            return rawUrl.substring(7);
-        }
-        return rawUrl;
     }
 
 @GetMapping("/")

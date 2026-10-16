@@ -4,7 +4,7 @@
   "displayName": "Windband Manager (local)",
   "loginTheme": "bandmanager",
   "registrationAllowed": true,
-  "registrationEmailAsUsername": false,
+  "registrationEmailAsUsername": true,
   "rememberMe": true,
   "verifyEmail": false,
   "loginWithEmailAllowed": true,

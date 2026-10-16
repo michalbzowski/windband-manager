@@ -60,89 +60,23 @@
 
     <form id="kc-register-form" action="${url.registrationAction}" method="post">
 
-        <#-- Nazwa użytkownika (l. e-mail jako nazwa, zależnie od realmu) -->
+        <#-- E-mail = nazwa użytkownika (realm: registrationEmailAsUsername=true) -->
         <div class="mb-3">
-            <label for="username" tabindex="1" class="${properties.kcLabelClass!}">
-                <#if !realm.loginWithEmailAllowed>
-                    ${msg("loginUsername")}
-                <#elseif !realm.registrationEmailAsUsername>
-                    ${msg("loginUsernameOrEmail")}
-                <#else>
-                    ${msg("loginEmail")}
-                </#if>
-            </label>
-            <input tabindex="2"
-                   id="username"
-                   name="username"
-                   type="text"
-                   class="${properties.kcInputClass!}"
-                   value="${(auth.attemptedUsername!'')}"
-                   autofocus
-                   autocomplete="<#if realm.registrationEmailAsUsername>email<#else>username</#if>"
-                   aria-label="${msg("loginUsername")}"/>
-            <#if messagesPerField.existsError('username')>
-                <span id="input-error-username" style="color:#ef4444; font-size:0.8rem;" aria-live="polite">
-                    ${kcSanitize(messagesPerField.get('username'))?no_esc}
-                </span>
-            </#if>
-        </div>
-
-        <#-- E-mail (wymagany przez profil użytkownika przy rejestracji) -->
-        <div class="mb-3">
-            <label for="email" tabindex="3" class="${properties.kcLabelClass!}">
+            <label for="email" tabindex="1" class="${properties.kcLabelClass!}">
                 ${msg("email")} <span style="color:#ef4444;">*</span>
             </label>
-            <input tabindex="4"
+            <input tabindex="2"
                    id="email"
                    name="email"
                    type="email"
+                   class="${properties.kcInputClass!}"
+                   autofocus
                    autocomplete="email"
                    aria-label="${msg("email")}"
-                   aria-invalid="<#if messagesPerField.existsError('email')>true</#if>"
-                   class="${properties.kcInputClass!}"/>
+                   aria-invalid="<#if messagesPerField.existsError('email')>true</#if>"/>
             <#if messagesPerField.existsError('email')>
                 <span id="input-error-email" style="color:#ef4444; font-size:0.8rem;" aria-live="polite">
                     ${kcSanitize(messagesPerField.get('email'))?no_esc}
-                </span>
-            </#if>
-        </div>
-
-        <#-- Imię -->
-        <div class="mb-3">
-            <label for="firstName" tabindex="5" class="${properties.kcLabelClass!}">
-                ${msg("firstName")} <span style="color:#ef4444;">*</span>
-            </label>
-            <input tabindex="6"
-                   id="firstName"
-                   name="firstName"
-                   type="text"
-                   autocomplete="given-name"
-                   aria-label="${msg("firstName")}"
-                   aria-invalid="<#if messagesPerField.existsError('firstName')>true</#if>"
-                   class="${properties.kcInputClass!}"/>
-            <#if messagesPerField.existsError('firstName')>
-                <span id="input-error-firstName" style="color:#ef4444; font-size:0.8rem;" aria-live="polite">
-                    ${kcSanitize(messagesPerField.get('firstName'))?no_esc}
-                </span>
-            </#if>
-        </div>
-
-        <#-- Nazwisko -->
-        <div class="mb-3">
-            <label for="lastName" tabindex="7" class="${properties.kcLabelClass!}">
-                ${msg("lastName")} <span style="color:#ef4444;">*</span>
-            </label>
-            <input tabindex="8"
-                   id="lastName"
-                   name="lastName"
-                   type="text"
-                   autocomplete="family-name"
-                   aria-label="${msg("lastName")}"
-                   aria-invalid="<#if messagesPerField.existsError('lastName')>true</#if>"
-                   class="${properties.kcInputClass!}"/>
-            <#if messagesPerField.existsError('lastName')>
-                <span id="input-error-lastName" style="color:#ef4444; font-size:0.8rem;" aria-live="polite">
-                    ${kcSanitize(messagesPerField.get('lastName'))?no_esc}
                 </span>
             </#if>
         </div>

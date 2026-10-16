@@ -26,17 +26,23 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 /**
- * Regression test for the broken production self-registration entry:
- * {@code GET /register} used to 302 to a URL with a doubled leading scheme
- * (https://https://login...) whenever {@code KEYCLOAK_PUBLIC_URL} already
- * contained the scheme, stranding unauthenticated users on an unreachable host.
+ * Regression test for the self-registration entry {@code GET /register}.
  *
- * <p>The property value is loaded from {@code self-registration/prod-doubled-scheme.properties}
- * to reproduce the exact production property shape.</p>
+ * <p>Historically the page 302-ed to a hand-assembled Keycloak
+ * {@code .../openid-connect/registrations} URL whose {@code redirect_uri}
+ * pointed back at {@code /register} itself. Keycloak created the account and
+ * returned the authorization code to {@code /register}, which never consumes
+ * codes — the user was stranded in a redirect loop seeing an error even
+ * though the account already existed (and a retry failed because the e-mail
+ * was already taken).</p>
+ *
+ * <p>The fixed flow delegates to Spring's native OAuth2 entry point so the
+ * authorization request (and its state) lives in the session and the code
+ * lands on {@code /login/oauth2/code/keycloak}.</p>
  */
 @WebMvcTest(PageController.class)
 @ActiveProfiles("test")
-@TestPropertySource(locations = "classpath:self-registration/prod-doubled-scheme.properties")
+@TestPropertySource(locations = "classpath:self-registration/test-env.properties")
 @Import(TestSecurityConfig.class)
 class SelfRegistrationRedirectTest {
 
@@ -80,14 +86,14 @@ class SelfRegistrationRedirectTest {
     private AttentionItemCollector attentionItemCollector;
 
     /**
-     * Unauthenticated /register must redirect to the Keycloak registration URL
-     * with exactly ONE leading scheme, whatever the raw property holds.
+     * Unauthenticated /register must hand off to Spring's OAuth2 filter so the
+     * flow (state included) is owned by the client — never a raw Keycloak URL.
      */
     @Test
-    void unauthenticatedRegister_redirectsToSingleSchemeKeycloakUrl() throws Exception {
+    void anonymousUserIsSentThroughNativeOAuth2Flow() throws Exception {
         mvc.perform(get("/register"))
                 .andExpect(status().is3xxRedirection())
-                .andExpect(redirectedUrl("https://login.bandmanager.pl/realms/windband/"
-                        + "protocol/openid-connect/registrations?client_id=windband-manager"));
+                .andExpect(redirectedUrl("/oauth2/authorization/keycloak"));
     }
+
 }

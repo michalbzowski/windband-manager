@@ -97,7 +97,6 @@ app:
     realm: ${KEYCLOAK_REALM}
     client-id: ${KEYCLOAK_CLIENT_ID}
     client-secret: ${KEYCLOAK_CLIENT_SECRET}
-    registration-redirect-url: ${app.keycloak.url}/realms/${app.keycloak.realm}/protocol/openid-connect/registrations?client_id=${app.keycloak.client-id}&redirect_uri=${app.base-url}/register&response_type=code&scope=openid profile email
 
 # Superset removed from the local stack — the Superset beans fall back to
 # harmless localhost defaults and are never contacted unless you add a
