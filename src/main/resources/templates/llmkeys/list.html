@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="pl" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/layout :: head('Klucze AI')}"></head>
+<body class="dashboard-page">
+<div th:replace="~{fragments/layout :: dialogs}"></div>
+
+<main class="container" id="content">
+    <section class="dashboard-upcoming">
+        <header th:replace="~{fragments/layout :: dashboard-header}"></header>
+
+    <nav th:replace="~{fragments/page-header :: page-header-b(
+                            null, 'Klucze AI', null, null,
+                            null, null, null,
+                            null, null, null, null)}"></nav>
+
+        <article>
+            <p>Twój klucz <strong>OpenRouter</strong> jest używany do analizy partytur w chmurze —
+               gdy Windband Manager nie ma dostępu do lokalnego modelu AI (np. na Railway).
+               Klucz jest przechowywany zaszyfrowany (AES-GCM); poniżej widzisz tylko jego ostatnie 4 znaki.</p>
+        </article>
+
+        <article>
+            <form id="llm-key-form">
+                <label for="llm-key-label">Etykieta (opcjonalnie)</label>
+                <input type="text" id="llm-key-label" name="label" maxlength="100" placeholder="np. OpenRouter">
+                <label for="llm-key-value">Klucz API</label>
+                <input type="password" id="llm-key-value" name="apiKey" minlength="8" maxlength="500"
+                       placeholder="sk-or-…" autocomplete="off" required>
+                <button type="submit" class="primary" id="llm-key-save-btn">Zapisz klucz</button>
+            </form>
+        </article>
+
+    <!-- Obszar odświeżany po zapisie/usunięciu (htmx) — formularz CELOWO na zewnątrz,
+         żeby swap nie zgubił listenera submit (skill: DOM-order/script pitfalls). -->
+    <div id="llmkeys-content">
+        <div th:if="${#lists.isEmpty(llmKeys)}">
+            <article>
+                <p>Nie zapisano jeszcze żadnego klucza.</p>
+            </article>
+        </div>
+
+        <div th:unless="${#lists.isEmpty(llmKeys)}">
+            <table role="grid">
+                <thead>
+                    <tr>
+                        <th>Dostawca</th>
+                        <th>Etykieta</th>
+                        <th>Klucz</th>
+                        <th>Zapisano</th>
+                        <th>Akcje</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr th:each="k : ${llmKeys}">
+                        <td th:text="${k.provider()}">OPENROUTER</td>
+                        <td th:text="${k.label()}">OpenRouter</td>
+                        <td th:text="${k.keyHint()}">…ab12</td>
+                        <td th:text="${k.updatedLabel()}">23.10.2026 18:00</td>
+                        <td>
+                            <button class="outline small secondary"
+                                    th:hx-delete="@{/api/llm-keys/{id}(id=${k.id()})}"
+                                    hx-confirm="Czy na pewno chcesz usunąć ten klucz?"
+                                    hx-on::after-request="if (event.detail.successful) { refreshLlmKeys(); }">Usuń</button>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+    </section>
+</main>
+
+<footer th:replace="~{fragments/layout :: footer}"></footer>
+<div th:insert="~{fragments/layout :: toast-container}"></div>
+<div th:insert="~{fragments/layout :: footer-scripts}"></div>
+
+<div th:insert="~{fragments/layout :: dashboard-header-morph}"></div>
+
+<script>
+    function refreshLlmKeys() {
+        htmx.ajax('GET', '/llm-keys/list', {target: '#llmkeys-content', swap: 'innerHTML transition:true'});
+    }
+
+    document.getElementById('llm-key-form').addEventListener('submit', function (e) {
+        e.preventDefault();
+        var label = document.getElementById('llm-key-label').value;
+        var apiKey = document.getElementById('llm-key-value').value;
+        if (!apiKey) {
+            Toast.error('Podaj klucz API');
+            return;
+        }
+        fetchWithToast('/api/llm-keys', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({label: label, apiKey: apiKey})
+        }).then(function (resp) {
+            if (resp.ok) {
+                Toast.success('Klucz zapisany');
+                document.getElementById('llm-key-value').value = '';
+                refreshLlmKeys();
+            } else {
+                return resp.json().catch(function () { return null; }).then(function (body) {
+                    Toast.error((body && body.error) || ('Błąd zapisu (' + resp.status + ')'));
+                });
+            }
+            return null;
+        }).catch(function () {
+            Toast.error('Błąd sieci — spróbuj ponownie');
+        });
+    });
+</script>
+</body>
+</html>

@@ -94,6 +94,11 @@ app:
   # Ustaw SCORE_ANALYZER_URL= (pusty), żeby wrócić do StubAiAnalysisRunner.
   scoreanalysis:
     analyzer-base-url: ${SCORE_ANALYZER_URL:http://localhost:8091}
+  # DEV-ONLY: czytelna fraza 32-bajtowa jako lokalny klucz główny skarbca (to NIE jest
+  # sekret — fixture dev; produkcja bierze LLM_KEYS_MASTER_KEY ze środowiska Railway,
+  # generowany przez `openssl rand -base64 32`).
+  llmkeys:
+    master-key: ${LLM_KEYS_MASTER_KEY:windb…-32}
   keycloak:
     url: http://localhost:8180
     realm: ${KEYCLOAK_REALM:windband}

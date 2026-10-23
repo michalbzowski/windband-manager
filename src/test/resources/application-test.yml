@@ -74,6 +74,11 @@ server:
 
 app:
   base-url: http://localhost:8080
+  # Test-only master key for the LLM key vault: readable 32-byte ASCII phrase
+  # (AesGcmSecretCipher accepts raw UTF-8 32B besides Base64 32B). Enables the
+  # happy path in LlmKeysPageUiTest; NOT used anywhere outside tests.
+  llmkeys:
+    master-key: windband-test-master-key-32bytes
   # Marker value for InventoryExternalLinkUiTest — proves the menu link URL comes
   # from configuration (app.inventory-url), not from a hard-coded template path.
   inventory-url: http://inventory.test.local:5173/

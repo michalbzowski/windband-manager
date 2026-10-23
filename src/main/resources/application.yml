@@ -99,6 +99,11 @@ app:
     analyzer-base-url: ${SCORE_ANALYZER_URL:}
     analyzer-shared-token: ${SCORE_ANALYZER_TOKEN:}
     analyzer-timeout-seconds: ${SCORE_ANALYZER_TIMEOUT:120}
+  # Skarbiec kluczy LLM użytkowników (tokeny OpenRouter). Klucz główny AES-256:
+  # Base64 z dokładnie 32 bajtów, np. `openssl rand -base64 32`. Pusty = skarbiec
+  # wyłączony (zapis klucza zwróci 503). Produkcja: zmienna Railway LLM_KEYS_MASTER_KEY.
+  llmkeys:
+    master-key: ${LLM_KEYS_MASTER_KEY:}
   keycloak:
     url: https://${KEYCLOAK_PUBLIC_URL}
     realm: ${KEYCLOAK_REALM}
