@@ -90,6 +90,10 @@ app:
   # windband-inventory dev server (vite, port 5173 — matches the Keycloak
   # client's valid redirect URI http://localhost:5173/*).
   inventory-url: ${INVENTORY_URL:http://localhost:5173}
+  # Score Analyzer — lokalny serwis Python (repo ~/score-analyzer, ./run.sh, port 8091).
+  # Ustaw SCORE_ANALYZER_URL= (pusty), żeby wrócić do StubAiAnalysisRunner.
+  scoreanalysis:
+    analyzer-base-url: ${SCORE_ANALYZER_URL:http://localhost:8091}
   keycloak:
     url: http://localhost:8180
     realm: ${KEYCLOAK_REALM:windband}

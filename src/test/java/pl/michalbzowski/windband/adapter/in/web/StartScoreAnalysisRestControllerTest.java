@@ -41,7 +41,7 @@ class StartScoreAnalysisRestControllerTest {
 
         query = org.mockito.Mockito.mock(
                     pl.michalbzowski.windband.application.query.scoreanalysis.ScoreAnalysisQueryService.class);
-        var getLatest = new GetLatestScoreAnalysisRestController(query);
+        var getLatest = new GetLatestScoreAnalysisRestController(query, command);
         mvcGet = MockMvcBuilders.standaloneSetup(getLatest)
                 .setControllerAdvice(new GlobalExceptionHandler()).build();
     }
@@ -101,6 +101,47 @@ class StartScoreAnalysisRestControllerTest {
                 .andReturn();
         assertThat(mvcRes.getResponse().getContentAsString()).contains("714")
                 .contains("SUCCEEDED");
+    }
+
+    @Test
+    @DisplayName("GET /analysis/latest na wierszu RUNNING napędza poll() i zwraca świeżą fazę")
+    void latest_runningRowDrivesPoll() throws Exception {
+        var running = new pl.michalbzowski.windband.application.query.scoreanalysis.ScoreAnalysisQueryService.LatestScoreAnalysisDto(
+                715L, "RUNNING", "0123456789abcdef0123456789abcdef", null,
+                "null", "null", "null", "null",
+                java.time.Instant.parse("2026-10-23T09:00:00Z"), null, 100L);
+        var succeeded = new pl.michalbzowski.windband.application.query.scoreanalysis.ScoreAnalysisQueryService.LatestScoreAnalysisDto(
+                715L, "SUCCEEDED", "0123456789abcdef0123456789abcdef", null,
+                "/out/715/arrangement.json", "/out/715/arrangement.musicxml",
+                "/out/715/arrangement.mid", "/out/715/validation.txt",
+                java.time.Instant.parse("2026-10-23T09:00:00Z"),
+                java.time.Instant.parse("2026-10-23T09:02:00Z"), 100L);
+        org.mockito.Mockito.when(query.latestFor(anyLong(), anyLong()))
+                .thenReturn(java.util.Optional.of(running), java.util.Optional.of(succeeded));
+
+        var mvcRes = mvcGet.perform(get("/bands/1/compositions/100/analysis/latest"))
+                .andExpect(status().isOk())
+                .andReturn();
+
+        org.mockito.Mockito.verify(command).poll(715L);
+        assertThat(mvcRes.getResponse().getContentAsString()).contains("SUCCEEDED");
+    }
+
+    @Test
+    @DisplayName("GET /analysis/latest na wierszu terminalnym NIE wywołuje poll()")
+    void latest_terminalRowSkipsPoll() throws Exception {
+        var dto = new pl.michalbzowski.windband.application.query.scoreanalysis.ScoreAnalysisQueryService.LatestScoreAnalysisDto(
+                716L, "FAILED", "ref", "coś poszło nie tak",
+                "null", "null", "null", "null",
+                java.time.Instant.parse("2026-10-23T09:00:00Z"),
+                java.time.Instant.parse("2026-10-23T09:01:00Z"), 100L);
+        org.mockito.Mockito.when(query.latestFor(anyLong(), anyLong()))
+                .thenReturn(java.util.Optional.of(dto));
+
+        mvcGet.perform(get("/bands/1/compositions/100/analysis/latest"))
+                .andExpect(status().isOk());
+
+        org.mockito.Mockito.verify(command, org.mockito.Mockito.never()).poll(anyLong());
     }
 
     @Test

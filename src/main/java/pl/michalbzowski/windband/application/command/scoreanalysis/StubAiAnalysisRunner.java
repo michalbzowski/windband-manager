@@ -6,17 +6,17 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
-import org.springframework.stereotype.Component;
 
 /**
- * US-4.1 — default in-memory {@link AiAnalysisRunner}. Honours the real pipeline's two-step
+ * US-4.1 — default in-memory {@link AiAnalysisRunner} (instantiated by
+ * {@code ScoreAnalysisConfiguration} when no external Score Analyzer is configured).
+ * Honours the real pipeline's two-step
  * API: {@code start} returns a stable {@code runnerRef}; {@code inspect(ref)} reports the phase.
  * Because this stub is single-shot it transitions to SUCCEEDED (or FAILED when the input
  * file name contains "failme") on the first {@code inspect} call after {@code start}.
  * The artefacts (arrangement.json, .musicxml, .mid) are created at {@code inspect} time so
  * the FS-path assertions in the integration test see real files.
  */
-@Component
 public class StubAiAnalysisRunner implements AiAnalysisRunner {
 
     private static final AtomicInteger SEQ = new AtomicInteger();
