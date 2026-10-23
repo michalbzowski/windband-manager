@@ -92,6 +92,13 @@ app:
   inventory-url: ${INVENTORY_URL:https://inventory.bandmanager.pl}
   # Cutover B2 §6.2: freeze WM inventory writes (410 Gone). Rollback lever, no code change.
   inventory-write-freeze: ${INVENTORY_WRITE_FREEZE:true}
+  # Score Analyzer — zewnętrzny serwis Python (repo score-analyzer). Pusty SCORE_ANALYZER_URL
+  # (domyślnie) trzyma analizę AI na StubAiAnalysisRunner (testy/dev). Na Railway ustaw URL
+  # usługi oraz ANALYZER_SHARED_TOKEN po stronie analyzera i ten sam sekret tutaj.
+  scoreanalysis:
+    analyzer-base-url: ${SCORE_ANALYZER_URL:}
+    analyzer-shared-token: ${SCORE_ANALYZER_TOKEN:}
+    analyzer-timeout-seconds: ${SCORE_ANALYZER_TIMEOUT:120}
   keycloak:
     url: https://${KEYCLOAK_PUBLIC_URL}
     realm: ${KEYCLOAK_REALM}

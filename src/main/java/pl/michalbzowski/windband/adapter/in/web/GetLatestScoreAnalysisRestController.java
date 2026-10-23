@@ -1,30 +1,46 @@
 package pl.michalbzowski.windband.adapter.in.web;
 
+import java.util.Optional;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+import pl.michalbzowski.windband.application.command.scoreanalysis.ScoreAnalysisCommandService;
 import pl.michalbzowski.windband.application.query.scoreanalysis.ScoreAnalysisQueryService;
+import pl.michalbzowski.windband.application.query.scoreanalysis.ScoreAnalysisQueryService.LatestScoreAnalysisDto;
 
 /**
  * US-4.1 — read the latest analysis row for a composition (in this band).
  * 404 when no analysis has been started; 200 with the DTO once one exists.
+ *
+ * <p>Score Analyzer integration (Phase B): this endpoint is what the UI polls every 2 s,
+ * so it also DRIVES the lifecycle — a non-terminal row (PENDING/RUNNING) is advanced through
+ * {@link ScoreAnalysisCommandService#poll(Long)} (observes the runner, applies the terminal
+ * transition) before the fresh state is projected. {@code poll} is idempotent for terminal rows.
  */
 @RestController
 @RequestMapping("/bands/{bandId}/compositions/{compositionId}")
 public class GetLatestScoreAnalysisRestController {
 
     private final ScoreAnalysisQueryService queryService;
+    private final ScoreAnalysisCommandService commandService;
 
-    public GetLatestScoreAnalysisRestController(ScoreAnalysisQueryService queryService) {
+    public GetLatestScoreAnalysisRestController(ScoreAnalysisQueryService queryService,
+                                                ScoreAnalysisCommandService commandService) {
         this.queryService = queryService;
+        this.commandService = commandService;
     }
 
     @GetMapping("/analysis/latest")
     public ResponseEntity<String> latest(
             @PathVariable("bandId") Long bandId,
             @PathVariable("compositionId") Long compositionId) {
+        // 1. Drive: advance a live row by observing the runner (no-op for terminal rows).
+        Optional<LatestScoreAnalysisDto> first = queryService.latestFor(compositionId, bandId);
+        first.filter(dto -> "PENDING".equals(dto.phase()) || "RUNNING".equals(dto.phase()))
+                .ifPresent(dto -> commandService.poll(dto.id()));
+        // 2. Project the (possibly just-advanced) state.
         return queryService.latestFor(compositionId, bandId)
                 .map(dto -> {
                     // Plain JSON string body — the standalone MockMvc (used by the UI-level tests in

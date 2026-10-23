@@ -41,8 +41,14 @@ public interface AiAnalysisRunner {
      */
     PhaseStatus inspect(String runnerRef);
 
-    /** Everything the runner needs to launch a pipeline run on one input file. */
-    record AnalysisRequest(Path inputPath, Path outputDir) {
+    /**
+     * Everything the runner needs to launch a pipeline run on one input file.
+     *
+     * <p>{@code llmApiKey} is an OPTIONAL per-run LLM credential (e.g. the user's OpenRouter
+     * token resolved at start time — Score Analyzer integration, Phase C). It is passed
+     * in memory only, never logged nor persisted; runners that do not need it ignore it.
+     */
+    record AnalysisRequest(Path inputPath, Path outputDir, String llmApiKey) {
         public AnalysisRequest {
             if (inputPath == null || !java.nio.file.Files.isRegularFile(inputPath)) {
                 throw new IllegalArgumentException("inputPath must be an existing regular file");
@@ -50,6 +56,10 @@ public interface AiAnalysisRunner {
             if (outputDir == null) {
                 throw new IllegalArgumentException("outputDir required");
             }
+        }
+
+        public AnalysisRequest(Path inputPath, Path outputDir) {
+            this(inputPath, outputDir, null);
         }
     }
 
