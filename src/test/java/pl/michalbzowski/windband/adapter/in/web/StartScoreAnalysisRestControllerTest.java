@@ -8,8 +8,10 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 import pl.michalbzowski.windband.application.command.scoreanalysis.ScoreAnalysisCommandService;
+import pl.michalbzowski.windband.application.query.llmkey.LlmApiKeyQueryService;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.Mockito.doThrow;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -30,13 +32,21 @@ class StartScoreAnalysisRestControllerTest {
     private MockMvc mvcPost;             // start REST controller
     private MockMvc mvcGet;              // latest REST controller
     private ScoreAnalysisCommandService command;
+    private LlmApiKeyQueryService llmKeys;
     private pl.michalbzowski.windband.application.query.scoreanalysis.ScoreAnalysisQueryService query;
 
     @BeforeEach
     void setUp() {
         command = org.mockito.Mockito.mock(ScoreAnalysisCommandService.class);
-        var startCtl = new StartScoreAnalysisRestController(command);
+        llmKeys = org.mockito.Mockito.mock(LlmApiKeyQueryService.class);
+        var startCtl = new StartScoreAnalysisRestController(command, llmKeys);
         mvcPost = MockMvcBuilders.standaloneSetup(startCtl)
+                // bez rejestrowania resolvera @AuthenticationPrincipal standalone MockMvc
+                // próbowałby instancjonować OidcUser jako model attribute → ISE → fałszywe 409;
+                // resolver z pustym SecurityContext daje principal = null (ścieżka „bez skarbca").
+                .setCustomArgumentResolvers(
+                        new org.springframework.security.web.method.annotation
+                                .AuthenticationPrincipalArgumentResolver())
                 .setControllerAdvice(new GlobalExceptionHandler()).build();
 
         query = org.mockito.Mockito.mock(
@@ -49,7 +59,7 @@ class StartScoreAnalysisRestControllerTest {
     @Test
     @DisplayName("POST /analyze returns 202 + JSON body {\"analysisId\": ...} on the happy path")
     void start_returns_202_with_analysisId() throws Exception {
-        org.mockito.Mockito.when(command.start(anyLong(), anyLong())).thenReturn(1234L);
+        org.mockito.Mockito.when(command.start(anyLong(), anyLong(), any())).thenReturn(1234L);
         mvcPost.perform(post("/bands/1/compositions/100/score-files/42/analyze"))
                 .andExpect(status().isAccepted())
                 .andExpect(jsonPath("$.analysisId").value(1234));
@@ -58,7 +68,7 @@ class StartScoreAnalysisRestControllerTest {
     @Test
     @DisplayName("POST service throws IllegalArgumentException (band unknown) → 400 via GlobalExceptionHandler")
     void start_badRequestForUnknownBand() throws Exception {
-        doThrow(new IllegalArgumentException("Band not found")).when(command).start(anyLong(), anyLong());
+        doThrow(new IllegalArgumentException("Band not found")).when(command).start(anyLong(), anyLong(), any());
         mvcPost.perform(post("/bands/99/compositions/1/score-files/2/analyze"))
                 .andExpect(status().isBadRequest());
     }
@@ -67,9 +77,41 @@ class StartScoreAnalysisRestControllerTest {
     @DisplayName("POST service throws IllegalStateException (cross-band / unknown file) → 409 via GlobalExceptionHandler")
     void start_conflictForCrossBand() throws Exception {
         doThrow(new IllegalStateException("ScoreFile 7 not owned by band 1"))
-                .when(command).start(anyLong(), anyLong());
+                .when(command).start(anyLong(), anyLong(), any());
         mvcPost.perform(post("/bands/1/compositions/1/score-files/7/analyze"))
                 .andExpect(status().isConflict());
+    }
+
+    @Test
+    @DisplayName("POST /analyze przekazuje klucz OpenRouter użytkownika ze skarbca do command service")
+    void start_passesVaultKeyToCommandService() {
+        var user = org.mockito.Mockito.mock(
+                pl.michalbzowski.windband.adapter.in.security.WindbandOidcUser.class);
+        org.mockito.Mockito.when(user.getUserId()).thenReturn(42L);
+        org.mockito.Mockito.when(llmKeys.plainKey(42L,
+                        pl.michalbzowski.windband.domain.llmkey.LlmProvider.OPENROUTER))
+                .thenReturn(java.util.Optional.of("openrouter-test-key-1234"));
+        org.mockito.Mockito.when(command.start(42L, 1L, "openrouter-test-key-1234")).thenReturn(9L);
+        var ctl = new StartScoreAnalysisRestController(command, llmKeys);
+
+        var resp = ctl.analyze(1L, 7L, 42L, user);
+
+        assertThat(resp.getStatusCode().value()).isEqualTo(202);
+        assertThat(resp.getBody()).contains("\"analysisId\": 9");
+        org.mockito.Mockito.verify(command).start(42L, 1L, "openrouter-test-key-1234");
+    }
+
+    @Test
+    @DisplayName("POST /analyze bez principal nie sięga do skarbca (analiza bez klucza użytkownika)")
+    void start_withoutPrincipalSkipsVault() {
+        org.mockito.Mockito.when(command.start(anyLong(), anyLong(), any())).thenReturn(5L);
+        var ctl = new StartScoreAnalysisRestController(command, llmKeys);
+
+        ctl.analyze(1L, 7L, 42L, null);
+
+        org.mockito.Mockito.verify(llmKeys, org.mockito.Mockito.never())
+                .plainKey(anyLong(), any());
+        org.mockito.Mockito.verify(command).start(42L, 1L, null);
     }
 
     @Test
