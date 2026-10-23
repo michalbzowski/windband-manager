@@ -1,0 +1,307 @@
+<!DOCTYPE html>
+<html lang="pl" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/layout :: head}"></head>
+<body class="dash" data-bs-theme="dark" data-prefers-color-scheme="auto">
+
+<div class="dashboard-container">
+    <!-- Unified dashboard header -->
+    <header class="dash-header" th:replace="~{fragments/dashboard-page :: header}"></header>
+
+    <main class="dash-main main">
+        <nav th:replace="~{fragments/page-header :: page-header-c(
+            @{/bands/{bandId}/compositions(bandId=${bandId})},
+            'Nowy utwór z PDF (AI)',
+            'Anuluj',
+            @{/bands/{bandId}/compositions(bandId=${bandId})})}"></nav>
+
+        <div class="card" style="max-width: 860px; margin: 1.5rem auto; padding: 1.25rem;">
+            <!-- KROK 1 — formularz startu -->
+            <section id="nfp-start-panel">
+                <h3>🎼 Nowy utwór z nutowego PDF</h3>
+                <p class="form-note">System przeanalizuje głosy (AI), a następnie po Twojej akceptacji
+                   utworzy je jako partie utworu. Akceptacja równoznaczna jest z weryfikacją partii.</p>
+                <form id="nfp-start-form">
+                    <div style="margin-bottom: 1rem;">
+                        <label class="form-label" for="nfp-file">Plik PDF z nutami (wymagany)</label>
+                        <input type="file" class="form-control" id="nfp-file" name="file" accept=".pdf,application/pdf" required>
+                    </div>
+                    <div style="margin-bottom: 1rem;">
+                        <label class="form-label" for="nfp-title">Tytuł (opcjonalnie — AI podpowie z pliku)</label>
+                        <input type="text" class="form-control" id="nfp-title" name="title" placeholder="np. Radetzky Marsz">
+                    </div>
+                    <p class="muted" style="font-size: 0.9em; margin-bottom: 1rem;">Utwór pojawi się na liście
+                       zespołu natychmiast, w statusie roboczym, zanim analiza się zakończy.</p>
+                    <div class="modal-actions">
+                        <button type="submit" class="primary" id="nfp-start-btn">🚀 Rozpocznij analizę AI</button>
+                    </div>
+                </form>
+                <p id="nfp-start-error" class="danger hidden mt-2" role="alert"></p>
+            </section>
+
+            <!-- KROK 2 — postęp analizy -->
+            <section id="nfp-progress-panel" class="hidden">
+                <h3>Analiza AI w toku</h3>
+                <p style="margin: 1rem 0;"><span class="badge badge-warning" id="nfp-phase-badge" style="font-size: 0.95em;">PENDING</span></p>
+                <small class="muted">Zwykle trwa od kilkudziesięciu sekund do kilku minut.</small>
+            </section>
+
+            <!-- KROK 3 — przegląd i akceptacja -->
+            <section id="nfp-review-panel" class="hidden">
+                <h3>📋 Przegląd propozycji — do zatwierdzenia</h3>
+                <p class="form-note">Sprawdź metadane i partie, zaznacz te do utworzenia i wybierz instrument
+                   (wstępne dopasowanie z mapy ról zespołu).</p>
+
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem; margin-bottom: 1rem;">
+                    <div>
+                        <label class="form-label" for="nfp-work-title">Tytuł</label>
+                        <input type="text" class="form-control" id="nfp-work-title">
+                    </div>
+                    <div>
+                        <label class="form-label" for="nfp-work-composer">Kompozytor</label>
+                        <input type="text" class="form-control" id="nfp-work-composer">
+                    </div>
+                    <div>
+                        <label class="form-label" for="nfp-work-arranger">Aranżer (opcjonalnie)</label>
+                        <input type="text" class="form-control" id="nfp-work-arranger">
+                    </div>
+                </div>
+
+                <table style="width: 100%; border-collapse: collapse; margin-bottom: 1rem;">
+                    <thead>
+                        <tr>
+                            <th style="text-align:left; padding: 4px 6px;"></th>
+                            <th style="text-align:left; padding: 4px 6px;">Głos</th>
+                            <th style="text-align:left; padding: 4px 6px;">Strony</th>
+                            <th style="text-align:left; padding: 4px 6px;">Pewność</th>
+                            <th style="text-align:left; padding: 4px 6px;">Instrument</th>
+                        </tr>
+                    </thead>
+                    <tbody id="nfp-rows-body"></tbody>
+                </table>
+
+                <p id="nfp-review-error" class="danger hidden mt-2" role="alert"></p>
+                <div class="modal-actions">
+                    <button type="button" class="primary" id="nfp-confirm-btn" disabled>✔ Poświadc i utwórz</button>
+                </div>
+            </section>
+
+            <!-- BŁĄD -->
+            <section id="nfp-error-panel" class="hidden">
+                <h3 class="danger">Analiza niepowodzenie</h3>
+                <p id="nfp-error-text" class="danger" role="alert"></p>
+                <div class="modal-actions">
+                    <a id="nfp-error-link" class="secondary small" href="#">Przejdź do utworu</a>
+                </div>
+            </section>
+        </div>
+    </main>
+</div>
+
+<script th:inline="javascript">
+/* eslint-disable no-unused-vars */
+(function () {
+    'use strict';
+
+    var bandId = /*[[${bandId}]]*/ 0;
+    var compositionId = null;     // ustawiane po /start
+
+    function show(panelId) {
+        ['nfp-start-panel', 'nfp-progress-panel', 'nfp-review-panel', 'nfp-error-panel'].forEach(function (id) {
+            var el = document.getElementById(id);
+            if (el) { el.classList.toggle('hidden', id !== panelId); }
+        });
+    }
+
+    function setStatus(text, cls) {
+        var badge = document.getElementById('nfp-phase-badge');
+        if (!badge) { return; }
+        badge.textContent = text || '-';
+        badge.classList.remove('badge-success', 'badge-danger', 'badge-warning', 'badge-secondary');
+        badge.classList.add(cls || 'badge-secondary');
+    }
+
+    function escapeHtml(s) {
+        return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) {
+            return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
+        });
+    }
+
+    // ---- KROK 1: start ------------------------------------------------------
+    document.getElementById('nfp-start-form').addEventListener('submit', function (ev) {
+        ev.preventDefault();
+        var fileEl = document.getElementById('nfp-file');
+        if (!fileEl.files || fileEl.files.length === 0) { return; }
+        var fd = new FormData();
+        fd.append('file', fileEl.files[0]);
+        var titleEl = document.getElementById('nfp-title');
+        if (titleEl.value.trim()) { fd.append('title', titleEl.value.trim()); }
+
+        var btn = document.getElementById('nfp-start-btn');
+        if (btn) { btn.disabled = true; }
+        fetch('/bands/' + bandId + '/compositions/new-from-pdf/start', { method: 'POST', body: fd })
+            .then(function (resp) {
+                return resp.json().then(function (p) {
+                    if (!resp.ok) { throw new Error((p && p.message) || ('HTTP ' + resp.status)); }
+                    return p;
+                });
+            })
+            .then(function (result) {
+                compositionId = result.compositionId;
+                setStatus('PENDING', 'badge-warning');
+                show('nfp-progress-panel');
+                pollAnalysis();
+            })
+            .catch(function (err) {
+                var el = document.getElementById('nfp-start-error');
+                if (el) { el.textContent = err.message; el.classList.remove('hidden'); }
+                if (btn) { btn.disabled = false; }
+            });
+    });
+
+    // ---- KROK 2: polling ----------------------------------------------------
+    var pollTimer = null;
+    function pollAnalysis() {
+        if (!compositionId) { return; }
+        fetch('/bands/' + bandId + '/compositions/' + compositionId + '/analysis/latest?_=' + new Date().getTime(),
+              { cache: 'no-store' })
+            .then(function (resp) { return resp.json(); })
+            .then(function (dto) { handlePhase(dto); })
+            .catch(function () {
+                if (pollTimer) { clearTimeout(pollTimer); }
+                pollTimer = setTimeout(pollAnalysis, 4000);
+            });
+    }
+
+    function handlePhase(dto) {
+        var phase = dto && dto.phase;
+        var analysisId = dto && dto.id;
+        if (phase === 'SUCCEEDED') {
+            if (pollTimer) { clearTimeout(pollTimer); }
+            loadReview(analysisId, dto);
+            return;
+        }
+        if (phase === 'FAILED') {
+            if (pollTimer) { clearTimeout(pollTimer); }
+            var el = document.getElementById('nfp-error-text');
+            if (el) { el.textContent = (dto && dto.errorMessage) || 'Analiza zakończona błędem.'; }
+            var link = document.getElementById('nfp-error-link');
+            if (link) { link.setAttribute('href', '/bands/' + bandId + '/compositions/' + compositionId); }
+            show('nfp-error-panel');
+            return;
+        }
+        setStatus(phase || 'PENDING', phase === 'PROCESSING' ? 'badge-info' : 'badge-warning');
+        pollTimer = setTimeout(pollAnalysis, 4000);
+    }
+
+    // ---- KROK 3: przegląd ---------------------------------------------------
+    var proposals = [];
+    var instruments = [];
+
+    function loadReview(analysisId, latestDto) {
+        fetch('/bands/' + bandId + '/compositions/' + compositionId +
+              '/analysis/' + analysisId + '/proposals?_=' + new Date().getTime(), { cache: 'no-store' })
+            .then(function (resp) { return resp.json(); })
+            .then(function (dto) { renderReview(dto); show('nfp-review-panel'); })
+            .catch(function (err) {
+                var el = document.getElementById('nfp-error-text');
+                if (el) { el.textContent = 'Nie udało się wczytać propozycji: ' + err.message; }
+                var link = document.getElementById('nfp-error-link');
+                if (link) { link.setAttribute('href', '/bands/' + bandId + '/compositions/' + compositionId); }
+                show('nfp-error-panel');
+            });
+    }
+
+    function renderReview(dto) {
+        proposals = (dto && dto.proposals) || [];
+        instruments = (dto && dto.instruments) || [];
+        var w = (dto && dto.work) || {};
+
+        document.getElementById('nfp-work-title').value = w.title || '';
+        document.getElementById('nfp-work-composer').value = w.composer || '';
+        document.getElementById('nfp-work-arranger').value = w.arranger || '';
+
+        var tbody = document.getElementById('nfp-rows-body');
+        while (tbody.firstChild) { tbody.removeChild(tbody.firstChild); }
+        proposals.forEach(function (row, idx) {
+            var tr = document.createElement('tr');
+            var members = (row.memberNames || []).join(', ');
+            tr.innerHTML =
+                '<td style="padding:4px 6px;"><input type="checkbox" class="nfp-row-cb" data-idx="' + idx + '" checked></td>' +
+                '<td style="padding:4px 6px;"><strong>' + escapeHtml(row.role) + '</strong>' +
+                (members ? '<div class="muted" style="font-size:0.8em;">' + escapeHtml(members) + '</div>' : '') + '</td>' +
+                '<td style="padding:4px 6px; white-space:nowrap;">' + row.pageFrom + '–' + row.pageTo + '</td>' +
+                '<td style="padding:4px 6px;">' + Math.round((row.confidence || 0) * 100) + '%</td>';
+            var td = document.createElement('td');
+            var sel = document.createElement('select');
+            sel.className = 'nfp-row-sel';
+            sel.dataset.idx = String(idx);
+            if (instruments.length === 0) {
+                sel.innerHTML = '<option value="">(brak instrumentów)</option>';
+                sel.disabled = true;
+            } else {
+                instruments.forEach(function (opt) {
+                    var o = document.createElement('option');
+                    o.value = opt.id;
+                    o.textContent = opt.name;
+                    if (row.instrumentIdOrNull != null && String(opt.id) === String(row.instrumentIdOrNull)) { o.selected = true; }
+                    sel.appendChild(o);
+                });
+            }
+            td.appendChild(sel);
+            tr.appendChild(td);
+            tbody.appendChild(tr);
+        });
+
+        var btn = document.getElementById('nfp-confirm-btn');
+        if (btn) { btn.disabled = false; }
+    }
+
+    // ---- AKCEPTACJA ---------------------------------------------------------
+    document.getElementById('nfp-confirm-btn').addEventListener('click', function () {
+        var rows = [];
+        proposals.forEach(function (row, idx) {
+            var cb = document.querySelector('.nfp-row-cb[data-idx="' + idx + '"]');
+            if (!cb || !cb.checked) { return; }
+            var sel = document.querySelector('.nfp-row-sel[data-idx="' + idx + '"]');
+            rows.push({
+                role: row.role,
+                pageFrom: row.pageFrom,
+                pageTo: row.pageTo,
+                instrumentId: (sel && sel.value !== '') ? Number(sel.value) : null,
+                confidence: row.confidence
+            });
+        });
+        if (rows.length === 0) {
+            var warn = document.getElementById('nfp-review-error');
+            if (warn) { warn.textContent = 'Zaznacz co najmniej jeden głos do utworzenia.'; warn.classList.remove('hidden'); }
+            return;
+        }
+        var btn = document.getElementById('nfp-confirm-btn');
+        if (btn) { btn.disabled = true; btn.textContent = 'Tworzenie…'; }
+        fetch('/bands/' + bandId + '/compositions/new-from-pdf/confirm', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                compositionId: compositionId,
+                title: document.getElementById('nfp-work-title').value.trim() || null,
+                composer: document.getElementById('nfp-work-composer').value.trim() || null,
+                arranger: document.getElementById('nfp-work-arranger').value.trim() || null,
+                rows: rows
+            })
+        })
+            .then(function (resp) { return { ok: resp.ok, location: resp.headers.get('Location') }; })
+            .then(function (r) {
+                if (!r.ok || !r.location) { throw new Error('Akceptacja nie powiodła się'); }
+                window.location.href = r.location;
+            })
+            .catch(function (err) {
+                var el = document.getElementById('nfp-review-error');
+                if (el) { el.textContent = err.message; el.classList.remove('hidden'); }
+                if (btn) { btn.disabled = false; btn.textContent = '✔ Poświadc i utwórz'; }
+            });
+    });
+})();
+</script>
+
+</body>
+</html>

@@ -96,4 +96,59 @@ osobna usługa (Faza A5) dodaje się w projekcie Railway ręcznie — instrukcja
   restart = joby stracone, WM pokaże FAILED po limicie pollingów.
 - Nazywanie instrumentów przez LLM bywa niespójne — D1 rozwiązuje to mapowaniem
   aliasów istniejącym w domenie WM.
-- Klucz `APP_TOKENS_KEY` musi istnieć na Railway przed wdrożeniem Fazy C.
+- Klucz `APP_TOKENS_KEY` musi istnieć na Railway przed wdrożeniem Fazy C. (faktycznie `LLM_KEYS_MASTER_KEY`)
+
+## FAZA D — projekt realizacji (dopisane 2026-10-23, kontynuacja pracy)
+
+### Decyzje projektowe
+
+1. **Jeden PR (#286)** dla B+C+D na `feat/score-analyzer-integration`
+   (konwencja: jedna funkcjonalność = jeden PR); `feat/llm-key-vault` (C) fast-forwardowana.
+2. **Akceptacja = weryfikacja**: zaakceptowane partie dostają od razu parę
+   `verify(verifier, now)` — realizuje US-4.5 („AI nigdy bez weryfikacji") i otwiera
+   US-3.03 (markReady po aktywowaniu partii).
+3. **Nowy utwór z PDF reużywa kernel analizy**: utworzenie DRAFT → upload
+   (`ScoreFileCommandService.upload`) → `ScoreAnalysisCommandService.start` → polling
+   istniejącym `/analysis/latest` + nowym `/proposals` → confirmation (metadane praca
+   + partie). Nie tworzymy drugiego kanału analitycznego.
+4. **`RoleInstrumentResolver`** (application/query/scoreanalysis): normalizacja =
+   lowercase + Normalizer.NFD + strip diacritic; instrument kandydat = instrument
+   bandowy o nazwie równej roli AI LUB którego nazwa jest `source_tag` wiersza
+   `instrument_role_map` z tym samym `target_role_pattern`; root (nie-alias) wygrywa nad
+   aliasem (semantyka US-1.2); aktywny członek pokrywa rolę, jeśli któryś z jego
+   instrumentów jest kandydatem (spójność z `EventCompositionPartsQueryService`).
+5. **AI vs HYBRID przy akceptacji**: wybrany instrument == wynik rozginięcia roli →
+   `PartSource.AI`; inaczej `HYBRID`.
+6. **Idempotencja akceptacji**: rola już istnieje w utworze → skip (nie nadpisujemy
+   ręcznego mapowania); odpowiedź `{"created": n, "skipped": [{role, reason}]}`.
+7. **CSRF**: `SecurityConfig` ma CSRF globalnie wyłączony — `fetch` POST-y bez tokena OK.
+8. **JSON w MockMvc**: kontrolery piszą odpowiedź przez `ObjectMapper.writeValueAsString`
+   (konwencja fazy B) — kontrakty testów niezależne od autowired Jackson.
+
+### Tablica prac
+
+| # | Co | Jak | Test |
+|---|----|-----|------|
+| D1 | GET `/bands/{b}/compositions/{c}/analysis/{a}/proposals` → `{work, instruments[], proposals[]}` | `ScoreAnalysisProposalsQueryService`: banda-scoped (ISE→409), faza SUCCEEDED + plik `arrangement.json`; `JsonAiProposals.parse`; work z `analyzer-raw.json`; per-wiersz resolver; `AiProposalPreview` + `instrumentIdOrNull` (rekord dotąd bezużytkowy) | [D+T] unit (fixture JSON w tempdir) + MockMvc 200/409 |
+| D2 | POST `.../analysis/{a}/accept`, body `{rows:[{role,pageFrom,pageTo,instrumentId,confidence?}]}` → 200 `{created,skipped[]}` | `AcceptAiProposalsCommandService.accept`: banda-scoped; instrument przez `findByIdAndBandId` (IAE→400); zakres vs `scoreFile.pageCount` (factory); duplikat roli→skip; `verify(verifier, now)` | [D+T] unit + MockMvc kontrakt |
+| D3 | GET `/bands/{b}/compositions/new-from-pdf` (strona: plik → analiza → podgląd → potwierdzenie) | `NewFromPdfPageController` + template `newFromPdf.html`; post-start reuse polling `/analysis/latest`; formularz pracy prefilled z `work`; tabela propozycji + `<select>` instrumentów (lista z D1) | [D] |
+| D4 | POST `.../new-from-pdf/start` (multipart: file, title?) → JSON `{compositionId,fileId,analysisId}` | `NewFromPdfCommandService.start`: composition DRAFT (tytuł: podany \| filename bez .pdf \| „Nowy utwór") + `ScoreFileCommandService.upload` + start analizy z kluczem `LlmApiKeyQueryService.plainKey(userId,"ollama")` (400, jeśli brak) | [D+T] unit (stub runnera) + MockMvc kontrakt |
+| D5 | POST `.../new-from-pdf/confirm` JSON `{compositionId,title,composer,arranger,rows[]}` → 303 do detail | `NewFromPdfCommandService.confirm`: `updateTexts` (tytuł obowiązkowy) + wspólne kernel z D2 na latest SUCCEEDED analizie; jedno `@Transactional` | [D+T] unit + MockMvc kontrakt |
+| D6 | Modal „Analizuj AI" w `detail.html`: po SUCCEEDED — tabela propozycji + „Akceptuj" zamiast linków do artefaktów; po akceptacji toast + reload partii | rozszerzenie istniejącego JS (fetch `/proposals`, `location.reload()` po sukcesie) | [D] manual e2e |
+
+### Sekwencja realizacji (TDD)
+
+1. `RoleInstrumentResolver` + unit-test (aliasy, diacritic, brak dopasowania).
+2. D1 service + testy (fixture JSON; fazy PENDING/SUCCEEDED; plik nieobecny) → MockMvc kontrakt.
+3. D2 service + testy (AI vs HYBRID, skip duplikatu, zakres stron, cross-band instrument 400) → MockMvc kontrakt.
+4. D4/D5 service + testy (draft+upload+start; confirm z pustym tytułem; confirm z wierszami) → MockMvc kontrakt.
+5. Template `newFromPdf.html` + modyfikacja modala `detail.html`.
+6. `./mvnw clean verify` (pełne) → commit → rebase na origin/main → verify → push (PR #286 auto-odświeżony) + edycja opisu PR (B+C+D).
+7. Manual E2E: WM lokalnie (analyzer :8091): nowy utwór z „Zadzwonił Polonez" → analiza → podgląd → akcept części wierszy → partie w utworze (`PartSource.AI/HYBRID`, para verify).
+
+### Ryzyka / uwagi fazy D
+
+- `AiProposalPreview` zyskuje pole — rekord dotąd bezużytkowy (tylko jego plik), brak break.
+- DRAFT utworu pozostaje w bibliotece, jeśli user nie dokończy flow PDF — akceptowalne (DRAFT, usuwalny); auto-cleanup NIE.
+- `accept` z rolą nieistniejącą w propozycjach → 400; UI wysyła tylko role znane z D1.
+- Klucz LLM: start bez klucza użytkownika → 400 (komunikat o braku w `/llm-keys`).

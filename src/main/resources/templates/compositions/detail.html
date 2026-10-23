@@ -394,6 +394,20 @@
                 <p th:if="${latestPhase != null and latestPhase == 'FAILED'}" id="analyze-error-text" class="danger" role="alert"></p>
             </section>
 
+            <!-- Faza D — akceptacja propozycji AI (US-4.5: akceptacja = weryfikacja) -->
+            <section id="analyze-accept-panel" class="hidden">
+                <h3>🎼 Propozycje AI — akceptacja</h3>
+                <p class="form-note">Zaznacz partie do utworzenia i potwierdź instrument (wstępnie z dopasowania).
+                   Akceptowanie oznacza jednoczesną weryfikację partii Twoim podpisem.</p>
+                <div id="ai-work-meta" class="muted" style="font-size: 0.9em; margin-bottom: 0.5rem;"></div>
+                <div id="ai-proposals-wrap" style="max-height: 320px; overflow-y: auto; border: 1px solid var(--border, #ccc); border-radius: 6px; padding: 0.5rem;"></div>
+                <div id="ai-accept-error" class="danger hidden mt-2" role="alert"></div>
+                <div id="ai-accept-result" class="mt-2 hidden" role="status" aria-live="polite"></div>
+                <div class="modal-actions" style="margin-top: 1rem;">
+                    <button type="button" class="primary" id="ai-accept-btn">✔ Akceptuj zaznaczone</button>
+                </div>
+            </section>
+
         </div>
     </div>
 </dialog>
@@ -478,7 +492,8 @@
     }
 
     function hideAllPanels() {
-        ['analyze-start-panel', 'analyze-progress-panel', 'analyze-result-panel'].forEach(function (id) {
+        ['analyze-start-panel', 'analyze-progress-panel', 'analyze-result-panel',
+         'analyze-accept-panel'].forEach(function (id) {
             var el = document.getElementById(id);
             if (el) { el.classList.add('hidden'); }
         });
@@ -578,8 +593,158 @@
         if (dto.phase === 'FAILED') {
             var errEl = document.getElementById('analyze-error-text');
             if (errEl) { errEl.textContent = dto.errorMessage || 'Analiza zakończona błędem'; }
+        } else if (dto.id != null) {
+            loadAiProposals(dto.id); // Faza D — panel akceptacji propozycji
         }
     }
+
+    // ---- Faza D: akceptacja propozycji AI ----------------------------------
+    var aiProposals = [];      // parsed preview rows
+    var aiInstruments = [];    // band instruments for the accept selects
+    var aiAnalysisId = null;
+
+    function loadAiProposals(analysisId) {
+        aiAnalysisId = analysisId;
+        var url = '/bands/' + bandId + '/compositions/' + compId +
+                  '/analysis/' + analysisId + '/proposals?_=' + new Date().getTime();
+        fetch(url, { cache: 'no-store' })
+            .then(function (resp) { if (resp.ok) { return resp.json(); } throw new Error('HTTP ' + resp.status); })
+            .then(function (dto) { renderAiProposals(dto); })
+            .catch(function (err) {
+                var el = document.getElementById('ai-accept-error');
+                if (el) { el.textContent = 'Nie udało się wczytać propozycji: ' + err.message; el.classList.remove('hidden'); }
+            });
+    }
+
+    function renderAiProposals(dto) {
+        aiProposals = (dto && dto.proposals) || [];
+        aiInstruments = (dto && dto.instruments) || [];
+        var meta = document.getElementById('ai-work-meta');
+        if (meta) {
+            var w = dto.work || {};
+            meta.textContent = [w.title, w.composer, w.arranger ? 'aranżacja: ' + w.arranger : null]
+                .filter(Boolean).join(' — ');
+        }
+        var wrap = document.getElementById('ai-proposals-wrap');
+        if (!wrap) { return; }
+        wrap.innerHTML = '';
+        if (aiProposals.length === 0) {
+            wrap.textContent = 'Analiza nie wykryła głosów do zaproponowania.';
+            return;
+        }
+        var table = document.createElement('table');
+        table.style.width = '100%';
+        table.style.borderCollapse = 'collapse';
+        var head = ['Głos', 'Strony', 'Pewność', 'Instrument'].map(function (h) {
+            return '<th style="text-align:left; padding:4px 6px;">' + h + '</th>';
+        }).join('');
+        table.innerHTML = '<thead><tr>' + head + '</tr></thead><tbody></tbody>';
+        var tbody = table.querySelector('tbody');
+        aiProposals.forEach(function (row, idx) {
+            var tr = document.createElement('tr');
+            var members = (row.memberNames || []).join(', ');
+            tr.innerHTML =
+                '<td style="padding:4px 6px;"><label><input type="checkbox" class="ai-row-cb" data-idx="' + idx + '" checked/>' +
+                '<strong>' + escapeHtml(row.role) + '</strong>' +
+                (members ? '<div class="muted" style="font-size:0.8em;">' + escapeHtml(members) + '</div>' : '') + '</label></td>' +
+                '<td style="padding:4px 6px; white-space:nowrap;">' + row.pageFrom + '–' + row.pageTo + '</td>' +
+                '<td style="padding:4px 6px;">' + Math.round((row.confidence || 0) * 100) + '%</td>';
+            var tdInst = document.createElement('td');
+            var sel = document.createElement('select');
+            sel.className = 'ai-row-select';
+            sel.dataset.idx = String(idx);
+            if (aiInstruments.length === 0) {
+                sel.innerHTML = '<option></option>';
+                sel.disabled = true;
+            } else {
+                aiInstruments.forEach(function (opt) {
+                    var o = document.createElement('option');
+                    o.value = opt.id;
+                    o.textContent = opt.name;
+                    if (row.instrumentIdOrNull != null && String(opt.id) === String(row.instrumentIdOrNull)) { o.selected = true; }
+                    sel.appendChild(o);
+                });
+            }
+            tdInst.appendChild(sel);
+            tr.appendChild(tdInst);
+            tbody.appendChild(tr);
+        });
+        wrap.appendChild(table);
+        var errEl = document.getElementById('ai-accept-error');
+        if (errEl) { errEl.classList.add('hidden'); }
+        var resEl = document.getElementById('ai-accept-result');
+        if (resEl) { resEl.classList.add('hidden'); }
+        var btn = document.getElementById('ai-accept-btn');
+        if (btn) { btn.disabled = false; }
+        var panel = document.getElementById('analyze-accept-panel');
+        if (panel) { panel.classList.remove('hidden'); }
+    }
+
+    function escapeHtml(s) {
+        return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) {
+            return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
+        });
+    }
+
+    function acceptAiProposals() {
+        var btn = document.getElementById('ai-accept-btn');
+        if (btn) { btn.disabled = true; }
+        var rows = [];
+        aiProposals.forEach(function (row, idx) {
+            var cb = document.querySelector('.ai-row-cb[data-idx="' + idx + '"]');
+            if (!cb || !cb.checked) { return; }
+            var sel = document.querySelector('.ai-row-select[data-idx="' + idx + '"]');
+            rows.push({
+                role: row.role,
+                pageFrom: row.pageFrom,
+                pageTo: row.pageTo,
+                instrumentId: sel ? Number(sel.value) : null,
+                confidence: row.confidence
+            });
+        });
+        if (rows.length === 0) {
+            var warn = document.getElementById('ai-accept-error');
+            if (warn) { warn.textContent = 'Zaznacz co najmniej jeden głos.'; warn.classList.remove('hidden'); }
+            if (btn) { btn.disabled = false; }
+            return;
+        }
+        fetch('/bands/' + bandId + '/compositions/' + compId + '/analysis/' + aiAnalysisId + '/accept', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ rows: rows })
+        })
+            .then(function (resp) {
+                return resp.text().then(function (text) {
+                    var payload = null;
+                    try { if (text) { payload = JSON.parse(text); } } catch (e) { /* puste ciało */ }
+                    if (!resp.ok) { throw new Error((payload && payload.message) || ('HTTP ' + resp.status)); }
+                    return { status: resp.status, body: payload };
+                });
+            })
+            .then(function (result) {
+                var res = document.getElementById('ai-accept-result');
+                var r = (result && result.body) || {};
+                var skipped = (r.skipped || []).map(function (s) { return s.role + ' (' + s.reason + ')'; }).join('; ');
+                if (res) {
+                    res.textContent = 'Utworzono ' + (r.created != null ? r.created : '?') + ' partie' +
+                        (skipped ? ' — pominięte: ' + skipped : '') + '. Odświeżam widok utworu…';
+                    res.classList.remove('hidden');
+                }
+                setTimeout(function () { window.location.reload(); }, 2500);
+            })
+            .catch(function (err) {
+                var el = document.getElementById('ai-accept-error');
+                if (el) { el.textContent = 'Akceptacja nie powiodła się: ' + err.message; el.classList.remove('hidden'); }
+                var b2 = document.getElementById('ai-accept-btn');
+                if (b2) { b2.disabled = false; }
+            });
+    }
+
+    function bindAiAccept() {
+        var btn = document.getElementById('ai-accept-btn');
+        if (btn && btn.dataset.bound !== '1') { btn.dataset.bound = '1'; btn.addEventListener('click', acceptAiProposals); }
+    }
+    bindAiAccept();
 
     function closeAnalyzeModal() {
         var dlg = document.getElementById('analyze-dialog');
