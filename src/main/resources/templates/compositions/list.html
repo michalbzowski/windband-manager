@@ -15,6 +15,12 @@
                     'plus', 'add-composition-btn', '#compositions-content',
                     null, null, null, null)}"></nav>
 
+            <!-- Faza D — nowy utwór z nutowego PDF (analiza AI + akceptacja) -->
+            <p style="margin: 0.25rem 0 0.75rem 0;">
+                <a class="secondary small" th:href="@{/bands/{bandId}/compositions/new-from-pdf(bandId=${bandId})}">🎼 Nowy utwór z PDF (AI)</a>
+            </p>
+
+
             <!-- Filtr — GET form; page/size preserved on pagination links. -->
             <form method="get" class="composition-filter-form" role="search" aria-label="Filtr biblioteki utworów">
                 <div class="filter-fields">
