@@ -454,6 +454,7 @@
 
                 <p class="app-modal-section">Konto</p>
                 <ul>
+                    <li><a id="nav-llm-keys" th:href="@{/llm-keys}" hx-target="#content" hx-swap="innerHTML transition:true" data-close>🔑 Klucze AI</a></li>
                     <li><a href="/register" hx-target="#content" hx-swap="innerHTML transition:true" data-close>➕ Nowy zespół</a></li>
                     <li>
                         <form th:action="@{/api/auth/logout}" method="POST" data-close>

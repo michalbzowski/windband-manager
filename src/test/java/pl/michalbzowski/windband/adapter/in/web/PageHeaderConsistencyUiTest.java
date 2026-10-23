@@ -193,6 +193,7 @@ class PageHeaderConsistencyUiTest extends pl.michalbzowski.windband.UiTestBase {
     @Test void listMembers_pageHeader()          { assertListPageHeader(null, "/members", "Członkowie"); }
     @Test void listGroups_pageHeader()           { assertListPageHeader(null, "/groups", "Grupy"); }
     @Test void listTags_pageHeader()             { assertListPageHeader(null, "/tags", "Tagi"); }
+    @Test void listLlmKeys_pageHeader()          { assertListPageHeader(null, "/llm-keys", "Klucze AI"); }
     @Test void listInstruments_pageHeader()      { assertListPageHeader(null, "/instruments", "Instrumenty"); }
     @Test void listInventory_pageHeader()        { assertListPageHeader(null, "/inventory", "Zasoby"); }
     @Test void listOrders_pageHeader()           { assertListPageHeader(null, "/orders", "Zamówienia"); }

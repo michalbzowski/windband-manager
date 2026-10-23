@@ -82,6 +82,13 @@ public class GlobalExceptionHandler {
                 ));
     }
 
+    @ExceptionHandler(pl.michalbzowski.windband.application.command.llmkey.LlmApiKeyCommandService.LlmVaultDisabledException.class)
+    public ResponseEntity<Map<String, Object>> handleLlmVaultDisabled(
+            pl.michalbzowski.windband.application.command.llmkey.LlmApiKeyCommandService.LlmVaultDisabledException ex) {
+        return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE)
+                .body(errorBody(ex.getMessage()));
+    }
+
     @ExceptionHandler(IllegalStateException.class)
     public ResponseEntity<Map<String, Object>> handleConflict(IllegalStateException ex) {
         return ResponseEntity.status(HttpStatus.CONFLICT)

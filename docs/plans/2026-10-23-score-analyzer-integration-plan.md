@@ -57,6 +57,21 @@ usługi AI i brak akceptacji propozycji (US-4.4/4.5 ⬜).
 - Start analizy rozwiązuje token `openrouter` bieżącego użytkownika i przekazuje go
   runnerowi (w pamięci, bez logowania).
 
+> **ZREALIZOWANO (2026-10-23, branch `feat/llm-key-vault`)** — z uproszczeniami:
+> - migracja `V49__create_llm_api_keys.sql`, tabela `llm_api_keys`
+>   `(owner_id → app_users, provider, label, key_hint, ciphertext, created_at, updated_at)`,
+>   unikalny `(owner_id, provider)` — JEDEN klucz na dostawcę, ponowny zapis nadpisuje
+>   (planowany wariant z wieloma etykietami na dostawcę nie był potrzebny dla OpenRouter);
+> - szyfrowanie: port `SecretCipher` + `AesGcmSecretCipher` (AES-256-GCM,
+>   Base64(IV[12]||ct||tag[16])), klucz główny z env `LLM_KEYS_MASTER_KEY`
+>   (`app.llmkeys.master-key`; Base64 dekodujący się do 32 B **albo** surowa fraza UTF-8
+>   o długości 32 B — dev/test używają czytelnych fraz, produkcja `openssl rand -base64 32`);
+>   brak klucza → fail-closed (zapis = 503, analiza startuje bez klucza);
+> - UI: menu `Konto → Klucze AI` (`/llm-keys`), REST `/api/llm-keys` (GET/POST/DELETE),
+>   w UI tylko `key_hint` (ostatnie 4 znaki), jawna wartość nigdy nie wraca;
+> - `StartScoreAnalysisRestController` bierze jawny klucz z `LlmApiKeyQueryService.plainKey()`
+>   i przekazuje in-memory do `AnalysisRequest.llmApiKey` (X-LLM-Key, bez logowania).
+
 ### Faza D — WM: akceptacja propozycji + "Nowy utwór z PDF"
 - D1 `GET .../analysis/{id}/proposals` — czytanie `arrangement.json` (JsonAiProposals),
   rozwiązanie roli na instrumenty zespołu (aliasOf/InstrumentRoleMap + dopasowanie

@@ -51,6 +51,16 @@ public class ScoreAnalysisCommandService {
      */
     @Transactional
     public Long start(Long scoreFileId, Long bandId) {
+        return start(scoreFileId, bandId, null);
+    }
+
+    /**
+     * Jak {@link #start(Long, Long)}, ale z opcjonalnym jawnym kluczem LLM użytkownika
+     * (np. OpenRouter ze skarbca). Klucz jest przekazywany wyłącznie in-memory do runnera
+     * (nagłówek {@code X-LLM-Key}) — nigdy nie jest logowany ani zapisywany w wierszu analizy.
+     */
+    @Transactional
+    public Long start(Long scoreFileId, Long bandId, String llmApiKey) {
         if (scoreFileId == null) throw new IllegalArgumentException("scoreFileId required");
         if (bandId == null) throw new IllegalArgumentException("bandId required");
 
@@ -80,7 +90,7 @@ public class ScoreAnalysisCommandService {
         //      - IllegalArgumentException      → mark FAILED with the message
         String runnerRef;
         try {
-            runnerRef = runner.start(new AiAnalysisRunner.AnalysisRequest(Path.of(file.getStoragePath()), outputDir));
+            runnerRef = runner.start(new AiAnalysisRunner.AnalysisRequest(Path.of(file.getStoragePath()), outputDir, llmApiKey));
         } catch (AiAnalysisRunner.RunnerNotConfiguredException rc) {
             // Leave the row in PENDING (we never transitioned it), but give the user a
             // clear DB-visible error — better than an opaque 501 with no trace.
