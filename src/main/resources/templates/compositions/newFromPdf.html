@@ -1,13 +1,14 @@
 <!DOCTYPE html>
 <html lang="pl" xmlns:th="http://www.thymeleaf.org">
-<head th:replace="~{fragments/layout :: head}"></head>
-<body class="dash" data-bs-theme="dark" data-prefers-color-scheme="auto">
+<head th:replace="~{fragments/layout :: head('Nowy utwór z PDF (AI)')}"></head>
+<body class="dashboard-page">
 
-<div class="dashboard-container">
-    <!-- Unified dashboard header -->
-    <header class="dash-header" th:replace="~{fragments/dashboard-page :: header}"></header>
+<div th:replace="~{fragments/layout :: dialogs}"></div>
 
-    <main class="dash-main main">
+<main class="container" id="content">
+    <section class="dashboard-upcoming">
+        <header th:replace="~{fragments/layout :: dashboard-header}"></header>
+
         <nav th:replace="~{fragments/page-header :: page-header-c(
             @{/bands/{bandId}/compositions(bandId=${bandId})},
             'Nowy utwór z PDF (AI)',
@@ -94,8 +95,10 @@
                 </div>
             </section>
         </div>
-    </main>
-</div>
+
+        <footer th:replace="~{fragments/layout :: footer}"></footer>
+    </section>
+</main>
 
 <script th:inline="javascript">
 /* eslint-disable no-unused-vars */
@@ -302,6 +305,10 @@
     });
 })();
 </script>
+
+<div th:insert="~{fragments/layout :: toast-container}"></div>
+<div th:insert="~{fragments/layout :: footer-scripts}"></div>
+<div th:insert="~{fragments/layout :: dashboard-header-morph}"></div>
 
 </body>
 </html>
