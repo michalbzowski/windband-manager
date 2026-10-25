@@ -66,6 +66,11 @@ public final class HttpScoreAnalyzerRunner implements AiAnalysisRunner {
     /** runnerRef (analyzer job_id) → outputDir; needed because inspect() only gets the ref. */
     private final Map<String, Path> outputDirs = new ConcurrentHashMap<>();
 
+    /** Heartbeat: moment wystartowania joba + ostatni zapisany w logu "bip" (per ref). */
+    private final Map<String, Long> startedAt = new ConcurrentHashMap<>();
+    private final Map<String, Long> lastHeartbeat = new ConcurrentHashMap<>();
+    static final long HEARTBEAT_EVERY_MS = 30_000L;
+
     public HttpScoreAnalyzerRunner(ScoreAnalysisConfig cfg) {
         // HTTP/1.1 wymuszone: domyślny upgrade h2c JDK HttpClienta (Upgrade: h2c +
         // HTTP2-Settings) sprawia, że uvicorn/h11 NIE przekazuje body do FastAPI
@@ -147,6 +152,7 @@ public final class HttpScoreAnalyzerRunner implements AiAnalysisRunner {
                     "Niepoprawna odpowiedź Score Analyzer przy starcie zadania: " + e.getMessage());
         }
         outputDirs.put(jobId, request.outputDir());
+        startedAt.put(jobId, System.currentTimeMillis());
         log.info("Score Analyzer job {} wystartowany dla {}", jobId, request.inputPath().getFileName());
         return jobId;
     }
@@ -163,6 +169,8 @@ public final class HttpScoreAnalyzerRunner implements AiAnalysisRunner {
             return PhaseStatus.failed("Serwis Score Analyzer jest niedostępny: " + e.getMessage());
         }
         if (status.statusCode() == 404) {
+            forget(runnerRef);
+            log.warn("Score Analyzer job {}: status 404 — job nieznany (wygasł TTL lub restart analityka)", runnerRef);
             return PhaseStatus.failed(
                     "Zadanie analizy wygasło lub serwis Score Analyzer został zrestartowany"
                             + " — uruchom analizę ponownie.");
@@ -182,17 +190,44 @@ public final class HttpScoreAnalyzerRunner implements AiAnalysisRunner {
         }
         switch (phase) {
             case "pending":
+                heartbeat("job w kolejce analityka", runnerRef);
                 return new PhaseStatus(PhaseStatus.Phase.PENDING, null, null);
             case "running":
+                heartbeat("analiza w toku — model przetwarza plik", runnerRef);
                 return PhaseStatus.running();
             case "failed":
+                forget(runnerRef);
+                log.warn("Score Analyzer job {}: BŁĄD po stronie analityka — {}",
+                        runnerRef, error == null || error.isBlank() ? "(brak komunikatu)" : error);
                 return PhaseStatus.failed(error == null || error.isBlank()
                         ? "Analiza AI w serwisie Score Analyzer nie powiodła się." : error);
             case "succeeded":
+                forget(runnerRef);
+                log.info("Score Analyzer job {}: zakończony pomyślnie — pobieram wynik", runnerRef);
                 return collectResult(runnerRef);
             default:
+                forget(runnerRef);
+                log.warn("Score Analyzer job {}: nieznany status \"{}\"", runnerRef, phase);
                 return PhaseStatus.failed("Nieznany status zadania Score Analyzer: " + phase);
         }
+    }
+
+    /** Bip co ~30 s, by w logach było widać, że job żyje (oczekuje albo działa). */
+    private void heartbeat(String etykieta, String ref) {
+        long now = System.currentTimeMillis();
+        Long last = lastHeartbeat.get(ref);
+        if (last != null && now - last < HEARTBEAT_EVERY_MS) {
+            return;
+        }
+        lastHeartbeat.put(ref, now);
+        Long t0 = startedAt.get(ref);
+        long minuty = t0 == null ? 0L : Math.max(0L, (now - t0) / 60_000L);
+        log.info("Score Analyzer job {}: {} ({} min od startu)", ref, etykieta, minuty);
+    }
+
+    private void forget(String ref) {
+        startedAt.remove(ref);
+        lastHeartbeat.remove(ref);
     }
 
     /** Fetches the result of a succeeded job and materialises the artefacts on disk. */
