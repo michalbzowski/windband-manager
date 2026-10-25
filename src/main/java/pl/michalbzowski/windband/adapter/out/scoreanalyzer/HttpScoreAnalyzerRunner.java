@@ -114,10 +114,13 @@ public final class HttpScoreAnalyzerRunner implements AiAnalysisRunner {
 
         HttpResponse<String> resp;
         try {
+            log.info("Wysyłam plik do Score Analyzer: {} -> POST {}/jobs",
+                    request.inputPath().getFileName(), baseUrl);
             resp = http.send(b.build(), HttpResponse.BodyHandlers.ofString(StandardCharsets.UTF_8));
         } catch (IOException e) {
             throw new RunnerNotConfiguredException(
-                    "Serwis Score Analyzer jest niedostępny (" + baseUrl + "): " + e.getMessage());
+                    "Serwis Score Analyzer jest niedostępny (" + baseUrl + "): ["
+                            + e.getClass().getSimpleName() + "] " + e.getMessage());
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
             throw new RunnerNotConfiguredException("Przerwano wysyłkę pliku do Score Analyzer.");

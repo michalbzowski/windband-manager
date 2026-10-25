@@ -128,6 +128,7 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(pl.michalbzowski.windband.application.command.scoreanalysis.AiAnalysisRunner.RunnerNotConfiguredException.class)
     public ResponseEntity<Map<String, Object>> handleAiRunnerNotConfigured(
             pl.michalbzowski.windband.application.command.scoreanalysis.AiAnalysisRunner.RunnerNotConfiguredException ex) {
+        log.warn("Analiza AI nie wystartowała (501): {}", ex.getMessage());
         return ResponseEntity.status(HttpStatus.NOT_IMPLEMENTED).body(errorBody(ex.getMessage()));
     }
 

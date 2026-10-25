@@ -6,6 +6,8 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * US-4.1 — default in-memory {@link AiAnalysisRunner} (instantiated by
@@ -18,6 +20,8 @@ import java.util.concurrent.atomic.AtomicReference;
  * the FS-path assertions in the integration test see real files.
  */
 public class StubAiAnalysisRunner implements AiAnalysisRunner {
+
+    private static final Logger log = LoggerFactory.getLogger(StubAiAnalysisRunner.class);
 
     /**
      * Kontrakt identyfikacji przebiegu symulowanego: każda referencja jobu zaczynająca się tym
@@ -36,6 +40,8 @@ public class StubAiAnalysisRunner implements AiAnalysisRunner {
         // The contract already validated inputPath; we just remember it for inspect().
         String ref = REF_PREFIX + SEQ.incrementAndGet();
         recentRequests.get().put(ref, request.inputPath());
+        log.info("Wystartowano SYMULACJĘ analizy (stub) dla {} — konfiguracja nie wskazuje Score Analyzer",
+                request.inputPath().getFileName());
         return ref;
     }
 
