@@ -7,6 +7,7 @@ import java.util.Locale;
 import java.util.Optional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import pl.michalbzowski.windband.domain.composition.InstrumentRoleMap;
 import pl.michalbzowski.windband.domain.composition.InstrumentRoleMapRepository;
 import pl.michalbzowski.windband.domain.member.Instrument;
@@ -24,9 +25,13 @@ import pl.michalbzowski.windband.domain.member.MemberRepository;
  * canonical instrument is the one the library should standardize on); within a tier the band's
  * sort priority (repository list order) decides. A member "covers" the role when any of their
  * instruments does — mirroring {@code EventCompositionPartsQueryService.matchTagForPart}.
+ * <p>Read-only transaction on the whole service: {@code Member.instruments} is a lazy
+ * association and must be touched inside an open session ({@code open-in-view: false}),
+ * so every public entry point gets one.
  */
 @Service
 @RequiredArgsConstructor
+@Transactional(readOnly = true)
 public class RoleInstrumentResolver {
 
     private final InstrumentRepository instrumentRepository;
