@@ -480,7 +480,8 @@
             startBtn.disabled = !picker.value;
             picker.addEventListener('change', enableStartOnValue);
         }
-        if (typeof openAppModal === 'function') { openAppModal(dlg); }
+        // openAppModal() takes an ELEMENT ID STRING (layout.html modal framework), not the element.
+        if (typeof openAppModal === 'function') { openAppModal('analyze-dialog'); }
         else if (dlg && typeof dlg.showModal === 'function') { dlg.showModal(); }
     }
 
