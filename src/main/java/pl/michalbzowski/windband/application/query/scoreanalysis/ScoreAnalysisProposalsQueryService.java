@@ -11,6 +11,7 @@ import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import pl.michalbzowski.windband.application.command.scoreanalysis.JsonAiProposals;
+import pl.michalbzowski.windband.application.command.scoreanalysis.StubAiAnalysisRunner;
 import pl.michalbzowski.windband.application.dto.scoreanalysis.AIProposals;
 import pl.michalbzowski.windband.domain.composition.Composition;
 import pl.michalbzowski.windband.domain.composition.CompositionRepository;
@@ -95,7 +96,12 @@ public class ScoreAnalysisProposalsQueryService {
                 instrumentRepository.findAllOrderBySortPriorityByBandId(bandId).stream()
                         .map(i -> new ProposalsPreviewDto.InstrumentOption(i.getId(), i.getName()))
                         .toList();
-        return new ProposalsPreviewDto(work, instruments, previews);
+
+        // Stub runner (brak podłączonego Score Analyzera) kończy się pomyślnie, ale bez głosów —
+        // pusta lista ma wtedy inną przyczynę i UI musi ją odróżnić od "nie wykryto głosów".
+        boolean simulated = analysis.getRunnerRef() != null
+                && analysis.getRunnerRef().startsWith(StubAiAnalysisRunner.REF_PREFIX);
+        return new ProposalsPreviewDto(work, instruments, previews, simulated);
     }
 
     /** Work metadata from {@code analyzer-raw.json} next to the artefact — nulls when absent/malformed. */

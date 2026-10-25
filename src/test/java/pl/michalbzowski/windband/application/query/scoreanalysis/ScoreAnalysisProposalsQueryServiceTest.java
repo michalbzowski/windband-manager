@@ -13,6 +13,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
+import pl.michalbzowski.windband.application.command.scoreanalysis.StubAiAnalysisRunner;
 import pl.michalbzowski.windband.domain.band.Band;
 import pl.michalbzowski.windband.domain.composition.Composition;
 import pl.michalbzowski.windband.domain.composition.CompositionRepository;
@@ -120,6 +121,26 @@ class ScoreAnalysisProposalsQueryServiceTest {
 
         assertThat(dto.instruments()).containsExactly(
                 new ProposalsPreviewDto.InstrumentOption(10L, "Trąbka"));
+
+        // runnerRef "job-1" (runner zewnętrzny) → TO NIE JEST symulacja
+        assertThat(dto.simulated()).isFalse();
+    }
+
+    @Test
+    @DisplayName("analiza wykonana przez stub (prefiks \"stub-\") → simulated=true")
+    void stubRunIsFlaggedAsSimulated() {
+        when(analysisRepository.findById(ANALYSIS_ID)).thenReturn(Optional.of(
+                ScoreAnalysis.pending(composition, 77L)
+                        .markRunning(StubAiAnalysisRunner.REF_PREFIX + "9")
+                        .succeed(
+                                workDir.resolve("arrangement.json").toString(),
+                                workDir.resolve("x.musicxml").toString(),
+                                workDir.resolve("x.mid").toString(),
+                                workDir.resolve("validation.txt").toString())));
+
+        ProposalsPreviewDto dto = service.preview(COMPOSITION_ID, BAND_ID, ANALYSIS_ID);
+
+        assertThat(dto.simulated()).isTrue();
     }
 
     @Test
