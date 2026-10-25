@@ -6,6 +6,8 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * US-4.1 — default in-memory {@link AiAnalysisRunner} (instantiated by
@@ -19,6 +21,8 @@ import java.util.concurrent.atomic.AtomicReference;
  */
 public class StubAiAnalysisRunner implements AiAnalysisRunner {
 
+    private static final Logger log = LoggerFactory.getLogger(StubAiAnalysisRunner.class);
+
     private static final AtomicInteger SEQ = new AtomicInteger();
     // ref -> input path; lets inspect know where to read + force-FAIL on name match.
     private final AtomicReference<java.util.Map<String, Path>> recentRequests =
@@ -29,6 +33,8 @@ public class StubAiAnalysisRunner implements AiAnalysisRunner {
         // The contract already validated inputPath; we just remember it for inspect().
         String ref = "stub-" + SEQ.incrementAndGet();
         recentRequests.get().put(ref, request.inputPath());
+        log.info("Wystartowano SYMULACJĘ analizy (stub) dla {} — konfiguracja nie wskazuje Score Analyzer",
+                request.inputPath().getFileName());
         return ref;
     }
 
