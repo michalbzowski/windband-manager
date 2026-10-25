@@ -44,7 +44,8 @@ class ScoreAnalysisAiRestControllerTest {
         ProposalsPreviewDto dto = new ProposalsPreviewDto(
                 new ProposalsPreviewDto.WorkMeta("Zadzwonił Polonez", "J. Elsner", null),
                 List.of(new ProposalsPreviewDto.InstrumentOption(13L, "Trąbka")),
-                List.of(row));
+                List.of(row),
+                false);
         when(queryService.preview(COMPOSITION, BAND, ANALYSIS)).thenReturn(dto);
 
         var response = controller.proposals(BAND, COMPOSITION, ANALYSIS);
@@ -54,7 +55,8 @@ class ScoreAnalysisAiRestControllerTest {
                 .startsWith("application/json");
         String body = response.getBody();
         assertThat(body).contains("Trąbka II").contains("Zadzwonił Polonez")
-                .contains("\"pageFrom\":3");
+                .contains("\"pageFrom\":3")
+                .contains("\"simulated\":false");
     }
 
     @Test

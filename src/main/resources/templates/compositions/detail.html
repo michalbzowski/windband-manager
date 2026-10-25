@@ -630,7 +630,18 @@
         if (!wrap) { return; }
         wrap.innerHTML = '';
         if (aiProposals.length === 0) {
-            wrap.textContent = 'Analiza nie wykryła głosów do zaproponowania.';
+            if (dto && dto.simulated === true) {
+                var warn = document.createElement('div');
+                warn.style.cssText = 'padding:10px 12px;margin-bottom:8px;' +
+                    'border:1px solid #b45309;background:#fef3c7;border-radius:6px;';
+                warn.textContent = '⚠️ To była symulacja (stub), bo w Band Managerze nie jest skonfigurowany ' +
+                    'adres Score Analyzera (SCORE_ANALYZER_URL) — żaden plik nie przeszedł przez model AI. ' +
+                    'Ustaw tę zmienną w środowisku WM, a następnie uruchom analizę ponownie.';
+                wrap.appendChild(warn);
+            }
+            var msg = document.createElement('div');
+            msg.textContent = 'Analiza nie wykryła głosów do zaproponowania.';
+            wrap.appendChild(msg);
             return;
         }
         var table = document.createElement('table');

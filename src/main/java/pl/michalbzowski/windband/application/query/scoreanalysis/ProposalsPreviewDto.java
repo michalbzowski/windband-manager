@@ -8,13 +8,17 @@ import java.util.List;
  * <ul>
  *   <li>{@code work} — title/composer/arranger the analyzer read from page 1 (may be nulls);</li>
  *   <li>{@code instruments} — the band's instruments in sort order (the accept form's select);</li>
- *   <li>{@code proposals} — one {@link AiProposalPreview} per row of {@code arrangement.json}.
+ *   <li>{@code proposals} — one {@link AiProposalPreview} per row of {@code arrangement.json};</li>
+ *   <li>{@code simulated} — true, gdy analizy nie wykonał zewnętrzny Score Analyzer (stub);
+ *       pusta lista propozycji ma wtedy oznaczony komunikat "brak konfiguracji", a nie
+ *       "nie wykryto głosów".</li>
  * </ul>
  */
 public record ProposalsPreviewDto(
         WorkMeta work,
         List<InstrumentOption> instruments,
-        List<AiProposalPreview> proposals) {
+        List<AiProposalPreview> proposals,
+        boolean simulated) {
 
     /** Work metadata the analyzer extracted ("work" node of analyzer-raw.json). */
     public record WorkMeta(String title, String composer, String arranger) {

@@ -19,6 +19,13 @@ import java.util.concurrent.atomic.AtomicReference;
  */
 public class StubAiAnalysisRunner implements AiAnalysisRunner {
 
+    /**
+     * Kontrakt identyfikacji przebiegu symulowanego: każda referencja jobu zaczynająca się tym
+     * prefiksem oznacza, że analizy nie wykonał zewnętrzny Score Analyzer. Konsumenty (query
+     * service, UI) oznaczają taki przebieg flagą {@code simulated} zamiast zgadywać format refa.
+     */
+    public static final String REF_PREFIX = "stub-";
+
     private static final AtomicInteger SEQ = new AtomicInteger();
     // ref -> input path; lets inspect know where to read + force-FAIL on name match.
     private final AtomicReference<java.util.Map<String, Path>> recentRequests =
@@ -27,14 +34,14 @@ public class StubAiAnalysisRunner implements AiAnalysisRunner {
     @Override
     public String start(AnalysisRequest request) {
         // The contract already validated inputPath; we just remember it for inspect().
-        String ref = "stub-" + SEQ.incrementAndGet();
+        String ref = REF_PREFIX + SEQ.incrementAndGet();
         recentRequests.get().put(ref, request.inputPath());
         return ref;
     }
 
     @Override
     public PhaseStatus inspect(String runnerRef) {
-        if (runnerRef == null || !runnerRef.startsWith("stub-")) {
+        if (runnerRef == null || !runnerRef.startsWith(REF_PREFIX)) {
             return PhaseStatus.failed("unknown runnerRef: " + runnerRef);
         }
         Path input = recentRequests.get().get(runnerRef);
