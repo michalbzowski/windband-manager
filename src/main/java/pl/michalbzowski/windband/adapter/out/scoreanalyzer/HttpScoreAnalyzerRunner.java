@@ -14,6 +14,7 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.Duration;
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
@@ -103,7 +104,7 @@ public final class HttpScoreAnalyzerRunner implements AiAnalysisRunner {
                     "Nie udało się odczytać pliku do analizy: " + e.getMessage());
         }
         String boundary = "wm-" + UUID.randomUUID();
-        byte[] body = multipartBody(boundary, String.valueOf(request.inputPath().getFileName()), pdf);
+        byte[] body = multipartBody(boundary, String.valueOf(request.inputPath().getFileName()), pdf, instrumentsJson(request));
 
         HttpRequest.Builder b = HttpRequest.newBuilder()
                 .uri(URI.create(baseUrl + "/jobs"))
@@ -351,19 +352,48 @@ public final class HttpScoreAnalyzerRunner implements AiAnalysisRunner {
         return URLEncoder.encode(s, StandardCharsets.UTF_8);
     }
 
-    /** Minimal single-file multipart/form-data body (RFC 7578) — one PDF part. */
-    static byte[] multipartBody(String boundary, String fileName, byte[] fileBytes) {
+    /** Serializes the team tags (target vocabulary for voice→tag mapping) to a JSON array, or null. */
+    private static String instrumentsJson(AnalysisRequest request) {
+        List<String> tags = request.teamInstruments();
+        if (tags == null || tags.isEmpty()) {
+            return null;
+        }
+        try {
+            return MAPPER.writeValueAsString(tags);
+        } catch (IOException e) {
+            throw new RunnerNotConfiguredException(
+                    "Nie udało się zserializować tagów zespołu dla analityka: " + e.getMessage());
+        }
+    }
+
+    /** Minimal multipart/form-data body (RFC 7578) — one PDF part, optional text field. */
+    static byte[] multipartBody(String boundary, String fileName, byte[] fileBytes,
+                                String instrumentsJsonOrNull) {
         String head = "--" + boundary + "\r\n"
                 + "Content-Disposition: form-data; name=\"files\"; filename=\""
                 + fileName.replace("\"", "") + "\"\r\n"
                 + "Content-Type: application/pdf\r\n\r\n";
+        String extra;
+        if (instrumentsJsonOrNull == null || instrumentsJsonOrNull.isEmpty()) {
+            extra = "";
+        } else {
+            extra = "\r\n--" + boundary + "\r\n"
+                    + "Content-Disposition: form-data; name=\"instruments\"\r\n\r\n"
+                    + instrumentsJsonOrNull;
+        }
         String tail = "\r\n--" + boundary + "--\r\n";
         byte[] headB = head.getBytes(StandardCharsets.UTF_8);
+        byte[] extraB = extra.getBytes(StandardCharsets.UTF_8);
         byte[] tailB = tail.getBytes(StandardCharsets.UTF_8);
-        byte[] out = new byte[headB.length + fileBytes.length + tailB.length];
-        System.arraycopy(headB, 0, out, 0, headB.length);
-        System.arraycopy(fileBytes, 0, out, headB.length, fileBytes.length);
-        System.arraycopy(tailB, 0, out, headB.length + fileBytes.length, tailB.length);
+        byte[] out = new byte[headB.length + fileBytes.length + extraB.length + tailB.length];
+        int pos = 0;
+        System.arraycopy(headB, 0, out, pos, headB.length);
+        pos += headB.length;
+        System.arraycopy(fileBytes, 0, out, pos, fileBytes.length);
+        pos += fileBytes.length;
+        System.arraycopy(extraB, 0, out, pos, extraB.length);
+        pos += extraB.length;
+        System.arraycopy(tailB, 0, out, pos, tailB.length);
         return out;
     }
 }

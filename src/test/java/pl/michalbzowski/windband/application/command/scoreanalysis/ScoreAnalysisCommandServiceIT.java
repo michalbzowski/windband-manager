@@ -2,11 +2,14 @@ package pl.michalbzowski.windband.application.command.scoreanalysis;
 
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.List;
+import java.util.concurrent.atomic.AtomicReference;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import pl.michalbzowski.windband.BaseIntegrationTest;
+import pl.michalbzowski.windband.domain.band.Band;
 import pl.michalbzowski.windband.domain.band.BandRepository;
 import pl.michalbzowski.windband.domain.composition.Composition;
 import pl.michalbzowski.windband.domain.composition.CompositionRepository;
@@ -15,6 +18,8 @@ import pl.michalbzowski.windband.domain.composition.ScoreAnalysis.Phase;
 import pl.michalbzowski.windband.domain.composition.ScoreAnalysisRepository;
 import pl.michalbzowski.windband.domain.composition.ScoreFile;
 import pl.michalbzowski.windband.domain.composition.ScoreFileRepository;
+import pl.michalbzowski.windband.domain.member.Instrument;
+import pl.michalbzowski.windband.domain.member.InstrumentRepository;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
@@ -34,6 +39,7 @@ class ScoreAnalysisCommandServiceIT extends BaseIntegrationTest {
     @Autowired private ScoreAnalysisRepository analysisRepository;
     @Autowired private ScoreAnalysisCommandService service;
     @Autowired private AiArtifactsLayout layout;
+    @Autowired private InstrumentRepository instrumentRepository;
 
     private static final long BAND_A = 1L; // seed "Test Band" (see src/test/resources/data.sql)
     private static final long BAND_B = 2L; // seed "Other Band"
@@ -176,5 +182,53 @@ class ScoreAnalysisCommandServiceIT extends BaseIntegrationTest {
         Path second = layout.outputFor(2L).resolve("arrangement.json");
         assertThat(first.toString()).isNotEqualTo(second.toString());
         assertThat(layout.outputFor(1L)).isEqualTo(layout.outputFor(1L));   // deterministic
+    }
+
+    @Test
+    @DisplayName("start() hands the runner the band's instrument tags (root+aliases, deduped) as team-instrument vocabulary")
+    void start_passesBandInstrumentTagsToRunner() throws Exception {
+        Band band = bandRepository.findById(BAND_A).orElseThrow();
+        Instrument root = instrumentRepository.save(Instrument.create("Saksofon tenorowy", band));
+        Instrument alias = instrumentRepository.save(Instrument.create("Sax Tenor", band));
+        alias.setAliasOf(root);
+        instrumentRepository.save(alias);
+
+        Path pdf = tempDir.resolve("tags.pdf");
+        Files.writeString(pdf, "bytes");
+        ScoreFile row = scoreFileRepository.save(ScoreFile.forComposition(
+                ownInA, "application/pdf", "tags.pdf", 4L, "sha", pdf.toString(), null));
+
+        CapturingRunner capturing = new CapturingRunner();
+        ScoreAnalysisCommandService local = new ScoreAnalysisCommandService(
+                compositionRepository, scoreFileRepository, analysisRepository,
+                capturing, layout, instrumentRepository);
+
+        Long analysisId = local.start(row.getId(), BAND_A);
+
+        assertThat(analysisId).isNotNull();
+        assertThat(capturing.lastRequest()).isNotNull();
+        List<String> tags = capturing.lastRequest().teamInstruments();
+        // mój root + alias na początku (priorytet sortowania), reszta = instrumenty z seeda data.sql
+        assertThat(tags).startsWith("Saksofon tenorowy", "Sax Tenor")
+                .containsExactlyInAnyOrderElementsOf(java.util.List.of(
+                        "Saksofon tenorowy", "Sax Tenor", "Trąbka", "Bęben", "Saksofon"));
+    }
+
+    /** Runner which captures the last AnalysisRequest instead of spawning anything. */
+    static final class CapturingRunner implements AiAnalysisRunner {
+        private final AtomicReference<AnalysisRequest> captured = new AtomicReference<>();
+
+        public AnalysisRequest lastRequest() { return captured.get(); }
+
+        @Override
+        public String start(AnalysisRequest request) {
+            captured.set(request);
+            return "stub-capture";
+        }
+
+        @Override
+        public PhaseStatus inspect(String runnerRef) {
+            return PhaseStatus.running();
+        }
     }
 }

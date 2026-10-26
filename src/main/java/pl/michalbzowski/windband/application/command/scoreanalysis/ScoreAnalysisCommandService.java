@@ -1,6 +1,10 @@
 package pl.michalbzowski.windband.application.command.scoreanalysis;
 
 import java.nio.file.Path;
+import java.util.ArrayList;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -10,6 +14,8 @@ import pl.michalbzowski.windband.domain.composition.ScoreAnalysis;
 import pl.michalbzowski.windband.domain.composition.ScoreAnalysisRepository;
 import pl.michalbzowski.windband.domain.composition.ScoreFile;
 import pl.michalbzowski.windband.domain.composition.ScoreFileRepository;
+import pl.michalbzowski.windband.domain.member.Instrument;
+import pl.michalbzowski.windband.domain.member.InstrumentRepository;
 
 /**
  * US-4.1 — orchestrate AI-analysis of a score file, persisting its lifecycle in the
@@ -36,11 +42,14 @@ import pl.michalbzowski.windband.domain.composition.ScoreFileRepository;
 @RequiredArgsConstructor
 public class ScoreAnalysisCommandService {
 
+    private static final int MAX_TEAM_TAGS = 80;   // sanity limit for the LLM tag vocabulary
+
     private final CompositionRepository compositionRepository;
     private final ScoreFileRepository scoreFileRepository;
     private final ScoreAnalysisRepository analysisRepository;
     private final AiAnalysisRunner runner;
     private final AiArtifactsLayout layout;    // owns the on-disk outputDir for each run
+    private final InstrumentRepository instrumentRepository;  // band tags for LLM mapping
 
     /**
      * Spawns an AI-analysis of the given score file bound to the given band.
@@ -89,8 +98,10 @@ public class ScoreAnalysisCommandService {
         //      - RunnerNotConfiguredException  → propagates as-is (HTTP 501/500)
         //      - IllegalArgumentException      → mark FAILED with the message
         String runnerRef;
+        List<String> teamTags = bandInstrumentTags(bandId);
         try {
-            runnerRef = runner.start(new AiAnalysisRunner.AnalysisRequest(Path.of(file.getStoragePath()), outputDir, llmApiKey));
+            runnerRef = runner.start(new AiAnalysisRunner.AnalysisRequest(
+                    Path.of(file.getStoragePath()), outputDir, llmApiKey, teamTags));
         } catch (AiAnalysisRunner.RunnerNotConfiguredException rc) {
             // Leave the row in PENDING (we never transitioned it), but give the user a
             // clear DB-visible error — better than an opaque 501 with no trace.
@@ -103,6 +114,29 @@ public class ScoreAnalysisCommandService {
         //    and applies the terminal transition on the row.
         analysisRepository.save(saved.markRunning(runnerRef));
         return analysisId;
+    }
+
+    /**
+     * Znaczniki nazw instrumentów zespołu (główne + aliasy, bez duplikatów) — celowy słownik,
+     * z którego LLM w Score Analyzerze może zmapować wykryty głos na tag zespołu. Limit, aby
+     * nie rozkręcać prompta; kolejność = priorytet sortowania zespołu (stabilne dla modelu).
+     */
+    private List<String> bandInstrumentTags(Long bandId) {
+        List<String> tags = new ArrayList<>();
+        Set<String> seen = new HashSet<>();
+        for (Instrument instrument : instrumentRepository.findAllOrderBySortPriorityByBandId(bandId)) {
+            String name = instrument.getName() == null ? "" : instrument.getName().trim();
+            if (name.isEmpty()) {
+                continue;
+            }
+            if (seen.add(name.toLowerCase())) {
+                tags.add(name);
+                if (tags.size() >= MAX_TEAM_TAGS) {
+                    break;
+                }
+            }
+        }
+        return List.copyOf(tags);
     }
 
     /**

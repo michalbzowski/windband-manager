@@ -1,6 +1,7 @@
 package pl.michalbzowski.windband.application.command.scoreanalysis;
 
 import java.nio.file.Path;
+import java.util.List;
 
 /**
  * SPI for the AI analysis pipeline (US-4.1).
@@ -47,8 +48,15 @@ public interface AiAnalysisRunner {
      * <p>{@code llmApiKey} is an OPTIONAL per-run LLM credential (e.g. the user's OpenRouter
      * token resolved at start time — Score Analyzer integration, Phase C). It is passed
      * in memory only, never logged nor persisted; runners that do not need it ignore it.
+     *
+     * <p>{@code teamInstruments} — OPTIONAL list of the band's instrument tags (the target
+     * vocabulary for mapping detected voices). The HTTP adapter sends it to Score Analyzer as
+     * the {@code instruments} form field (JSON array); the LLM may then answer with the EXACT
+     * tag name for a part when the band has a fitting one. Null or empty → analyzer falls back
+     * to its default normalized Polish naming.
      */
-    record AnalysisRequest(Path inputPath, Path outputDir, String llmApiKey) {
+    record AnalysisRequest(Path inputPath, Path outputDir, String llmApiKey,
+                           List<String> teamInstruments) {
         public AnalysisRequest {
             if (inputPath == null || !java.nio.file.Files.isRegularFile(inputPath)) {
                 throw new IllegalArgumentException("inputPath must be an existing regular file");
@@ -59,7 +67,11 @@ public interface AiAnalysisRunner {
         }
 
         public AnalysisRequest(Path inputPath, Path outputDir) {
-            this(inputPath, outputDir, null);
+            this(inputPath, outputDir, null, List.of());
+        }
+
+        public AnalysisRequest(Path inputPath, Path outputDir, String llmApiKey) {
+            this(inputPath, outputDir, llmApiKey, List.of());
         }
     }
 
