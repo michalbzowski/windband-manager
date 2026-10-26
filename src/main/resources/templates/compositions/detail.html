@@ -495,7 +495,7 @@
         // Routing wg stanu OSTATNIEJ analizy tego utworu (przeszłe wylogowanie nie ma wpływu):
         //  brak wiersza       → panel startowy (wybór pliku)
         //  PENDING/RUNNING    → panel postępu + przyklejenie do żywej analizy (polling)
-        //  SUCCEEDED          → wynik: artefakty + propozycje AI do akceptacji
+        //  SUCCEEDED          → wynik: artefakty + propozycje AI do akceptacji + „Nowa analiza"
         //  FAILED             → komunikat błędu + możliwość ponownej próby
         fetch('/bands/' + bandId + '/compositions/' + compId + '/analysis/latest?_=' + new Date().getTime(), { cache: 'no-store' })
             .then(function (resp) { if (resp.ok) { return resp.json(); } throw new Error('HTTP ' + resp.status); })
@@ -649,6 +649,10 @@
         } else if (dto.id != null) {
             var acceptPanel = document.getElementById('analyze-accept-panel');
             if (acceptPanel) { acceptPanel.classList.remove('hidden'); }
+            // Nawet po sukcesie musi być Droga restartu — „Nowa analiza" jest zawsze dopuszczalna
+            // (stare wyniki zostają w bazie; re-run nadpisuje je nowym wierszem).
+            var rrSucc = document.getElementById('analyze-retry-row');
+            if (rrSucc) { rrSucc.classList.remove('hidden'); }
             loadAiProposals(dto.id); // Faza D — panel akceptacji propozycji
         } else {
             var rr2 = document.getElementById('analyze-retry-row');

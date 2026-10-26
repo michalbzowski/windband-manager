@@ -183,6 +183,15 @@ class AnalysisResumeUiTest extends UiTestBase {
         assertThat(true)
                 .as("empty proposal list renders the informational message, not an error")
                 .isTrue();
+
+        // Nawet po sukcesie użytkownik MUSI mieć drogę restartu (re-run) —
+        // brak guzika „Nowa analiza" w tym stanie to martwy koniec UX (pula 2026-10-26).
+        WebElement retryBtn = wait.until(
+                ExpectedConditions.visibilityOfElementLocated(By.id("analyze-retry-btn")));
+        assertThat(retryBtn.getText()).containsIgnoringCase("Nowa analiza");
+        retryBtn.click();
+        wait.until(d -> visible(js, "analyze-start-panel"));
+        assertStartPanelVisible(js);
     }
 
     @Test
