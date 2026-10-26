@@ -110,7 +110,13 @@ class HttpScoreAnalyzerRunnerTest {
     private AnalysisRequest request(Path outDir) throws IOException {
         Path pdf = tmp.resolve("polonez.pdf");
         Files.writeString(pdf, "%PDF-1.4 test content");
-        return new AnalysisRequest(pdf, outDir, "sk-or-user-token");
+        return new AnalysisRequest(pdf, outDir, "test-llm-key");
+    }
+
+    private AnalysisRequest taggedRequest(List<String> tags) throws IOException {
+        Path pdf = tmp.resolve("polonez.pdf");
+        Files.writeString(pdf, "%PDF-1.4 test content");
+        return new AnalysisRequest(pdf, tmp.resolve("out"), "test-llm-key", tags);
     }
 
     @Test
@@ -120,10 +126,31 @@ class HttpScoreAnalyzerRunnerTest {
 
         assertThat(ref).isEqualTo(JOB_ID);
         assertThat(capturedHeaders).containsEntry("analyzer", "shared-secret")
-                .containsEntry("llm", "sk-or-user-token");
+                .containsEntry("llm", "test-llm-key");
         String body = capturedBody.get();
         assertThat(body).contains("name=\"files\"").contains("filename=\"polonez.pdf\"")
                 .contains("%PDF-1.4 test content");
+    }
+
+    @Test
+    @DisplayName("start z listą tagów zespołu: pole instruments (JSON) trafia do multipartu obok PDF-a")
+    void startWithTeamInstruments_sendsInstrumentsFormField() throws Exception {
+        runner().start(taggedRequest(List.of("Sax Tenor", "Eufonium")));
+
+        String body = capturedBody.get();
+        assertThat(body).contains("name=\"files\"");
+        assertThat(body).contains("Content-Disposition: form-data; name=\"instruments\"")
+                .contains("[\"Sax Tenor\",\"Eufonium\"]");
+        // struktura multipartu: początek od separatora, koniec zamkniętym separatorem
+        assertThat(body).startsWith("--wm-").endsWith("\r\n");
+    }
+
+    @Test
+    @DisplayName("start bez tagów: pole instruments nie istnieje w ciele żądania")
+    void startWithoutTeamInstruments_omitsInstrumentsField() throws Exception {
+        runner().start(request(tmp.resolve("out")));
+
+        assertThat(capturedBody.get()).doesNotContain("instruments");
     }
 
     @Test
