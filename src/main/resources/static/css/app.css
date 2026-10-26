@@ -3926,3 +3926,9 @@ button.secondary.danger:focus-visible {
 .inv-actions .secondary { min-height: 44px; }
 
 .hidden-seed { display: none; }
+
+/* Global show/hide utility — JS toggles this class with classList.add/remove('hidden')
+   (dialogs in compositions/detail.html + newFromPdf.html, upload queue, status rows).
+   NOTE: Pico only styles the [hidden] ATTRIBUTE, not this class — without this rule
+   every "hidden" element rendered visibly on top of its siblings. */
+.hidden { display: none !important; }
