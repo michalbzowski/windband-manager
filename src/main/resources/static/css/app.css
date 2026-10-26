@@ -1593,6 +1593,31 @@ tr.highlight-row > td {
     max-width: 200px;
 }
 
+/* Panel akceptacji propozycji AI (detail.html, #ai-proposals-wrap) —
+   select instrumentu MUSI pokazywać wybraną wartość: przy auto-layout tabeli
+   w wąskim modalu Pico zgniatało go do ~2 em i widać było jeden znak. */
+#ai-proposals-wrap { overflow-x: auto; }
+#ai-proposals-wrap table { min-width: 560px; }
+.ai-row-select {
+    width: 100%;
+    min-width: 14rem;
+    max-width: 18rem;
+    margin: 0.15rem 0;
+}
+/* Głos bez dopasowania do instrumentu zespołu — jawny placeholder,
+   w tle "wybierz" zamiast cichego domyślnego pierwszego optionu. */
+.ai-row-nomatch {
+    display: inline-block;
+    margin-top: 2px;
+    padding: 1px 8px;
+    border-radius: 999px;
+    font-size: 0.78em;
+    white-space: nowrap;
+    color: var(--pico-warnings-color, #b45309);
+    background: var(--pico-warnings-background, #fef3c7);
+    border: 1px solid var(--pico-border-color, #e2c896);
+}
+
 /* Responsive tabs for inventory */
 @media (max-width: 576px) {
     #inventory-content > h2 {

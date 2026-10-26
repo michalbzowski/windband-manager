@@ -734,6 +734,19 @@
                 sel.innerHTML = '<option></option>';
                 sel.disabled = true;
             } else {
+                var matched = aiInstruments.some(function (opt) {
+                    return row.instrumentIdOrNull != null && String(opt.id) === String(row.instrumentIdOrNull);
+                });
+                if (!matched) {
+                    // Głos bez pewnego dopasowania do instrumentu zespołu:
+                    // JAWNY placeholder zamiast cichego domyślnego pierwszego optionu
+                    // (poprzednio każdy taki wiersz "wyciągał" pierwszy instrument w liście,
+                    // co użytkownik widział jako niezrozumiałe "F" w zgniecionym selekcie).
+                    var ph = document.createElement('option');
+                    ph.value = '';
+                    ph.textContent = '— wybierz instrument —';
+                    sel.appendChild(ph);
+                }
                 aiInstruments.forEach(function (opt) {
                     var o = document.createElement('option');
                     o.value = opt.id;
@@ -741,6 +754,12 @@
                     if (row.instrumentIdOrNull != null && String(opt.id) === String(row.instrumentIdOrNull)) { o.selected = true; }
                     sel.appendChild(o);
                 });
+                if (!matched) {
+                    var badge = document.createElement('div');
+                    badge.className = 'ai-row-nomatch';
+                    badge.textContent = '⚠ nie dopasowano — wybierz instrument';
+                    tdInst.appendChild(badge);
+                }
             }
             tdInst.appendChild(sel);
             tr.appendChild(tdInst);
@@ -767,18 +786,36 @@
         var btn = document.getElementById('ai-accept-btn');
         if (btn) { btn.disabled = true; }
         var rows = [];
+        var missingInstrument = [];
         aiProposals.forEach(function (row, idx) {
             var cb = document.querySelector('.ai-row-cb[data-idx="' + idx + '"]');
             if (!cb || !cb.checked) { return; }
             var sel = document.querySelector('.ai-row-select[data-idx="' + idx + '"]');
+            var value = sel ? sel.value : '';
+            if (value == null || value === '') {
+                // Wiersz z placeholderem „— wybierz instrument —": nie dajemy tego na backend
+                // (rzutnąłby się na findByIdAndBandId(null); wcześniejszy kod wyciągał też
+                // przypadkowy pierwszy option), tylko prosimy usera o decyzję.
+                missingInstrument.push(row.role);
+                return;
+            }
             rows.push({
                 role: row.role,
                 pageFrom: row.pageFrom,
                 pageTo: row.pageTo,
-                instrumentId: sel ? Number(sel.value) : null,
+                instrumentId: Number(value),
                 confidence: row.confidence
             });
         });
+        if (missingInstrument.length > 0) {
+            var mi = document.getElementById('ai-accept-error');
+            if (mi) {
+                mi.textContent = 'Wybierz instrument dla głosów: ' + missingInstrument.join(', ') + '.';
+                mi.classList.remove('hidden');
+            }
+            if (btn) { btn.disabled = false; }
+            return;
+        }
         if (rows.length === 0) {
             var warn = document.getElementById('ai-accept-error');
             if (warn) { warn.textContent = 'Zaznacz co najmniej jeden głos.'; warn.classList.remove('hidden'); }
