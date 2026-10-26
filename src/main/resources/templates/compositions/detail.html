@@ -98,6 +98,21 @@
                                     onclick="openLifecycleDialog('delete')" title="Usuń bezpowrotnie">🗑</button>
                         </span>
                     </div>
+
+                    <!-- Stan ostatniej analizy AI — widoczny zawsze (także po powrocie z wylogowaniem). -->
+                    <div class="ai-analysis-status" role="status" aria-live="polite"
+                         style="margin-top:8px; display:flex; align-items:center; gap:10px; flex-wrap:wrap;"
+                         th:if="${latestPhase != null}">
+                        <span class="form-note" style="margin:0; flex-wrap:wrap;"
+                              th:if="${(latestPhase == 'PENDING') or (latestPhase == 'RUNNING')}">⏳ Analiza AI toczy się — możesz wrócić do niej w dowolnym momencie, nawet po wylogowaniu.</span>
+                        <span class="form-note" style="margin:0; flex-wrap:wrap;"
+                              th:if="${(latestPhase == 'SUCCEEDED')}">✅ Ostatnia analiza AI zakończona sukcesem — wynik i propozycje są gotowe do odbioru.</span>
+                        <span class="danger" style="margin:0; flex-wrap:wrap;"
+                              th:if="${(latestPhase == 'FAILED')}">⚠️ Ostatnia analiza AI nieudana:
+                            <span th:text="${(latestErrorMessage != null and !latestErrorMessage.isBlank()) ? latestErrorMessage : 'brak szczegółów'}">—</span></span>
+                        <button type="button" id="ai-analysis-action-btn" class="secondary" onclick="openAnalyzeModal()"
+                                th:text="${(latestPhase == 'SUCCEEDED') ? '🎼 Otwórz propozycje AI' : ((latestPhase == 'FAILED') ? '↻ Spróbuj ponownie' : '▶ Śledź postęp')}">śledź</button>
+                    </div>
                 </header>
             </article>
 
@@ -392,6 +407,9 @@
                     </ul>
                 </div>
                 <p th:if="${latestPhase != null and latestPhase == 'FAILED'}" id="analyze-error-text" class="danger" role="alert"></p>
+                <div id="analyze-retry-row" class="mt-2 hidden">
+                    <button type="button" class="secondary" id="analyze-retry-btn">↻ Nowa analiza / ponów</button>
+                </div>
             </section>
 
             <!-- Faza D — akceptacja propozycji AI (US-4.5: akceptacja = weryfikacja) -->
@@ -474,15 +492,36 @@
         hideAllPanels();
         state.phase = null;
         state.fileId = null;
-        showStartPanel();
-        var picker = document.getElementById('score-file-picker');
-        if (picker) {
-            startBtn.disabled = !picker.value;
-            picker.addEventListener('change', enableStartOnValue);
-        }
+        // Routing wg stanu OSTATNIEJ analizy tego utworu (przeszłe wylogowanie nie ma wpływu):
+        //  brak wiersza       → panel startowy (wybór pliku)
+        //  PENDING/RUNNING    → panel postępu + przyklejenie do żywej analizy (polling)
+        //  SUCCEEDED          → wynik: artefakty + propozycje AI do akceptacji
+        //  FAILED             → komunikat błędu + możliwość ponownej próby
+        fetch('/bands/' + bandId + '/compositions/' + compId + '/analysis/latest?_=' + new Date().getTime(), { cache: 'no-store' })
+            .then(function (resp) { if (resp.ok) { return resp.json(); } throw new Error('HTTP ' + resp.status); })
+            .then(function (dto) {
+                if (!dto || !dto.phase) { showStartPanel(); return; }
+                if (dto.phase === 'SUCCEEDED' || dto.phase === 'FAILED') {
+                    showResultPanel(dto);
+                    return;
+                }
+                attachToLiveAnalysis(dto.phase);
+            })
+            .catch(function () { showStartPanel(); });
         // openAppModal() takes an ELEMENT ID STRING (layout.html modal framework), not the element.
         if (typeof openAppModal === 'function') { openAppModal('analyze-dialog'); }
         else if (dlg && typeof dlg.showModal === 'function') { dlg.showModal(); }
+        else if (dlg) { dlg.setAttribute('open', ''); }
+    }
+
+    function attachToLiveAnalysis(phase) {
+        var fn = document.getElementById('analyze-file-name');
+        if (fn) { fn.textContent = '(analiza z ostatniego uruchomienia)'; }
+        hideAllPanels();
+        var progress = document.getElementById('analyze-progress-panel');
+        if (progress) { progress.classList.remove('hidden'); }
+        setPhaseBadge(phase || 'PENDING');
+        pollNext();
     }
 
     window.openAnalyzeModal = function () { openAnalyzeModal(); };
@@ -503,12 +542,20 @@
     function showStartPanel() {
         var el = document.getElementById('analyze-start-panel');
         if (el) { el.classList.remove('hidden'); }
+        var picker = document.getElementById('score-file-picker');
+        if (picker) {
+            startBtn.disabled = !picker.value;
+            picker.addEventListener('change', function () { startBtn.disabled = !picker.value; });
+        }
     }
 
     function startAnalysis() {
         var picker = document.getElementById('score-file-picker');
         if (!picker || !picker.value) { return; }
         state.fileId = picker.value;
+        var selOpt = picker.options[picker.selectedIndex];
+        var nameEl = document.getElementById('analyze-file-name');
+        if (nameEl && selOpt) { nameEl.textContent = selOpt.text; }
         startBtn.disabled = true;
         hideAllPanels();
         var progress = document.getElementById('analyze-progress-panel');
@@ -530,6 +577,9 @@
     }
 
     startBtn.addEventListener('click', startAnalysis);
+
+    var analyzeRetryBtn = document.getElementById('analyze-retry-btn');
+    if (analyzeRetryBtn) { analyzeRetryBtn.addEventListener('click', function () { showStartPanel(); }); }
 
     function pollNext() {
         if (state.pollTimer) { clearInterval(state.pollTimer); state.pollTimer = null; }
@@ -594,8 +644,15 @@
         if (dto.phase === 'FAILED') {
             var errEl = document.getElementById('analyze-error-text');
             if (errEl) { errEl.textContent = dto.errorMessage || 'Analiza zakończona błędem'; }
+            var retryRow = document.getElementById('analyze-retry-row');
+            if (retryRow) { retryRow.classList.remove('hidden'); }
         } else if (dto.id != null) {
+            var acceptPanel = document.getElementById('analyze-accept-panel');
+            if (acceptPanel) { acceptPanel.classList.remove('hidden'); }
             loadAiProposals(dto.id); // Faza D — panel akceptacji propozycji
+        } else {
+            var rr2 = document.getElementById('analyze-retry-row');
+            if (rr2) { rr2.classList.add('hidden'); }
         }
     }
 
