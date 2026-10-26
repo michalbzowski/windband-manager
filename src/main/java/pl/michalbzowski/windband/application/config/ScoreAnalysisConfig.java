@@ -27,6 +27,8 @@ public record ScoreAnalysisConfig(
 
     public ScoreAnalysisConfig {
         // Tolerate a blank (env placeholder resolved to "") as "not configured"; trim the rest.
+        // outputRoot gets the SAME treatment so an empty env placeholder keeps the default layout root.
+        outputRoot = normalize(outputRoot);
         analyzerBaseUrl = normalize(analyzerBaseUrl);
         analyzerSharedToken = normalize(analyzerSharedToken);
     }

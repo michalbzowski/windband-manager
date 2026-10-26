@@ -40,4 +40,14 @@
         <Class name="pl.michalbzowski.windband.adapter.in.web.InventoryController$DefView"/>
         <Bug pattern="URF_UNREAD_PUBLIC_OR_PROTECTED_FIELD"/>
     </Match>
+
+    <!-- ScoreAnalysisArtifactQueryService.open(): SpotBugs's NP model cannot see the record
+         construction (all three components are provably non-null right before: raw is checked
+         against null/blank, path comes from Path.of with an absolute-path guard, mediaType is an
+         inlined ternary literal). False positive reported on every refactoring of that return. -->
+    <Match>
+        <Class name="pl.michalbzowski.windband.application.query.scoreanalysis.ScoreAnalysisArtifactQueryService"/>
+        <Method name="open"/>
+        <Bug pattern="NP_NULL_ON_SOME_PATH_FROM_RETURN_VALUE"/>
+    </Match>
 </FindBugsFilter>

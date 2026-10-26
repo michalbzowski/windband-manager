@@ -670,7 +670,11 @@
             .then(function (dto) { renderAiProposals(dto); })
             .catch(function (err) {
                 var el = document.getElementById('ai-accept-error');
-                if (el) { el.textContent = 'Nie udało się wczytać propozycji: ' + err.message; el.classList.remove('hidden'); }
+                if (el) { el.textContent = 'Nie udało się wczytać propozycji: ' + err.message
+                        + ' — możesz uruchomić nową analizę przyciskiem poniżej.'; el.classList.remove('hidden'); }
+                // Escape hatch: wynik terminalny, ale niedostępny (np. artefakty utracone) → zawsze dajmy drogę wstecz.
+                var retryRow = document.getElementById('analyze-retry-row');
+                if (retryRow) { retryRow.classList.remove('hidden'); }
             });
     }
 
