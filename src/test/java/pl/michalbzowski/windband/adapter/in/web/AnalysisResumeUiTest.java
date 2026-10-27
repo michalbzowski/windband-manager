@@ -225,6 +225,44 @@ class AnalysisResumeUiTest extends UiTestBase {
         assertStartPanelVisible(js);
     }
 
+    @Test
+    void failedAnalysis_withQuotedUpstreamJson_openModalShowsTheError_notFakePending() {
+        // Regresja z produkcji 2026-10-27: komunikat błędu OpenRouter (surowy JSON z cudzysłowami)
+        // budował w GET /analysis/latest NIEWAŻNE ciało JSON. JS modala (resp.json()) rzucał
+        // wyjątek i utkwał w panelu startowym / na fałszywym PENDING, mimo że karta statusu na
+        // stronie poprawnie pokazywała „Ostatnia analiza AI nieudana”.
+        String openrouterError = "OpenRouter HTTP 429: {\"error\":{\"message\":\"Provider returned error\","
+                + "\"code\":429,\"metadata\":{\"raw\":\"google/gemini-2.5-flash is temporarily rate-limited upstream.\"}}}";
+        seedAnalysis("FAILED", "sa-job-45", openrouterError, null);
+        loginAndNavigateTo("/bands/1/compositions/" + compositionId);
+        JavascriptExecutor js = (JavascriptExecutor) driver;
+        WebDriverWait wait = new WebDriverWait(driver, WAIT);
+
+        WebElement actionBtn = wait.until(
+                ExpectedConditions.presenceOfElementLocated(By.id("ai-analysis-action-btn")));
+        assertThat(actionBtn.getText()).containsIgnoringCase("Spróbuj ponownie");
+        String pageText = driver.findElement(By.cssSelector(".composition-header-article")).getText();
+        assertThat(pageText).containsIgnoringCase("nieudana");
+
+        actionBtn.click();
+        wait.until(d -> analyzeDialogOpen(js));
+        // Modal MUSI wylądować w panelu wyniku z pełnym komunikatem błędu i drogą ponowienia —
+        // nie w panelu startowym (efekt catch-a po niepoprawnym JSON) ani na ślepatym PENDING.
+        wait.until(d -> visible(js, "analyze-result-panel"));
+        assertThat(visible(js, "analyze-start-panel"))
+                .as("start panel must NOT be offered when the latest analysis already FAILED")
+                .isFalse();
+        String errText = driver.findElement(By.id("analyze-error-text")).getText();
+        assertThat(errText).containsIgnoringCase("OpenRouter HTTP 429");
+        assertThat(errText).containsIgnoringCase("Provider returned error");
+        wait.until(d -> visible(js, "analyze-retry-row"));
+
+        // Ponowienie wraca do panelu startowego (droga wyjścia z błędu działa).
+        driver.findElement(By.id("analyze-retry-btn")).click();
+        wait.until(d -> visible(js, "analyze-start-panel"));
+        assertStartPanelVisible(js);
+    }
+
     private void assertStartPanelVisible(JavascriptExecutor js) {
         assertThat(visible(js, "score-file-picker"))
                 .as("start panel becomes interactive after retry (picker available)")

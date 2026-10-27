@@ -187,6 +187,35 @@ class StartScoreAnalysisRestControllerTest {
     }
 
     @Test
+    @DisplayName("GET /analysis/latest z błędem zawierającym cudzysłowy (OpenRouter 429) → ciało to WAŻNY JSON, komunikat wraca bez utraty")
+    void latest_failedRowWithQuotedErrorMessage_isValidJson() throws Exception {
+        // Symulacja błędu z produkcji 2026-10-27: komunikat błędu analizy AI przenosi surowy
+        // JSON z OpenRoutera (cudzysłowy, nawiasy). Kontroler ręcznie składa ciało JSON —
+        // brak escapingu dawał NIEWAŻNE ciało, przez które JS w modalu (resp.json()) nigdy nie
+        // widział fazy FAILED i utkwał na PENDING.
+        String openrouterError = "OpenRouter HTTP 429: {\"error\":{\"message\":\"Provider returned error\","
+                + "\"code\":429,\"metadata\":{\"raw\":\"google/gemini-2.5-flash is temporarily rate-limited upstream.\"}}}";
+        var dto = new pl.michalbzowski.windband.application.query.scoreanalysis.ScoreAnalysisQueryService.LatestScoreAnalysisDto(
+                717L, "FAILED", "ref-429", openrouterError,
+                null, null, null, null,
+                java.time.Instant.parse("2026-10-27T09:00:00Z"),
+                java.time.Instant.parse("2026-10-27T09:00:05Z"), 100L);
+        org.mockito.Mockito.when(query.latestFor(anyLong(), anyLong()))
+                .thenReturn(java.util.Optional.of(dto));
+
+        var mvcRes = mvcGet.perform(get("/bands/1/compositions/100/analysis/latest"))
+                .andExpect(status().isOk())
+                .andReturn();
+        String body = mvcRes.getResponse().getContentAsString(java.nio.charset.StandardCharsets.UTF_8);
+
+        com.fasterxml.jackson.databind.JsonNode parsed =
+                new com.fasterxml.jackson.databind.ObjectMapper().readTree(body); // wyjątek = niepoprawny JSON
+        assertThat(parsed.get("phase").asText()).isEqualTo("FAILED");
+        assertThat(parsed.get("errorMessage").asText()).isEqualTo(openrouterError);
+        assertThat(parsed.get("id").asLong()).isEqualTo(717L);
+    }
+
+    @Test
     @DisplayName("GET /analysis/latest on a composition NOT owned by the band → 409 via GlobalExceptionHandler")
     void latest_crossBandComp_409() throws Exception {
         doThrow(new IllegalStateException("Composition not owned"))

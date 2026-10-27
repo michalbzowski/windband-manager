@@ -609,7 +609,11 @@
                 }
             })
             .catch(function (err) {
-                setPhaseBadge('PENDING');
+                // Twarda porażka refretu (sieć, 5xx, błąd parsowania): NIE podmieniaj badge'a na
+                // fałszywe PENDING — zostaw ostatni znany stan i tylko wskaż problem. Kolejny refret
+                // pójdzie za 2 s (timer poniżej), więc to informacja, nie ślepa pętla.
+                var note = document.getElementById('analyze-progress-note');
+                if (note) { note.textContent = 'Problem z odświeżaniem statusu — ponawiam co 2 s…'; }
             });
         if (state.pollTimer === null) { state.pollTimer = setInterval(pollNext, 2000); }
     }

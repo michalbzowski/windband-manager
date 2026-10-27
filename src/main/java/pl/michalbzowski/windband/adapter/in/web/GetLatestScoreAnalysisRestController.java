@@ -47,20 +47,56 @@ public class GetLatestScoreAnalysisRestController {
                     // this repo's adapter layer) does not auto-register Jackson for record DTOs,
                     // so the controller writes a stable JSON wire format directly. In production,
                     // Spring Boot's real HTTP stack serialises the same DTO to identical JSON.
+                    // Every string passes through escapeJson(): upstream error messages carry raw
+                    // provider payloads (e.g. OpenRouter 429 bodies) with double quotes — an
+                    // unescaped value produces INVALID JSON and the UI poller (resp.json()) can
+                    // never observe the FAILED phase (prod regression 2026-10-27: modal stuck PENDING).
                     StringBuilder sb = new StringBuilder("{");
                     sb.append("\"id\":").append(dto.id()).append(",");
-                    sb.append("\"phase\":\"").append(dto.phase()).append("\",");
-                    if (dto.runnerRef() != null) sb.append("\"runnerRef\":\"").append(dto.runnerRef()).append("\",");
-                    if (dto.errorMessage() != null) sb.append("\"errorMessage\":\"").append(dto.errorMessage()).append("\",");
-                    sb.append("\"arrangementJsonPath\":\"").append(dto.arrangementJsonPath()).append("\",");
-                    sb.append("\"arrangementMusicxmlPath\":\"").append(dto.arrangementMusicxmlPath()).append("\",");
-                    sb.append("\"arrangementMidPath\":\"").append(dto.arrangementMidPath()).append("\",");
-                    sb.append("\"validationTxtPath\":\"").append(dto.validationTxtPath()).append("\",");
+                    sb.append("\"phase\":\"").append(escapeJson(dto.phase())).append("\",");
+                    if (dto.runnerRef() != null) sb.append("\"runnerRef\":\"").append(escapeJson(dto.runnerRef())).append("\",");
+                    if (dto.errorMessage() != null) sb.append("\"errorMessage\":\"").append(escapeJson(dto.errorMessage())).append("\",");
+                    appendJsonPathField(sb, "arrangementJsonPath", dto.arrangementJsonPath());
+                    appendJsonPathField(sb, "arrangementMusicxmlPath", dto.arrangementMusicxmlPath());
+                    appendJsonPathField(sb, "arrangementMidPath", dto.arrangementMidPath());
+                    appendJsonPathField(sb, "validationTxtPath", dto.validationTxtPath());
                     sb.append("\"startedAt\":").append(dto.startedAt() == null ? "null" : "\"" + dto.startedAt() + "\"").append(",");
                     sb.append("\"finishedAt\":").append(dto.finishedAt() == null ? "null" : "\"" + dto.finishedAt() + "\"").append(",");
                     sb.append("\"compositionId\":").append(dto.compositionId()).append("}");
                     return ResponseEntity.ok().header("Content-Type", "application/json").body(sb.toString());
                 })
                 .orElseGet(() -> ResponseEntity.notFound().build());
+    }
+
+    /** Path fields kept in their legacy wire shape: a Java null was serialised as the STRING "null". */
+    private static void appendJsonPathField(StringBuilder sb, String field, String value) {
+        sb.append("\"").append(field).append("\":\"")
+                .append(escapeJson(value == null ? "null" : value))
+                .append("\",");
+    }
+
+    /** JSON string escaping (RFC 8259 §7): quotes, backslash and control chars. */
+    private static String escapeJson(String value) {
+        StringBuilder out = new StringBuilder(value.length());
+        for (int i = 0; i < value.length(); i++) {
+            char c = value.charAt(i);
+            switch (c) {
+                case '"' -> out.append("\\\"");
+                case '\\' -> out.append("\\\\");
+                case '\b' -> out.append("\\b");
+                case '\f' -> out.append("\\f");
+                case '\n' -> out.append("\\n");
+                case '\r' -> out.append("\\r");
+                case '\t' -> out.append("\\t");
+                default -> {
+                    if (c < 0x20) {
+                        out.append(String.format("\\u%04x", (int) c));
+                    } else {
+                        out.append(c);
+                    }
+                }
+            }
+        }
+        return out.toString();
     }
 }
