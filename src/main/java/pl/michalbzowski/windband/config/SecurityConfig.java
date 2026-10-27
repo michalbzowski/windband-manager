@@ -5,7 +5,6 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
-import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.AuthenticationFailureHandler;
@@ -27,10 +26,20 @@ import java.nio.charset.StandardCharsets;
 @Configuration
 @EnableWebSecurity
 @Profile("!test")
+// Pentest P1: w profilu testowym łańcuch pochodzi z TestSecurityConfig (mirror
+// tej samej konfiguracji CSRF/login), aby nie rejestrować dwóch SecurityFilterChain
+// o identycznym zakresie.
 public class SecurityConfig {
 
     @Value("${app.base-url:http://localhost:8080}")
     private String baseUrl;
+
+    /** Pentest P2 (A01): limit prób auth per okno (brute-force) — patrz LoginRateLimitFilter. */
+    @Value("${app.security.login.max-attempts-per-window:10}")
+    private int loginMaxAttemptsPerWindow;
+
+    @Value("${app.security.login.window-seconds:60}")
+    private long loginWindowSeconds;
 
     @Value("${KEYCLOAK_URL:http://localhost:8180}")
     private String keycloakUrl;
@@ -81,10 +90,51 @@ public class SecurityConfig {
         };
     }
 
+    /** Pentest P2 (A01): throttle brute-force — patrz komentarz przy polach loginMaxAttempts*. */
+    @Bean
+    public pl.michalbzowski.windband.adapter.in.security.LoginRateLimitFilter loginRateLimitFilter() {
+        return new pl.michalbzowski.windband.adapter.in.security.LoginRateLimitFilter(
+                loginMaxAttemptsPerWindow, loginWindowSeconds);
+    }
+
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         return http
-                .csrf(AbstractHttpConfigurer::disable)
+                // Pentest P1 (A01): CSRF protection. The token lives in a readable cookie
+                // (XSRF-TOKEN) so the existing JS helpers (windband-utils.js) and the
+                // htmx:configRequest hook in fragments/layout.html can send X-XSRF-TOKEN;
+                // Thymeleaf forms with th:action get an automatic hidden field.
+                // csrfTokenRequestHandler = PLAIN handler: Spring Security >= 5.8 masks
+                // tokens in forms via XorCsrfTokenRequestAttributeHandler and then only
+                // ACCEPTS the XOR-masked form — a raw X-XSRF-TOKEN header (the documented
+                // AngularJS pattern of CookieCsrfTokenRepository.withHttpOnlyFalse()) gets
+                // 403. The plain handler accepts raw tokens from both hidden fields and
+                // headers, which is what our JS contract requires.
+                .csrf(csrf -> csrf
+                        .csrfTokenRepository(
+                                org.springframework.security.web.csrf.CookieCsrfTokenRepository.withHttpOnlyFalse())
+                        .csrfTokenRequestHandler(
+                                new org.springframework.security.web.csrf.CsrfTokenRequestAttributeHandler()))
+
+                // Pentest P2 (A02): nagłówki bezpieczeństwa. Spring Security domyślnie
+                // stawia X-Content-Type-Options: nosniff oraz X-Frame-Options: SAMEORIGIN
+                // (frame-ancestors 'self'); tu HSTS po pełnym łańcuchu TLS
+                // (Cloudflare Tunnel — prod), 1 rok, z poddomenami + Referrer-Policy.
+                // Profil testowy (TestSecurityConfig) działa pod http://localhost i HSTS
+                // celowo nie ustawia.
+                .headers(headers -> headers
+                        .httpStrictTransportSecurity(hsts -> hsts
+                                .includeSubDomains(true)
+                                .maxAgeInSeconds(31536000))
+                        .referrerPolicy(org.springframework.security.web.header.writers.ReferrerPolicyHeaderWriter.ReferrerPolicy.STRICT_ORIGIN_WHEN_CROSS_ORIGIN)
+                )
+
+                // Pentest P2 (A01): rate limiting brute-force na auth-endpointach
+                // (login + register-team), per IP, stałe okno.
+                .addFilterBefore(
+                        loginRateLimitFilter(),
+                        org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter.class
+                )
 
                 // Session-based auth (OIDC login creates a session)
                 .sessionManagement(s -> s.sessionCreationPolicy(SessionCreationPolicy.IF_REQUIRED))
@@ -104,11 +154,8 @@ public class SecurityConfig {
                                 "/webjars/**",
                                 "/favicon.ico",
                                 "/error",
-                                "/swagger-ui/**",
-                                "/swagger-ui.html",
-                                "/v3/api-docs/**",
-                                "/api/auth/build-info",
-                                "/api/auth/debug-dns",
+                                // Pentest P1: swagger-ui / api-docs / build-info / debug-dns
+                                // NIE są publikowane anonimowo (default-off; enable per env).
                                 "/public/**",
                                 "/consent",
                                 "/consent/**"

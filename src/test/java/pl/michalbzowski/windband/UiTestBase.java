@@ -55,6 +55,12 @@ public abstract class UiTestBase {
         cleanDatabase();
         reseedDeletedMembersIfNeeded(); // Ensure members exist for FK references in consent tables
         cleanupOrphanMemberConsents(); // Drop orphaned consent/token rows left by prior tests
+        // Pentest P1: establish the test CSRF header hook BEFORE the test body runs,
+        // because some classes log in through their own private helper instead of
+        // doLogin() (e.g. a local loginAsAdmin copy). The CDP registration itself is
+        // once-per-browser (cdpHookRegistered flag) — per-test we only re-install the
+        // current document, which is idempotent thanks to the window flag guard.
+        installTestCsrfHeaderInterceptor(driver);
     }
 
     /**
@@ -418,6 +424,9 @@ public abstract class UiTestBase {
 
     private boolean sessionEstablished = false;
 
+    // CDP Page.addScriptToEvaluateOnNewDocument accumulates registrations; add it once per browser.
+    private boolean cdpHookRegistered = false;
+
     private void doLogin() {
         if (sessionEstablished) {
             return; // session persists across the test class's browser instance
@@ -432,10 +441,10 @@ public abstract class UiTestBase {
             try {
                 driver.get(baseUrl() + "/login");
                 new WebDriverWait(driver, Duration.ofSeconds(20)).pollingEvery(Duration.ofMillis(100))
-                        .until(ExpectedConditions.presenceOfElementLocated(By.cssSelector("form[action='/login'] input[name='username']")));
+                        .until(ExpectedConditions.presenceOfElementLocated(By.cssSelector("input[name='username']")));
 
                 FluentWait<WebDriver> w = new WebDriverWait(driver, Duration.ofSeconds(15)).pollingEvery(Duration.ofMillis(100));
-                WebElement usernameField = w.until(ExpectedConditions.visibilityOfElementLocated(By.cssSelector("form[action='/login'] input[name='username']")));
+                WebElement usernameField = w.until(ExpectedConditions.visibilityOfElementLocated(By.cssSelector("input[name='username']")));
                 usernameField.clear();
                 usernameField.sendKeys("admin");
 
@@ -445,6 +454,7 @@ public abstract class UiTestBase {
 
                 driver.findElement(By.cssSelector("button[type='submit']")).click();
                 w.until(ExpectedConditions.not(ExpectedConditions.urlContains("/login")));
+                installTestCsrfHeaderInterceptor(driver);
                 sessionEstablished = true;
                 return;
             } catch (TimeoutException e) {
@@ -453,6 +463,90 @@ public abstract class UiTestBase {
             }
         }
         throw new IllegalStateException("UI login failed after 3 attempts", last);
+    }
+
+    /**
+     * Pentest P1: the CSRF flow is enabled on the test chain (mirror of production), so
+     * every state-changing request fired from test scripts must carry X-XSRF-TOKEN. The
+     * shared helpers in this class set it inline, but many UI tests seed/cleanup data with
+     * raw {@code XMLHttpRequest} blocks and plain {@code fetch(..., {method:'DELETE'})}.
+     * Instead of editing all of them, install a one-time prototype-level interceptor that
+     * adds the header from the XSRF-TOKEN cookie for POST/PUT/PATCH/DELETE. Test-only —
+     * production JS (windband-utils.js, htmx:configRequest) already sends it explicitly.
+     */
+    private void installTestCsrfHeaderInterceptor(WebDriver driver) {
+        // Test-only CSRF bridge: injects X-XSRF-TOKEN (from the readable XSRF-TOKEN cookie)
+        // into state-changing XHR/fetch calls so that inline test scripts don't need to
+        // repeat the header manually. Production JS (windband-utils.js, htmx:configRequest)
+        // already sends it explicitly — this code never ships.
+        String script = "(function () {" +
+                "  if (window.__wmTestCsrfHook) return;" +
+                "  window.__wmTestCsrfHook = true;" +
+                "  function token() {" +
+                "    var m = document.cookie.split('; ').find(function (c) { return c.indexOf('XSRF-TOKEN=') === 0; });" +
+                "    return m ? m.substring(11) : null;" +
+                "  }" +
+                "  function mutating(method) {" +
+                "    return method && 'POST PUT PATCH DELETE'.indexOf(String(method).toUpperCase()) >= 0;" +
+                "  }" +
+                "  var origOpen = XMLHttpRequest.prototype.open;" +
+                "  var origSend = XMLHttpRequest.prototype.send;" +
+                "  var origSetHeader = XMLHttpRequest.prototype.setRequestHeader;" +
+                "  XMLHttpRequest.prototype.open = function (method, url) {" +
+                "    this.__wmMethod = method; return origOpen.apply(this, arguments);" +
+                "  };" +
+                "  XMLHttpRequest.prototype.setRequestHeader = function (name, value) {" +
+                "    this.__wmHdrs = this.__wmHdrs || {};" +
+                "    this.__wmHdrs[String(name).toLowerCase()] = true;" +
+                "    return origSetHeader.apply(this, arguments);" +
+                "  };" +
+                "  XMLHttpRequest.prototype.send = function (body) {" +
+                "    if (mutating(this.__wmMethod)) {" +
+                "      var t = token();" +
+                "      if (t && !(this.__wmHdrs && this.__wmHdrs['x-xsrf-token'])) {" +
+                "        origSetHeader.call(this, 'X-XSRF-TOKEN', t);" +
+                "      }" +
+                "    }" +
+                "    return origSend.apply(this, arguments);" +
+                "  };" +
+                "  var origFetch = window.fetch;" +
+                "  window.fetch = function (input, init) {" +
+                "    try {" +
+                "      var method = (init && init.method) || (input && input.method) || 'GET';" +
+                "      if (mutating(method)) {" +
+                "        var h;" +
+                "        try { h = new Headers(init && init.headers ? init.headers : null); }" +
+                "        catch (e1) { h = new Headers(); }" +
+                "        if (!h.has('X-XSRF-TOKEN')) {" +
+                "          var t2 = token();" +
+                "          if (t2) h.set('X-XSRF-TOKEN', t2);" +
+                "        }" +
+                "        init = Object.assign({}, init, {headers: h});" +
+                "      }" +
+                "    } catch (e2) { /* interceptor must never break the caller */ }" +
+                "    return origFetch.call(this, input, init);" +
+                "  };" +
+                "})()";
+        if (!cdpHookRegistered && driver instanceof org.openqa.selenium.chromium.HasCdp hasCdp) {
+            try {
+                java.util.Map<String, Object> params = new java.util.LinkedHashMap<>();
+                params.put("source", script);
+                hasCdp.executeCdpCommand("Page.addScriptToEvaluateOnNewDocument", params);
+                cdpHookRegistered = true; // registration is per-browser and persistent
+            } catch (Throwable t) {
+                // CDP unavailable — per-document install below is the best we can do.
+                System.err.println("[UiTestBase] CDP hook failed, falling back: " + t);
+            }
+        } else if (!cdpHookRegistered) {
+            System.err.println("[UiTestBase] driver does not implement HasCdp; per-document CSRF hook only");
+        }
+        // Install on the current document too — addScriptToEvaluateOnNewDocument covers
+        // all FUTURE navigations in this tab (the login page may already be loaded here).
+        try {
+            ((org.openqa.selenium.JavascriptExecutor) driver).executeScript(script, "hook-install");
+        } catch (RuntimeException e) {
+            System.err.println("[UiTestBase] current-doc install failed: " + e);
+        }
     }
 
     /**

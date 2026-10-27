@@ -1,13 +1,17 @@
 package pl.michalbzowski.windband.adapter.in.web;
 
+import jakarta.servlet.http.HttpSession;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.security.oauth2.core.oidc.user.OidcUser;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestPart;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
+import pl.michalbzowski.windband.adapter.in.security.ActiveTeamResolver;
 import pl.michalbzowski.windband.application.command.composition.ScoreFileCommandService;
 import pl.michalbzowski.windband.application.command.composition.ScoreFileReplaceCommandService;
 import pl.michalbzowski.windband.application.command.composition.ScoreFileUploadRequest;
@@ -40,20 +44,27 @@ public class ScoreFileUploadRestController {
     private final ScoreFileCommandService commandService;
     private final ScoreFileReplaceCommandService replaceCommandService;
     private final UploadedFileAssembler fileAssembler;
+    private final ActiveTeamResolver activeTeamResolver;
 
     public ScoreFileUploadRestController(ScoreFileCommandService commandService,
                                           ScoreFileReplaceCommandService replaceCommandService,
-                                          UploadedFileAssembler fileAssembler) {
+                                          UploadedFileAssembler fileAssembler,
+                                          ActiveTeamResolver activeTeamResolver) {
         this.commandService = commandService;
         this.replaceCommandService = replaceCommandService;
         this.fileAssembler = fileAssembler;
+        this.activeTeamResolver = activeTeamResolver;
     }
 
     @PostMapping
     public ResponseEntity<ScoreFileDto> upload(
             @PathVariable("bandId") Long bandId,
             @PathVariable("compositionId") Long compositionId,
-            @RequestPart(name = "file", required = true) MultipartFile file) {
+            @RequestPart(name = "file", required = true) MultipartFile file,
+            @AuthenticationPrincipal OidcUser oidcUser,
+            HttpSession session) {
+        // Pentest P1 (A01/BOLA): upload do obcego bandu → 403 przed zapisem na dysk.
+        activeTeamResolver.requireBandAccess(oidcUser, session, bandId);
         ScoreFileUploadRequest request = fileAssembler.toRequest(file);
         ScoreFileDto dto = commandService.upload(request, compositionId, bandId);
         return ResponseEntity.status(HttpStatus.CREATED).body(dto);
@@ -73,7 +84,11 @@ public class ScoreFileUploadRestController {
             @PathVariable("bandId") Long bandId,
             @PathVariable("compositionId") Long compositionId,
             @PathVariable("fileId") Long fileId,
-            @RequestPart(name = "file", required = true) MultipartFile file) {
+            @RequestPart(name = "file", required = true) MultipartFile file,
+            @AuthenticationPrincipal OidcUser oidcUser,
+            HttpSession session) {
+        // Pentest P1 (A01/BOLA): wymiana treści pliku obcego bandu → 403 przed mutacją.
+        activeTeamResolver.requireBandAccess(oidcUser, session, bandId);
         ScoreFileUploadRequest request = fileAssembler.toRequest(file);
         ScoreFileDto dto = replaceCommandService.replace(request, fileId, compositionId, bandId);
         return ResponseEntity.ok(dto);
@@ -88,7 +103,11 @@ public class ScoreFileUploadRestController {
     public ResponseEntity<java.util.List<ZipEntryDto>> expandZip(
             @PathVariable("bandId") Long bandId,
             @PathVariable("compositionId") Long compositionId,
-            @PathVariable("fileId") Long fileId) {
+            @PathVariable("fileId") Long fileId,
+            @AuthenticationPrincipal OidcUser oidcUser,
+            HttpSession session) {
+        // Pentest P1 (A01/BOLA): rozpakowanie ZIP z obcego bandu → 403 przed zapisem.
+        activeTeamResolver.requireBandAccess(oidcUser, session, bandId);
         java.util.List<ZipEntryDto> entries = commandService.expandZip(fileId, compositionId, bandId);
         return ResponseEntity.ok(entries);
     }

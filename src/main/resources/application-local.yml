@@ -76,6 +76,19 @@ spring:
 
 server:
   port: ${SERVER_PORT:8080}
+  # Local dev działa pod http://localhost — Secure cookie wyłączona JAWNYM
+  # property (prod trzyma secure=true z application.yml).
+  servlet:
+    session:
+      cookie:
+        secure: false
+
+# Dev convenience (wyłączone domyślnie w produkcji — patrz application.yml):
+springdoc:
+  api-docs:
+    enabled: true
+  swagger-ui:
+    enabled: true
 
 logging:
   level:
@@ -87,6 +100,9 @@ logging:
 
 app:
   base-url: ${BASE_URL:http://localhost:8080}
+  # Dev-only: endpoint diagnostyczny /api/auth/build-info dostępny lokalnie.
+  api:
+    build-info-enabled: true
   # windband-inventory dev server (vite, port 5173 — matches the Keycloak
   # client's valid redirect URI http://localhost:5173/*).
   inventory-url: ${INVENTORY_URL:http://localhost:5173}

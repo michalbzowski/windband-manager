@@ -9,6 +9,7 @@ import org.springframework.web.bind.annotation.ControllerAdvice;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import pl.michalbzowski.windband.application.command.event.EventNotFoundException;
 import pl.michalbzowski.windband.application.command.inventory.InventoryItemNotFoundException;
+import pl.michalbzowski.windband.application.common.CrossTeamAccessDeniedException;
 import pl.michalbzowski.windband.application.command.member.InstrumentCommandService.InstrumentInUseException;
 import pl.michalbzowski.windband.application.command.member.MemberNotFoundException;
 import pl.michalbzowski.windband.application.command.rehearsal.RehearsalNotFoundException;
@@ -63,6 +64,17 @@ public class GlobalExceptionHandler {
             BandInventoryApiQueryService.NotBandMemberException ex) {
         return ResponseEntity.status(HttpStatus.FORBIDDEN)
                 .body(errorBody(ex.getMessage()));
+    }
+
+    /**
+     * Pentest P0 (A01/BOLA): zasób per-id należy do innego bandu niż aktywny zespół
+     * żądającego → 403 z jednolita wiadomoscia (bez potwierdzania istnienia rekordu).
+     */
+    @ExceptionHandler(CrossTeamAccessDeniedException.class)
+    public ResponseEntity<Map<String, Object>> handleCrossTeamAccess(CrossTeamAccessDeniedException ex) {
+        log.warn("Cross-team access denied: {}", ex.getMessage());
+        return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                .body(errorBody("Brak dostępu do zasobów tego zespołu"));
     }
 
     @ExceptionHandler(AccessDeniedException.class)

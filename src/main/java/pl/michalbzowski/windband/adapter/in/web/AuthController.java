@@ -39,6 +39,14 @@ public class AuthController {
     private BuildProperties buildProperties;
 
     /**
+     * Pentest P1 (A01 — rekonesans): informacje o buildze wyciekają do nieautoryzowanych
+     * widzów. Endpoint domyślnie nie istnieje (404); włączana jawnie per środowisko
+     * (np. lokalne dev), nigdy globalnie.
+     */
+    @org.springframework.beans.factory.annotation.Value("${app.api.build-info-enabled:false}")
+    private boolean buildInfoEnabled;
+
+    /**
      * Public endpoint: register a new team with an admin user.
      * The user must already exist in Keycloak (authenticated via OIDC).
      * No authentication required — this is called after Keycloak registration
@@ -93,27 +101,29 @@ public class AuthController {
     }
 
     /**
-     * Check if a username is available (real-time validation).
+     * Pentest P1 (A01 — enumeracja kont): dostępność nazwy użytkownika NIE może być
+     * ujawniana anonimowemu żądającemu. Endpoint zwraca stała odpowiedź; realna
+     * unikalność weryfikowana jest przy rejestracji, a błąd ma postać generyczną.
      */
     @GetMapping("/check-username")
     public ResponseEntity<Map<String, Boolean>> checkUsername(@RequestParam String username) {
-        return ResponseEntity.ok(Map.of("available", teamQueryService.isUsernameAvailable(username)));
+        return ResponseEntity.ok(Map.of("available", true));
     }
 
     /**
-     * Check if an email is available.
+     * Pentest P1 (A01 — enumeracja kont): stała odpowiedź zamiast orakla istnienia e-maila.
      */
     @GetMapping("/check-email")
     public ResponseEntity<Map<String, Boolean>> checkEmail(@RequestParam String email) {
-        return ResponseEntity.ok(Map.of("available", teamQueryService.isEmailAvailable(email)));
+        return ResponseEntity.ok(Map.of("available", true));
     }
 
     /**
-     * Check if a team slug is available.
+     * Pentest P1 (A01 — enumeracja): stała odpowiedź również dla sluga zespołu.
      */
     @GetMapping("/check-slug")
     public ResponseEntity<Map<String, Boolean>> checkSlug(@RequestParam String slug) {
-        return ResponseEntity.ok(Map.of("available", teamQueryService.isSlugAvailable(slug)));
+        return ResponseEntity.ok(Map.of("available", true));
     }
 
     /**
@@ -207,30 +217,6 @@ public class AuthController {
         ));
     }
 
-    /**
-     * Diagnostic endpoint: check DNS resolution and env vars.
-     * Remove after debugging!
-     */
-    @GetMapping("/debug-dns")
-    public ResponseEntity<?> debugDns() {
-        String host = System.getenv().getOrDefault("KEYCLOAK_INTERNAL_URL", "localhost:8180").replaceAll(":\\d+$", "");
-        String resolved;
-        try {
-            var addr = java.net.InetAddress.getByName(host);
-            resolved = addr.getHostAddress();
-        } catch (Exception e) {
-            resolved = "FAILED: " + e.getMessage();
-        }
-        return ResponseEntity.ok(Map.of(
-                "host", host,
-                "resolved", resolved,
-                "KEYCLOAK_INTERNAL_URL", System.getenv("KEYCLOAK_INTERNAL_URL"),
-                "KEYCLOAK_AUTH_URL", System.getenv("KEYCLOAK_AUTH_URL"),
-                "KEYCLOAK_PUBLIC_URL", System.getenv("KEYCLOAK_PUBLIC_URL"),
-                "BASE_URL", System.getenv("BASE_URL")
-        ));
-    }
-
     @Data
     public static class LoginRequest {
         private String username;
@@ -238,10 +224,13 @@ public class AuthController {
     }
 
     /**
-     * Get build information for debugging.
+     * Get build information for debugging. Off by default — see buildInfoEnabled.
      */
     @GetMapping("/build-info")
     public ResponseEntity<?> buildInfo() {
+        if (!buildInfoEnabled) {
+            return ResponseEntity.notFound().build();
+        }
         String version = null;
         String name = null;
         String time = null;

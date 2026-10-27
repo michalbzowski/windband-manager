@@ -1,13 +1,17 @@
 package pl.michalbzowski.windband.adapter.in.web;
 
+import jakarta.servlet.http.HttpSession;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.security.oauth2.core.oidc.user.OidcUser;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import pl.michalbzowski.windband.adapter.in.security.ActiveTeamResolver;
 import pl.michalbzowski.windband.application.query.composition.ScoreFileThumbQueryService;
 
 /**
@@ -32,9 +36,12 @@ import pl.michalbzowski.windband.application.query.composition.ScoreFileThumbQue
 public class ScoreFileThumbRestController {
 
     private final ScoreFileThumbQueryService thumbService;
+    private final ActiveTeamResolver activeTeamResolver;
 
-    public ScoreFileThumbRestController(ScoreFileThumbQueryService thumbService) {
+    public ScoreFileThumbRestController(ScoreFileThumbQueryService thumbService,
+                                        ActiveTeamResolver activeTeamResolver) {
         this.thumbService = thumbService;
+        this.activeTeamResolver = activeTeamResolver;
     }
 
     @GetMapping("/bands/{bandId}/compositions/{compositionId}/files/{fileId}/thumb")
@@ -43,7 +50,11 @@ public class ScoreFileThumbRestController {
             @PathVariable Long compositionId,
             @PathVariable Long fileId,
             @RequestParam(defaultValue = "1") int page,
-            @RequestParam(defaultValue = "400") int width) {
+            @RequestParam(defaultValue = "400") int width,
+            @AuthenticationPrincipal OidcUser oidcUser,
+            HttpSession session) {
+        // Pentest P1 (A01/BOLA): miniatura pliku obcego bandu → 403 przed renderowaniem.
+        activeTeamResolver.requireBandAccess(oidcUser, session, bandId);
         byte[] jpeg = thumbService.renderThumbnail(fileId, compositionId, bandId, page, width);
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(MediaType.IMAGE_JPEG);

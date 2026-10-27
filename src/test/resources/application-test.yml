@@ -71,9 +71,22 @@ spring:
 
 server:
   port: 8080
+  # UI testy (Selenium) działają pod plain http://localhost — Secure cookie
+  # wyłączona TYLKO w profilu testowym; prod trzyma secure=true (default).
+  servlet:
+    session:
+      cookie:
+        secure: false
 
 app:
   base-url: http://localhost:8080
+  # UI testy logują się wielokrotnie z jednego IP (127.0.0.1) w krótkim czasie —
+  # limit produkcyjny (10/60s) wywoływałby fałszywe bloki. Ścieżka filtra test
+  # pozostaje aktywna; w prod obowiązuje app.security.login z application.yml.
+  security:
+    login:
+      max-attempts-per-window: 10000
+      window-seconds: 60
   # Test-only master key for the LLM key vault: readable 32-byte ASCII phrase
   # (AesGcmSecretCipher accepts raw UTF-8 32B besides Base64 32B). Enables the
   # happy path in LlmKeysPageUiTest; NOT used anywhere outside tests.

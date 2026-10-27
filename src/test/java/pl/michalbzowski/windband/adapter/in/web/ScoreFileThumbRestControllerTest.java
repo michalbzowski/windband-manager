@@ -3,29 +3,41 @@ package pl.michalbzowski.windband.adapter.in.web;
 import org.apache.pdfbox.pdmodel.PDDocument;
 import org.apache.pdfbox.pdmodel.PDPage;
 import org.apache.pdfbox.pdmodel.common.PDRectangle;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.authority.AuthorityUtils;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.oauth2.core.oidc.user.OidcUser;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
+import java.util.List;
 
+import pl.michalbzowski.windband.adapter.in.security.ActiveTeamResolver;
+import pl.michalbzowski.windband.adapter.in.security.WindbandOidcUser;
 import pl.michalbzowski.windband.application.query.composition.ScoreFileDownloadQueryService;
 import pl.michalbzowski.windband.application.query.composition.ScoreFileDownloadQueryService.Download;
 import pl.michalbzowski.windband.application.query.composition.ScoreFileDownloadMetadata;
 import pl.michalbzowski.windband.application.query.composition.ScoreFileThumbQueryService;
+import pl.michalbzowski.windband.application.query.team.TeamQueryService;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -52,6 +64,15 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @ExtendWith(MockitoExtension.class)
 class ScoreFileThumbRestControllerTest {
 
+    private static final long USER_ID = 7L;
+    private static final long MY_TEAM = 1L;
+
+    @Mock
+    private TeamQueryService teamQueryService;
+
+    @Mock
+    private OidcUser oidcDelegate;
+
     private MockMvc mvc;
     private ScoreFileDownloadQueryService downloadService;
     private ScoreFileThumbQueryService thumbService;
@@ -60,9 +81,26 @@ class ScoreFileThumbRestControllerTest {
     void setUp() {
         downloadService = mock(ScoreFileDownloadQueryService.class);
         thumbService = new ScoreFileThumbQueryService(downloadService);
-        mvc = MockMvcBuilders.standaloneSetup(new ScoreFileThumbRestController(thumbService))
+        mvc = MockMvcBuilders.standaloneSetup(
+                        new ScoreFileThumbRestController(thumbService, new ActiveTeamResolver(teamQueryService)))
                 .setControllerAdvice(new GlobalExceptionHandler())
+                .setCustomArgumentResolvers(
+                        new org.springframework.security.web.method.annotation
+                                .AuthenticationPrincipalArgumentResolver())
                 .build();
+    }
+
+    @AfterEach
+    void cleanSecurityContext() {
+        SecurityContextHolder.clearContext();
+    }
+
+    private void authenticateAsTeam(long teamId) {
+        WindbandOidcUser wu = new WindbandOidcUser(oidcDelegate, USER_ID, "michal", "michal@example.com",
+                true, false, teamId, "sokole", "ADMIN", List.of(MY_TEAM));
+        SecurityContextHolder.getContext().setAuthentication(
+                UsernamePasswordAuthenticationToken.authenticated(wu, null,
+                        AuthorityUtils.createAuthorityList("ROLE_USER")));
     }
 
     private Download handle(byte[] bytes, String mime, boolean zip) {
@@ -96,6 +134,7 @@ class ScoreFileThumbRestControllerTest {
     @Test
     @DisplayName("thumb of a valid multi-page PDF → 200 + image/jpeg + JPEG magic bytes (FF D8 FF)")
     void thumbValidPdf_returnsJpeg() throws Exception {
+        authenticateAsTeam(MY_TEAM);
         when(downloadService.open(anyLong(), anyLong(), anyLong()))
                 .thenAnswer(inv -> handle(threePagePdf(), "application/pdf", false));
 
@@ -113,6 +152,7 @@ class ScoreFileThumbRestControllerTest {
     @Test
     @DisplayName("thumb of a ZIP parent file → 422 Unprocessable Entity (not a valid PDF document)")
     void thumbZipFile_unprocessableEntity() throws Exception {
+        authenticateAsTeam(MY_TEAM);
         when(downloadService.open(anyLong(), anyLong(), anyLong()))
                 .thenAnswer(inv -> handle(zipArchive(), "application/zip", true));
 
@@ -121,19 +161,21 @@ class ScoreFileThumbRestControllerTest {
     }
 
     @Test
-    @DisplayName("thumb requested cross-band → 409 Conflict (ownership violation propagates to the handler)")
-    void thumbCrossBand_conflict() throws Exception {
-        when(downloadService.open(anyLong(), anyLong(), anyLong()))
-                .thenThrow(new IllegalStateException(
-                        "Score file 42 does not belong to band 2"));
+    @DisplayName("Pentest P1: thumb z obcego bandu (2 ≠ active team 1) → 403, strumień nie jest otwierany")
+    void thumbForeignBand_forbiddenNoStream() throws Exception {
+        authenticateAsTeam(MY_TEAM);
 
         mvc.perform(get("/bands/2/compositions/7/files/42/thumb").param("page", "1"))
-                .andExpect(status().isConflict());
+                .andExpect(status().isForbidden())
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("Brak dostępu do zasobów tego zespołu")));
+
+        verify(downloadService, never()).open(anyLong(), anyLong(), anyLong());
     }
 
     @Test
     @DisplayName("thumb of a valid PDF with an unknown page number → 404 Not Found")
     void thumbUnknownPage_notFound() throws Exception {
+        authenticateAsTeam(MY_TEAM);
         when(downloadService.open(anyLong(), anyLong(), anyLong()))
                 .thenAnswer(inv -> handle(threePagePdf(), "application/pdf", false));
 
@@ -144,6 +186,7 @@ class ScoreFileThumbRestControllerTest {
     @Test
     @DisplayName("thumb with a non-positive page parameter → 400 Bad Request")
     void thumbNonPositivePage_badRequest() throws Exception {
+        authenticateAsTeam(MY_TEAM);
         mvc.perform(get("/bands/1/compositions/7/files/42/thumb").param("page", "0"))
                 .andExpect(status().isBadRequest());
 
@@ -153,6 +196,7 @@ class ScoreFileThumbRestControllerTest {
     @Test
     @DisplayName("rendering the same (fileId, page, width) twice opens the download stream exactly once — cached")
     void thumbSecondCall_servedFromCache() throws Exception {
+        authenticateAsTeam(MY_TEAM);
         when(downloadService.open(anyLong(), anyLong(), anyLong()))
                 .thenAnswer(inv -> handle(threePagePdf(), "application/pdf", false));
 

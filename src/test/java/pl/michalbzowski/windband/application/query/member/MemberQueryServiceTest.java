@@ -49,6 +49,33 @@ class MemberQueryServiceTest extends BaseIntegrationTest {
         assertThat(minorCount).isGreaterThanOrEqualTo(1);
     }
 
+    // ============ Pentest P0 (A01/BOLA): requireMemberOfTeam ============
+
+    @Test
+    void requireMemberOfTeam_memberInRequestedTeam_returnsDto() {
+        var member = createTestMember("Własny", "Członek", LocalDate.of(1999, 5, 5)); // band 1
+
+        MemberDto dto = queryService.requireMemberOfTeam(member.getId(), 1L);
+
+        assertThat(dto.id()).isEqualTo(member.getId());
+        assertThat(dto.firstName()).isEqualTo("Własny");
+    }
+
+    @Test
+    void requireMemberOfTeam_memberInOtherBand_throwsCrossTeamAccessDenied() {
+        var member = createTestMember("Obcy", "Członek", LocalDate.of(1997, 7, 7)); // band 1
+
+        assertThatThrownBy(() -> queryService.requireMemberOfTeam(member.getId(), 2L))
+                .isInstanceOf(pl.michalbzowski.windband.application.common.CrossTeamAccessDeniedException.class)
+                .hasMessageContaining("2");
+    }
+
+    @Test
+    void requireMemberOfTeam_unknownMember_throwsNotFound() {
+        assertThatThrownBy(() -> queryService.requireMemberOfTeam(999_999L, 1L))
+                .isInstanceOf(pl.michalbzowski.windband.application.command.member.MemberNotFoundException.class);
+    }
+
     private pl.michalbzowski.windband.domain.member.Member createTestMember(
             String firstName, String lastName, LocalDate dob) {
         CreateMemberCommand cmd = new CreateMemberCommand();

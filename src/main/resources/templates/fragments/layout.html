@@ -35,6 +35,21 @@
             if (token) {
                 evt.detail.headers['Authorization'] = 'Bearer ' + token;
             }
+            // Pentest P1 (A01): htmx state-changing calls carry the CSRF token.
+            // Spring Security writes it into a readable cookie named XSRF-TOKEN
+            // (CookieCsrfTokenRepository.withHttpOnlyFalse).
+            let xsrf = null;
+            for(let i = 0; i < ca.length; i++) {
+                let c = ca[i];
+                while (c.charAt(0) === ' ') c = c.substring(1);
+                if (c.indexOf('XSRF-TOKEN=') === 0) {
+                    xsrf = c.substring('XSRF-TOKEN='.length, c.length);
+                    break;
+                }
+            }
+            if (xsrf) {
+                evt.detail.headers['X-XSRF-TOKEN'] = xsrf;
+            }
         });
 
         (function() {
@@ -510,10 +525,11 @@
 
     <footer th:fragment="footer" class="container">
         <hr>
-        <small>Team Manager &copy; 2025 Michał Bzowski | <span id="build-version">...</span></small>
+        <small>Team Manager &copy; 2025 Michał Bzowski | <span id="build-version" th:text="${@buildInfoStatus.isApiEnabled()} ? '...' : ''"></span></small>
     </footer>
 
-<script th:fragment="footer-scripts">
+<th:block th:fragment="footer-scripts">
+<script>
     document.addEventListener('htmx:afterSwap', function(evt) {
         if (window.Toast) {
             Toast.container = null;
@@ -651,24 +667,13 @@
     document.addEventListener('htmx:afterSwap', bindDetailActionsBarIfPresent);
 
 
-    (function() {
-        console.log('Loading build info...');
-        fetchWithToast('/api/auth/build-info', { credentials: 'same-origin' })
-            .then(function(resp) {
-                console.log('build-info response:', resp.status);
-                return resp.json();
-            })
-            .then(function(data) {
-                console.log('build-info data:', data);
-                var version = data.version || '?';
-                var time = data.time ? data.time.replace('T', ' ').replace('Z', '') : '?';
-                document.getElementById('build-version').textContent = 'v' + version + ' | ' + time;
-            })
-            .catch(function(err) {
-                console.error('build-info error:', err);
-                document.getElementById('build-version').textContent = 'v unknown';
-            });
-    })();
+    // NOTE: no conditional Thymeleaf markup inside this <script> block — Thymeleaf
+    // treats script content as raw text, so a th:element here would be emitted
+    // verbatim into the JS (SyntaxError) and kill every binding in this file.
+    // The optional build/version badge fetch lives in its own <script th:if> right
+    // after this fragment's closing tag (see end of file), where a non-OK / 404'd
+    // response degrades quietly instead of logging console errors (pentest: the
+    // endpoint is disabled by default).
 
     // ---------------------------------------------------------------------------
     // HTMX rebind after swap/settle — safe registration in footer-scripts (body present).
@@ -706,5 +711,33 @@
             });
     }
 </script>
+
+<!-- Optional build/version badge. Rendered only when app.api.build-info-enabled=true
+     (pentest hardening: this flag is OFF by default — don't expose build metadata).
+     Kept as a separate <script th:if> element because Thymeleaf treats the content
+     of other <script> blocks as raw text and would emit conditional tags verbatim. -->
+<script th:if="${@buildInfoStatus.isApiEnabled()}">
+    (function() {
+        fetchWithToast('/api/auth/build-info', { credentials: 'same-origin' })
+            .then(function(resp) {
+                if (!resp.ok || resp.status === 404) return null;
+                return resp.json();
+            })
+            .then(function(data) {
+                var el = document.getElementById('build-version');
+                if (!el) return;
+                if (!data) { el.textContent = ''; return; }
+                var version = data.version || '?';
+                var time = data.time ? data.time.replace('T', ' ').replace('Z', '') : '?';
+                el.textContent = 'v' + version + ' | ' + time;
+            })
+            .catch(function(err) {
+                console.warn('build-info unavailable:', err);
+                var el = document.getElementById('build-version');
+                if (el) el.textContent = '';
+            });
+    })();
+</script>
+</th:block>
 </body>
 </html>
