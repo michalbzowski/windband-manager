@@ -645,6 +645,20 @@
                 form.method = 'POST';
                 form.action = openBtn.getAttribute('data-deliver-url');
                 form.style.display = 'none';
+                // JS-built forms are invisible to Thymeleaf's automatic _csrf injection,
+                // so add the token manually from the XSRF-TOKEN cookie (same source the
+                // htmx fragment in fragments/layout.html reads).
+                var ca = document.cookie ? document.cookie.split('; ') : [];
+                for (var i = 0; i < ca.length; i++) {
+                    if (ca[i].indexOf('XSRF-TOKEN=') === 0) {
+                        var input = document.createElement('input');
+                        input.type = 'hidden';
+                        input.name = '_csrf';
+                        input.value = ca[i].substring('XSRF-TOKEN='.length);
+                        form.appendChild(input);
+                        break;
+                    }
+                }
                 document.body.appendChild(form);
                 form.submit();
             });

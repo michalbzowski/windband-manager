@@ -114,7 +114,7 @@ class ScoreFileUploadUiTest extends UiTestBase {
                 "var fd = new FormData();" +
                 "fd.append('file', blob, fileName);" +
                 "var csrfCookie = document.cookie.split('; ').find(function (c) { return c.startsWith('XSRF-TOKEN='); });" +
-                "if (csrfCookie) { xhr.setRequestHeader('X-XSRF-TOKEN', csrfCookie.substring(10)); }" +
+                "if (csrfCookie) { xhr.setRequestHeader('X-XSRF-TOKEN', csrfCookie.split('=')[1]); }" +
                 "xhr.send(fd); return [xhr.status, xhr.responseText];",
                 String.valueOf(compositionId), base64, fileName);
 

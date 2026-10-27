@@ -9,6 +9,7 @@ import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -29,9 +30,10 @@ class MemberListFocusRenderTest {
 
     @Test
     void listFragmentWithFocusRendersFocusAttributes() throws Exception {
-        MvcResult loginResult = mvc.perform(post("/login")
+        MvcResult loginResult = mvc.perform(post("/api/auth/login")
                         .param("username", "admin")
-                        .param("password", "admin"))
+                        .param("password", "admin")
+                        .with(csrf()))
                 .andExpect(status().is3xxRedirection())
                 .andReturn();
         var session = (org.springframework.mock.web.MockHttpSession) loginResult.getRequest().getSession();

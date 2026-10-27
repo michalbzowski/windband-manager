@@ -1,6 +1,7 @@
 package pl.michalbzowski.windband.application.command.team;
 
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -8,6 +9,7 @@ import pl.michalbzowski.windband.domain.band.Band;
 import pl.michalbzowski.windband.domain.band.BandRepository;
 import pl.michalbzowski.windband.domain.user.*;
 
+import java.time.LocalDateTime;
 import java.util.UUID;
 
 @Service
@@ -19,6 +21,13 @@ public class TeamRegistrationService {
     private final AppUserRepository appUserRepository;
     private final UserTeamRoleRepository userTeamRoleRepository;
     private final PasswordEncoder passwordEncoder;
+
+    /**
+     * Pentest P2 (A01): czasowa ważność tokenów zaproszeń (domyślnie 7 dni,
+     * ustawienia w application.yml: app.team.invitation-expiry-days).
+     */
+    @Value("${app.team.invitation-expiry-days:7}")
+    private long invitationExpiryDays;
 
     /**
      * Public team registration. Creates a Band + admin AppUser + UserTeamRole(ADMIN).
@@ -93,7 +102,9 @@ public class TeamRegistrationService {
         }
 
         String invitationToken = UUID.randomUUID().toString();
-        UserTeamRole role = UserTeamRole.createInvitation(user, team, cmd.getRole(), invitationToken);
+        UserTeamRole role = UserTeamRole.createInvitation(
+                user, team, cmd.getRole(), invitationToken,
+                LocalDateTime.now().plusDays(invitationExpiryDays));
         userTeamRoleRepository.save(role);
 
         return invitationToken;
@@ -105,6 +116,12 @@ public class TeamRegistrationService {
     public void acceptInvitation(String token, String newPassword, String username) {
         UserTeamRole role = userTeamRoleRepository.findByInvitationToken(token)
                 .orElseThrow(() -> new IllegalArgumentException("Invalid or expired invitation"));
+
+        if (role.isInvitationExpired(LocalDateTime.now())) {
+            // Pentest P2: ta sama generyczna odpowiedź co dla nieważnego tokenu,
+            // żeby nie dawać orakla „token istnieje, ale wygasł”.
+            throw new IllegalStateException("Invalid or expired invitation");
+        }
 
         if (role.isInvitationAccepted()) {
             throw new IllegalStateException("Invitation already accepted");

@@ -10,6 +10,7 @@ import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -34,9 +35,10 @@ class DashboardBooleanAttributesTest {
 
     @Test
     void dashboardShowsBooleanAttributeCounts() throws Exception {
-        MvcResult login = mvc.perform(post("/login")
+        MvcResult login = mvc.perform(post("/api/auth/login")
                         .param("username", "admin")
-                        .param("password", "admin"))
+                        .param("password", "admin")
+                        .with(csrf()))
                 .andExpect(status().is3xxRedirection())
                 .andReturn();
         var session = (org.springframework.mock.web.MockHttpSession) login.getRequest().getSession();
@@ -47,7 +49,8 @@ class DashboardBooleanAttributesTest {
         MvcResult defResult = mvc.perform(post("/api/bands/1/attribute-defs")
                         .session(session)
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(defBody))
+                        .content(defBody)
+                        .with(csrf()))
                 .andExpect(status().isCreated())
                 .andReturn();
         String defJson = defResult.getResponse().getContentAsString();
@@ -60,7 +63,8 @@ class DashboardBooleanAttributesTest {
         mvc.perform(post("/api/bands/1/attribute-defs/" + attrId + "/members/1")
                         .session(session)
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"value\":\"true\"}"))
+                        .content("{\"value\":\"true\"}")
+                        .with(csrf()))
                 .andExpect(status().isOk());
 
         // 3) render dashboard and assert the BOOLEAN attribute section appears.

@@ -11,7 +11,6 @@ import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.scheduling.annotation.EnableAsync;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
-import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.core.userdetails.User;
 import org.springframework.security.core.userdetails.UserDetailsService;
@@ -52,7 +51,15 @@ public class TestSecurityConfig {
     @Bean
     public SecurityFilterChain testSecurityFilterChain(HttpSecurity http) throws Exception {
         return http
-                .csrf(AbstractHttpConfigurer::disable)
+                // Mirror of the production chain: same CSRF contract so UI integration
+                // tests exercise the real anti-forgery flow (cookie XSRF-TOKEN).
+                // PLAIN request handler — see SecurityConfig for why the 5.8+ default
+                // XOR-masked handler breaks the raw X-XSRF-TOKEN cookie/header pattern.
+                .csrf(csrf -> csrf
+                        .csrfTokenRepository(
+                                org.springframework.security.web.csrf.CookieCsrfTokenRepository.withHttpOnlyFalse())
+                        .csrfTokenRequestHandler(
+                                new org.springframework.security.web.csrf.CsrfTokenRequestAttributeHandler()))
                 .sessionManagement(s -> s.sessionCreationPolicy(SessionCreationPolicy.IF_REQUIRED))
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers(
@@ -74,6 +81,7 @@ public class TestSecurityConfig {
                 )
                 .formLogin(form -> form
                         .loginPage("/login")
+                        .loginProcessingUrl("/api/auth/login")
                         .successHandler(testAuthSuccessHandler())
                         .permitAll()
                 )

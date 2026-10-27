@@ -43,6 +43,14 @@ public class UserTeamRole {
 
     private LocalDateTime invitationAcceptedAt;
 
+    /**
+     * Pentest P2 (A01): termin ważności zaproszenia. NULL = zaproszenie bez
+     * wygasania (dziedzictwo sprzed migracji V50); nowe zaproszenia zawsze go
+     * dostają (domyślnie 7 dni, patrz app.team.invitation-expiry-days).
+     */
+    @Column(name = "invitation_expires_at")
+    private LocalDateTime invitationExpiresAt;
+
     private UserTeamRole(AppUser user, Band team, TeamRole role) {
         this.user = Objects.requireNonNull(user);
         this.team = Objects.requireNonNull(team);
@@ -58,16 +66,28 @@ public class UserTeamRole {
     }
 
     public static UserTeamRole createInvitation(AppUser user, Band team, TeamRole role, String invitationToken) {
+        return createInvitation(user, team, role, invitationToken, null);
+    }
+
+    public static UserTeamRole createInvitation(AppUser user, Band team, TeamRole role,
+                                                String invitationToken, LocalDateTime expiresAt) {
         var utr = new UserTeamRole(user, team, role);
         utr.invitationToken = invitationToken;
         utr.invitationAccepted = false;
+        utr.invitationExpiresAt = expiresAt;
         return utr;
+    }
+
+    /** Prawda tylko dla aktywnego zaproszenia z wyznaczonym terminem (NULL = bezterminowe). */
+    public boolean isInvitationExpired(LocalDateTime now) {
+        return invitationExpiresAt != null && now.isAfter(invitationExpiresAt);
     }
 
     public void acceptInvitation() {
         this.invitationAccepted = true;
         this.invitationAcceptedAt = LocalDateTime.now();
         this.invitationToken = null;
+        this.invitationExpiresAt = null;
     }
 
     public boolean isAdmin() {

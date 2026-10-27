@@ -357,6 +357,9 @@
         <div class="app-modal-body">
             <p id="lifecycle-message" role="alert"></p>
             <form id="lifecycle-form" method="post">
+                <!-- Thymeleaf skips automatic _csrf injection for action-less <form> tags,
+                     so declare the hidden field explicitly (plain <form> + method POST). -->
+                <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
                 <button type="submit" id="lifecycle-confirm-btn" class="primary">Potwierdź</button>
                 <button type="button" id="lifecycle-cancel-btn" class="secondary">Anuluj</button>
             </form>

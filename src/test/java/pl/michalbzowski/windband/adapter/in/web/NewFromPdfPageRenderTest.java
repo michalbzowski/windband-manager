@@ -1,6 +1,7 @@
 package pl.michalbzowski.windband.adapter.in.web;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -47,9 +48,10 @@ class NewFromPdfPageRenderTest {
     }
 
     private MockHttpSession loginAsBandMember() throws Exception {
-        MvcResult login = mvc.perform(post("/login")
+        MvcResult login = mvc.perform(post("/api/auth/login")
                         .param("username", "admin")
-                        .param("password", "admin"))
+                        .param("password", "admin")
+                        .with(csrf()))
                 .andExpect(status().is3xxRedirection())
                 .andReturn();
         return (MockHttpSession) login.getRequest().getSession();

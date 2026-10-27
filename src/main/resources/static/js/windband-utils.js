@@ -457,8 +457,10 @@
             var eventId = container ? container.dataset.eventId : window.location.pathname.split('/').pop();
             console.log('DELETE confirm clicked, eventId=', eventId);
             var modal = document.getElementById('delete-event-modal');
+            var _csrfToken = getCookie('XSRF-TOKEN');
             fetch('/api/events/' + eventId, {
-                method: 'DELETE'
+                method: 'DELETE',
+                headers: _csrfToken ? {'X-XSRF-TOKEN': _csrfToken} : {}
             }).then(function(response) {
                 console.log('DELETE response status=', response.status);
                 if (response.ok) {

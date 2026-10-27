@@ -23,8 +23,10 @@
 
         <hr style="margin: 1.5rem 0; border: none; border-top: 1px solid #ddd;" />
 
-        <!-- Secondary: DB login (for tests and emergency access) -->
-        <form method="post" action="/login" style="margin-top: 1rem;">
+        <!-- Secondary: DB login (for tests and emergency access).
+             th:action → Thymeleaf auto-injectuje ukryte pole CSRF; action musi
+             zgadzać się z loginProcessingUrl w SecurityConfig/TestSecurityConfig. -->
+        <form method="post" th:action="@{/api/auth/login}" style="margin-top: 1rem;">
             <div style="margin-bottom: 0.75rem;">
                 <input type="text" name="username" placeholder="Username"
                        style="width:100%; padding:0.5rem; border:1px solid #ccc; border-radius:4px;" />

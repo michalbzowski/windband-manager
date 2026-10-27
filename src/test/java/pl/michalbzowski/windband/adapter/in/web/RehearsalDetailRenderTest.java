@@ -12,6 +12,7 @@ import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -48,7 +49,8 @@ class RehearsalDetailRenderTest {
         MvcResult created = mvc.perform(post("/api/rehearsals")
                         .session(session)
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(createBody))
+                        .content(createBody)
+                        .with(csrf()))
                 .andExpect(status().isCreated())
                 .andReturn();
         JsonNode createdJson = objectMapper.readTree(created.getResponse().getContentAsString());
@@ -93,7 +95,8 @@ class RehearsalDetailRenderTest {
         MvcResult created = mvc.perform(post("/api/rehearsals")
                         .session(session)
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(createBody))
+                        .content(createBody)
+                        .with(csrf()))
                 .andExpect(status().isCreated())
                 .andReturn();
         Long rehearsalId = objectMapper.readTree(created.getResponse().getContentAsString()).get("id").asLong();
@@ -121,7 +124,8 @@ class RehearsalDetailRenderTest {
                         .content(objectMapper.writeValueAsString(java.util.Map.of(
                                 "rehearsalId", rehearsalId,
                                 "memberId", memberId
-                        ))))
+                        )))
+                        .with(csrf()))
                 .andExpect(status().is2xxSuccessful());
 
         // Render the detail page
@@ -144,9 +148,10 @@ class RehearsalDetailRenderTest {
     }
 
     private org.springframework.mock.web.MockHttpSession loginAsAdmin() throws Exception {
-        MvcResult loginResult = mvc.perform(post("/login")
+        MvcResult loginResult = mvc.perform(post("/api/auth/login")
                         .param("username", "admin")
-                        .param("password", "admin"))
+                        .param("password", "admin")
+                        .with(csrf()))
                 .andExpect(status().is3xxRedirection())
                 .andReturn();
         return (org.springframework.mock.web.MockHttpSession) loginResult.getRequest().getSession();
