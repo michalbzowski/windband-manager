@@ -708,11 +708,18 @@ document.addEventListener('DOMContentLoaded', function() {
             if (window.Toast) Toast.error('Wybierz co najmniej jedną osobę');
             return; // keep the modal open so the user can pick someone
         }
+        // Issue #280: the invites are POSTed one after another, so a group can
+        // take a while. Tell the user the action is running instead of leaving a
+        // button that appears to do nothing: the modal shows its loader and
+        // refuses a second round until finish() clears the busy flag.
+        api.setBusy(true);
+
         var pending = ids.slice();
         var succeeded = 0;
         var failed = 0;
 
         function finish() {
+            api.setBusy(false);
             if (succeeded > 0) {
                 closeDialog();
                 api.destroy();

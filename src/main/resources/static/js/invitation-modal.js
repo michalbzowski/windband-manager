@@ -121,6 +121,10 @@
             }
 
             this._host = null; // root element the modal is rendered into
+            // Issue #280: true while the page is running the invite requests.
+            // The modal owns the flag so both renderMarkup() and the interaction
+            // guards below read a single source of truth.
+            this.busy = false;
             this._handlers = new Set();
             this._timers = new Set();
             this._destroyed = false;
@@ -133,18 +137,39 @@
         }
 
         toggleGroup(gid) {
+            if (this.busy) return; // no re-render while inviting (issue #280)
             const g = this._findGroup(gid);
             this.selection.toggleGroup(normalizeId(gid), g && Array.isArray(g.memberIds) ? g.memberIds : []);
             this._refresh();
         }
 
-        toggleMember(mid) { this.selection.toggleMember(mid); this._refresh(); }
+        toggleMember(mid) { if (this.busy) return; this.selection.toggleMember(mid); this._refresh(); }
 
         isGroupSelected(id) { return this.selection.isGroupSelected(normalizeId(id)); }
         isMemberSelected(id){ return this.selection.isMemberSelected(id); }
 
         count()          { return this.selection.getSelectedCount(); }
         resolvedIds()    { return this.selection.getResolvedIds(); }
+
+        /**
+         * Issue #280 - show the user that the invite is actually running.
+         *
+         * The pages used to close the dialog the moment Confirm was clicked and
+         * then fire the POSTs in the background, so a group invite looked like a
+         * dead button. setBusy(true) keeps the dialog open, renders a loader in
+         * the footer and makes Confirm/toggles inert, so no duplicate round can
+         * be fired; the page calls setBusy(false) when the server answers. Safe
+         * to call on a destroyed instance (no-op) and idempotent per value.
+         */
+        setBusy(flag) {
+            const next = !!flag;
+            if (this._destroyed || this.busy === next) return this;
+            this.busy = next;
+            this._refresh();
+            return this;
+        }
+
+        isBusy() { return this.busy === true; }
 
         /** True after {@link destroy} has run. Logic is still safe — these only
          *  read the (still-alive) selection state and no-ops on a destroyed
@@ -186,7 +211,8 @@
             const groupsN   = (this.opts.groups || []).length;
             const membersN  = (this.opts.members || []).length;
             const count     = this.count();
-            const confirmDisabled = count === 0 ? 'disabled' : '';
+            const busy      = this.busy === true;
+            const confirmDisabled = (count === 0 || busy) ? 'disabled' : '';
 
             let body = '';
             if (groupsN > 0) {
@@ -220,9 +246,10 @@
                 `      <div class="app-modal-body invitation-body">\n${body}\n</div>\n` +
                 `      <footer class="app-modal-footer invitation-footer">\n` +
                 `        <span class="invitation-count" aria-live="polite">Wybierzono: ${count}</span>\n` +
+                (busy ? `        <span class="invitation-busy" role="status"><span class="invitation-busy__spinner" aria-hidden="true"></span>Zapraszanie…</span>\n` : '') +
                 `        <span class="invitation-actions">\n` +
-                `          <button type="button" class="outline invitation-cancel" data-close>Anuluj</button>\n` +
-                `          <button type="button" class="primary invitation-confirm" ${confirmDisabled} aria-disabled="${count === 0}">Potwierd\u017a</button>\n` +
+                `          <button type="button" class="outline invitation-cancel" data-close${busy ? ' disabled' : ''}>Anuluj</button>\n` +
+                `          <button type="button" class="primary invitation-confirm" ${confirmDisabled} aria-disabled="${count === 0 || busy}" aria-busy="${busy}">Potwierd\u017a</button>\n` +
                 `        </span>\n` +
                 `      </footer>\n` +
                 `    </div>\n` +
@@ -330,6 +357,7 @@
         confirm() {
             const n = this.count();
             if (n === 0) return false;
+            if (this.busy) return false; // one round per click (issue #280)
             const ids = this.resolvedIds();
             if (typeof this.opts.onConfirm === 'function') this.opts.onConfirm(ids);
             return true;
