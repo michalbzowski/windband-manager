@@ -2606,6 +2606,37 @@ body.filter-pinned #uber-filter-container select:focus {
     margin-right: 0.25rem;
 }
 
+/* Issue #280: in-flight indicator shown next to the count while a round of
+   invitations is running (InvitationModal.setBusy(true)). Colours come from the
+   Pico theme variables so the loader reads correctly in light AND dark mode,
+   and the spinner reuses the shared `spin` keyframes. */
+.invitation-busy {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    font-size: 0.9375rem;
+    color: var(--pico-muted-color);
+}
+
+.invitation-busy__spinner {
+    width: 0.875rem;
+    height: 0.875rem;
+    flex-shrink: 0;
+    border: 2px solid var(--pico-muted-border-color);
+    border-top-color: var(--pico-primary);
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+}
+
+/* While busy the modal also marks the confirm button aria-busy + disabled. */
+.invitation-confirm[aria-busy="true"] {
+    opacity: 0.6;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .invitation-busy__spinner { animation-duration: 2s; }
+}
+
 .invitation-actions {
     display: inline-flex;
     gap: 0.6rem;

@@ -1001,7 +1001,26 @@
             document.body.addEventListener('htmx:afterSettle', handler);
         }
 
-        function inviteEventSelected(eventId, ids) {
+        // Close the still-open modal once the invites are done. The component
+        // keeps its dialog open in the busy state (issue #280), so the page owns
+        // the moment it finally goes away — success OR failure, never before the
+        // server has answered.
+        function finishUnifiedInviteRound(api) {
+            if (api && typeof api.setBusy === 'function') { try { api.setBusy(false); } catch (_) {} }
+            try {
+                const h = document.getElementById(UNIFIED_INVITE_HOST_ID);
+                if (h && typeof h.querySelector === 'function') {
+                    const d = h.querySelector('dialog[open]');
+                    if (d && typeof d.close === 'function') d.close();
+                }
+            } catch (_) {}
+        }
+
+        function inviteEventSelected(eventId, ids, api) {
+            // Issue #280: a group invite fans out to one POST per member. Enter
+            // the modal's busy state first so the user sees a loader instead of a
+            // button that appears to do nothing, and cannot fire a second round.
+            if (api && typeof api.setBusy === 'function') { try { api.setBusy(true); } catch (_) {} }
             const promises = ids.map(function(mid) {
                 return fetchWithToast('/api/events/' + eventId + '/invite', {
                     method: 'POST',
@@ -1010,11 +1029,15 @@
                 });
             });
             Promise.all(promises).then(function() {
+                finishUnifiedInviteRound(api);
                 if (window.Toast) Toast.success('Zaproszono ' + ids.length + (ids.length === 1 ? ' osobę' : ' osób'));
                 htmx.ajax('GET', '/events/' + eventId, {target: '#events-content[data-event-id]', swap: 'outerHTML transition:true'});
                 inviteEventHighlightNew(ids);
             }).catch(function(err) {
                 console.error('Invite selected error:', err);
+                // Leave the modal usable: clear the busy state but keep it open so
+                // the user can retry instead of losing the selection.
+                if (api && typeof api.setBusy === 'function') { try { api.setBusy(false); } catch (_) {} }
                 if (window.Toast) Toast.error('Błąd podczas zapraszania');
             });
         }
@@ -1047,14 +1070,11 @@
                                 // open dialog AFTER the callback so the modal UI
                                 // clears without racing the confirm handler.
                                 ids = Array.isArray(ids) ? ids.map(Number).filter(n => Number.isFinite(n)) : [];
-                                try {
-                                    const h = document.getElementById(UNIFIED_INVITE_HOST_ID);
-                                    if (h && typeof h.querySelector === 'function') {
-                                        const d = h.querySelector('dialog[open]');
-                                        if (d && typeof d.close === 'function') d.close();
-                                    }
-                                } catch (_) {}
-                                inviteEventSelected(eventId, ids);
+                                // Issue #280: do NOT close the dialog here. It used to
+                                // vanish on click while the POSTs were still running, which
+                                // is exactly why a group invite looked like it did nothing.
+                                // inviteEventSelected closes it once the server answers.
+                                inviteEventSelected(eventId, ids, api);
                             },
                             onCancel: function() {
                                 try {
