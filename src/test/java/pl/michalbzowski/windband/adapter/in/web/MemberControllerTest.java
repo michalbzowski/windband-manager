@@ -17,7 +17,7 @@ import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 import pl.michalbzowski.windband.adapter.in.security.ActiveTeamResolver;
 import pl.michalbzowski.windband.adapter.in.security.WindbandOidcUser;
-import pl.michalbzowski.windband.application.command.member.CrossTeamAccessDeniedException;
+import pl.michalbzowski.windband.application.common.CrossTeamAccessDeniedException;
 import pl.michalbzowski.windband.application.command.member.MemberCommandService;
 import pl.michalbzowski.windband.application.dto.MemberDto;
 import pl.michalbzowski.windband.application.query.member.MemberQueryService;

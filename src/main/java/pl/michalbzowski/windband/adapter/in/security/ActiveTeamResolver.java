@@ -5,6 +5,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.oauth2.core.oidc.user.OidcUser;
 import org.springframework.stereotype.Component;
+import pl.michalbzowski.windband.application.common.CrossTeamAccessDeniedException;
 import pl.michalbzowski.windband.application.query.team.TeamQueryService;
 
 /**
@@ -47,5 +48,19 @@ public class ActiveTeamResolver {
             throw new AccessDeniedException("Brak aktywnego zespołu w bieżącej sesji");
         }
         return teamId;
+    }
+
+    /**
+     * Pentest P1 (A01/BOLA): zasób adresowany w ścieżce {@code /bands/{bandId}/...} musi
+     * należeć do aktywnego zespołu żądającego. Brak zespołu → 403
+     * ({@link AccessDeniedException}); rozbieżność bandu i zespołu → 403
+     * ({@link CrossTeamAccessDeniedException}, jednolita odpowiedź bez potwierdzania istnienia).
+     */
+    public long requireBandAccess(OidcUser oidcUser, HttpSession session, Long requestedBandId) {
+        long active = require(oidcUser, session);
+        if (requestedBandId == null || !requestedBandId.equals(active)) {
+            throw new CrossTeamAccessDeniedException(requestedBandId, active);
+        }
+        return active;
     }
 }

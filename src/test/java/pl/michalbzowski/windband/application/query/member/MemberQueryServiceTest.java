@@ -66,7 +66,7 @@ class MemberQueryServiceTest extends BaseIntegrationTest {
         var member = createTestMember("Obcy", "Członek", LocalDate.of(1997, 7, 7)); // band 1
 
         assertThatThrownBy(() -> queryService.requireMemberOfTeam(member.getId(), 2L))
-                .isInstanceOf(pl.michalbzowski.windband.application.command.member.CrossTeamAccessDeniedException.class)
+                .isInstanceOf(pl.michalbzowski.windband.application.common.CrossTeamAccessDeniedException.class)
                 .hasMessageContaining("2");
     }
 

@@ -3,7 +3,7 @@ package pl.michalbzowski.windband.application.query.member;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import pl.michalbzowski.windband.application.command.member.CrossTeamAccessDeniedException;
+import pl.michalbzowski.windband.application.common.CrossTeamAccessDeniedException;
 import pl.michalbzowski.windband.application.command.member.MemberNotFoundException;
 import pl.michalbzowski.windband.application.dto.MemberDto;
 import pl.michalbzowski.windband.domain.member.Instrument;

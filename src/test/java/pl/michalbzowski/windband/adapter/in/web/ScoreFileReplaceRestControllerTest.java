@@ -1,5 +1,6 @@
 package pl.michalbzowski.windband.adapter.in.web;
 
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -10,18 +11,29 @@ import org.mockito.junit.jupiter.MockitoSettings;
 import org.mockito.quality.Strictness;
 import org.springframework.http.MediaType;
 import org.springframework.mock.web.MockMultipartFile;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.authority.AuthorityUtils;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.oauth2.core.oidc.user.OidcUser;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
+
+import pl.michalbzowski.windband.adapter.in.security.ActiveTeamResolver;
+import pl.michalbzowski.windband.adapter.in.security.WindbandOidcUser;
 import pl.michalbzowski.windband.application.command.composition.ScoreFileCommandService;
 import pl.michalbzowski.windband.application.command.composition.ScoreFileReplaceCommandService;
 import pl.michalbzowski.windband.application.command.composition.ScoreFileUploadRequest;
 import pl.michalbzowski.windband.application.command.composition.UploadValidator.UploadRejectedException;
 import pl.michalbzowski.windband.application.dto.composition.ScoreFileDto;
+import pl.michalbzowski.windband.application.query.team.TeamQueryService;
 
 import java.time.Instant;
+import java.util.List;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.multipart;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -40,16 +52,38 @@ class ScoreFileReplaceRestControllerTest {
 
     @Mock private ScoreFileCommandService commandService;
     @Mock private ScoreFileReplaceCommandService replaceService;
+    @Mock private TeamQueryService teamQueryService;
+    @Mock private OidcUser oidcDelegate;
+
+    private static final long USER_ID = 7L;
+    private static final long MY_TEAM = 1L;
 
     private MockMvc mvc;
 
     @BeforeEach
     void setUp() {
         var controller = new ScoreFileUploadRestController(
-                commandService, replaceService, new UploadedFileAssembler());
+                commandService, replaceService, new UploadedFileAssembler(),
+                new ActiveTeamResolver(teamQueryService));
         mvc = MockMvcBuilders.standaloneSetup(controller)
                 .setControllerAdvice(new GlobalExceptionHandler())
+                .setCustomArgumentResolvers(
+                        new org.springframework.security.web.method.annotation
+                                .AuthenticationPrincipalArgumentResolver())
                 .build();
+    }
+
+    @AfterEach
+    void cleanSecurityContext() {
+        SecurityContextHolder.clearContext();
+    }
+
+    private void authenticateAsTeam(long teamId) {
+        WindbandOidcUser wu = new WindbandOidcUser(oidcDelegate, USER_ID, "michal", "michal@example.com",
+                true, false, teamId, "sokole", "ADMIN", List.of(MY_TEAM));
+        SecurityContextHolder.getContext().setAuthentication(
+                UsernamePasswordAuthenticationToken.authenticated(wu, null,
+                        AuthorityUtils.createAuthorityList("ROLE_USER")));
     }
 
     private MockMultipartFile pdfPart() {
@@ -59,6 +93,7 @@ class ScoreFileReplaceRestControllerTest {
     @Test
     @DisplayName("POST replace with a PDF part → 200 + the updated row DTO; service sees the path ids")
     void replaceOwnedFile_ok() throws Exception {
+        authenticateAsTeam(MY_TEAM);
         when(replaceService.replace(any(ScoreFileUploadRequest.class), eq(20L), eq(100L), eq(1L)))
                 .thenReturn(new ScoreFileDto(20L, 100L, "marsz_v2.pdf", 3L, "application/pdf", 3,
                         false, "bb".repeat(32), null, Instant.now()));
@@ -73,6 +108,7 @@ class ScoreFileReplaceRestControllerTest {
     @Test
     @DisplayName("Service throws UploadRejectedException(422) (ZIP parent / MIME mismatch / range shrink) → 422 + message")
     void replaceRejected_mapsOwnStatus() throws Exception {
+        authenticateAsTeam(MY_TEAM);
         when(replaceService.replace(any(), eq(20L), eq(100L), eq(1L)))
                 .thenThrow(new UploadRejectedException(422, "Nowy plik ma 2 strony, a głosy są zmapowane poza ten zakres."));
 
@@ -85,6 +121,7 @@ class ScoreFileReplaceRestControllerTest {
     @Test
     @DisplayName("Service throws IllegalStateException (cross-band / unknown file) → 409")
     void replaceCrossBand_conflict() throws Exception {
+        authenticateAsTeam(MY_TEAM);
         when(replaceService.replace(any(), any(), any(), any()))
                 .thenThrow(new IllegalStateException("Score file 20 does not belong to band 1"));
 
@@ -93,18 +130,20 @@ class ScoreFileReplaceRestControllerTest {
     }
 
     @Test
-    @DisplayName("Service throws IllegalArgumentException (unknown band) → 400")
-    void replaceUnknownBand_badRequest() throws Exception {
-        when(replaceService.replace(any(), any(), any(), any()))
-                .thenThrow(new IllegalArgumentException("Band not found: 99"));
+    @DisplayName("Pentest P1: replace w obcym bandzie (99 ≠ active team 1) → 403, serwis nie jest wzywany")
+    void replaceForeignBand_forbiddenNoServiceCall() throws Exception {
+        authenticateAsTeam(MY_TEAM);
 
         mvc.perform(multipart("/bands/99/compositions/100/files/20/replace").file(pdfPart()).accept(MediaType.APPLICATION_JSON))
-                .andExpect(status().isBadRequest());
+                .andExpect(status().isForbidden());
+
+        verify(replaceService, never()).replace(any(), any(), any(), any());
     }
 
     @Test
     @DisplayName("Missing 'file' part → rejected before the service runs (advice's generic handler wins over DefaultHandlerExceptionResolver, mirroring the upload endpoint)")
     void replaceWithoutFilePart_isRejected() throws Exception {
+        authenticateAsTeam(MY_TEAM);
         mvc.perform(multipart("/bands/1/compositions/100/files/20/replace")
                         .contentType(MediaType.MULTIPART_FORM_DATA))
                 .andExpect(status().is5xxServerError());

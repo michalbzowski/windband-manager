@@ -9,7 +9,7 @@ import org.springframework.web.bind.annotation.ControllerAdvice;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import pl.michalbzowski.windband.application.command.event.EventNotFoundException;
 import pl.michalbzowski.windband.application.command.inventory.InventoryItemNotFoundException;
-import pl.michalbzowski.windband.application.command.member.CrossTeamAccessDeniedException;
+import pl.michalbzowski.windband.application.common.CrossTeamAccessDeniedException;
 import pl.michalbzowski.windband.application.command.member.InstrumentCommandService.InstrumentInUseException;
 import pl.michalbzowski.windband.application.command.member.MemberNotFoundException;
 import pl.michalbzowski.windband.application.command.rehearsal.RehearsalNotFoundException;

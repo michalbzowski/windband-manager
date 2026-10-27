@@ -1,10 +1,14 @@
 package pl.michalbzowski.windband.adapter.in.web;
 
+import jakarta.servlet.http.HttpSession;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.security.oauth2.core.oidc.user.OidcUser;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+import pl.michalbzowski.windband.adapter.in.security.ActiveTeamResolver;
 import pl.michalbzowski.windband.application.command.composition.ScoreFileDeleteCommandService;
 
 /**
@@ -23,16 +27,23 @@ import pl.michalbzowski.windband.application.command.composition.ScoreFileDelete
 public class ScoreFileDeleteRestController {
 
     private final ScoreFileDeleteCommandService deleteCommandService;
+    private final ActiveTeamResolver activeTeamResolver;
 
-    public ScoreFileDeleteRestController(ScoreFileDeleteCommandService deleteCommandService) {
+    public ScoreFileDeleteRestController(ScoreFileDeleteCommandService deleteCommandService,
+                                         ActiveTeamResolver activeTeamResolver) {
         this.deleteCommandService = deleteCommandService;
+        this.activeTeamResolver = activeTeamResolver;
     }
 
     @DeleteMapping("/{fileId}")
     public ResponseEntity<Void> delete(
             @PathVariable("bandId") Long bandId,
             @PathVariable("compositionId") Long compositionId,
-            @PathVariable("fileId") Long fileId) {
+            @PathVariable("fileId") Long fileId,
+            @AuthenticationPrincipal OidcUser oidcUser,
+            HttpSession session) {
+        // Pentest P1 (A01/BOLA): usunięcie pliku obcego bandu → 403 przed jakąkolwiek mutacją.
+        activeTeamResolver.requireBandAccess(oidcUser, session, bandId);
         deleteCommandService.delete(fileId, compositionId, bandId);
         return ResponseEntity.noContent().build();
     }

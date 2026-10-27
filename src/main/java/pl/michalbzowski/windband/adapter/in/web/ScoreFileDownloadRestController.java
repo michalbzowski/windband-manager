@@ -1,15 +1,19 @@
 package pl.michalbzowski.windband.adapter.in.web;
 
+import jakarta.servlet.http.HttpSession;
 import java.io.IOException;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.security.oauth2.core.oidc.user.OidcUser;
 import org.springframework.util.StringUtils;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+import pl.michalbzowski.windband.adapter.in.security.ActiveTeamResolver;
 import pl.michalbzowski.windband.application.query.composition.ScoreFileDownloadQueryService;
 import pl.michalbzowski.windband.application.query.composition.ScoreFileDownloadQueryService.Download;
 import pl.michalbzowski.windband.application.query.composition.ScoreFileDownloadMetadata;
@@ -35,16 +39,23 @@ import pl.michalbzowski.windband.application.query.composition.ScoreFileDownload
 public class ScoreFileDownloadRestController {
 
     private final ScoreFileDownloadQueryService downloadService;
+    private final ActiveTeamResolver activeTeamResolver;
 
-    public ScoreFileDownloadRestController(ScoreFileDownloadQueryService downloadService) {
+    public ScoreFileDownloadRestController(ScoreFileDownloadQueryService downloadService,
+                                            ActiveTeamResolver activeTeamResolver) {
         this.downloadService = downloadService;
+        this.activeTeamResolver = activeTeamResolver;
     }
 
     @GetMapping("/{fileId}")
     public ResponseEntity<org.springframework.core.io.Resource> download(
             @PathVariable("bandId") Long bandId,
             @PathVariable("compositionId") Long compositionId,
-            @PathVariable("fileId") Long fileId) {
+            @PathVariable("fileId") Long fileId,
+            @AuthenticationPrincipal OidcUser oidcUser,
+            HttpSession session) {
+        // Pentest P1 (A01/BOLA): plik należy do innego bandu niż aktywny zespół → 403 zanim cokolwiek otworzymy.
+        activeTeamResolver.requireBandAccess(oidcUser, session, bandId);
         Download handle = downloadService.open(fileId, compositionId, bandId);
         byte[] bytes;
         try (java.io.InputStream in = handle.stream()) {
