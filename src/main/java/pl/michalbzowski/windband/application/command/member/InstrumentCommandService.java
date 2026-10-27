@@ -45,6 +45,11 @@ public class InstrumentCommandService {
 
     private static final String INSTRUMENT_IN_USE_MESSAGE = "Cannot delete instrument that is assigned to one or more members";
     private static final String ALIAS_OF_ANOTHER_MESSAGE = "Cannot delete instrument that another instrument aliases";
+    /**
+     * Issue #269. Polish because the user sees it verbatim in a toast — unlike the
+     * two English constants above, which are consumed by tests and logs only.
+     */
+    private static final String DUPLICATE_NAME_MESSAGE = "Tag o nazwie '%s' już istnieje w tym zespole.";
 
     private final InstrumentRepository instrumentRepository;
     private final BandRepository bandRepository;
@@ -58,7 +63,13 @@ public class InstrumentCommandService {
 
     public Instrument createInstrument(String name, String description, Integer sortPriority, Long teamId) {
         Band band = resolveBand(teamId);
-        Instrument instrument = band != null ? Instrument.create(name, band) : Instrument.create(name);
+        String trimmed = trimName(name);
+        // Issue #269: the DB answers a duplicate with
+        // `duplicate key value violates unique constraint "instruments_band_id_name_key"`,
+        // which escaped as HTTP 500. Check the same scope as the index — case- and
+        // whitespace-insensitively, because that is what a person reading the list sees.
+        requireFreeName(trimmed, band, null);
+        Instrument instrument = band != null ? Instrument.create(trimmed, band) : Instrument.create(trimmed);
         if (description != null) {
             instrument.updateDescription(description);
         }
@@ -74,7 +85,9 @@ public class InstrumentCommandService {
 
     public Instrument updateInstrument(Long id, String name, String description, Integer sortPriority, Long teamId) {
         Instrument instrument = resolveVisibleInstrument(id, teamId);
-        instrument.updateName(name);
+        String trimmed = trimName(name);
+        requireFreeName(trimmed, instrument.getBand(), instrument);
+        instrument.updateName(trimmed);
         if (description != null) {
             instrument.updateDescription(description);
         }
@@ -244,12 +257,50 @@ public class InstrumentCommandService {
         return instrument;
     }
 
+    private static String trimName(String name) {
+        return name == null ? null : name.trim();
+    }
+
+    /**
+     * Rejects a name already taken in the band. {@code self} is the row being renamed: keeping
+     * its own name (even re-cased) must stay legal, otherwise editing a tag without touching
+     * the field would fail.
+     */
+    private void requireFreeName(String name, Band band, Instrument self) {
+        if (band == null || name == null || name.isEmpty()) {
+            return;
+        }
+        instrumentRepository.findByNameIgnoreCaseAndBandId(name, band.getId())
+                .filter(other -> self == null || !other.getId().equals(self.getId()))
+                .ifPresent(other -> {
+                    throw new DuplicateInstrumentNameException(name);
+                });
+    }
+
     private Band resolveBand(Long teamId) {
         if (teamId == null) {
             return null;
         }
         return bandRepository.findById(teamId)
                 .orElseThrow(() -> new IllegalStateException("Band not found: " + teamId));
+    }
+
+    /**
+     * Issue #269: a tag name already used in the band. Extends {@link IllegalStateException}
+     * so {@code GlobalExceptionHandler} maps it to 409 Conflict with the message as the body,
+     * instead of the 500 the raw database error produced.
+     */
+    public static class DuplicateInstrumentNameException extends IllegalStateException {
+        private final String instrumentName;
+
+        public DuplicateInstrumentNameException(String instrumentName) {
+            super(String.format(DUPLICATE_NAME_MESSAGE, instrumentName));
+            this.instrumentName = instrumentName;
+        }
+
+        public String getInstrumentName() {
+            return instrumentName;
+        }
     }
 
     /**

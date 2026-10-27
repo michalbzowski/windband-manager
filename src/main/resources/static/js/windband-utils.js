@@ -104,7 +104,16 @@
                         Toast.success(toastMessage);
                     }
                 } else {
-                    Toast.error(toastMessage + ' (' + response.status + ')');
+                    // Issue #269: "Zapisano tag (409)" told the user nothing. When the API
+                    // returns a body with its own wording (GlobalExceptionHandler puts it in
+                    // `error`, sometimes `message`), show that instead of the status code.
+                    var fallback = toastMessage + ' (' + response.status + ')';
+                    response.clone().json().then(function (payload) {
+                        var reason = payload && (payload.error || payload.message);
+                        Toast.error(reason ? String(reason) : fallback);
+                    }).catch(function () {
+                        Toast.error(fallback);
+                    });
                 }
             }
             return response;

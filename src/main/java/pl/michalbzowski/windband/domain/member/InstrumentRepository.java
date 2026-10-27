@@ -27,5 +27,11 @@ public interface InstrumentRepository {
 
     Optional<Instrument> findByNameAndBandId(String name, Long bandId);
 
+    /**
+     * Issue #269: duplicate-name guard. Case-insensitive because "Flet" and "FLET" are the
+     * same tag to a person reading the list, even though the database index compares exactly.
+     */
+    Optional<Instrument> findByNameIgnoreCaseAndBandId(String name, Long bandId);
+
     Optional<Instrument> findByIdAndBandId(Long id, Long bandId);
 }
