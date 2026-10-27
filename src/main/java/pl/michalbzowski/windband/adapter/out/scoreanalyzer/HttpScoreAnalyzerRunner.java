@@ -303,6 +303,7 @@ public final class HttpScoreAnalyzerRunner implements AiAnalysisRunner {
             if (role.isBlank()) {
                 continue;                                   // a row without role is unusable downstream
             }
+            String teamTag = part.path("team_tag").asText("");
             for (JsonNode range : part.path("ranges")) {
                 int from = Math.max(1, range.path("from").asInt(1));
                 int to = Math.max(from, range.path("to").asInt(from));
@@ -311,6 +312,9 @@ public final class HttpScoreAnalyzerRunner implements AiAnalysisRunner {
                 row.put("pageFrom", from);
                 row.put("pageTo", to);
                 row.put("confidence", confidence);
+                if (!teamTag.isBlank()) {
+                    row.put("teamTag", teamTag);        // mapowanie głos→tag zespołu (opcjonalne)
+                }
                 rows.add(row);
             }
         }

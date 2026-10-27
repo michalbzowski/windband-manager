@@ -203,4 +203,32 @@ class ScoreAnalysisProposalsQueryServiceTest {
         assertThatThrownBy(() -> service.preview(COMPOSITION_ID, BAND_ID, null))
                 .isInstanceOf(IllegalArgumentException.class);
     }
+
+    @Test
+    @DisplayName("teamTag pierwszeństwo w mapowaniu instrumentu; nazwa głosu zostaje nienaruszona")
+    void teamTagDrivesInstrumentMapping() throws Exception {
+        Files.writeString(arrangementFile,
+                "[{\"role\":\"Klarnet Basowy\",\"pageFrom\":16,\"pageTo\":16,\"confidence\":0.85,\"teamTag\":\"Trąbka\"}]");
+
+        AiProposalPreview row = service.preview(COMPOSITION_ID, BAND_ID, ANALYSIS_ID)
+                .proposals().get(0);
+
+        assertThat(row.role()).isEqualTo("Klarnet Basowy");   // lewa kolumna UI = dokładny głos
+        assertThat(row.teamTag()).isEqualTo("Trąbka");
+        assertThat(row.instrumentIdOrNull()).isEqualTo(10L);   // rozwiązane przez tag zespołu
+        assertThat(row.memberNames()).containsExactly("Jan Kowalski");
+    }
+
+    @Test
+    @DisplayName("tag nieznany zespołowi → powrót do nazwy głosu; obie ścieżki pudło = jawne null")
+    void unmatchedVoiceStaysUnmapped() throws Exception {
+        Files.writeString(arrangementFile,
+                "[{\"role\":\"Klarnet Basowy\",\"pageFrom\":16,\"pageTo\":16,\"confidence\":0.85}]");
+
+        AiProposalPreview row = service.preview(COMPOSITION_ID, BAND_ID, ANALYSIS_ID)
+                .proposals().get(0);
+
+        assertThat(row.instrumentIdOrNull()).isNull();
+        assertThat(row.teamTag()).isNull();
+    }
 }

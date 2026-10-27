@@ -11,7 +11,18 @@ import pl.michalbzowski.windband.domain.composition.PartSource;
  *
  * <p>Immutability: value records, so the preview table can render edits without any mutator.
  */
-public record AIProposals(String role, int pageFrom, int pageTo, double confidence, PartSource source) {
+public record AIProposals(
+        String role,
+        int pageFrom,
+        int pageTo,
+        double confidence,
+        PartSource source,
+        String teamTag) {
+
+    /** Konstructor zgodności dla artefaktów i ścieżek bez tagu zespołu. */
+    public AIProposals(String role, int pageFrom, int pageTo, double confidence, PartSource source) {
+        this(role, pageFrom, pageTo, confidence, source, null);
+    }
 
     public AIProposals {
         if (role == null || role.isBlank()) {
@@ -25,6 +36,10 @@ public record AIProposals(String role, int pageFrom, int pageTo, double confiden
         }
         if (confidence < 0.0d || confidence > 1.0d) {
             throw new IllegalArgumentException("confidence must be in [0.0, 1.0] (got " + confidence + ")");
+        }
+        // tag zespołu z Score Analyzera: opcjonalny, normalizujemy puste do null
+        if (teamTag != null && teamTag.isBlank()) {
+            teamTag = null;
         }
     }
 }

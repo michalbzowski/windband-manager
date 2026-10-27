@@ -78,4 +78,16 @@ class JsonAiProposalsTest {
         assertThatThrownBy(() -> JsonAiProposals.parse("42"))
                 .isInstanceOf(IllegalArgumentException.class);
     }
+
+    @Test
+    @DisplayName("teamTag przechodzi do rekordu; pusty i brak klucza → null")
+    void teamTagIsParsed() {
+        List<AIProposals> rows = JsonAiProposals.parse("""
+                [{"role":"Klarnet Basowy","pageFrom":16,"pageTo":16,"confidence":0.85,"teamTag":"Klarnet"},
+                 {"role":"Flet I","pageFrom":8,"pageTo":8,"teamTag":"  "},
+                 {"role":"Obój","pageFrom":5,"pageTo":5}]""");
+        assertThat(rows.get(0).teamTag()).isEqualTo("Klarnet");
+        assertThat(rows.get(1).teamTag()).isNull();
+        assertThat(rows.get(2).teamTag()).isNull();
+    }
 }

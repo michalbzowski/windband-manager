@@ -16,6 +16,7 @@ public record AiProposalPreview(
         int pageFrom,
         int pageTo,
         double confidence,
+        String teamTag,
         Long instrumentIdOrNull,
         String instrumentNameOrNull,
         List<String> memberNames) {}

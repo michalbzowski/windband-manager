@@ -276,4 +276,24 @@ class HttpScoreAnalyzerRunnerTest {
         assertThatThrownBy(() -> new HttpScoreAnalyzerRunner(new ScoreAnalysisConfig(null, null, null, null)))
                 .isInstanceOf(IllegalStateException.class);
     }
+
+    @Test
+    @DisplayName("Mapper: team_tag z SA trafia do wiersza jako teamTag; nazwa głosu nigdy nie jest tagiem")
+    void mapperPassesTeamTag() throws Exception {
+        HttpScoreAnalyzerRunner runner = runner();
+        String tagged = """
+                {"file_name":"g.pdf","total_pages":16,"detection_mode":"embedded",
+                 "parts":[
+                   {"instrument":"Flet II","kind":"glos","team_tag":"Flet",
+                    "ranges":[{"from":9,"to":9}],"pages":"9"},
+                   {"instrument":"Klarnet Basowy","kind":"glos",
+                    "ranges":[{"from":16,"to":16}],"pages":"16"}],
+                 "warnings":[]}""";
+
+        List<AIProposals> rows = JsonAiProposals.parse(runner.toArrangementJson(MAPPER.readTree(tagged)));
+
+        assertThat(rows.get(0).role()).isEqualTo("Flet II");   // szczegółowa nazwa znad nut
+        assertThat(rows.get(0).teamTag()).isEqualTo("Flet");   // mapowanie osobno
+        assertThat(rows.get(1).teamTag()).isNull();            // SA bez pola = klucz nieobecny
+    }
 }

@@ -665,6 +665,34 @@
     var aiInstruments = [];    // band instruments for the accept selects
     var aiAnalysisId = null;
 
+    function createBandInstrumentTag(name, btn) {
+        // Tworzy tag instrumentu w zespole (POST /api/instruments = aktywnej ekipy,
+        // ten sam kontekst co strona zespołu) i przerysowuje panel: nowy tag = mapowanie.
+        if (!aiAnalysisId) { return; }
+        var headers = {'Content-Type': 'application/json'};
+        var csrfToken = getCookieLocal('XSRF-TOKEN');
+        if (csrfToken) { headers['X-XSRF-TOKEN'] = decodeURIComponent(csrfToken); }
+        btn.disabled = true;
+        fetch('/api/instruments', {
+            method: 'POST', headers: headers, credentials: 'same-origin',
+            body: JSON.stringify({name: name})
+        })
+            .then(function (resp) {
+                if (!resp.ok) { throw new Error('HTTP ' + resp.status); }
+                return resp.json();
+            })
+            .then(function () { loadAiProposals(aiAnalysisId); })
+            .catch(function (err) {
+                btn.disabled = false;
+                var el = document.getElementById('ai-accept-error');
+                if (el) {
+                    el.textContent = 'Nie udało się utworzyć instrumentu „' + name + '”: ' + err.message
+                        + '. Możesz dodać go ręcznie na stronie zespołu i odświeżyć tę stronę.';
+                    el.classList.remove('hidden');
+                }
+            });
+    }
+
     function loadAiProposals(analysisId) {
         aiAnalysisId = analysisId;
         var url = '/bands/' + bandId + '/compositions/' + compId +
@@ -723,6 +751,9 @@
             tr.innerHTML =
                 '<td style="padding:4px 6px;"><label><input type="checkbox" class="ai-row-cb" data-idx="' + idx + '" checked/>' +
                 '<strong>' + escapeHtml(row.role) + '</strong>' +
+                (row.teamTag && row.teamTag.toLowerCase() !== String(row.role).toLowerCase()
+                    ? '<div class="muted" style="font-size:0.78em;">🏷 mapowanie: «' + escapeHtml(row.teamTag) + '»</div>'
+                    : '') +
                 (members ? '<div class="muted" style="font-size:0.8em;">' + escapeHtml(members) + '</div>' : '') + '</label></td>' +
                 '<td style="padding:4px 6px; white-space:nowrap;">' + row.pageFrom + '–' + row.pageTo + '</td>' +
                 '<td style="padding:4px 6px;">' + Math.round((row.confidence || 0) * 100) + '%</td>';
@@ -759,6 +790,14 @@
                     badge.className = 'ai-row-nomatch';
                     badge.textContent = '⚠ nie dopasowano — wybierz instrument';
                     tdInst.appendChild(badge);
+                    // Jawne wyjście: zespół nie ma tagu dla tego głosu → można go dodać
+                    // z tej strony; po zapisie panel przerysowuje się i głos się zmapuje.
+                    var addBtn = document.createElement('button');
+                    addBtn.type = 'button';
+                    addBtn.className = 'ai-add-tag-btn';
+                    addBtn.textContent = '+ utwórz tag «' + row.role + '»';
+                    addBtn.dataset.role = row.role;
+                    tdInst.appendChild(addBtn);
                 }
             }
             tdInst.appendChild(sel);
@@ -766,6 +805,11 @@
             tbody.appendChild(tr);
         });
         wrap.appendChild(table);
+        wrap.querySelectorAll('.ai-add-tag-btn').forEach(function (btn) {
+            btn.addEventListener('click', function () {
+                createBandInstrumentTag(btn.dataset.role, btn);
+            });
+        });
         var errEl = document.getElementById('ai-accept-error');
         if (errEl) { errEl.classList.add('hidden'); }
         var resEl = document.getElementById('ai-accept-result');

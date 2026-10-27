@@ -137,7 +137,13 @@ public class AcceptAiProposalsCommandService {
                     .orElseThrow(() -> new IllegalArgumentException(
                             "Instrument " + row.instrumentId() + " nie należy do zespołu " + bandId + "."));
 
-            Optional<Instrument> resolved = resolver.resolveInstrument(bandId, row.role());
+            // AI-proposal = wybór równy mapowaniu Score Analyzera: najpierw tag zespołu
+            // (głos szczegółowy → tag ogólny), w razie braku/utraty tagu — nazwa głosu.
+            Optional<Instrument> byRole = resolver.resolveInstrument(bandId, row.role());
+            Optional<Instrument> resolved = byRole;
+            if (source.teamTag() != null) {
+                resolved = resolver.resolveInstrument(bandId, source.teamTag()).or(() -> byRole);
+            }
             PartSource sourceValue = resolved.isPresent()
                     ? (resolved.get().getId().equals(instrument.getId())
                         ? PartSource.AI : PartSource.HYBRID)
