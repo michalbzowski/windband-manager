@@ -80,13 +80,23 @@ public class ScoreAnalysisProposalsQueryService {
 
         List<AiProposalPreview> previews = new ArrayList<>(rows.size());
         for (AIProposals row : rows) {
+            // Rozwiąż instrument najpierw przez tag zespołu (mapowanie z Score Analyzera —
+            // głos szczegółowy typu "Klarnet Basowy" siada na tag "Klarnet"), a gdy tagu nie
+            // ma lub zespół zdążył go usunąć — przez dokładną nazwę głosu, jak poprzednio.
             RoleInstrumentResolver.Resolution resolution = resolver.resolve(bandId, row.role());
+            if (row.teamTag() != null) {
+                RoleInstrumentResolver.Resolution byTag = resolver.resolve(bandId, row.teamTag());
+                if (byTag.isResolved()) {
+                    resolution = byTag;
+                }
+            }
             Instrument instrument = resolution.instrumentOrNull();
             previews.add(new AiProposalPreview(
                     row.role(),
                     row.pageFrom(),
                     row.pageTo(),
                     row.confidence(),
+                    row.teamTag(),
                     instrument == null ? null : instrument.getId(),
                     instrument == null ? null : instrument.getName(),
                     resolution.memberNames()));

@@ -240,4 +240,22 @@ class AcceptAiProposalsCommandServiceTest {
                 List.of(row("Trąbka II", 3, 3, 13L, null)), VERIFIER))
                 .isInstanceOf(IllegalArgumentException.class);
     }
+
+    @Test
+    @DisplayName("propozycja z teamTagiem: wybór zgodny z tagiem → partia AI, nazwa głosu zachowana")
+    void teamTagMapsAiSource() throws Exception {
+        Files.writeString(workDir.resolve("arrangement.json"),
+                "[{\"role\":\"Klarnet Basowy\",\"pageFrom\":6,\"pageTo\":6,"
+                        + "\"confidence\":0.85,\"teamTag\":\"Trąbka\"}]");
+        when(instrumentRepository.findByIdAndBandId(13L, BAND_ID)).thenReturn(Optional.of(trabka));
+
+        service.accept(COMPOSITION_ID, BAND_ID, ANALYSIS_ID,
+                List.of(row("Klarnet Basowy", 6, 6, 13L, 0.85)), VERIFIER);
+
+        ArgumentCaptor<CompositionInstrument> captor = ArgumentCaptor.forClass(CompositionInstrument.class);
+        verify(partRepository).save(captor.capture());
+        // głos "Klarnet Basowy" sam w sobie nie jest instrumentem zespołu — AI przyznaje tag
+        assertThat(captor.getValue().getSource()).isEqualTo(PartSource.AI);
+        assertThat(captor.getValue().getInstrumentRole()).isEqualTo("Klarnet Basowy");
+    }
 }

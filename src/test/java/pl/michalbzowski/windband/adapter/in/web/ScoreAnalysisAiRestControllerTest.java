@@ -40,7 +40,7 @@ class ScoreAnalysisAiRestControllerTest {
     @DisplayName("GET /proposals → 200 JSON z rolą, stronami i metadanymi utworu")
     void proposalsReturnsJson() throws Exception {
         AiProposalPreview row = new AiProposalPreview(
-                "Trąbka II", 3, 3, 0.7d, 13L, "Trąbka", List.of("Jan Kowalski"));
+                "Trąbka II", 3, 3, 0.7d, "Trąbka", 13L, "Trąbka", List.of("Jan Kowalski"));
         ProposalsPreviewDto dto = new ProposalsPreviewDto(
                 new ProposalsPreviewDto.WorkMeta("Zadzwonił Polonez", "J. Elsner", null),
                 List.of(new ProposalsPreviewDto.InstrumentOption(13L, "Trąbka")),

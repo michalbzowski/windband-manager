@@ -75,6 +75,7 @@ public final class JsonAiProposals {
         int pageFrom = DEFAULT_PAGE;
         int pageTo = DEFAULT_PAGE;
         double confidence = DEFAULT_CONFIDENCE;
+        String teamTag = "";
         for (Iterator<Map.Entry<String, JsonNode>> it = row.fields(); it.hasNext(); ) {
             Map.Entry<String, JsonNode> field = it.next();
             String key = field.getKey().trim().toUpperCase(Locale.ROOT);
@@ -98,6 +99,10 @@ public final class JsonAiProposals {
                 case "CONFIDENCE":
                     confidence = value.asDouble(DEFAULT_CONFIDENCE);
                     break;
+                case "TEAM_TAG":
+                case "TEAMTAG":
+                    teamTag = value.asText("").trim();
+                    break;
                 default:
                     break;
             }
@@ -108,6 +113,6 @@ public final class JsonAiProposals {
         int from = Math.max(1, pageFrom);
         int to = Math.max(from, pageTo);
         double conf = Math.max(0.0d, Math.min(1.0d, confidence));
-        return new AIProposals(role, from, to, conf, PartSource.AI);
+        return new AIProposals(role, from, to, conf, PartSource.AI, teamTag.isEmpty() ? null : teamTag);
     }
 }
