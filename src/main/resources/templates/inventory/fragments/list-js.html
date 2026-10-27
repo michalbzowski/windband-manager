@@ -240,13 +240,23 @@
         });
     }
 
+    // ---- pagination: client-side pager over the FILTERED set ------------------------------
+    // The server always shipped every card of the band (filters only toggle style.display),
+    // so we paginate the *filtered* matches. Server-side Pageable here would page BEFORE the
+    // client filters run — filtered hits would silently vanish off-page. For band-sized
+    // inventories (tens–hundreds of rows) this keeps filter semantics exact and adds no API.
+    var page = 1;
+    var pageSize = 12;
+
     function renderList() {
         var typeF = document.getElementById('inv-type-filter').value;       // '' | UNIFORM | INSTRUMENT
         var attrName = attrFilterEl.value;                                  // '' | def name
         var q = (document.getElementById('inv-search').value || '').trim().toLowerCase();
         var cards = Array.prototype.slice.call(document.querySelectorAll('#inv-list .inv-card'));
+        var matched = [];
         cards.forEach(function (card) {
             if (!card.id || card.id.indexOf('inv-item-') !== 0) return;
+            card.style.display = 'none';                                    // hidden until it wins a page slot
             var visible = true;
             if (typeF && card.getAttribute('data-type') !== typeF) visible = false;
             if (visible && q) {
@@ -258,31 +268,108 @@
                 if (hay.toLowerCase().indexOf(q) === -1) visible = false;
             }
             if (visible && attrName) {
-                var matched = Array.prototype.some.call(card.querySelectorAll('.inv-attr'), function (a) {
+                var hit = Array.prototype.some.call(card.querySelectorAll('.inv-attr'), function (a) {
                     var n = a.getAttribute('data-def-name');
                     var v = a.getAttribute('data-def-value');
                     return n === attrName && v && v.trim().length > 0;
                 });
-                if (!matched) visible = false;
+                if (!hit) visible = false;
             }
-            card.style.display = visible ? '' : 'none';
+            if (visible) matched.push(card);
         });
+
+        var total = matched.length;
+        var totalPages = Math.max(1, Math.ceil(total / pageSize));
+        if (page > totalPages) page = totalPages;                            // filter shrank the set
+        if (page < 1) page = 1;
+        matched.slice((page - 1) * pageSize, (page - 1) * pageSize + pageSize)
+               .forEach(function (card) { card.style.display = ''; });
 
         // toggle empty state hint
         var empty = document.getElementById('inv-empty');
-        if (empty) {
-            var anyVisible = cards.some(function (c) { return c.id.indexOf('inv-item-') === 0 && c.style.display !== 'none'; });
-            empty.style.display = anyVisible ? 'none' : '';
+        if (empty) empty.hidden = total > 0;
+
+        renderPager(total, totalPages);
+    }
+
+    /** Any filter change goes through this: results changed shape → back to page 1. */
+    function renderFiltered() {
+        page = 1;
+        renderList();
+    }
+
+    function goPage(n) {
+        if (n === page) return;
+        page = n;
+        renderList();
+        var list = document.getElementById('inv-list');
+        if (list) list.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+
+    function renderPager(total, totalPages) {
+        var bar = document.getElementById('inv-pagination');
+        var info = document.getElementById('inv-page-info');
+        var nav = document.getElementById('inv-pager');
+        if (!bar || !info || !nav) return;
+        var start = (page - 1) * pageSize;
+        var end = Math.min(total, start + pageSize);
+        info.textContent = total > 0 ? ('Elementy ' + (start + 1) + '–' + end + ' z ' + total) : '';
+        bar.hidden = total === 0;
+        nav.hidden = totalPages <= 1;
+        var sizeWrap = document.getElementById('inv-page-size-wrap');
+        if (sizeWrap) sizeWrap.hidden = totalPages <= 1;  // resizing only matters with >1 page
+        nav.innerHTML = '';
+        if (totalPages <= 1) return;
+        nav.appendChild(pageButton('‹ Poprzednia', page - 1, page <= 1, false, 'Poprzednia strona'));
+        pageWindow(page, totalPages).forEach(function (p) {
+            if (p === '…') {
+                var ell = document.createElement('span');
+                ell.className = 'inv-pager-ellipsis';
+                ell.setAttribute('aria-hidden', 'true');
+                ell.textContent = '…';
+                nav.appendChild(ell);
+            } else {
+                nav.appendChild(pageButton(String(p), p, false, p === page, 'Strona ' + p));
+            }
+        });
+        nav.appendChild(pageButton('Następna ›', page + 1, page >= totalPages, false, 'Następna strona'));
+    }
+
+    function pageButton(label, target, disabled, active, ariaName) {
+        var b = document.createElement('button');
+        b.type = 'button';
+        b.className = active ? 'primary' : 'secondary';
+        b.textContent = label;
+        b.disabled = disabled;
+        b.setAttribute('aria-label', ariaName);
+        if (active) b.setAttribute('aria-current', 'page');
+        b.addEventListener('click', function () { goPage(target); });
+        return b;
+    }
+
+    /** First + last + neighbours of the current page; everything else collapses into "…". */
+    function pageWindow(current, total) {
+        var out = [];
+        for (var p = 1; p <= total; p++) {
+            if (total <= 7 || p === 1 || p === total || Math.abs(p - current) <= 1) out.push(p);
+            else if (out[out.length - 1] !== '…') out.push('…');
         }
+        return out;
     }
 
     // boot
     document.getElementById('inv-f-type').addEventListener('change', onTypeChange);
     populateAttributeFilter();
+    var pageSizeSel = document.getElementById('inv-page-size');
+    if (pageSizeSel) pageSizeSel.addEventListener('change', function () {
+        pageSize = parseInt(pageSizeSel.value, 10) || 12;
+        page = 1;
+        renderList();
+    });
 
     window.inv = {
         toggleForm: toggleForm,
-        render: renderList,
+        render: renderFiltered,
         submitCreate: submitCreate,
         openModal: openModal,
         closeModal: closeModal,

@@ -3957,3 +3957,62 @@ button.secondary.danger:focus-visible {
    NOTE: Pico only styles the [hidden] ATTRIBUTE, not this class — without this rule
    every "hidden" element rendered visibly on top of its siblings. */
 .hidden { display: none !important; }
+
+/* ------------------------------------------------------------------
+   Inventory pagination (client-side pager over the filtered list).
+   Appended at EOF on purpose: keeps the WIP worktree hunks elsewhere
+   in this file free of merge risk (2026-10-26).
+   ------------------------------------------------------------------ */
+.inv-pagination {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 0.5rem 0.75rem;
+    margin: 0.75rem 0 0.25rem;
+}
+
+.inv-page-info {
+    margin: 0;
+    font-size: 0.9rem;
+    color: #64748b;
+}
+
+.inv-page-size {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.9rem;
+    font-weight: 600;
+}
+
+.inv-page-size select {
+    width: auto;
+    min-height: 44px;
+    margin: 0;
+    padding: 0.3rem 1.8rem 0.3rem 0.6rem;
+}
+
+.inv-pager {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 0.35rem;
+    margin: 0.5rem 0 0.75rem;
+}
+
+/* mobile-first page: every tap target stays >= 44px like the rest of the list */
+.inv-pager button {
+    min-width: 44px;
+    min-height: 44px;
+    margin: 0;
+    padding: 0.3rem 0.75rem;
+    font-size: 0.95rem;
+}
+
+.inv-pager .inv-pager-ellipsis {
+    display: flex;
+    align-items: center;
+    padding: 0 0.25rem;
+    color: #94a3b8;
+}

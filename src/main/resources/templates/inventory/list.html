@@ -149,8 +149,22 @@
                 </footer>
             </article>
 
-            <p id="inv-empty" class="inv-hint" th:if="${#lists.isEmpty(cards)}">Brak rzeczy w zasobach. Dodaj pierwszą przyciskiem „Dodaj rzecz”.</p>
+            <p id="inv-empty" class="inv-hint" th:hidden="${!#lists.isEmpty(cards)}">Brak rzeczy w zasobach. Dodaj pierwszą przyciskiem „Dodaj rzecz”.</p>
         </div>
+
+        <!-- Pagination (client-side over the filtered set — see fragments/list-js).
+             #inv-pager buttons are built by JS; bar/nav are hidden until they carry content. -->
+        <div class="inv-pagination" id="inv-pagination" hidden>
+            <p class="inv-page-info" id="inv-page-info" role="status"></p>
+            <label class="inv-page-size" id="inv-page-size-wrap">Na stronę
+                <select id="inv-page-size">
+                    <option value="12" selected>12</option>
+                    <option value="24">24</option>
+                    <option value="48">48</option>
+                </select>
+            </label>
+        </div>
+        <nav id="inv-pager" class="inv-pager" aria-label="Stronicowanie listy rzeczy" hidden></nav>
 
         <!-- Assign/return modal (single shared form, JS-filled; one code path) -->
         <article class="inv-card inv-modal" id="inv-assign-modal" hidden>

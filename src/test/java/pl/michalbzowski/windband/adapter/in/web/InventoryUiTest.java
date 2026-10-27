@@ -205,7 +205,108 @@ class InventoryUiTest extends UiTestBase {
         wait.until(d -> visible("Bluza Test") && visible("Trąbka Test"));
     }
 
+    // ==================== 3. PAGINATION (client-side pager over the filtered set) =========
+
+    @Test
+    @DisplayName("Pagination: 12 na stronę, nawigacja, reset przy filtrze, wybór rozmiaru")
+    void shouldPaginateTheItemList() {
+        try {
+            for (int i = 1; i <= 20; i++) {
+                jdbcTemplate.update("INSERT INTO inventory_items (item_type, name, ownership_status, "
+                        + "lifecycle_status, band_id, condition) VALUES ('UNIFORM', ?, 'OWNED', 'AVAILABLE', 1, 'GOOD')",
+                        "Paging Test " + String.format("%02d", i));
+            }
+            driver.navigate().refresh();
+
+            // Samokalibracja: w pełnym suite karty bywają zanieczyszczone przez klasy
+            // sąsiadujące (np. @Disabled tylko lokalnie), więc liczymy total z DOM, nie z fixtures.
+            // Wstawione pozycje maja najnowsze id (RESTART WITH 99 monotonicznie),
+            // wiec 'Paging Test NN' zawsze zajmuje ostatnie pozycje na liscie.
+            int total = itemCardCount();
+            assertThat(total).as("seed 20 + co najmniej 2 karty").isGreaterThanOrEqualTo(22);
+            int lastPage = (total + 11) / 12;
+
+            // Strona 1 = pelne 12 kart.
+            wait.until(d -> visibleItemCount() == 12);
+            assertThat(pageInfo()).as("info o zakresie pozycji").contains("1–12").contains("z " + total);
+            assertThat(pager().isDisplayed()).as("nawigacja widoczna przy >1 strony").isTrue();
+            assertThat(visible("Bluza Test")).as("najstarsze id na stronie 1").isTrue();
+            assertThat(visible("Paging Test 20")).as("ostatnia pozycja (" + total + ") poza stroną 1").isFalse();
+
+            // Ostatnia strona = reszta podzielnego; info przeliczalne.
+            clickPagerPage(String.valueOf(lastPage));
+            int expectedLast = total - 12 * (lastPage - 1);
+            wait.until(d -> visibleItemCount() == expectedLast);
+            assertThat(pageInfo()).contains("z " + total);
+            assertThat(visible("Bluza Test")).as("strona 1 ukryta po przejściu").isFalse();
+            assertThat(visible("Paging Test 20")).as("ostatnia karta na ostatniej stronie").isTrue();
+
+            // Filtr typu — stronicowanie liczy PRZEFILTROWANY zbiór i wraca na stronę 1.
+            selectOptionByValue("#inv-type-filter", "UNIFORM");
+            int uniformTotal = itemCardCountByType("UNIFORM");
+            int uniformLastPage = (uniformTotal + 11) / 12;
+            wait.until(d -> pageInfo().contains("z " + uniformTotal) && visibleItemCount() == 12);
+            assertThat(uniformLastPage).as("mundurowe muszą mieć >1 stronę (20 wstawionych)").isGreaterThan(1);
+            clickPagerPage(String.valueOf(uniformLastPage));
+            wait.until(d -> visibleItemCount() == uniformTotal - 12 * (uniformLastPage - 1));
+            assertThat(visible("Paging Test 20")).isTrue();
+
+            // Wyszukiwarka: jedno trafienie → nawigacja znika.
+            selectOptionByValue("#inv-type-filter", "");
+            WebElement search = driver.findElement(By.id("inv-search"));
+            search.clear();
+            search.sendKeys("Paging Test 05");
+            wait.until(d -> visibleItemCount() == 1);
+            assertThat(pager().isDisplayed()).as("brak nawigacji przy jednej stronie").isFalse();
+
+            // Rozmiar strony 24 nad kontrolowanym zbiorem ("Paging" = dokładnie nasze 20):
+            // przy 12 są 2 strony, przy 24 zostaje jedna i nawigacja znika.
+            search.clear();
+            search.sendKeys("Paging Test");
+            wait.until(d -> visibleItemCount() == 12 && pager().isDisplayed());
+            selectOptionByValue("#inv-page-size", "24");
+            wait.until(d -> visibleItemCount() == 20);
+            assertThat(pager().isDisplayed()).as("jedna strona przy rozmiarze 24").isFalse();
+        } finally {
+            // Seed testowy usunięty: sąsiednie testy liczą karty w tym samym kontekście H2.
+            jdbcTemplate.update("DELETE FROM inventory_items WHERE name LIKE 'Paging Test %'");
+        }
+    }
+
     // ==================== helpers =========================================================
+
+    /** Item cards (exclude the create-form/modal which also carry .inv-card). */
+    private long visibleItemCount() {
+        return driver.findElements(By.cssSelector("#inv-list .inv-card[id^='inv-item-']")).stream()
+                .filter(WebElement::isDisplayed)
+                .count();
+    }
+
+    private int itemCardCount() {
+        return driver.findElements(By.cssSelector("#inv-list .inv-card[id^='inv-item-']")).size();
+    }
+
+    private int itemCardCountByType(String type) {
+        return (int) driver.findElements(By.cssSelector("#inv-list .inv-card[id^='inv-item-']")).stream()
+                .filter(c -> type.equals(c.getAttribute("data-type")))
+                .count();
+    }
+
+    private String pageInfo() {
+        return driver.findElement(By.id("inv-page-info")).getText();
+    }
+
+    private WebElement pager() {
+        return driver.findElement(By.id("inv-pager"));
+    }
+
+    private void clickPagerPage(String number) {
+        driver.findElements(By.cssSelector("#inv-pager button")).stream()
+                .filter(b -> number.equals(b.getText().trim()))
+                .findFirst()
+                .orElseThrow(() -> new AssertionError("Brak przycisku strony „" + number + "”"))
+                .click();
+    }
 
     private boolean visible(String exactCardName) {
         WebElement c = cardByName(exactCardName);
