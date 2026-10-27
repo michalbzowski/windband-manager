@@ -54,12 +54,23 @@
                     method: method,
                     headers: {'Content-Type': 'application/json'},
                     body: JSON.stringify(data)
-                }).then(function() {
+                }).then(function(response) {
                     if (saveAndAddAnother) {
                         htmx.ajax('GET', '/tags/new', {target: '#tags-content', swap: 'innerHTML transition:true'});
-                    } else {
-                        htmx.ajax('GET', '/tags/list', {target: '#tags-content', swap: 'innerHTML transition:true'});
+                        return;
                     }
+                    // Issue #282: a saved tag disappeared into the list. The API answers
+                    // with the row it wrote (POST 201 + body, PUT body), so once the list
+                    // fragment lands we can pulse that exact row and scroll to it — same
+                    // behaviour the member and invite flows already have.
+                    var created = (response && response.ok)
+                            ? response.json().catch(function () { return null; })
+                            : Promise.resolve(null);
+                    created.then(function(payload) {
+                        var savedId = payload && payload.id;
+                        var url = savedId ? '/tags/list?focus=' + savedId : '/tags/list';
+                        htmx.ajax('GET', url, {target: '#tags-content', swap: 'innerHTML transition:true'});
+                    });
                 });
             }
         });
