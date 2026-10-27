@@ -3,6 +3,7 @@ package pl.michalbzowski.windband.application.query.member;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import pl.michalbzowski.windband.application.command.member.CrossTeamAccessDeniedException;
 import pl.michalbzowski.windband.application.command.member.MemberNotFoundException;
 import pl.michalbzowski.windband.application.dto.MemberDto;
 import pl.michalbzowski.windband.domain.member.Instrument;
@@ -86,6 +87,22 @@ public class MemberQueryService {
         return memberRepository.findById(id)
                 .map(this::toDto)
                 .orElseThrow(() -> new MemberNotFoundException(id));
+    }
+
+    /**
+     * Pentest P0 (A01/BOLA): odczyt członka z wymuszoną przynależnością do bandu.
+     * Uwierzytelniony użytkownik zobaczy członka tylko, jeśli ten należy do jego
+     * aktywnego zespołu; inaczej {@link CrossTeamAccessDeniedException} (→ HTTP 403,
+     * jednolita odpowiedź — bez potwierdzania istnienia zasobu w obcym bandzie).
+     */
+    public MemberDto requireMemberOfTeam(Long memberId, Long teamId) {
+        Member member = memberRepository.findById(memberId)
+                .orElseThrow(() -> new MemberNotFoundException(memberId));
+        Long memberBandId = member.getBand() == null ? null : member.getBand().getId();
+        if (memberBandId == null || !teamId.equals(memberBandId)) {
+            throw new CrossTeamAccessDeniedException(memberId, teamId);
+        }
+        return toDto(member);
     }
 
     public Member getMemberEntityById(Long id) {

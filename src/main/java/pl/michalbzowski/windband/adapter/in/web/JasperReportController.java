@@ -1,9 +1,12 @@
 package pl.michalbzowski.windband.adapter.in.web;
 
 import jakarta.servlet.http.HttpServletResponse;
+import jakarta.servlet.http.HttpSession;
 import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.security.oauth2.core.oidc.user.OidcUser;
 import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -11,8 +14,10 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 
 import java.io.IOException;
+import java.util.HashMap;
 import java.util.Map;
 
+import pl.michalbzowski.windband.adapter.in.security.ActiveTeamResolver;
 import pl.michalbzowski.windband.application.report.ReportCompiler;
 import pl.michalbzowski.windband.application.report.ReportGeneratorService;
 import pl.michalbzowski.windband.application.report.exception.ReportGenerationException;
@@ -30,24 +35,37 @@ public class JasperReportController {
 
     private final ReportCompiler reportCompiler;
     private final ReportGeneratorService reportGeneratorService;
+    private final ActiveTeamResolver activeTeamResolver;
 
     /**
      * Generuje raport PDF bezpośrednio w przeglądarce.
      * Przykład: GET /jasper-report/hello?name=Michał
+     *
+     * <p>Pentest P0 (A01/BOLA): parametr {@code band_id} jest zawsze narzucany
+     * z kontekstu aktywnego zespołu żądającego — wartość podana w URL przez
+     * klienta jest ignorowana. Bez aktywnego zespołu → 403.
      */
     @GetMapping("/{key}")
     public void generateReport(
             @PathVariable String key,
             @RequestParam Map<String, String> stringParameters,
+            @AuthenticationPrincipal OidcUser oidcUser,
+            HttpSession session,
             HttpServletResponse response) throws IOException {
 
-        log.info("Generating Jasper report: {} with params: {}", key, stringParameters);
+        // Źródło prawa do zakresu danych: wyłącznie sesja/tożsamość, nigdy query-string.
+        int activeTeamId = (int) activeTeamResolver.require(oidcUser, session);
+
+        log.info("Generating Jasper report: {} for team {} (client params: {})",
+                key, activeTeamId, stringParameters.keySet());
 
         // Konwersja Map<String, String> do Map<String, Object>
-        Map<String, Object> parameters = new java.util.HashMap<>();
+        Map<String, Object> parameters = new HashMap<>();
         for (Map.Entry<String, String> entry : stringParameters.entrySet()) {
             parameters.put(entry.getKey(), entry.getValue());
         }
+        // Nadpisanie po stronie serwera: band_id zawsze równy aktywnemu zespołowi.
+        parameters.put("band_id", activeTeamId);
 
         try {
             byte[] pdf = reportGeneratorService.generatePdf(key, parameters);

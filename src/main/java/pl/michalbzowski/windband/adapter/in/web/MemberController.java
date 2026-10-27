@@ -9,6 +9,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.oauth2.core.oidc.user.OidcUser;
 import org.springframework.web.bind.annotation.*;
+import pl.michalbzowski.windband.adapter.in.security.ActiveTeamResolver;
 import pl.michalbzowski.windband.adapter.in.security.WindbandOidcUser;
 import pl.michalbzowski.windband.application.command.member.AssignInstrumentCommand;
 import pl.michalbzowski.windband.application.command.member.ChangeInstrumentCommand;
@@ -18,7 +19,6 @@ import pl.michalbzowski.windband.application.command.member.MemberNotFoundExcept
 import pl.michalbzowski.windband.application.command.member.UpdateMemberCommand;
 import pl.michalbzowski.windband.application.dto.MemberDto;
 import pl.michalbzowski.windband.application.query.member.MemberQueryService;
-import pl.michalbzowski.windband.application.query.team.TeamQueryService;
 import pl.michalbzowski.windband.application.security.CurrentUser;
 
 import java.util.List;
@@ -32,24 +32,29 @@ public class MemberController {
 
     private final MemberCommandService commandService;
     private final MemberQueryService queryService;
-    private final TeamQueryService teamQueryService;
+    private final ActiveTeamResolver activeTeamResolver;
 
     @GetMapping
     public List<MemberDto> getAllMembers(@AuthenticationPrincipal OidcUser oidcUser, HttpSession session) {
-        Long teamId = resolveActiveTeamId(oidcUser, session);
+        Long teamId = activeTeamResolver.resolve(oidcUser, session);
         return queryService.getAllActiveMembers(teamId);
     }
 
     @GetMapping("/{id}")
-    public MemberDto getMember(@PathVariable Long id) {
-        return queryService.getMemberById(id);
+    public MemberDto getMember(@PathVariable Long id,
+                               @AuthenticationPrincipal OidcUser oidcUser,
+                               HttpSession session) {
+        // Pentest P0 (A01/BOLA): surowy id bez sprawdzenia teamu pozwalał czytać II członków
+        // dowolnego bandu. Teraz: tylko członkowie aktywnego zespołu żądającego.
+        Long activeTeamId = requireActiveTeam(oidcUser, session);
+        return queryService.requireMemberOfTeam(id, activeTeamId);
     }
 
     @PostMapping
     public ResponseEntity<MemberDto> createMember(@RequestBody CreateMemberCommand cmd,
                                                   @AuthenticationPrincipal OidcUser oidcUser,
                                                   HttpSession session) {
-        Long activeTeamId = resolveActiveTeamId(oidcUser, session);
+        Long activeTeamId = activeTeamResolver.resolve(oidcUser, session);
         var member = commandService.createMember(cmd, activeTeamId, oidcUser instanceof WindbandOidcUser ? (WindbandOidcUser) oidcUser : null);
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(queryService.getMemberById(member.getId()));
@@ -60,29 +65,39 @@ public class MemberController {
                                   @AuthenticationPrincipal OidcUser oidcUser,
                                   HttpSession session) {
         cmd.setMemberId(id);
-        // teamId not needed for update but we still need to resolve for security? updateMember doesn't need teamId.
+        // Pentest P0 (A01/BOLA): edycja dozwolona wyłącznie dla członków aktywnego zespołu.
+        verifyMemberInActiveTeam(id, oidcUser, session);
         var member = commandService.updateMember(cmd, oidcUser instanceof WindbandOidcUser ? (WindbandOidcUser) oidcUser : null);
         return queryService.getMemberById(member.getId());
     }
 
     @PostMapping("/{id}/instruments")
     public ResponseEntity<Void> assignInstrument(@PathVariable Long id,
-                                                 @RequestBody AssignInstrumentCommand cmd) {
+                                                 @RequestBody AssignInstrumentCommand cmd,
+                                                 @AuthenticationPrincipal OidcUser oidcUser,
+                                                 HttpSession session) {
         cmd.setMemberId(id);
+        verifyMemberInActiveTeam(id, oidcUser, session);
         commandService.assignInstrument(cmd);
         return ResponseEntity.ok().build();
     }
 
     @PutMapping("/{id}/tag")
     public ResponseEntity<Void> changeInstrument(@PathVariable Long id,
-                                                 @RequestBody ChangeInstrumentCommand cmd) {
+                                                 @RequestBody ChangeInstrumentCommand cmd,
+                                                 @AuthenticationPrincipal OidcUser oidcUser,
+                                                 HttpSession session) {
         cmd.setMemberId(id);
+        verifyMemberInActiveTeam(id, oidcUser, session);
         commandService.changeInstrument(cmd);
         return ResponseEntity.ok().build();
     }
 
     @DeleteMapping("/{id}")
-    public ResponseEntity<Void> deactivateMember(@PathVariable Long id) {
+    public ResponseEntity<Void> deactivateMember(@PathVariable Long id,
+                                                 @AuthenticationPrincipal OidcUser oidcUser,
+                                                 HttpSession session) {
+        verifyMemberInActiveTeam(id, oidcUser, session);
         commandService.deactivateMember(id);
         return ResponseEntity.noContent().build();
     }
@@ -91,6 +106,9 @@ public class MemberController {
         public ResponseEntity<Void> resendWelcomeEmail(@PathVariable Long id,
                                                        @AuthenticationPrincipal OidcUser oidcUser,
                                                        HttpSession session) {
+            // Gate spoza bloku try: błędy dostępu (403/404) nie mogą zostać
+            // przełknięte przez catch(Exception) i zwrócone jako 500.
+            verifyMemberInActiveTeam(id, oidcUser, session);
             try {
                 CurrentUser currentUser = (oidcUser instanceof WindbandOidcUser wu) ? wu : null;
                 commandService.resendWelcomeEmail(id, currentUser);
@@ -103,17 +121,20 @@ public class MemberController {
             }
         }
 
-    private Long resolveActiveTeamId(OidcUser oidcUser, HttpSession session) {
-        if (!(oidcUser instanceof WindbandOidcUser wu)) {
-            return null;
+    private Long requireActiveTeam(OidcUser oidcUser, HttpSession session) {
+        Long activeTeamId = activeTeamResolver.resolve(oidcUser, session);
+        if (activeTeamId == null) {
+            // Brak tożsamości windband + aktywnego zespołu — nie ma kontekstu, do którego
+            // można by bezpiecznie odnieść per-id żądanie. GlobalExceptionHandler → 403.
+            throw new org.springframework.security.access.AccessDeniedException(
+                    "Brak aktywnego zespołu w bieżącej sesji");
         }
-        Long sessionTeamId = (Long) session.getAttribute("activeTeamId");
-        if (sessionTeamId != null) {
-            boolean stillBelongs = teamQueryService.getUserTeam(wu.getUserId(), sessionTeamId).isPresent();
-            if (stillBelongs) {
-                return sessionTeamId;
-            }
-        }
-        return wu.getActiveTeamId();
+        return activeTeamId;
+    }
+
+    // Pentest P0 (A01/BOLA): wspólny gate dla mutujących per-id endpointów —
+    // członk musi należeć do aktywnego zespołu żądającego, inaczej 403/404.
+    private void verifyMemberInActiveTeam(Long memberId, OidcUser oidcUser, HttpSession session) {
+        queryService.requireMemberOfTeam(memberId, requireActiveTeam(oidcUser, session));
     }
 }
