@@ -1,6 +1,5 @@
 package pl.michalbzowski.windband.adapter.in.web;
 
-import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import org.openqa.selenium.By;
 import org.openqa.selenium.support.ui.WebDriverWait;
@@ -23,7 +22,6 @@ class DashboardHomeUiTest extends UiTestBase {
     @Autowired
     private JdbcTemplate jdbcTemplate;
 
-    @Disabled("See GitHub issue: test security context returns plain User instead of WindbandOidcUser on CI")
     @Test
     void shouldShowUpcomingListAsFirstContent() {
         // .progress-fill is only rendered for a rehearsal that has at least one attendance
