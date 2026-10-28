@@ -91,7 +91,8 @@
     <article>
         <header>
             <strong th:text="${event.name}">Koncert</strong>
-            <span th:text="${event.date}">01.01.2025</span>
+            <!-- Issue #224: a block element puts the date on its own line under the title. -->
+            <div class="event-date" th:text="${event.date}">01.01.2025</div>
         </header>
         <p th:if="${event.location}" th:text="'Miejsce: ' + ${event.location}">Miejsce: Rynek</p>
         <p th:if="${event.startTime}" th:text="'Godzina: ' + ${event.startTime}">Godzina: 18:00</p>
