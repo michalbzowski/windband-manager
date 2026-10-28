@@ -26,6 +26,9 @@ public interface SpringDataInstrumentRepository extends JpaRepository<Instrument
     @Query("SELECT i FROM Instrument i WHERE i.name = :name AND i.band.id = :bandId")
     Optional<Instrument> findByNameAndBandId(String name, Long bandId);
 
+    @Query("SELECT i FROM Instrument i WHERE LOWER(i.name) = LOWER(:name) AND i.band.id = :bandId")
+    Optional<Instrument> findByNameIgnoreCaseAndBandId(String name, Long bandId);
+
     @Query("SELECT i FROM Instrument i WHERE i.id = :id AND i.band.id = :bandId")
     Optional<Instrument> findByIdAndBandId(Long id, Long bandId);
 }

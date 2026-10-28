@@ -55,6 +55,12 @@
                     headers: {'Content-Type': 'application/json'},
                     body: JSON.stringify(data)
                 }).then(function(response) {
+                    // Issue #269: a rejected tag (duplicate name -> 409) used to bounce the
+                    // user to the list anyway, with only a status-code toast, so the typed
+                    // name was gone and the reason never visible. Stay on the form instead.
+                    if (response && response.ok === false) {
+                        return;
+                    }
                     if (saveAndAddAnother) {
                         htmx.ajax('GET', '/tags/new', {target: '#tags-content', swap: 'innerHTML transition:true'});
                         return;

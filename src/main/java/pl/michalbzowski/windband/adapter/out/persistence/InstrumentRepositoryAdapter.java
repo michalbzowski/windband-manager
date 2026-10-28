@@ -55,6 +55,11 @@ public class InstrumentRepositoryAdapter implements InstrumentRepository {
     }
 
     @Override
+    public Optional<Instrument> findByNameIgnoreCaseAndBandId(String name, Long bandId) {
+        return springDataRepo.findByNameIgnoreCaseAndBandId(name, bandId);
+    }
+
+    @Override
     public List<Instrument> findByAliasOf(Instrument canonical) {
         if (canonical == null) {
             return List.of();
