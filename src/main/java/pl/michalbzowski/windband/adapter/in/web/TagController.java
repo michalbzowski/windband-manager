@@ -9,6 +9,7 @@ import org.springframework.security.oauth2.core.oidc.user.OidcUser;
 import org.springframework.web.bind.annotation.*;
 import pl.michalbzowski.windband.adapter.in.security.WindbandOidcUser;
 import pl.michalbzowski.windband.application.command.member.InstrumentCommandService;
+import pl.michalbzowski.windband.application.dto.InstrumentDto;
 import pl.michalbzowski.windband.application.query.team.TeamQueryService;
 import pl.michalbzowski.windband.domain.member.Instrument;
 
@@ -23,34 +24,38 @@ public class TagController {
     private final TeamQueryService teamQueryService;
 
     @GetMapping
-    public List<Instrument> getAllTags(@AuthenticationPrincipal OidcUser oidcUser, HttpSession session) {
+    public List<InstrumentDto> getAllTags(@AuthenticationPrincipal OidcUser oidcUser, HttpSession session) {
         Long activeTeamId = resolveActiveTeamId(oidcUser, session);
-        return instrumentCommandService.getAllInstruments(activeTeamId);
+        return instrumentCommandService.getAllInstruments(activeTeamId).stream()
+                .map(InstrumentDto::from)
+                .toList();
     }
 
     @PostMapping
-    public ResponseEntity<Instrument> createTag(@RequestBody TagRequest request,
-                                                @AuthenticationPrincipal OidcUser oidcUser,
-                                                HttpSession session) {
+    public ResponseEntity<InstrumentDto> createTag(@RequestBody TagRequest request,
+                                                   @AuthenticationPrincipal OidcUser oidcUser,
+                                                   HttpSession session) {
         Long activeTeamId = resolveActiveTeamId(oidcUser, session);
-        var instrument = instrumentCommandService.createInstrument(request.name(), request.description(), request.sortPriority(), activeTeamId);
-        return ResponseEntity.status(HttpStatus.CREATED).body(instrument);
+        Instrument instrument = instrumentCommandService.createInstrument(request.name(), request.description(), request.sortPriority(), activeTeamId);
+        return ResponseEntity.status(HttpStatus.CREATED).body(InstrumentDto.from(instrument));
     }
 
     @PutMapping("/{id}")
-    public Instrument updateTag(@PathVariable Long id, @RequestBody TagRequest request,
-                                @AuthenticationPrincipal OidcUser oidcUser,
-                                HttpSession session) {
+    public InstrumentDto updateTag(@PathVariable Long id, @RequestBody TagRequest request,
+                                   @AuthenticationPrincipal OidcUser oidcUser,
+                                   HttpSession session) {
         Long activeTeamId = resolveActiveTeamId(oidcUser, session);
-        return instrumentCommandService.updateInstrument(id, request.name(), request.description(), request.sortPriority(), activeTeamId);
+        Instrument instrument = instrumentCommandService.updateInstrument(id, request.name(), request.description(), request.sortPriority(), activeTeamId);
+        return InstrumentDto.from(instrument);
     }
 
     @PutMapping("/{id}/priority")
-    public Instrument updateSortPriority(@PathVariable Long id, @RequestBody PriorityRequest request,
-                                         @AuthenticationPrincipal OidcUser oidcUser,
-                                         HttpSession session) {
+    public InstrumentDto updateSortPriority(@PathVariable Long id, @RequestBody PriorityRequest request,
+                                            @AuthenticationPrincipal OidcUser oidcUser,
+                                            HttpSession session) {
         Long activeTeamId = resolveActiveTeamId(oidcUser, session);
-        return instrumentCommandService.updateSortPriority(id, request.priority(), activeTeamId);
+        Instrument instrument = instrumentCommandService.updateSortPriority(id, request.priority(), activeTeamId);
+        return InstrumentDto.from(instrument);
     }
 
     @DeleteMapping("/{id}")
