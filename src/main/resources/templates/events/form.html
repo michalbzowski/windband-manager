@@ -34,17 +34,10 @@
                 Miejsce
                 <input type="text" name="location" placeholder="Rynek, DK Psary...">
             </label>
-            <label>
-                Typ wydarzenia
-                <select name="eventType" required>
-                    <option value="CONCERT">Koncert</option>
-                    <option value="CEREMONY">Uroczystość</option>
-                    <option value="PARADE">Parada</option>
-                    <option value="COMPETITION">Konkurs</option>
-                    <option value="FESTIVAL">Festiwal</option>
-                    <option value="OTHER">Inne</option>
-                </select>
-            </label>
+            <!-- Issue #225: the type carries no value for the user yet, so the picker is
+                 gone and every new event is a CONCERT. The field stays in the payload
+                 because handleCreateFormSubmit() serialises FormData into the JSON body. -->
+            <input type="hidden" name="eventType" value="CONCERT">
         </div>
 
         <label>
