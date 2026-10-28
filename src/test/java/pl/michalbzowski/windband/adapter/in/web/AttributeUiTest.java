@@ -15,20 +15,18 @@ import static org.assertj.core.api.Assertions.assertThat;
 /**
  * UI tests for inventory attribute definitions.
  *
- * <p><strong>@Disabled:</strong> These tests depend on OIDC authentication infrastructure
- * (TestSecurityConfig providing WindbandOidcUser principal). UiTestBase uses form login
- * which provides a plain User principal, so @AuthenticationPrincipal OidcUser injection
- * fails. Form submissions don't redirect properly (no #content h2 appears post-submit).
- * Same root cause as LoginUiTest and KeycloakIntegrationRegressionTest. Needs test
- * auth infrastructure fix — tracked as a follow-up.</p>
+ * <p>Historically these were blocked by issue #167: a form login left a plain {@code User} in the
+ * security context, so {@code @AuthenticationPrincipal OidcUser} injection failed. That part is
+ * fixed ({@code DashboardHomeUiTest} proves it), but the screens themselves are gone from this
+ * application, so the class stays disabled — see the {@code @Disabled} reason on the class.
  *
- * <p>Once the test auth infrastructure is fixed, these tests verify:
- * 1. Navigating to attribute list for each type (UNIFORM, INSTRUMENT, ORDER, AWARD, MEMBER)
- * 2. Opening new attribute form for each type
- * 3. Creating attributes via the UI form and seeing them on the list
- * 4. Created attributes appear on inventory forms</p>
+ * <p>They verify:
+ * 1. Navigating to the attribute list for each type (UNIFORM, INSTRUMENT, ORDER, AWARD, MEMBER)
+ * 2. Opening the new-attribute form for each type
+ * 3. Creating attributes through the UI form and seeing them on the list
+ * 4. Created attributes appearing on inventory forms
  */
-@Disabled("Requires OIDC test auth infrastructure (TestSecurityConfig + WindbandOidcUser) — not yet implemented")
+@Disabled("Ekran atrybutów inventory wyszedł z tej aplikacji (patrz windband-inventory) — ścieżki /inventory/attributes* nie istnieją w src/main, test nie ma czego klikać. Auth z #167 jest już naprawiony: DashboardHomeUiTest przechodzi.")
 class AttributeUiTest extends UiTestBase {
 
     @Test
