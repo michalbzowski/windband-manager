@@ -119,10 +119,7 @@
                                 <span class="inactive-badge"><th:block th:if="${m.resignedDate}" th:text="${#temporals.format(m.resignedDate, 'dd-MM-yyyy')}" /><th:block th:unless="${m.resignedDate}">Bez daty</th:block></span>
                             </td>
                             <td data-label="Akcje" style="min-width: 7rem;">
-                                <button class="outline small" 
-                                        hx-target="#content" 
-                                        hx-swap="innerHTML transition:true"
-                                        th:href="@{/members/{id}/detail(id=${m.id})}">Szczegóły</button>
+                                <a th:href="@{/members/{id}/detail(id=${m.id})}" class="outline small" style="text-decoration:none; display:inline-block;">Szczegóły</a>
                                 <!-- No Edit button for inactive members, only view -->
                             </td>
                         </tr>
@@ -183,13 +180,10 @@
                                 <small th:if="${m.joinedDate}" th:text="${#temporals.format(m.joinedDate, 'dd-MM-yyyy')}">01-01-2024</small>
                             </td>
                             <td data-label="Akcje" style="min-width: 7rem;">
-                                <button class="outline small" 
-                                        hx-target="#content" 
-                                        hx-swap="innerHTML transition:true"
-                                        th:href="@{/members/{id}/detail(id=${m.id})}">Szczegóły</button>
+                                <a th:href="@{/members/{id}/detail(id=${m.id})}" class="outline small" style="text-decoration:none; display:inline-block;">Szczegóły</a>
                                 <button class="outline small" 
                                         hx-target="#members-content" 
-                                        th:hx-push-uri="@{/members/{id}/edit(id=${m.id})}"
+                                        th:hx-push-url="@{/members/{id}/edit(id=${m.id})}"
                                         th:hx-get="@{/members/{id}/edit(id=${m.id})}">Edytuj</button>
                             </td>
                         </tr>
