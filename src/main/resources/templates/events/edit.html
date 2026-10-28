@@ -36,17 +36,9 @@
                 Miejsce
                 <input type="text" name="location" th:value="${event.location}">
             </label>
-            <label>
-                Typ wydarzenia
-                <select name="eventType" required>
-                    <option value="CONCERT" th:selected="${event.eventType == 'CONCERT'}">Koncert</option>
-                    <option value="CEREMONY" th:selected="${event.eventType == 'CEREMONY'}">Uroczystość</option>
-                    <option value="PARADE" th:selected="${event.eventType == 'PARADE'}">Parada</option>
-                    <option value="COMPETITION" th:selected="${event.eventType == 'COMPETITION'}">Konkurs</option>
-                    <option value="FESTIVAL" th:selected="${event.eventType == 'FESTIVAL'}">Festiwal</option>
-                    <option value="OTHER" th:selected="${event.eventType == 'OTHER'}">Inne</option>
-                </select>
-            </label>
+            <!-- Issue #225: hidden, but the stored value is echoed back so editing an
+                 event never silently rewrites its type. -->
+            <input type="hidden" name="eventType" th:value="${event.eventType}">
         </div>
 
         <label>

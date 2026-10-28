@@ -95,7 +95,7 @@
         </header>
         <p th:if="${event.location}" th:text="'Miejsce: ' + ${event.location}">Miejsce: Rynek</p>
         <p th:if="${event.startTime}" th:text="'Godzina: ' + ${event.startTime}">Godzina: 18:00</p>
-        <p th:text="'Typ: ' + ${event.eventType}">Typ: CONCERT</p>
+        <!-- Issue #225: the raw enum was noise on this view; the type stays in the model. -->
         <p th:text="${paymentTypeDisplay}">
             💰 Granie bezpłatne
         </p>
