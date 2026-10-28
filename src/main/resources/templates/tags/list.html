@@ -8,7 +8,9 @@
     <section class="dashboard-upcoming">
         <header th:replace="~{fragments/layout :: dashboard-header}"></header>
 
-    <div id="tags-content">
+    <div id="tags-content"
+         th:data-focus-id="${focusTagId != null ? focusTagId : ''}"
+         data-focus-prefix="tag">
         <nav th:replace="~{fragments/page-header :: page-header-b(
                             null, 'Tagi', 'Dodaj tag', @{/tags/new},
                             'plus', 'add-tag-btn', '#tags-content',
@@ -31,7 +33,7 @@
                     </tr>
                 </thead>
                 <tbody>
-                    <tr th:each="inst : ${instruments}">
+                    <tr th:each="inst : ${instruments}" th:id="'tag-' + ${inst.getId()}">
                         <td th:text="${inst.getSortPriority()}">0</td>
                         <td th:text="${inst.getName()}">Trąbka</td>
                         <td th:text="${inst.getDescription()}">Instrument dęty blaszany</td>

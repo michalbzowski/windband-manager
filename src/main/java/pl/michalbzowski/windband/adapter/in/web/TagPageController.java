@@ -28,10 +28,15 @@ public class TagPageController {
     }
 
     @GetMapping("/list")
-    public String listFragment(@ModelAttribute("activeTeamId") Long activeTeamId, Model model) {
+    public String listFragment(@ModelAttribute("activeTeamId") Long activeTeamId,
+                               @RequestParam(required = false) Long focus, Model model) {
         List<Instrument> instruments = instrumentQueryService.findAll(activeTeamId);
         model.addAttribute("instruments", instruments);
         model.addAttribute("today", LocalDate.now());
+        // Issue #282: same contract as /members/list?focus= — the container tells the shared
+        // htmx:afterSwap handler which row just appeared, so the green pulse and the scroll
+        // happen after the swap lands instead of racing it from the form.
+        model.addAttribute("focusTagId", focus);
         return "tags/list :: #tags-content";
     }
 
