@@ -64,6 +64,42 @@
                             </button>
                         </div>
 
+        <!-- Issue #268 — szukanie po nazwisku i filtr sekcji. Filtry są po stronie serwera
+             (parametry q / instrument), więc przechodzą przez podmianki HTMX i widok da się
+             otworzyć linkiem: /members?instrument=Tr%C4%85bka&q=Kowalski -->
+        <!-- Issue #268 — szukanie po imieniu i nazwisku plus filtr sekcji. Filtry są parametrami
+             zapytania obsługiwanymi po stronie serwera (q / instrument), więc przechodzą przez
+             podmianki HTMX, a widok da się otworzyć linkiem: /members?instrument=Trąbka&q=Kowalski.
+             Atrybuty htmx wiszą na samych polach (nie na <form>) — w tej aplikacji keyup z
+             formularza nie odpala requestu. Bez JS Enter nadal robi zwykłe GET /members. -->
+        <form id="member-filters" class="member-filters" method="get" action="/members">
+            <input type="hidden" name="showInactive" th:value="${showingInactiveMembers}">
+            <input type="search" name="q" th:value="${query}"
+                   placeholder="Szukaj po imieniu lub nazwisku…"
+                   aria-label="Szukaj członka po imieniu lub nazwisku"
+                   hx-get="/members/list" hx-target="#members-content"
+                   hx-swap="innerHTML transition:true"
+                   hx-trigger="keyup changed delay:300ms, input changed delay:300ms"
+                   hx-include="#member-filters">
+            <select name="instrument" aria-label="Filtruj po sekcji"
+                    hx-get="/members/list" hx-target="#members-content"
+                    hx-swap="innerHTML transition:true"
+                    hx-trigger="change"
+                    hx-include="#member-filters">
+                <option value="">Wszystkie sekcje</option>
+                <option th:each="sec : ${availableInstruments}"
+                        th:value="${sec}" th:text="${sec}"
+                        th:selected="${sec == instrumentFilter}"></option>
+            </select>
+            <span class="member-filters-count"
+                  th:if="${(query != null and !#strings.isEmpty(query)) or (instrumentFilter != null and !#strings.isEmpty(instrumentFilter))}">
+                <span th:text="${#lists.size(members)}">3</span> z
+                <span th:text="${allMembersCount}">12</span>
+            </span>
+            <a th:if="${(query != null and !#strings.isEmpty(query)) or (instrumentFilter != null and !#strings.isEmpty(instrumentFilter))}"
+               class="member-filters-reset outline small" th:href="@{/members(showInactive=${showingInactiveMembers})}">Wyczyść</a>
+        </form>
+
         <!-- Show inactive members list only if showingInactiveMembers is true -->
         <th:block th:if="${showingInactiveMembers}">
             <h3 style="color:#66708b; margin-bottom: 0.5rem;">
@@ -136,7 +172,9 @@
            
             <div th:if="${#lists.isEmpty(members)}">
                 <article style="margin-top: 1.5rem;">
-                    <p style="color:#8b949e;">Brak aktywnych członków. Dodaj pierwszego!</p>
+                    <p style="color:#8b949e;"
+                       th:text="${(query != null and !#strings.isEmpty(query)) or (instrumentFilter != null and !#strings.isEmpty(instrumentFilter))}
+                                 ? 'Żaden członek nie pasuje do tych filtrów.' : 'Brak aktywnych członków. Dodaj pierwszego!'">Brak aktywnych członków. Dodaj pierwszego!</p>
                 </article>
             </div>
 
@@ -225,6 +263,11 @@
                 if (focusId === 'null') { focusId = ''; }
                 var url = '/members/list?showInactive=' + newShowState;
                 if (focusId) { url += '&focus=' + encodeURIComponent(focusId); }
+                // Issue #268: przelaczenie widoku nie moze wyzerowac wprowadzonych filtrow
+                var qField = document.querySelector('#member-filters [name="q"]');
+                var sectionField = document.querySelector('#member-filters [name="instrument"]');
+                if (qField && qField.value.trim()) { url += '&q=' + encodeURIComponent(qField.value.trim()); }
+                if (sectionField && sectionField.value) { url += '&instrument=' + encodeURIComponent(sectionField.value); }
                 htmx.ajax('GET', url, {
                     target: '#members-content', 
                     swap: 'innerHTML transition:true'

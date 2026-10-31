@@ -34,7 +34,9 @@ public class MemberPageController {
     @GetMapping
     public String listPage(@ModelAttribute("activeTeamId") Long activeTeamId, Model model,
                            @RequestParam(required = false) Boolean showInactive,
-                           @RequestParam(required = false) Long focus) {
+                           @RequestParam(required = false) Long focus,
+                           @RequestParam(required = false) String q,
+                           @RequestParam(required = false) String instrument) {
         boolean showingInactiveMembers = Boolean.TRUE.equals(showInactive);
 
         List<MemberDto> members;
@@ -46,6 +48,8 @@ public class MemberPageController {
         } else {
             members = memberQueryService.getAllActiveMembers(activeTeamId);
         }
+        List<MemberDto> allMembers = members;
+        members = filterMembers(members, q, instrument);
 
         model.addAttribute("members", members);
         model.addAttribute("showingInactiveMembers", showingInactiveMembers);
@@ -54,6 +58,10 @@ public class MemberPageController {
         model.addAttribute("resignedCount", inactiveCount);
         model.addAttribute("activeTeamId", activeTeamId);
         model.addAttribute("focusMemberId", focus);
+        model.addAttribute("query", q);
+        model.addAttribute("instrumentFilter", instrument);
+        model.addAttribute("availableInstruments", distinctInstruments(allMembers));
+        model.addAttribute("allMembersCount", allMembers.size());
         model.addAttribute("today", LocalDate.now());
         return "members/list";
     }
@@ -61,7 +69,10 @@ public class MemberPageController {
     @GetMapping("/list")
     public String listFragment(@ModelAttribute("activeTeamId") Long activeTeamId,
                                @RequestParam(required = false) Boolean showInactive,
-                               @RequestParam(required = false) Long focus, Model model) {
+                               @RequestParam(required = false) Long focus,
+                               @RequestParam(required = false) String q,
+                               @RequestParam(required = false) String instrument,
+                               Model model) {
         boolean showingInactiveMembers = Boolean.TRUE.equals(showInactive);
 
         List<MemberDto> members;
@@ -72,6 +83,8 @@ public class MemberPageController {
         } else {
             members = memberQueryService.getAllActiveMembers(activeTeamId);
         }
+        List<MemberDto> allMembers = members;
+        members = filterMembers(members, q, instrument);
 
         model.addAttribute("members", members);
         model.addAttribute("showingInactiveMembers", showingInactiveMembers);
@@ -80,8 +93,50 @@ public class MemberPageController {
         model.addAttribute("resignedCount", inactiveCount);
         model.addAttribute("activeTeamId", activeTeamId);
         model.addAttribute("focusMemberId", focus);
+        model.addAttribute("query", q);
+        model.addAttribute("instrumentFilter", instrument);
+        model.addAttribute("availableInstruments", distinctInstruments(allMembers));
+        model.addAttribute("allMembersCount", allMembers.size());
         model.addAttribute("today", LocalDate.now());
         return "members/list :: #members-content";
+    }
+
+    /**
+     * Issue #268 — the member list had no way to narrow it down. Filtering happens here rather
+     * than in JavaScript so the query survives the HTMX fragment swaps (add member, toggle
+     * resigned) and a filtered view stays shareable as {@code /members?q=&instrument=}.
+     */
+    static List<MemberDto> filterMembers(List<MemberDto> members, String q, String instrument) {
+        String needle = (q == null || q.isBlank()) ? null : q.trim().toLowerCase(java.util.Locale.ROOT);
+        String section = (instrument == null || instrument.isBlank())
+                ? null : instrument.trim().toLowerCase(java.util.Locale.ROOT);
+        return members.stream()
+                .filter(m -> needle == null || fullName(m).contains(needle)
+                        || containsIgnoreCase(m.email(), needle))
+                .filter(m -> section == null || containsIgnoreCase(m.primaryInstrument(), section)
+                        || containsIgnoreCase(m.instrumentName(), section))
+                .toList();
+    }
+
+    private static String fullName(MemberDto m) {
+        return ((m.firstName() == null ? "" : m.firstName()) + " "
+                + (m.lastName() == null ? "" : m.lastName())).toLowerCase(java.util.Locale.ROOT).trim();
+    }
+
+    private static boolean containsIgnoreCase(String value, String needle) {
+        return value != null && value.toLowerCase(java.util.Locale.ROOT).contains(needle);
+    }
+
+    /** Sekcje dostępne w aktualnie pokazanym zbiorze — bez nich lista rozwinięć byłaby na sztywno. */
+    private static List<String> distinctInstruments(List<MemberDto> members) {
+        return members.stream()
+                .map(MemberDto::primaryInstrument)
+                .filter(java.util.Objects::nonNull)
+                .map(String::trim)
+                .filter(name -> !name.isEmpty())
+                .distinct()
+                .sorted(String.CASE_INSENSITIVE_ORDER)
+                .toList();
     }
 
     @GetMapping("/new")
