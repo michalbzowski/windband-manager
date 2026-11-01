@@ -53,9 +53,8 @@ public class MemberPageController {
 
         model.addAttribute("members", members);
         model.addAttribute("showingInactiveMembers", showingInactiveMembers);
-        model.addAttribute("showingResignedMembers", showingInactiveMembers); // Backend: inactive, UI display: resigned
+        model.addAttribute("activeCount", memberQueryService.getActiveMemberCount(activeTeamId));
         model.addAttribute("inactiveCount", inactiveCount);
-        model.addAttribute("resignedCount", inactiveCount);
         model.addAttribute("activeTeamId", activeTeamId);
         model.addAttribute("focusMemberId", focus);
         model.addAttribute("query", q);
@@ -88,9 +87,8 @@ public class MemberPageController {
 
         model.addAttribute("members", members);
         model.addAttribute("showingInactiveMembers", showingInactiveMembers);
-        model.addAttribute("showingResignedMembers", showingInactiveMembers); // Backend: inactive, UI display: resigned
+        model.addAttribute("activeCount", memberQueryService.getActiveMemberCount(activeTeamId));
         model.addAttribute("inactiveCount", inactiveCount);
-        model.addAttribute("resignedCount", inactiveCount);
         model.addAttribute("activeTeamId", activeTeamId);
         model.addAttribute("focusMemberId", focus);
         model.addAttribute("query", q);
