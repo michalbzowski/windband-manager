@@ -303,6 +303,14 @@
                     this._host.querySelector('dialog') : null;
                 if (oldDlg) wasOpen = !!(typeof oldDlg.open === 'boolean' ? oldDlg.open : false);
             } catch (_) { /* non-DOM runtime: ignore */ }
+            // BUG FIX (issue #279: the modal jumped to the top of the list on
+            // every tick). The whole body markup is replaced below, so the
+            // scroll container (.invitation-body) is DISCARDED and rebuilt —
+            // a fresh element always reports scrollTop 0 — and the focused row
+            // disappears too, which drops focus (and, in a modal, the scroll
+            // anchor) to the very top. Capture both before the swap and restore
+            // them once the fresh DOM is live.
+            const viewport = this._captureViewport();
             try {
                 if (typeof this._host.innerHTML !== 'undefined') {
                     this._host.innerHTML = this.renderMarkup();
@@ -324,6 +332,58 @@
                     }
                 } catch (_) { /* ignore in non-DOM environments */ }
             }
+            // Restore AFTER re-opening: scrollTop is only meaningful on a dialog
+            // that is actually rendered (a closed <dialog> has no layout).
+            this._restoreViewport(viewport);
+        }
+
+        /**
+         * Snapshot everything the user perceives as "my place in the list":
+         * the body's scroll offset and the identity (kind + id) of the focused
+         * row. Identity, not the node — the node is about to be thrown away.
+         * Safe on any DOM shim: every read is guarded.
+         */
+        _captureViewport() {
+            const snap = { scrollTop: 0, rowKind: null, rowId: null };
+            try {
+                const body = this._host && this._host.querySelector ?
+                    this._host.querySelector('.invitation-body') : null;
+                if (body && typeof body.scrollTop === 'number' && body.scrollTop > 0) {
+                    snap.scrollTop = body.scrollTop;
+                }
+            } catch (_) { /* non-DOM runtime */ }
+            try {
+                const active = this._activeElement();
+                const row = active && typeof active.closest === 'function' ?
+                    active.closest('.invitation-row') : null;
+                if (row && row.getAttribute) {
+                    snap.rowKind = row.getAttribute('data-kind');
+                    snap.rowId = row.getAttribute('data-id');
+                }
+            } catch (_) { /* non-DOM runtime */ }
+            return snap;
+        }
+
+        /**
+         * Put the snapshot back on the freshly rendered DOM: scroll the body to
+         * the same offset and hand focus back to the same row (by identity), so
+         * ticking a checkbox neither jumps the list nor strands the keyboard.
+         * `preventScroll` keeps the focus restore from fighting the scroll fix.
+         */
+        _restoreViewport(snap) {
+            if (!snap || !this._host || this._destroyed) return;
+            try {
+                const body = this._host.querySelector ? this._host.querySelector('.invitation-body') : null;
+                if (body && snap.scrollTop > 0) body.scrollTop = snap.scrollTop;
+            } catch (_) { /* non-DOM runtime */ }
+            if (!snap.rowKind || !snap.rowId) return;
+            try {
+                const sel = '.invitation-row[data-kind="' + snap.rowKind + '"][data-id="' + String(snap.rowId) + '"]';
+                const row = this._host.querySelector ? this._host.querySelector(sel) : null;
+                if (!row || typeof row.focus !== 'function') return;
+                try { row.focus({ preventScroll: true }); }
+                catch (_) { row.focus(); }
+            } catch (_) { /* non-DOM runtime */ }
         }
 
         // ── Confirm / cancel / destroy ───────────────────────────────────────
