@@ -2,6 +2,7 @@ package pl.michalbzowski.windband.adapter.in.web;
 
 import org.junit.jupiter.api.Test;
 import org.openqa.selenium.By;
+import org.openqa.selenium.JavascriptExecutor;
 import org.openqa.selenium.WebElement;
 import org.openqa.selenium.support.ui.ExpectedConditions;
 import org.openqa.selenium.support.ui.WebDriverWait;
@@ -47,7 +48,7 @@ class MemberShowInactiveToggleUiTest extends UiTestBase {
         driver.findElement(By.id("toggleMembersBtn")).click();
 
         // 1) The swap must actually happen — before the fix the request 500'd and nothing updated.
-        wait.until(d -> "true".equals(((org.openqa.selenium.JavascriptExecutor) d).executeScript(
+        wait.until(d -> "true".equals(((JavascriptExecutor) d).executeScript(
                 "return document.getElementById('members-content').getAttribute('data-show-inactive');")));
 
         // 2) The newly-shown list must contain the seeded inactive member.
@@ -60,7 +61,6 @@ class MemberShowInactiveToggleUiTest extends UiTestBase {
                 return false; // mid-swap — retry on the next poll
             }
         });
-        System.out.println("[TEST] seeded inactive row present after toggle: true");
 
         // 3) Toggle back and verify the round trip keeps working (state machine, both directions).
         driver.findElement(By.id("toggleMembersBtn")).click();

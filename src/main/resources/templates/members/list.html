@@ -48,21 +48,6 @@
                             'plus', 'add-member-btn', '#content',
                             null, null, null, null)}"></nav>
 
-                        <!-- Toggle button for Active/Inactive members (Issue #108) -->
-                        <div class="members-header-actions">
-                            <!-- Toggle button for Active/Resigned - elevated priority on mobile with order: -1 -->
-                            <button type="button" 
-                                    id="toggleMembersBtn"
-                                    th:classappend="${showingInactiveMembers} ? 'outline' : 'primary'"
-                                    onclick="toggleMemberView()">
-                                <span>
-                                    <th:block th:if="${!showingInactiveMembers}">Pokaż nieaktywnych (<span th:text="${inactiveCount}" />)</th:block>
-                                    <th:block th:if="${showingInactiveMembers}">Aktywni członkowie</th:block>
-                                    <th:block th:if="${!showingResignedMembers}">Pokaż rezygnujących (<span th:text="${resignedCount}" />)</th:block>
-                                    <th:block th:if="${showingResignedMembers}">Aktywni członkowie</th:block>
-                                </span>
-                            </button>
-                        </div>
 
         <!-- Issue #268 — szukanie po nazwisku i filtr sekcji. Filtry są po stronie serwera
              (parametry q / instrument), więc przechodzą przez podmianki HTMX i widok da się
@@ -73,17 +58,35 @@
              Atrybuty htmx wiszą na samych polach (nie na <form>) — w tej aplikacji keyup z
              formularza nie odpala requestu. Bez JS Enter nadal robi zwykłe GET /members. -->
         <form id="member-filters" class="member-filters" method="get" action="/members">
+            <!-- Aktywni/Nieaktywni jako segment wewnątrz pasku filtrów: przełącza widok, a aktywny
+                 stan jest od razu widoczny (akcent jak w pozostałych badge'ach aplikacji).
+                 Id "toggleMembersBtn" żyje na czapce prowadzącej do drugiego stanu — zachowuje
+                 istniejący skrót Ctrl+T i hook testów regresyjnych. -->
+            <div class="member-status-toggle" role="group" aria-label="Wyświetlani członkowie">
+                <button type="button" class="member-status-chip" data-show-inactive="false"
+                        th:id="${showingInactiveMembers} ? 'toggleMembersBtn' : null"
+                        th:classappend="${!showingInactiveMembers} ? 'is-active' : ''"
+                        th:attr="aria-pressed=${!showingInactiveMembers}">
+                    Aktywni <span class="member-status-count" th:text="${activeCount}">0</span>
+                </button>
+                <button type="button" class="member-status-chip" data-show-inactive="true"
+                        th:id="${!showingInactiveMembers} ? 'toggleMembersBtn' : null"
+                        th:classappend="${showingInactiveMembers} ? 'is-active' : ''"
+                        th:attr="aria-pressed=${showingInactiveMembers}">
+                    Nieaktywni <span class="member-status-count" th:text="${inactiveCount}">0</span>
+                </button>
+            </div>
             <input type="hidden" name="showInactive" th:value="${showingInactiveMembers}">
             <input type="search" name="q" th:value="${query}"
                    placeholder="Szukaj po imieniu lub nazwisku…"
                    aria-label="Szukaj członka po imieniu lub nazwisku"
                    hx-get="/members/list" hx-target="#members-content"
-                   hx-swap="innerHTML transition:true"
-                   hx-trigger="keyup changed delay:300ms, input changed delay:300ms"
+                   hx-swap="outerHTML transition:true"
+                   hx-trigger="input changed delay:300ms"
                    hx-include="#member-filters">
             <select name="instrument" aria-label="Filtruj po sekcji"
                     hx-get="/members/list" hx-target="#members-content"
-                    hx-swap="innerHTML transition:true"
+                    hx-swap="outerHTML transition:true"
                     hx-trigger="change"
                     hx-include="#member-filters">
                 <option value="">Wszystkie sekcje</option>
@@ -236,45 +239,95 @@
             </th:block>
         </th:block>
 
-        <!-- Toggle functionality for member view (Issue #108) -->
+        <!-- Toggle functionality for member view (Issue #108) — obecnie segment Aktywni/Nieaktywni. -->
         <!-- This script MUST be inside #members-content so it re-executes on HTMX swaps -->
-        <script type="text/javascript">
-        (function() {
+<script type="text/javascript">
+        // Toggle functionality for member view (Issue #108) — segment Aktywni/Nieaktywni.
+        // Skrypt musi znajdować się wewnątrz #members-content, by wykonać się ponownie po każdej podmianie HTMX.
+        (function () {
             'use strict';
-       
-            // Initialize showingInactiveMembers state from server
-            var contentDiv = document.getElementById('members-content');
-            var isShowingInactive = contentDiv.getAttribute('data-show-inactive') === 'true';
 
-            function toggleMemberView() {
-                event.preventDefault();
-    
-                var newShowState = !isShowingInactive;
-                isShowingInactive = newShowState;
-                contentDiv.setAttribute('data-show-inactive', newShowState);
-                contentDiv.setAttribute('data-show-resigned', newShowState);
-    
-                // Use HTMX to fetch new view without full page reload.
-                // Issue #117: only forward a focused member when one is actually
-                // set — appending '&focus=null' sent the literal string "null"
-                // which Spring cannot bind to Long and the toggle request 500'd,
-                // so the button visibly did nothing.
-                var focusId = contentDiv.getAttribute('data-focus-id');
-                if (focusId === 'null') { focusId = ''; }
-                var url = '/members/list?showInactive=' + newShowState;
-                if (focusId) { url += '&focus=' + encodeURIComponent(focusId); }
-                // Issue #268: przelaczenie widoku nie moze wyzerowac wprowadzonych filtrow
+            // Przechodzi do wybranego stanu, zachowując wpisywane filtry (#268) i parametr focus (Issue #117).
+            function setMembersStatus(showInactive) {
+                var contentDiv = document.getElementById('members-content');
+                if (!contentDiv) { return; }
+                var next = showInactive ? 'true' : 'false';
+                if (next === contentDiv.getAttribute('data-show-inactive')) {
+                    return; // klik w już aktywny segment — bez zbędnego żądania
+                }
                 var qField = document.querySelector('#member-filters [name="q"]');
                 var sectionField = document.querySelector('#member-filters [name="instrument"]');
+                var url = '/members/list?showInactive=' + next;
                 if (qField && qField.value.trim()) { url += '&q=' + encodeURIComponent(qField.value.trim()); }
                 if (sectionField && sectionField.value) { url += '&instrument=' + encodeURIComponent(sectionField.value); }
-                htmx.ajax('GET', url, {
-                    target: '#members-content', 
-                    swap: 'innerHTML transition:true'
+                var focusId = contentDiv.getAttribute('data-focus-id');
+                if (focusId && focusId !== 'null') { url += '&focus=' + encodeURIComponent(focusId); }
+                htmx.ajax('GET', url, { target: '#members-content', swap: 'outerHTML transition:true' });
+            }
+
+            var chips = document.querySelectorAll('#member-filters [data-show-inactive]');
+            for (var c = 0; c < chips.length; c++) {
+                chips[c].addEventListener('click', function () {
+                    setMembersStatus(this.getAttribute('data-show-inactive') === 'true');
                 });
             }
-       
-            document.getElementById('toggleMembersBtn').addEventListener('click', toggleMemberView);
+
+            // ---- fokus w polu wyszukiwania -------------------------------------------------
+            // HTMX podmienia całą zawartość #members-content wraz z polem, więc po każdym wpisie
+            // fokus (i pozycja kursora) giną — użytkownik musiał klikać pole ponownie.
+            // Oddajemy go tylko, gdy faktycznie został utracony (np. nie kradniemy go po kliknięciu przycisku).
+            if (!window.__memberSearchFocusBound) {
+                window.__memberSearchFocusBound = true;
+                var saved = null;
+
+                document.addEventListener('htmx:beforeRequest', function () {
+                    var el = document.activeElement;
+                    var root = document.querySelector('#member-filters');
+                    if (!el || !root || el === document.body || !root.contains(el)) { return; }
+                    var tag = el.tagName;
+                    if (tag !== 'INPUT' && tag !== 'TEXTAREA' && tag !== 'SELECT') { return; }
+                    saved = {
+                        name: el.name || null,
+                        caret: ('selectionStart' in el && el.selectionStart != null) ? el.selectionStart : null,
+                        at: Date.now()
+                    };
+                });
+
+                document.addEventListener('htmx:afterSwap', function () {
+                    if (!saved || (Date.now() - saved.at) > 5000) { saved = null; return; }
+                    // Zbieramy dane PRZED wyzerowaniem zapisku — później do niego już nie zaglądamy.
+                    var name = saved.name;
+                    var caret = saved.caret == null ? null : saved.caret;
+                    saved = null;
+                    if (!name) { return; }
+
+                    var active = document.activeElement;
+                    // Użytkownik świadomie przeniósł fokus gdzieś indziej — nie zabieramy go z powrotem.
+                    if (active && active !== document.body && document.contains(active)) { return; }
+
+                    var root = document.querySelector('#member-filters');
+                    if (!root) { return; }
+                    var field = null;
+                    var fields = root.querySelectorAll('input, textarea, select');
+                    for (var i = 0; i < fields.length; i++) {
+                        if (fields[i].name === name) { field = fields[i]; break; }
+                    }
+                    if (!field || typeof field.focus !== 'function') { return; }
+
+                    function placeCaret() {
+                        if (caret == null || typeof field.setSelectionRange !== 'function') { return; }
+                        try { field.setSelectionRange(caret, caret); } catch (ignored) { /* kursor to tylko wygodnictwo */ }
+                    }
+
+                    // Na świeżo podmienionym elemencie przeglądarka może przyznawać fokus asynchronicznie;
+                    // setSelectionRange wykonana przed faktycznym focusem jest odrzucana (kursor zostaje na 0,
+                    // kolejne litery wylądowałyby na początku). Stąd próba od razu i powtórka w kolejnych turach pętli zdarzeń.
+                    try { field.focus({ preventScroll: true }); } catch (ignored) { field.focus(); }
+                    placeCaret();
+                    setTimeout(placeCaret, 0);
+                    setTimeout(placeCaret, 30);
+                });
+            }
         })();
         </script>
 

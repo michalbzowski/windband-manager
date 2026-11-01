@@ -4054,6 +4054,53 @@ button.secondary.danger:focus-visible {
     font-size: 0.85rem;
 }
 
+/* Lista członków — segment Aktywni/Nieaktywni (przełącznik widoku). Delikatny akcent,
+   spójny z badge'ami i licznikami w reszcie aplikacji; aktywny stan podświetlony. */
+.member-status-toggle {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.15rem;
+    padding: 0.18rem;
+    margin-bottom: 0;
+    background: var(--pico-card-background-color, color-mix(in srgb, var(--pico-primary) 6%, transparent));
+    border: 1px solid var(--pico-border-color, var(--pico-muted-border-color));
+    border-radius: 999px;
+}
+
+.member-status-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    margin: 0;
+    padding: 0.32rem 0.8rem;
+    border: 0;
+    border-radius: 999px;
+    background: transparent;
+    color: var(--pico-muted-color);
+    font-size: 0.85rem;
+    font-weight: 600;
+    line-height: 1;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: background 0.15s ease, color 0.15s ease;
+}
+
+.member-status-chip:hover {
+    color: var(--pico-primary);
+    background: color-mix(in srgb, var(--pico-primary) 12%, transparent);
+}
+
+.member-status-chip.is-active {
+    color: var(--pico-primary);
+    background: color-mix(in srgb, var(--pico-primary) 16%, transparent);
+}
+
+.member-status-count {
+    font-size: 0.75rem;
+    font-weight: 700;
+    opacity: 0.85;
+}
+
 @media (max-width: 640px) {
     .member-filters select {
         flex: 1 1 100%;
