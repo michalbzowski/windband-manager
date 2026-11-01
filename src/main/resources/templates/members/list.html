@@ -62,7 +62,7 @@
                  stan jest od razu widoczny (akcent jak w pozostałych badge'ach aplikacji).
                  Id "toggleMembersBtn" żyje na czapce prowadzącej do drugiego stanu — zachowuje
                  istniejący skrót Ctrl+T i hook testów regresyjnych. -->
-            <div class="member-status-toggle" role="group" aria-label="Wyświetlani członkowie">
+            <div class="member-status-toggle" role="group" aria-label="Wyświetlani członkowie" hx-indicator="#member-list-loading">
                 <button type="button" class="member-status-chip" data-show-inactive="false"
                         th:id="${showingInactiveMembers} ? 'toggleMembersBtn' : null"
                         th:classappend="${!showingInactiveMembers} ? 'is-active' : ''"
@@ -83,12 +83,12 @@
                    hx-get="/members/list" hx-target="#members-content"
                    hx-swap="outerHTML transition:true"
                    hx-trigger="input changed delay:300ms"
-                   hx-include="#member-filters">
+                   hx-include="#member-filters" hx-indicator="#member-list-loading">
             <select name="instrument" aria-label="Filtruj po sekcji"
                     hx-get="/members/list" hx-target="#members-content"
                     hx-swap="outerHTML transition:true"
                     hx-trigger="change"
-                    hx-include="#member-filters">
+                    hx-include="#member-filters" hx-indicator="#member-list-loading">
                 <option value="">Wszystkie sekcje</option>
                 <option th:each="sec : ${availableInstruments}"
                         th:value="${sec}" th:text="${sec}"
@@ -101,6 +101,12 @@
             </span>
             <a th:if="${(query != null and !#strings.isEmpty(query)) or (instrumentFilter != null and !#strings.isEmpty(instrumentFilter))}"
                class="member-filters-reset outline small" th:href="@{/members(showInactive=${showingInactiveMembers})}">Wyczyść</a>
+            <!-- Loader podczas odpytań sieciowych paska filtrów. HTMX sam dodaje/usuwa klasę
+                 htxm-request na tym elemencie (mechanizm hx-indicator wskazany powyżej) — ten sam
+                 wzorzec co #register-spinner; widoczność reguluje CSS w app.css. -->
+            <span id="member-list-loading" class="member-list-loading" role="status" aria-live="polite">
+                <span class="member-list-spinner" aria-hidden="true"></span>Ładowanie listy…
+            </span>
         </form>
 
         <!-- Show inactive members list only if showingInactiveMembers is true -->
@@ -248,7 +254,7 @@
             'use strict';
 
             // Przechodzi do wybranego stanu, zachowując wpisywane filtry (#268) i parametr focus (Issue #117).
-            function setMembersStatus(showInactive) {
+            function setMembersStatus(showInactive, sourceChip) {
                 var contentDiv = document.getElementById('members-content');
                 if (!contentDiv) { return; }
                 var next = showInactive ? 'true' : 'false';
@@ -262,13 +268,15 @@
                 if (sectionField && sectionField.value) { url += '&instrument=' + encodeURIComponent(sectionField.value); }
                 var focusId = contentDiv.getAttribute('data-focus-id');
                 if (focusId && focusId !== 'null') { url += '&focus=' + encodeURIComponent(focusId); }
-                htmx.ajax('GET', url, { target: '#members-content', swap: 'outerHTML transition:true' });
+                // source: chip jako źródło żądania; dzięki temu htmx czyta atrybut
+                // hx-indicator (szukany w górę od elementu) i sam nadzoruje pasek ładowania.
+                htmx.ajax('GET', url, { source: sourceChip, target: '#members-content', swap: 'outerHTML transition:true' });
             }
 
             var chips = document.querySelectorAll('#member-filters [data-show-inactive]');
             for (var c = 0; c < chips.length; c++) {
                 chips[c].addEventListener('click', function () {
-                    setMembersStatus(this.getAttribute('data-show-inactive') === 'true');
+                    setMembersStatus(this.getAttribute('data-show-inactive') === 'true', this);
                 });
             }
 

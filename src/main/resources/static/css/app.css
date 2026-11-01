@@ -4101,6 +4101,38 @@ button.secondary.danger:focus-visible {
     opacity: 0.85;
 }
 
+/* Pasek ładowania listy członków — widoczny tylko, gdy htmx ma otwarte żądanie od
+   paska filtrów (klasa htxm-request jest nadawana/usuwana za pomocą atrybutu
+   hx-indicator). Spójna kolorystyka z segmentem Aktywni/Nieaktywni powyżej. */
+.member-list-loading {
+    display: none;
+    align-items: center;
+    gap: 0.45rem;
+    margin-bottom: 0;
+    padding: 0.32rem 0.8rem;
+    border-radius: 999px;
+    background: color-mix(in srgb, var(--pico-primary) 10%, transparent);
+    color: var(--pico-primary);
+    font-size: 0.85rem;
+    font-weight: 600;
+    line-height: 1;
+    white-space: nowrap;
+}
+
+.member-list-spinner {
+    flex: none;
+    width: 0.85rem;
+    height: 0.85rem;
+    border-radius: 50%;
+    border: 2px solid color-mix(in srgb, var(--pico-primary) 25%, transparent);
+    border-top-color: var(--pico-primary);
+    animation: spin 0.7s linear infinite;
+}
+
+.member-list-loading.htmx-request {
+    display: inline-flex;
+}
+
 @media (max-width: 640px) {
     .member-filters select {
         flex: 1 1 100%;
