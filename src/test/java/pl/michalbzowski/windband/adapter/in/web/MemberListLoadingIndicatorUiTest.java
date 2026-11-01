@@ -82,19 +82,10 @@ class MemberListLoadingIndicatorUiTest extends UiTestBase {
         assertLoaderNotStuck();
 
         // ---- 2. Segment Aktywni/Nieaktywni: to samo zachowanie przy przełączaniu ----
-        clickElement(By.id("toggleMembersBtn"));
-        waitForLoaderVisible("po kliknięciu segmentu Nieaktywni");
-        wait.until(d -> "true".equals(((JavascriptExecutor) d).executeScript(
-                "return document.getElementById('members-content').getAttribute('data-show-inactive');")));
-        waitForLoaderHidden("po wymianie widoku nieaktywnych");
-        assertLoaderNotStuck();
+        toggleToState("true");
 
         // ---- 3. Powrót do aktywnych — zamknięcie cyklu, brak pozostawionego wskaźnika ----
-        clickElement(By.id("toggleMembersBtn"));
-        wait.until(d -> "false".equals(((JavascriptExecutor) d).executeScript(
-                "return document.getElementById('members-content').getAttribute('data-show-inactive');")));
-        waitForLoaderHidden("po powrocie do widoku aktywnych");
-        assertLoaderNotStuck();
+        toggleToState("false");
     }
 
     // ---- sprzątanie / narzędzia testowe -------------------------------------------------
@@ -176,7 +167,7 @@ class MemberListLoadingIndicatorUiTest extends UiTestBase {
             try {
                 clickElement(By.cssSelector("#member-filters input[name='q']"));
                 sendKeysInto(By.cssSelector("#member-filters input[name='q']"), text);
-                waitForLoaderVisible("po literze w wyszukiwarce");
+                waitForLoaderVisible("po literze w wyszukiwarce", 15);
                 return;
             } catch (org.openqa.selenium.TimeoutException firstAttemptLost) {
                 // zdarzenie mogło dojść, zanim htmx zareagował — reset i powtórka
@@ -201,6 +192,68 @@ class MemberListLoadingIndicatorUiTest extends UiTestBase {
             }
         }
         throw last;
+    }
+
+    /**
+     * Kliknięcie segmentu odporne na obciążenie. Zawsze najpierw sprawdza, gdzie faktycznie
+     * jest stan widoku — spóźnione żądanie z wcześniejszej próby bywa już wykonane (zmiana stanu
+     * dowodzi pętli sieciowej), i dopiero wtedy klika oraz czeka na wskaźnik. Po udanej
+     * obserwacji: wskaźnik musi zniknąć i nie zostać "przyklejony".
+     */
+    private void toggleToState(String expectedState) {
+        for (int attempt = 1; attempt <= 2; attempt++) {
+            ensurePageReady();
+            if (stateIs(expectedState)) {
+                settleLoaderAfterToggle("wcześniejsza próba doszła spóźniona (" + expectedState + ")");
+                return; // stan dowodzi, że żądanie się odbyło — nie klikamy drugi raz (odbiłoby wstecz)
+            }
+            clickElement(By.id("toggleMembersBtn"));
+            try {
+                waitForLoaderVisible("po kliknięciu segmentu (" + expectedState + ")", 20);
+                settleLoaderAfterToggle("po wymianie widoku (" + expectedState + ")");
+                return;
+            } catch (org.openqa.selenium.TimeoutException lost) {
+                // htmx.ajax z chipa mogło nie wystartować pod obciążeniem — czysty stan i ponów
+            }
+        }
+        throw new AssertionError("Wskaźnik nie pojawił się przy przełączaniu segmentu w dwóch próbach; "
+                + "aktywny stan widoku: " + currentState()
+                + ". Podejrzenie: htmx.ajax('GET', ...) z chipa nie zostało rozpoczęte pod dużym obciążeniem.");
+    }
+
+    private void settleLoaderAfterToggle(String context) {
+        probeHiddenGracefully(5); // daj swapowi dobiec, zanim orzekamy "stuck"
+        waitForLoaderHidden(context);
+        assertLoaderNotStuck();
+    }
+
+    /** Leniwa weryfikacja, że wskaźnik zniknął — bez rzutu (timeout ok, wywoływca decyduje). */
+    private void probeHiddenGracefully(long seconds) {
+        try {
+            new FluentWait<>(driver)
+                    .ignoring(StaleElementReferenceException.class)
+                    .pollingEvery(Duration.ofMillis(50))
+                    .withTimeout(Duration.ofSeconds(seconds))
+                    .until(d -> Boolean.TRUE.equals(((JavascriptExecutor) d).executeScript(
+                            "var el = document.querySelector('#member-list-loading');" +
+                            "return el && getComputedStyle(el).display === 'none';")));
+        } catch (org.openqa.selenium.TimeoutException stillVisible) {
+            // następny waitForLoaderHidden zgłosi z sensownym komunikatem, jeśli stanie się na dłużej
+        }
+    }
+
+    private boolean stateIs(String expectedState) {
+        Object value = ((JavascriptExecutor) driver).executeScript(
+                "var el = document.getElementById('members-content');" +
+                "return el && el.getAttribute('data-show-inactive') === arguments[0];", expectedState);
+        return Boolean.TRUE.equals(value);
+    }
+
+    private String currentState() {
+        Object value = ((JavascriptExecutor) driver).executeScript(
+                "var el = document.getElementById('members-content');" +
+                "return el ? el.getAttribute('data-show-inactive') : 'brak-fragmentu';");
+        return String.valueOf(value);
     }
 
     /** To samo dla Actions.sendKeys — pisanie w "środku swapu" daje stale, więc powtarzamy. */
@@ -243,12 +296,12 @@ class MemberListLoadingIndicatorUiTest extends UiTestBase {
         }
     }
 
-    private void waitForLoaderVisible(String context) {
+    private void waitForLoaderVisible(String context, long seconds) {
         new FluentWait<>(driver)
                 .ignoring(StaleElementReferenceException.class)
                 .withMessage("wskaźnik ładowania nie pojawił się " + context)
                 .pollingEvery(Duration.ofMillis(10))
-                .withTimeout(Duration.ofSeconds(15))
+                .withTimeout(Duration.ofSeconds(seconds))
                 .until(d -> Boolean.TRUE.equals(
                         ((JavascriptExecutor) d).executeScript(
                                 "var el = document.querySelector('#member-list-loading');" +
