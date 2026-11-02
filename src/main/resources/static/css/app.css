@@ -4107,14 +4107,21 @@ button.secondary.danger:focus-visible {
    mobile widać go bez zależności od pozycji przewinięcia; pointer-events: none
    zostawia stronę w pełni obsługiwalną w trakcie ładowania. */
 .member-list-loading {
-    display: none;
     position: fixed;
     inset: 0;
     z-index: 2000;
+    display: flex;
     align-items: center;
     justify-content: center;
     pointer-events: none;
     background: color-mix(in srgb, var(--pico-background-color) 55%, transparent);
+    /* Mechanizm widoczności: klasę .htmx-request zakłada/zdejmuje htmx (hx-indicator),
+       ale ukrywanie ma opóźnienie ~450 ms — żądania kończące się w <~370 ms (lokalnie,
+       szybki Wi-Fi) i tak wystarczają długo, żeby wskazać ładowanie; bez opóźnienia taki
+       wskaźnik "mignąłby" zbyt krótko, by go zarejestrować. Pokazywanie zawsze natychmiast. */
+    visibility: hidden;
+    opacity: 0;
+    transition: opacity 180ms ease-out 270ms, visibility 0s linear 450ms;
 }
 
 .member-list-loading-card {
@@ -4144,7 +4151,9 @@ button.secondary.danger:focus-visible {
 }
 
 .member-list-loading.htmx-request {
-    display: flex;
+    visibility: visible;
+    opacity: 1;
+    transition: opacity 90ms ease-out, visibility 0s;
 }
 
 @media (max-width: 640px) {

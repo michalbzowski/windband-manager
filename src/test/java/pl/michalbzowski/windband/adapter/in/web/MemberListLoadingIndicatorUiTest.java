@@ -228,7 +228,7 @@ class MemberListLoadingIndicatorUiTest extends UiTestBase {
         try {
             Object value = ((JavascriptExecutor) driver).executeScript(
                     "var el = document.querySelector('#member-list-loading');" +
-                    "return el && getComputedStyle(el).display === 'none';");
+                    "return el && getComputedStyle(el).visibility === 'hidden';");
             return Boolean.TRUE.equals(value);
         } catch (StaleElementReferenceException swappedAway) {
             return false; // środek wymiany — polling powtórzy sprawdzanie
@@ -332,7 +332,7 @@ class MemberListLoadingIndicatorUiTest extends UiTestBase {
                     .withTimeout(Duration.ofSeconds(seconds))
                     .until(d -> Boolean.TRUE.equals(((JavascriptExecutor) d).executeScript(
                             "var el = document.querySelector('#member-list-loading');" +
-                            "return el && getComputedStyle(el).display === 'none';")));
+                            "return el && getComputedStyle(el).visibility === 'hidden';")));
         } catch (org.openqa.selenium.TimeoutException stillVisible) {
             // następny waitForLoaderHidden zgłosi z sensownym komunikatem, jeśli stanie się na dłużej
         }
@@ -385,7 +385,7 @@ class MemberListLoadingIndicatorUiTest extends UiTestBase {
                     .withTimeout(Duration.ofSeconds(seconds))
                     .until(d -> Boolean.TRUE.equals(((JavascriptExecutor) d).executeScript(
                             "var el = document.querySelector('#member-list-loading');" +
-                            "return el && getComputedStyle(el).display === 'none';")));
+                            "return el && getComputedStyle(el).visibility === 'hidden';")));
             return true;
         } catch (org.openqa.selenium.TimeoutException stillInFlight) {
             return false;
@@ -401,7 +401,7 @@ class MemberListLoadingIndicatorUiTest extends UiTestBase {
                 .until(d -> Boolean.TRUE.equals(
                         ((JavascriptExecutor) d).executeScript(
                                 "var el = document.querySelector('#member-list-loading');" +
-                                "return el && getComputedStyle(el).display !== 'none';")));
+                                "return el && getComputedStyle(el).visibility === 'visible';")));
     }
 
     private void waitForLoaderHidden(String context) {
@@ -413,7 +413,7 @@ class MemberListLoadingIndicatorUiTest extends UiTestBase {
                 .until(d -> Boolean.TRUE.equals(
                         ((JavascriptExecutor) d).executeScript(
                                 "var el = document.querySelector('#member-list-loading');" +
-                                "return el && getComputedStyle(el).display === 'none';")));
+                                "return el && getComputedStyle(el).visibility === 'hidden';")));
     }
 
     /** Brak "zawieszonego" wskaźnika: klasa htmx-request musi zostać zdjęta po każdym żądaniu. */

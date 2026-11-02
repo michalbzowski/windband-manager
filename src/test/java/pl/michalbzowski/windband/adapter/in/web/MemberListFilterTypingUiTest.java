@@ -181,7 +181,7 @@ class MemberListFilterTypingUiTest extends UiTestBase {
                 .withTimeout(Duration.ofSeconds(20))
                 .until(d -> Boolean.TRUE.equals(((JavascriptExecutor) d).executeScript(
                         "var el = document.querySelector('#member-list-loading');" +
-                        "return !!el && getComputedStyle(el).display !== 'none';")));
+                        "return !!el && getComputedStyle(el).visibility === 'visible';")));
     }
 
     private void waitForLoaderHidden(String context) {
@@ -192,7 +192,7 @@ class MemberListFilterTypingUiTest extends UiTestBase {
                 .withTimeout(Duration.ofSeconds(30))
                 .until(d -> Boolean.TRUE.equals(((JavascriptExecutor) d).executeScript(
                         "var el = document.querySelector('#member-list-loading');" +
-                        "return !el || getComputedStyle(el).display === 'none';")));
+                        "return !el || getComputedStyle(el).visibility === 'hidden';")));
     }
 
     private static void sleep(long ms) {
