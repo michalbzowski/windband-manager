@@ -4101,20 +4101,34 @@ button.secondary.danger:focus-visible {
     opacity: 0.85;
 }
 
-/* Pasek ładowania listy członków — widoczny tylko, gdy htmx ma otwarte żądanie od
-   paska filtrów (klasa htxm-request jest nadawana/usuwana za pomocą atrybutu
-   hx-indicator). Spójna kolorystyka z segmentem Aktywni/Nieaktywni powyżej. */
+/* Pełnoekranowy wskaźnik ładowania listy członków (issue #321). HTMX sam nadaje mu
+   klasę htmx-request, gdy trwa żądanie ze źródeł opatrzonych hx-indicator — ten sam
+   wzorzec co #register-spinner. Overlay jest ponad treścią (fixed inset 0), więc na
+   mobile widać go bez zależności od pozycji przewinięcia; pointer-events: none
+   zostawia stronę w pełni obsługiwalną w trakcie ładowania. */
 .member-list-loading {
     display: none;
+    position: fixed;
+    inset: 0;
+    z-index: 2000;
     align-items: center;
-    gap: 0.45rem;
-    margin-bottom: 0;
-    padding: 0.32rem 0.8rem;
-    border-radius: 999px;
-    background: color-mix(in srgb, var(--pico-primary) 10%, transparent);
+    justify-content: center;
+    pointer-events: none;
+    background: color-mix(in srgb, var(--pico-background-color) 55%, transparent);
+}
+
+.member-list-loading-card {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.6rem;
+    padding: 0.85rem 1.5rem;
+    border-radius: 14px;
+    background: var(--pico-card-background-color);
+    border: 1px solid color-mix(in srgb, var(--pico-primary) 30%, transparent);
+    box-shadow: 0 12px 32px rgba(0, 0, 0, 0.22);
     color: var(--pico-primary);
-    font-size: 0.85rem;
     font-weight: 600;
+    font-size: 0.95rem;
     line-height: 1;
     white-space: nowrap;
 }
@@ -4130,7 +4144,7 @@ button.secondary.danger:focus-visible {
 }
 
 .member-list-loading.htmx-request {
-    display: inline-flex;
+    display: flex;
 }
 
 @media (max-width: 640px) {

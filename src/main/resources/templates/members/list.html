@@ -58,34 +58,20 @@
              Atrybuty htmx wiszą na samych polach (nie na <form>) — w tej aplikacji keyup z
              formularza nie odpala requestu. Bez JS Enter nadal robi zwykłe GET /members. -->
         <form id="member-filters" class="member-filters" method="get" action="/members">
-            <!-- Aktywni/Nieaktywni jako segment wewnątrz pasku filtrów: przełącza widok, a aktywny
-                 stan jest od razu widoczny (akcent jak w pozostałych badge'ach aplikacji).
-                 Id "toggleMembersBtn" żyje na czapce prowadzącej do drugiego stanu — zachowuje
-                 istniejący skrót Ctrl+T i hook testów regresyjnych. -->
-            <div class="member-status-toggle" role="group" aria-label="Wyświetlani członkowie" hx-indicator="#member-list-loading">
-                <button type="button" class="member-status-chip" data-show-inactive="false"
-                        th:id="${showingInactiveMembers} ? 'toggleMembersBtn' : null"
-                        th:classappend="${!showingInactiveMembers} ? 'is-active' : ''"
-                        th:attr="aria-pressed=${!showingInactiveMembers}">
-                    Aktywni <span class="member-status-count" th:text="${activeCount}">0</span>
-                </button>
-                <button type="button" class="member-status-chip" data-show-inactive="true"
-                        th:id="${!showingInactiveMembers} ? 'toggleMembersBtn' : null"
-                        th:classappend="${showingInactiveMembers} ? 'is-active' : ''"
-                        th:attr="aria-pressed=${showingInactiveMembers}">
-                    Nieaktywni <span class="member-status-count" th:text="${inactiveCount}">0</span>
-                </button>
-            </div>
-            <input type="hidden" name="showInactive" th:value="${showingInactiveMembers}">
+            <!-- Issue #321 — pasek filtrów NIE jest podmieniany przez HTMX: żądania celują
+                 wyłącznie w rejon listy (#member-list-region). Wcześniej odpowiedź serwera
+                 nadpisywała input i gubiła litery wpisane w trakcie trwającego odpytania.
+                 Stan segmentu i licznik trafiają tu jako bloki hx-swap-oob w odpowiedzi. -->
+            <div th:replace="~{members/list :: status-toggle(false)}"></div>
             <input type="search" name="q" th:value="${query}"
                    placeholder="Szukaj po imieniu lub nazwisku…"
                    aria-label="Szukaj członka po imieniu lub nazwisku"
-                   hx-get="/members/list" hx-target="#members-content"
+                   hx-get="/members/list/rows" hx-target="#member-list-region"
                    hx-swap="outerHTML transition:true"
                    hx-trigger="input changed delay:300ms"
                    hx-include="#member-filters" hx-indicator="#member-list-loading">
             <select name="instrument" aria-label="Filtruj po sekcji"
-                    hx-get="/members/list" hx-target="#members-content"
+                    hx-get="/members/list/rows" hx-target="#member-list-region"
                     hx-swap="outerHTML transition:true"
                     hx-trigger="change"
                     hx-include="#member-filters" hx-indicator="#member-list-loading">
@@ -94,20 +80,14 @@
                         th:value="${sec}" th:text="${sec}"
                         th:selected="${sec == instrumentFilter}"></option>
             </select>
-            <span class="member-filters-count"
-                  th:if="${(query != null and !#strings.isEmpty(query)) or (instrumentFilter != null and !#strings.isEmpty(instrumentFilter))}">
-                <span th:text="${#lists.size(members)}">3</span> z
-                <span th:text="${allMembersCount}">12</span>
-            </span>
-            <a th:if="${(query != null and !#strings.isEmpty(query)) or (instrumentFilter != null and !#strings.isEmpty(instrumentFilter))}"
-               class="member-filters-reset outline small" th:href="@{/members(showInactive=${showingInactiveMembers})}">Wyczyść</a>
-            <!-- Loader podczas odpytań sieciowych paska filtrów. HTMX sam dodaje/usuwa klasę
-                 htxm-request na tym elemencie (mechanizm hx-indicator wskazany powyżej) — ten sam
-                 wzorzec co #register-spinner; widoczność reguluje CSS w app.css. -->
-            <span id="member-list-loading" class="member-list-loading" role="status" aria-live="polite">
-                <span class="member-list-spinner" aria-hidden="true"></span>Ładowanie listy…
-            </span>
+            <div th:replace="~{members/list :: filters-status(false)}"></div>
         </form>
+
+        <!-- Issue #321 — jedyny obszar podmieniany przez filtry paska. Pasek zostaje w DOM,
+             więc wpisywane w trakcie żądania znaki nie znikają, a fokus/kursor naturalnie
+             przetrzymują każdą wymianę wyników. atrybut data-show-inactive to żywy stan
+             segmentu po ostatniej wymianie (chroniony też przez OOB poniżej). -->
+        <div id="member-list-region" th:data-show-inactive="${showingInactiveMembers}">
 
         <!-- Show inactive members list only if showingInactiveMembers is true -->
         <th:block th:if="${showingInactiveMembers}">
@@ -245,6 +225,54 @@
             </th:block>
         </th:block>
 
+            <!-- Issue #321 — przy odpowiedzi „same wiersze” (GET /members/list/rows) ten sam
+                 model serwera renderuje też stan paska: htmx wyciąga bloki hx-swap-oob sprzed
+                 wymiany i podmienia wyłącznie je — segment Aktywni/Nieaktywni (z ukrytym
+                 showInactive) oraz licznik „x z y” + link Wyczyść. Pełna strona i pełny
+                 fragment pomijają te kopie (partialRows nieustawiony). -->
+            <th:block th:if="${partialRows}">
+                <div th:replace="~{members/list :: status-toggle(true)}"></div>
+                <div th:replace="~{members/list :: filters-status(true)}"></div>
+            </th:block>
+        </div><!-- /#member-list-region -->
+
+        <!-- Issue #321 — definicje fragmentów paska filtrów. th:remove="all" znosi je z
+             własnego renderu; sięgają po nie zarówno formularz strony (bez hx-swap-oob),
+             jak i odpowiedź „same wiersze” (z hx-swap-oob, żeby htmx podmienił wyłącznie je).
+             Ukryte pole showInactive mieszka w segmencie — wymiana OOB trzyma je w rytmie
+             z widocznym stanem, więc kolejne zapytanie wysyła zawsze aktualny filtr. -->
+        <th:block th:remove="all">
+            <div class="member-status-toggle" id="member-status-toggle" role="group"
+                 aria-label="Wyświetlani członkowie" hx-indicator="#member-list-loading"
+                 th:fragment="status-toggle(oob)"
+                 th:attr="hx-swap-oob=${oob} ? 'outerHTML' : null">
+                <input type="hidden" name="showInactive" th:value="${showingInactiveMembers}">
+                <button type="button" class="member-status-chip" data-show-inactive="false"
+                        th:id="${showingInactiveMembers} ? 'toggleMembersBtn' : null"
+                        th:classappend="${!showingInactiveMembers} ? 'is-active' : ''"
+                        th:attr="aria-pressed=${!showingInactiveMembers}">
+                    Aktywni <span class="member-status-count" th:text="${activeCount}">0</span>
+                </button>
+                <button type="button" class="member-status-chip" data-show-inactive="true"
+                        th:id="${!showingInactiveMembers} ? 'toggleMembersBtn' : null"
+                        th:classappend="${showingInactiveMembers} ? 'is-active' : ''"
+                        th:attr="aria-pressed=${showingInactiveMembers}">
+                    Nieaktywni <span class="member-status-count" th:text="${inactiveCount}">0</span>
+                </button>
+            </div>
+            <div id="member-filters-status" style="display:contents"
+                 th:fragment="filters-status(oob)"
+                 th:attr="hx-swap-oob=${oob} ? 'outerHTML' : null">
+                <span class="member-filters-count"
+                      th:if="${(query != null and !#strings.isEmpty(query)) or (instrumentFilter != null and !#strings.isEmpty(instrumentFilter))}">
+                    <span th:text="${#lists.size(members)}">3</span> z
+                    <span th:text="${allMembersCount}">12</span>
+                </span>
+                <a th:if="${(query != null and !#strings.isEmpty(query)) or (instrumentFilter != null and !#strings.isEmpty(instrumentFilter))}"
+                   class="member-filters-reset outline small" th:href="@{/members(showInactive=${showingInactiveMembers})}">Wyczyść</a>
+            </div>
+        </th:block>
+
         <!-- Toggle functionality for member view (Issue #108) — obecnie segment Aktywni/Nieaktywni. -->
         <!-- This script MUST be inside #members-content so it re-executes on HTMX swaps -->
 <script type="text/javascript">
@@ -254,29 +282,37 @@
             'use strict';
 
             // Przechodzi do wybranego stanu, zachowując wpisywane filtry (#268) i parametr focus (Issue #117).
+            // Issue #321: celem jest wyłącznie rejon listy — pasek filtrów (i input) nie są podmieniane.
             function setMembersStatus(showInactive, sourceChip) {
-                var contentDiv = document.getElementById('members-content');
-                if (!contentDiv) { return; }
+                var region = document.getElementById('member-list-region');
+                if (!region) { return; }
                 var next = showInactive ? 'true' : 'false';
-                if (next === contentDiv.getAttribute('data-show-inactive')) {
+                if (next === region.getAttribute('data-show-inactive')) {
                     return; // klik w już aktywny segment — bez zbędnego żądania
                 }
                 var qField = document.querySelector('#member-filters [name="q"]');
                 var sectionField = document.querySelector('#member-filters [name="instrument"]');
-                var url = '/members/list?showInactive=' + next;
+                var url = '/members/list/rows?showInactive=' + next;
                 if (qField && qField.value.trim()) { url += '&q=' + encodeURIComponent(qField.value.trim()); }
                 if (sectionField && sectionField.value) { url += '&instrument=' + encodeURIComponent(sectionField.value); }
-                var focusId = contentDiv.getAttribute('data-focus-id');
+                var focusId = document.getElementById('members-content').getAttribute('data-focus-id');
                 if (focusId && focusId !== 'null') { url += '&focus=' + encodeURIComponent(focusId); }
                 // source: chip jako źródło żądania; dzięki temu htmx czyta atrybut
-                // hx-indicator (szukany w górę od elementu) i sam nadzoruje pasek ładowania.
-                htmx.ajax('GET', url, { source: sourceChip, target: '#members-content', swap: 'outerHTML transition:true' });
+                // hx-indicator (szukany w górę od elementu) i sam nadzoruje wskaźnik.
+                htmx.ajax('GET', url, { source: sourceChip, target: '#member-list-region', swap: 'outerHTML transition:true' });
             }
 
-            var chips = document.querySelectorAll('#member-filters [data-show-inactive]');
-            for (var c = 0; c < chips.length; c++) {
-                chips[c].addEventListener('click', function () {
-                    setMembersStatus(this.getAttribute('data-show-inactive') === 'true', this);
+            // Issue #321 — chipy żyją w pasku, który bywa podmieniany blokiem hx-swap-oob,
+            // więc słuchacz wisi na dokumencie (delegacja) i wiąże się tylko raz.
+            if (!window.__memberChipsDelegated) {
+                window.__memberChipsDelegated = true;
+                document.addEventListener('click', function (e) {
+                    var chip = e.target && e.target.closest
+                            ? e.target.closest('#member-status-toggle [data-show-inactive]')
+                            : null;
+                    if (chip) {
+                        setMembersStatus(chip.getAttribute('data-show-inactive') === 'true', chip);
+                    }
                 });
             }
 
@@ -351,6 +387,18 @@
     </div>
     </section>
 </main>
+
+<!-- Issue #321 — pełnoekranowy wskaźnik ładowania listy. Mieszka POZA #members-content,
+     żeby żadna wymiana fragmentu go nie skasowała; htmx sam zakłada/zdejmuje klasę
+     htmx-request (mechanizm hx-indicator ze źródeł w pasku filtrów). pointer-events:
+     none — overlay nic nie blokuje, można pisać dalej nawet w trakcie żądania.
+     Na mobile widać go niezależnie od pozycji przewinięcia — w odróżnieniu od
+     dawnego wskaźnika inline w pasku filtrów. -->
+<div id="member-list-loading" class="member-list-loading" role="status" aria-live="polite">
+    <span class="member-list-loading-card">
+        <span class="member-list-spinner" aria-hidden="true"></span>Ładowanie listy…
+    </span>
+</div>
 
 <footer th:replace="~{fragments/layout :: footer}"></footer>
 <div th:insert="~{fragments/layout :: toast-container}"></div>

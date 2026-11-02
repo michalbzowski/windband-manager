@@ -64,6 +64,26 @@ class MemberListLoadingIndicatorUiTest extends UiTestBase {
         // element i czyści stan żądań HTMXa, więc druga próba zaczyna od czystego stanu.
         typeSearchWithRetry("K");
 
+        // Issue #321 — w trakcie żądania wskaźnik musi być PEŁNOEKRANOWY: fixed na całą
+        // przeglądarkę (widoczny na mobile niezależnie od przewinięcia) i nienachalny
+        // (pointer-events none — wpisywanie w trakcie ładowania nie jest blokowane).
+        String geometry = String.valueOf(((JavascriptExecutor) driver).executeScript(
+                "var el = document.querySelector('#member-list-loading');" +
+                "if (!el) { return 'brak-elementu'; }" +
+                "var cs = getComputedStyle(el);" +
+                "if (cs.display === 'none') { return 'niewidoczny'; }" +
+                "var r = el.getBoundingClientRect();" +
+                // fixed inset:0 sięga do wewnętrznej krawędzi viewportu (bez paska przewijania),
+                // więc punkt odniesienia to clientWidth/clientHeight, nie innerWidth.
+                "var ok = cs.position === 'fixed' && cs.pointerEvents === 'none'" +
+                "  && Math.round(r.width) >= document.documentElement.clientWidth - 1" +
+                "  && Math.round(r.height) >= window.innerHeight - 1;" +
+                "if (ok) { return 'OK'; }" +
+                "return 'position=' + cs.position + ' pe=' + cs.pointerEvents" +
+                "  + ' rect=' + Math.round(r.width) + 'x' + Math.round(r.height)" +
+                "  + ' vp=' + document.documentElement.clientWidth + 'x' + window.innerHeight;"));
+        assertThat(geometry).as("geometria pełnoekranowego overlayu").isEqualTo("OK");
+
         // Gdy żądanie się zamknie, wskaźnik musi zniknąć i lista faktycznie zostać odfiltrowana.
         waitForLoaderHidden("po zakończeniu żądania wyszukiwania");
         // Weryfikacja na ŻYWYCH węzłach wewnątrz JavaScriptu: snapshot Seleniumowy
@@ -86,6 +106,47 @@ class MemberListLoadingIndicatorUiTest extends UiTestBase {
 
         // ---- 3. Powrót do aktywnych — zamknięcie cyklu, brak pozostawionego wskaźnika ----
         toggleToState("false");
+
+        // ---- 4. Mobile (issue #321) — overlay MUSI być widoczny w całości w małym
+        // viewporcie, niezależnie od przewinięcia. Dawniej pigułka w pasku filtrów ginęła
+        // pod foldem; fixed inset:0 tego nie ma. Test emuluje smartfonowy
+        // viewport przez CDP i powtarza obserwację w trakcie żądania.
+        overrideMobileViewport(390, 844);
+        try {
+            typeSearchWithRetry("K");
+            String mobile = String.valueOf(((JavascriptExecutor) driver).executeScript(
+                    "window.scrollTo(0, Math.max(0, document.body.scrollHeight));" +
+                    "var el = document.querySelector('#member-list-loading');" +
+                    "if (!el || getComputedStyle(el).display === 'none') { return 'niewidoczny'; }" +
+                    "var r = el.getBoundingClientRect();" +
+                    "var ok = r.top <= 1 && r.left <= 1" +
+                    "  && Math.round(r.width) >= document.documentElement.clientWidth - 1" +
+                    "  && Math.round(r.height) >= window.innerHeight - 1;" +
+                    "return ok ? 'OK' : 'rect=' + Math.round(r.left) + ',' + Math.round(r.top) + ' ' +" +
+                    " Math.round(r.width) + 'x' + Math.round(r.height) + ' vp=' +" +
+                    " document.documentElement.clientWidth + 'x' + window.innerHeight;"));
+            assertThat(mobile).as("loader pełnoekranowy na mobile").isEqualTo("OK");
+        } finally {
+            clearViewportOverride();
+        }
+
+        waitForLoaderHidden("po żądaniu mobile");
+        assertLoaderNotStuck();
+    }
+
+    /** Ustawienia mobilnego viewportu przez CDP (Emulation.setDeviceMetricsOverride). */
+    private void overrideMobileViewport(int width, int height) {
+        ((org.openqa.selenium.chromium.HasCdp) driver).executeCdpCommand(
+                "Emulation.setDeviceMetricsOverride", Map.of(
+                        "width", width,
+                        "height", height,
+                        "deviceScaleFactor", 2,
+                        "mobile", true));
+    }
+
+    private void clearViewportOverride() {
+        ((org.openqa.selenium.chromium.HasCdp) driver)
+                .executeCdpCommand("Emulation.clearDeviceMetricsOverride", Map.of());
     }
 
     // ---- sprzątanie / narzędzia testowe -------------------------------------------------
@@ -244,14 +305,14 @@ class MemberListLoadingIndicatorUiTest extends UiTestBase {
 
     private boolean stateIs(String expectedState) {
         Object value = ((JavascriptExecutor) driver).executeScript(
-                "var el = document.getElementById('members-content');" +
+                "var el = document.getElementById('member-list-region');" +
                 "return el && el.getAttribute('data-show-inactive') === arguments[0];", expectedState);
         return Boolean.TRUE.equals(value);
     }
 
     private String currentState() {
         Object value = ((JavascriptExecutor) driver).executeScript(
-                "var el = document.getElementById('members-content');" +
+                "var el = document.getElementById('member-list-region');" +
                 "return el ? el.getAttribute('data-show-inactive') : 'brak-fragmentu';");
         return String.valueOf(value);
     }
