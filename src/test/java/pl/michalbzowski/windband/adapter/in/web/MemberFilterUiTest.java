@@ -50,14 +50,34 @@ class MemberFilterUiTest extends UiTestBase {
         // Licznik jedzie teraz blokiem hx-swap-oob i potrafi osiąść tick po rejonie listy —
         // czytamy go z żywych węzłów w pętli, aż pokaże stan po filtrze. textContent ma
         // w sobie nowe linie z szablonu, więc biel normalizujemy przed porównaniem.
-        String countText = wait.until(d -> {
-            Object t = ((JavascriptExecutor) d).executeScript(
-                    "var e = document.querySelector('.member-filters-count');" +
-                    "if (!e) { return null; }" +
-                    "return e.textContent.replace(/\\s+/g, ' ').trim();");
-            String txt = t == null ? null : t.toString();
-            return txt != null && txt.startsWith("1 z ") ? txt : null;
-        });
+        String countText;
+        try {
+            countText = wait.until(d -> {
+                Object t = ((JavascriptExecutor) d).executeScript(
+                        "var e = document.querySelector('.member-filters-count');" +
+                        "if (!e) { return null; }" +
+                        "return e.textContent.replace(/\\s+/g, ' ').trim();");
+                String txt = t == null ? null : t.toString();
+                return txt != null && txt.startsWith("1 z ") ? txt : null;
+            });
+        } catch (org.openqa.selenium.TimeoutException gone) {
+            // Diagnoza na czerwono: stan wrappera OOB, rejonu, wersji htmx oraz SUROWA
+            // odpowiedź serwera dla bieżącego q — rozstrzyga, czy winny render, swap czy DOM.
+            Object diag = ((JavascriptExecutor) driver).executeScript(
+                    "var w = document.querySelector('#member-filters-status');" +
+                    "var r = document.getElementById('member-list-region');" +
+                    "var q = document.querySelector('#member-filters input[name=q]');" +
+                    "var xhr = new XMLHttpRequest();" +
+                    "xhr.open('GET', '/members/list/rows?q=' + encodeURIComponent(q ? q.value : ''), false);" +
+                    "xhr.send();" +
+                    "return 'wrapper=' + (w ? w.outerHTML.replace(/\\s+/g, ' ').slice(0, 320) : 'BRAK')" +
+                    "  + ' | rows=' + (r ? r.querySelectorAll('tbody tr').length : 'brak rejonu')" +
+                    "  + ' | q=' + (q ? q.value : 'brak')" +
+                    "  + ' | htmx=' + (window.htmx ? htmx.version : 'brak')" +
+                    "  + ' | status=' + xhr.status" +
+                    "  + ' | resp=' + (xhr.responseText || '').replace(/\\s+/g, ' ').slice(0, 500);");
+            throw new AssertionError("Licznik nie pokazał '1 z ...'. Diagnoza: " + diag, gone);
+        }
         assertThat(countText)
                 .as("the strip shows how much of the list the filter cut away")
                 .contains("1 z ");

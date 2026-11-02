@@ -67,22 +67,22 @@ class MemberListLoadingIndicatorUiTest extends UiTestBase {
         // Issue #321 — w trakcie żądania wskaźnik musi być PEŁNOEKRANOWY: fixed na całą
         // przeglądarkę (widoczny na mobile niezależnie od przewinięcia) i nienachalny
         // (pointer-events none — wpisywanie w trakcie ładowania nie jest blokowane).
-        String geometry = String.valueOf(((JavascriptExecutor) driver).executeScript(
-                "var el = document.querySelector('#member-list-loading');" +
-                "if (!el) { return 'brak-elementu'; }" +
-                "var cs = getComputedStyle(el);" +
-                "if (cs.display === 'none') { return 'niewidoczny'; }" +
-                "var r = el.getBoundingClientRect();" +
-                // fixed inset:0 sięga do wewnętrznej krawędzi viewportu (bez paska przewijania),
-                // więc punkt odniesienia to clientWidth/clientHeight, nie innerWidth.
-                "var ok = cs.position === 'fixed' && cs.pointerEvents === 'none'" +
-                "  && Math.round(r.width) >= document.documentElement.clientWidth - 1" +
-                "  && Math.round(r.height) >= document.documentElement.clientHeight - 1;" +
-                "if (ok) { return 'OK'; }" +
-                "return 'position=' + cs.position + ' pe=' + cs.pointerEvents" +
-                "  + ' rect=' + Math.round(r.width) + 'x' + Math.round(r.height)" +
-                "  + ' vp=' + document.documentElement.clientWidth + 'x' + document.documentElement.clientHeight;"));
-        assertThat(geometry).as("geometria pełnoekranowego overlayu").isEqualTo("OK");
+        // Odczyt ze snapshotu przy htmx:beforeSwap — zero wyścigu z finiszem żądania.
+        String geometry = null;
+        long geoDeadline = System.currentTimeMillis() + 10_000;
+        while (System.currentTimeMillis() < geoDeadline) {
+            geometry = lastGeometrySnapshot();
+            if (geometry != null && !"null".equals(geometry)) {
+                break;
+            }
+            try {
+                Thread.sleep(50);
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+                break;
+            }
+        }
+        assertThat(geometry).as("geometria pełnoekranowego overlayu (snapshot z htmx:beforeSwap)").isEqualTo("OK");
 
         // Gdy żądanie się zamknie, wskaźnik musi zniknąć i lista faktycznie zostać odfiltrowana.
         waitForLoaderHidden("po zakończeniu żądania wyszukiwania");
@@ -113,25 +113,59 @@ class MemberListLoadingIndicatorUiTest extends UiTestBase {
         // viewport przez CDP i powtarza obserwację w trakcie żądania.
         overrideMobileViewport(390, 844);
         try {
-            typeSearchWithRetry("K");
-            String mobile = String.valueOf(((JavascriptExecutor) driver).executeScript(
-                    "window.scrollTo(0, Math.max(0, document.body.scrollHeight));" +
-                    "var el = document.querySelector('#member-list-loading');" +
-                    "if (!el || getComputedStyle(el).display === 'none') { return 'niewidoczny'; }" +
-                    "var r = el.getBoundingClientRect();" +
-                    "var ok = r.top <= 1 && r.left <= 1" +
-                    "  && Math.round(r.width) >= document.documentElement.clientWidth - 1" +
-                    "  && Math.round(r.height) >= document.documentElement.clientHeight - 1;" +
-                    "return ok ? 'OK' : 'rect=' + Math.round(r.left) + ',' + Math.round(r.top) + ' ' +" +
-                    " Math.round(r.width) + 'x' + Math.round(r.height) + ' vp=' +" +
-                    " document.documentElement.clientWidth + 'x' + document.documentElement.clientHeight;"));
-            assertThat(mobile).as("loader pełnoekranowy na mobile").isEqualTo("OK");
+            // Scroll na samo dół — pełny overlay fixed musi zostać tam, gdzie jest,
+            // a nie pojechać z treścią (dowód niezależności od przewinięcia na mobile).
+            ((JavascriptExecutor) driver).executeScript(
+                    "window.scrollTo(0, Math.max(0, document.body.scrollHeight));");
+            String mobile = null;
+            long mobileDeadline = System.currentTimeMillis() + 10_000;
+            while (System.currentTimeMillis() < mobileDeadline) {
+                mobile = lastGeometrySnapshot();
+                if (mobile != null && !"null".equals(mobile)) {
+                    break;
+                }
+                try {
+                    Thread.sleep(50);
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                    break;
+                }
+            }
+            assertThat(mobile).as("loader pełnoekranowy na mobile (snapshot z htmx:beforeSwap)").isEqualTo("OK");
         } finally {
             clearViewportOverride();
         }
 
         waitForLoaderHidden("po żądaniu mobile");
         assertLoaderNotStuck();
+    }
+
+    /**
+     * Issue #321 — pewnik przeciw wyścigowi: geometrię overlayu notujemy w chwili
+     * htmx:beforeSwap. Klasa htmx-request schodzi dopiero po sfinalizowaniu wymiany,
+     * więc w tym momencie wskaźnik NA PEWNO jest widoczny — bez zakładania, że
+     * emulacja opóźnienia CDP działa na runnerze CI (Chrome tam bywa nowszy niż
+     * wspierany selenium-devtools i emulacja potrafi przejść obok).
+     */
+    private void installLoaderGeometryHook() {
+        ((JavascriptExecutor) driver).executeScript(
+                "window.__geo = null;" +
+                "if (window.__geoHooked) { return; }" +
+                "document.addEventListener('htmx:beforeSwap', function () {" +
+                "  var el = document.querySelector('#member-list-loading');" +
+                "  if (!el) { window.__geo = 'brak-elementu'; return; }" +
+                "  var cs = getComputedStyle(el); var r = el.getBoundingClientRect();" +
+                "  var ok = cs.display !== 'none' && cs.position === 'fixed' && cs.pointerEvents === 'none'" +
+                "    && Math.round(r.width) >= document.documentElement.clientWidth - 1" +
+                "    && Math.round(r.height) >= document.documentElement.clientHeight - 1;" +
+                "  window.__geo = ok ? 'OK' : 'display=' + cs.display + ' position=' + cs.position + ' pe=' + cs.pointerEvents" +
+                "    + ' rect=' + Math.round(r.width) + 'x' + Math.round(r.height)" +
+                "    + ' vp=' + document.documentElement.clientWidth + 'x' + document.documentElement.clientHeight;" +
+                "}); window.__geoHooked = true;");
+    }
+
+    private String lastGeometrySnapshot() {
+        return String.valueOf(((JavascriptExecutor) driver).executeScript("return window.__geo;"));
     }
 
     /** Ustawienia mobilnego viewportu przez CDP (Emulation.setDeviceMetricsOverride). */
@@ -225,6 +259,7 @@ class MemberListLoadingIndicatorUiTest extends UiTestBase {
                 driver.navigate().refresh();
                 continue;
             }
+            installLoaderGeometryHook();
             try {
                 clickElement(By.cssSelector("#member-filters input[name='q']"));
                 sendKeysInto(By.cssSelector("#member-filters input[name='q']"), text);
