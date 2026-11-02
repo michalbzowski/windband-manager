@@ -77,11 +77,11 @@ class MemberListLoadingIndicatorUiTest extends UiTestBase {
                 // więc punkt odniesienia to clientWidth/clientHeight, nie innerWidth.
                 "var ok = cs.position === 'fixed' && cs.pointerEvents === 'none'" +
                 "  && Math.round(r.width) >= document.documentElement.clientWidth - 1" +
-                "  && Math.round(r.height) >= window.innerHeight - 1;" +
+                "  && Math.round(r.height) >= document.documentElement.clientHeight - 1;" +
                 "if (ok) { return 'OK'; }" +
                 "return 'position=' + cs.position + ' pe=' + cs.pointerEvents" +
                 "  + ' rect=' + Math.round(r.width) + 'x' + Math.round(r.height)" +
-                "  + ' vp=' + document.documentElement.clientWidth + 'x' + window.innerHeight;"));
+                "  + ' vp=' + document.documentElement.clientWidth + 'x' + document.documentElement.clientHeight;"));
         assertThat(geometry).as("geometria pełnoekranowego overlayu").isEqualTo("OK");
 
         // Gdy żądanie się zamknie, wskaźnik musi zniknąć i lista faktycznie zostać odfiltrowana.
@@ -121,10 +121,10 @@ class MemberListLoadingIndicatorUiTest extends UiTestBase {
                     "var r = el.getBoundingClientRect();" +
                     "var ok = r.top <= 1 && r.left <= 1" +
                     "  && Math.round(r.width) >= document.documentElement.clientWidth - 1" +
-                    "  && Math.round(r.height) >= window.innerHeight - 1;" +
+                    "  && Math.round(r.height) >= document.documentElement.clientHeight - 1;" +
                     "return ok ? 'OK' : 'rect=' + Math.round(r.left) + ',' + Math.round(r.top) + ' ' +" +
                     " Math.round(r.width) + 'x' + Math.round(r.height) + ' vp=' +" +
-                    " document.documentElement.clientWidth + 'x' + window.innerHeight;"));
+                    " document.documentElement.clientWidth + 'x' + document.documentElement.clientHeight;"));
             assertThat(mobile).as("loader pełnoekranowy na mobile").isEqualTo("OK");
         } finally {
             clearViewportOverride();

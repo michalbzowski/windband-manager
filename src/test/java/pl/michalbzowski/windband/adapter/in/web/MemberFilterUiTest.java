@@ -2,6 +2,7 @@ package pl.michalbzowski.windband.adapter.in.web;
 
 import org.junit.jupiter.api.Test;
 import org.openqa.selenium.By;
+import org.openqa.selenium.JavascriptExecutor;
 import org.openqa.selenium.StaleElementReferenceException;
 import org.openqa.selenium.WebElement;
 import org.openqa.selenium.support.ui.Select;
@@ -46,7 +47,18 @@ class MemberFilterUiTest extends UiTestBase {
         withRetries(() -> searchField().sendKeys("Kowalska"));
         wait.until(d -> seededNames().size() == 1);
         assertThat(seededNames()).containsExactly("Anna Kowalska " + marker);
-        assertThat(driver.findElement(By.cssSelector(".member-filters-count")).getText())
+        // Licznik jedzie teraz blokiem hx-swap-oob i potrafi osiąść tick po rejonie listy —
+        // czytamy go z żywych węzłów w pętli, aż pokaże stan po filtrze. textContent ma
+        // w sobie nowe linie z szablonu, więc biel normalizujemy przed porównaniem.
+        String countText = wait.until(d -> {
+            Object t = ((JavascriptExecutor) d).executeScript(
+                    "var e = document.querySelector('.member-filters-count');" +
+                    "if (!e) { return null; }" +
+                    "return e.textContent.replace(/\\s+/g, ' ').trim();");
+            String txt = t == null ? null : t.toString();
+            return txt != null && txt.startsWith("1 z ") ? txt : null;
+        });
+        assertThat(countText)
                 .as("the strip shows how much of the list the filter cut away")
                 .contains("1 z ");
 
@@ -98,8 +110,9 @@ class MemberFilterUiTest extends UiTestBase {
     }
 
     /**
-     * HTMX podmienia pasek filtrów razem z tabelą, więc element wskazany chwilę wcześniej zdąży
-     * stać się nieaktualny, zanim dotrą do niego klawisze. W takim przypadku szukamy go od nowa.
+     * HTMX podmienia rejon listy, a licznik i segment — blokami OOB; element wskazany
+     * chwilę wcześniej zdąży stać się nieaktualny, zanim dotrą do niego klawisze.
+     * W takim przypadku szukamy go od nowa.
      */
     private <T> T withRetries(java.util.function.Supplier<T> action) {
         for (int attempt = 0; attempt < 4; attempt++) {
