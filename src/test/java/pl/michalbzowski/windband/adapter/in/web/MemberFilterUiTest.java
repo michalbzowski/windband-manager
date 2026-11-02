@@ -47,18 +47,22 @@ class MemberFilterUiTest extends UiTestBase {
         withRetries(() -> searchField().sendKeys("Kowalska"));
         wait.until(d -> seededNames().size() == 1);
         assertThat(seededNames()).containsExactly("Anna Kowalska " + marker);
-        // Licznik jedzie teraz blokiem hx-swap-oob i potrafi osiąść tick po rejonie listy —
-        // czytamy go z żywych węzłów w pętli, aż pokaże stan po filtrze. textContent ma
-        // w sobie nowe linie z szablonu, więc biel normalizujemy przed porównaniem.
+        // Licznik jedzie blokiem hx-swap-oob i osiąga tick po rejonie listy, a w równoległym CI
+        // gra wspólną bazę z innymi klasami (na runnerze bywa „2 z 17”), więc nie wpisujemy
+        // tu sztywnej „1 z”. Inwariant jest lepszy i niezależny od zanieczyszczenia:
+        // pierwsza liczba licznika musi równać się liczbie wierszy pokazanych w rejonie.
         String countText;
         try {
             countText = wait.until(d -> {
                 Object t = ((JavascriptExecutor) d).executeScript(
                         "var e = document.querySelector('.member-filters-count');" +
-                        "if (!e) { return null; }" +
-                        "return e.textContent.replace(/\\s+/g, ' ').trim();");
-                String txt = t == null ? null : t.toString();
-                return txt != null && txt.startsWith("1 z ") ? txt : null;
+                        "var r = document.getElementById('member-list-region');" +
+                        "if (!e || !r) { return null; }" +
+                        "var txt = e.textContent.replace(/\\s+/g, ' ').trim();" +
+                        "var shown = parseInt(txt, 10);" +
+                        "var rows = r.querySelectorAll('tbody tr').length;" +
+                        "return txt.indexOf(' z ') > 0 && shown === rows ? txt : null;");
+                return t == null ? null : t.toString();
             });
         } catch (org.openqa.selenium.TimeoutException gone) {
             // Diagnoza na czerwono: stan wrappera OOB, rejonu, wersji htmx oraz SUROWA
@@ -76,11 +80,11 @@ class MemberFilterUiTest extends UiTestBase {
                     "  + ' | htmx=' + (window.htmx ? htmx.version : 'brak')" +
                     "  + ' | status=' + xhr.status" +
                     "  + ' | resp=' + (xhr.responseText || '').replace(/\\s+/g, ' ').slice(0, 500);");
-            throw new AssertionError("Licznik nie pokazał '1 z ...'. Diagnoza: " + diag, gone);
+            throw new AssertionError("Licznik nigdy nie zrównał się z widocznymi wierszami. Diagnoza: " + diag, gone);
         }
         assertThat(countText)
                 .as("the strip shows how much of the list the filter cut away")
-                .contains("1 z ");
+                .matches("\\d+ z \\d+");
 
         // 2) section dropdown — cleaned with real keys, the way a person backspaces a typo
         clearSearch();

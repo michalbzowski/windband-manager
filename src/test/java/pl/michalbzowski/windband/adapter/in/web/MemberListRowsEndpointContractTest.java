@@ -1,5 +1,6 @@
 package pl.michalbzowski.windband.adapter.in.web;
 
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
@@ -36,9 +37,26 @@ class MemberListRowsEndpointContractTest {
     @Autowired
     private JdbcTemplate jdbcTemplate;
 
+    private String ownUid;
+
+    /**
+     * Test nie dziedziczy UiTestBase, więc sam sprząta swoje wiersze — w równoległym CI
+     * zanieczyszczenie liczników innych klas to gotowy przepis na flaka.
+     */
+    @AfterEach
+    void cleanUpOwnRows() {
+        if (ownUid != null) {
+            jdbcTemplate.update("DELETE FROM member_instruments WHERE member_id IN " +
+                    "(SELECT id FROM members WHERE first_name = ?)", "Rowsonly" + ownUid);
+            jdbcTemplate.update("DELETE FROM members WHERE first_name = ?", "Rowsonly" + ownUid);
+            ownUid = null;
+        }
+    }
+
     @Test
     void rowsEndpoint_returnsOnlyRegionAndOobState_neverTheFilterForm() throws Exception {
-        String uid = UUID.randomUUID().toString().substring(0, 8);
+        ownUid = UUID.randomUUID().toString().substring(0, 8);
+        String uid = ownUid;
         jdbcTemplate.update(
                 "INSERT INTO members (first_name, last_name, date_of_birth, active, joined_date, email_consent_given, band_id) " +
                 "VALUES (?, ?, '1990-01-01', true, CURRENT_DATE, true, 1)",
