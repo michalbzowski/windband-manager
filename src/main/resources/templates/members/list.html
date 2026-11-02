@@ -375,6 +375,91 @@
         })();
         </script>
 
+        <script type="text/javascript">
+        // Mobile: po podmianie #member-list-region krótszą treścią przeglądarka dociska
+        // przewinięcie do nowego końca strony (a inne mechanizmy po swapie — scrollIntoView
+        // z animacją smooth, poprawka visual-viewport pod klawiaturę — ruszają nim jeszcze
+        // później), więc użytkownik traci miejsce względem filtra: "widok przewija się na dół
+        // i filtr znika spod oczu". Kontrakt: po wymianie listy widok zostaje tam, gdzie był
+        // w chwili wysłania żądania — nieprzesunięty filtr nadal mieści się w polu widzenia.
+        // Kotwica obejmuje WYŁĄCZNIE żądania do #member-list-region (szukajka + sekcja + segment),
+        // nie rusza świadomego przewinięcia do zapisanego członka po pełnym przeładowaniu strony.
+        (function () {
+            'use strict';
+
+            if (!window.__memberListScrollAnchor) {
+                window.__memberListScrollAnchor = true;
+                var savedY = null;
+
+                document.addEventListener('htmx:configRequest', function (evt) {
+                    var detail = evt.detail || {};
+                    if (detail.target && detail.target.id === 'member-list-region') {
+                        // iOS potrafi raportować ujemne scrollY po "gumce" — obcinamy.
+                        savedY = Math.max(0, window.scrollY || 0);
+                    }
+                });
+
+                function clampToPage(y) {
+                    var page = document.documentElement;
+                    var max = Math.max(0, (page.scrollHeight || 0) - window.innerHeight);
+                    // Zapisana pozycja nie mieści się już na krótszej stronie (typowy efekt filtra:
+                    // z N linii do kilku) — lądujemy u GÓRY listy: filtr i początek wyników widoczne.
+                    // Docisk do pageMax to dokładnie zgłoszony objaw „przewinięcie na sam dół".
+                    if (y > max) { return 0; }
+                    return Math.max(0, y);
+                }
+
+                document.addEventListener('htmx:afterSettle', function (evt) {
+                    var target = evt.detail && evt.detail.target;
+                    if (!target || target.id !== 'member-list-region') { return; }
+                    if (savedY == null) { return; }
+                    var y = savedY;
+                    savedY = null;
+
+                    // Ochrona do 3 s po wymianie (scenariusz potwierdzony testem):
+                    // w dalszym ciągu może działać animacja smooth-scrolla z zapisu/edycji
+                    // osoby, na której użytkownik zaczął filtrować — duration Chrome rośnie
+                    // wraz z dystansem przewinięcia (kilkanaście ms/px), więc okno musi ją
+                    // pokrywać. W każdej klatce: anulowanie animacji dokumentu + przywrócenie
+                    // pozycji; okna kończy też 5 kolejnych stabilnych klatek — nigdy nie
+                    // blokuje świadomego przewijania później. Każde przypięcie przelicza
+                    // clamp na BIEŻĄCE wymiary strony (rejon po wymianie bywa krótszy).
+                    function killScrollAnimations() {
+                        try {
+                            if (document.getAnimations) {
+                                document.getAnimations().forEach(function (a) {
+                                    try { a.cancel(); } catch (err) { /* animacja już zakończona */ }
+                                });
+                            }
+                        } catch (err) {
+                            // środowisko bez WAAPI — sama pętla RAF poniżej nadal broni pozycji
+                        }
+                    }
+                    function pinNow() {
+                        killScrollAnimations();
+                        try { window.scrollTo(0, clampToPage(y)); } catch (err) { /* np. ukryty tab */ }
+                    }
+                    var settleAt = Date.now();
+                    var stableCount = 0;
+                    function frame() {
+                        if (Date.now() - settleAt > 3000) { return; }  // okno ochronne: do 3 s
+                        var cur = Math.max(0, window.scrollY || 0);
+                        if (Math.abs(cur - y) > 1) {
+                            pinNow();
+                            stableCount = 0;
+                        } else if (++stableCount >= 5) {
+                            return;                                      // widok spokojny — odpuśćmy
+                        }
+                        requestAnimationFrame(frame);
+                    }
+                    pinNow();
+                    setTimeout(pinNow, 300);   // spóźnionego sprawcę łapiemy też w środku okna
+                    frame();
+                });
+            }
+        })();
+        </script>
+
         <!-- Add keyboard shortcut for toggling -->
         <script type="text/javascript">
         document.addEventListener('keydown', function(e) {
