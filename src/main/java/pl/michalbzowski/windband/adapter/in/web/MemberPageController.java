@@ -37,6 +37,45 @@ public class MemberPageController {
                            @RequestParam(required = false) Long focus,
                            @RequestParam(required = false) String q,
                            @RequestParam(required = false) String instrument) {
+        populateMemberList(activeTeamId, showInactive, focus, q, instrument, model);
+        return "members/list";
+    }
+
+    @GetMapping("/list")
+    public String listFragment(@ModelAttribute("activeTeamId") Long activeTeamId,
+                               @RequestParam(required = false) Boolean showInactive,
+                               @RequestParam(required = false) Long focus,
+                               @RequestParam(required = false) String q,
+                               @RequestParam(required = false) String instrument,
+                               Model model) {
+        populateMemberList(activeTeamId, showInactive, focus, q, instrument, model);
+        return "members/list :: #members-content";
+    }
+
+    /**
+     * Issue #321 — wiersze listy bez paska filtrów. Przełączanie wyników szukania nie może
+     * podmieniać inputu: odpowiedź serwera nosi stare {@code q} i nadpisywała znaki wpisane
+     * w trakcie trwającego żądania (litera „znikała"). Ten endpoint zwraca wyłącznie rejon
+     * listy; stan segmentu Aktywni/Nieaktywni i licznik „x z y" docierają jako bloki
+     * hx-swap-oob w tej same odpowiedzi, więc pasek filtrów żyje własnym życiem w DOM.
+     */
+    @GetMapping("/list/rows")
+    public String listRows(@ModelAttribute("activeTeamId") Long activeTeamId,
+                           @RequestParam(required = false) Boolean showInactive,
+                           @RequestParam(required = false) Long focus,
+                           @RequestParam(required = false) String q,
+                           @RequestParam(required = false) String instrument,
+                           Model model) {
+        // focus przechodzi dalej: przełącznik segmentu nie może zgubić podświetlenia
+        // wskazanego członka (Issue #117) — tak jak w pełnym fragmencie.
+        populateMemberList(activeTeamId, showInactive, focus, q, instrument, model);
+        model.addAttribute("partialRows", true);
+        return "members/list :: #member-list-region";
+    }
+
+    /** Wspólny model widoku listy: pełna strona, pełny fragment i same wiersze używają tych samych atrybutów. */
+    private void populateMemberList(Long activeTeamId, Boolean showInactive, Long focus,
+                                    String q, String instrument, Model model) {
         boolean showingInactiveMembers = Boolean.TRUE.equals(showInactive);
 
         List<MemberDto> members;
@@ -62,41 +101,6 @@ public class MemberPageController {
         model.addAttribute("availableInstruments", distinctInstruments(allMembers));
         model.addAttribute("allMembersCount", allMembers.size());
         model.addAttribute("today", LocalDate.now());
-        return "members/list";
-    }
-
-    @GetMapping("/list")
-    public String listFragment(@ModelAttribute("activeTeamId") Long activeTeamId,
-                               @RequestParam(required = false) Boolean showInactive,
-                               @RequestParam(required = false) Long focus,
-                               @RequestParam(required = false) String q,
-                               @RequestParam(required = false) String instrument,
-                               Model model) {
-        boolean showingInactiveMembers = Boolean.TRUE.equals(showInactive);
-
-        List<MemberDto> members;
-        long inactiveCount = memberQueryService.getInactiveMemberCount(activeTeamId);
-
-        if (showingInactiveMembers) {
-            members = memberQueryService.getAllInactiveMembers(activeTeamId);
-        } else {
-            members = memberQueryService.getAllActiveMembers(activeTeamId);
-        }
-        List<MemberDto> allMembers = members;
-        members = filterMembers(members, q, instrument);
-
-        model.addAttribute("members", members);
-        model.addAttribute("showingInactiveMembers", showingInactiveMembers);
-        model.addAttribute("activeCount", memberQueryService.getActiveMemberCount(activeTeamId));
-        model.addAttribute("inactiveCount", inactiveCount);
-        model.addAttribute("activeTeamId", activeTeamId);
-        model.addAttribute("focusMemberId", focus);
-        model.addAttribute("query", q);
-        model.addAttribute("instrumentFilter", instrument);
-        model.addAttribute("availableInstruments", distinctInstruments(allMembers));
-        model.addAttribute("allMembersCount", allMembers.size());
-        model.addAttribute("today", LocalDate.now());
-        return "members/list :: #members-content";
     }
 
     /**

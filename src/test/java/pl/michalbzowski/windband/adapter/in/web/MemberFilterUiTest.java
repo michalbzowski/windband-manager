@@ -2,6 +2,7 @@ package pl.michalbzowski.windband.adapter.in.web;
 
 import org.junit.jupiter.api.Test;
 import org.openqa.selenium.By;
+import org.openqa.selenium.JavascriptExecutor;
 import org.openqa.selenium.StaleElementReferenceException;
 import org.openqa.selenium.WebElement;
 import org.openqa.selenium.support.ui.Select;
@@ -46,9 +47,44 @@ class MemberFilterUiTest extends UiTestBase {
         withRetries(() -> searchField().sendKeys("Kowalska"));
         wait.until(d -> seededNames().size() == 1);
         assertThat(seededNames()).containsExactly("Anna Kowalska " + marker);
-        assertThat(driver.findElement(By.cssSelector(".member-filters-count")).getText())
+        // Licznik jedzie blokiem hx-swap-oob i osiąga tick po rejonie listy, a w równoległym CI
+        // gra wspólną bazę z innymi klasami (na runnerze bywa „2 z 17”), więc nie wpisujemy
+        // tu sztywnej „1 z”. Inwariant jest lepszy i niezależny od zanieczyszczenia:
+        // pierwsza liczba licznika musi równać się liczbie wierszy pokazanych w rejonie.
+        String countText;
+        try {
+            countText = wait.until(d -> {
+                Object t = ((JavascriptExecutor) d).executeScript(
+                        "var e = document.querySelector('.member-filters-count');" +
+                        "var r = document.getElementById('member-list-region');" +
+                        "if (!e || !r) { return null; }" +
+                        "var txt = e.textContent.replace(/\\s+/g, ' ').trim();" +
+                        "var shown = parseInt(txt, 10);" +
+                        "var rows = r.querySelectorAll('tbody tr').length;" +
+                        "return txt.indexOf(' z ') > 0 && shown === rows ? txt : null;");
+                return t == null ? null : t.toString();
+            });
+        } catch (org.openqa.selenium.TimeoutException gone) {
+            // Diagnoza na czerwono: stan wrappera OOB, rejonu, wersji htmx oraz SUROWA
+            // odpowiedź serwera dla bieżącego q — rozstrzyga, czy winny render, swap czy DOM.
+            Object diag = ((JavascriptExecutor) driver).executeScript(
+                    "var w = document.querySelector('#member-filters-status');" +
+                    "var r = document.getElementById('member-list-region');" +
+                    "var q = document.querySelector('#member-filters input[name=q]');" +
+                    "var xhr = new XMLHttpRequest();" +
+                    "xhr.open('GET', '/members/list/rows?q=' + encodeURIComponent(q ? q.value : ''), false);" +
+                    "xhr.send();" +
+                    "return 'wrapper=' + (w ? w.outerHTML.replace(/\\s+/g, ' ').slice(0, 320) : 'BRAK')" +
+                    "  + ' | rows=' + (r ? r.querySelectorAll('tbody tr').length : 'brak rejonu')" +
+                    "  + ' | q=' + (q ? q.value : 'brak')" +
+                    "  + ' | htmx=' + (window.htmx ? htmx.version : 'brak')" +
+                    "  + ' | status=' + xhr.status" +
+                    "  + ' | resp=' + (xhr.responseText || '').replace(/\\s+/g, ' ').slice(0, 500);");
+            throw new AssertionError("Licznik nigdy nie zrównał się z widocznymi wierszami. Diagnoza: " + diag, gone);
+        }
+        assertThat(countText)
                 .as("the strip shows how much of the list the filter cut away")
-                .contains("1 z ");
+                .matches("\\d+ z \\d+");
 
         // 2) section dropdown — cleaned with real keys, the way a person backspaces a typo
         clearSearch();
@@ -98,8 +134,9 @@ class MemberFilterUiTest extends UiTestBase {
     }
 
     /**
-     * HTMX podmienia pasek filtrów razem z tabelą, więc element wskazany chwilę wcześniej zdąży
-     * stać się nieaktualny, zanim dotrą do niego klawisze. W takim przypadku szukamy go od nowa.
+     * HTMX podmienia rejon listy, a licznik i segment — blokami OOB; element wskazany
+     * chwilę wcześniej zdąży stać się nieaktualny, zanim dotrą do niego klawisze.
+     * W takim przypadku szukamy go od nowa.
      */
     private <T> T withRetries(java.util.function.Supplier<T> action) {
         for (int attempt = 0; attempt < 4; attempt++) {

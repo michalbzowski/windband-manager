@@ -49,7 +49,7 @@ class MemberShowInactiveToggleUiTest extends UiTestBase {
 
         // 1) The swap must actually happen — before the fix the request 500'd and nothing updated.
         wait.until(d -> "true".equals(((JavascriptExecutor) d).executeScript(
-                "return document.getElementById('members-content').getAttribute('data-show-inactive');")));
+                "return document.getElementById('member-list-region').getAttribute('data-show-inactive');")));
 
         // 2) The newly-shown list must contain the seeded inactive member.
         //    Re-query fresh on every poll: the HTMX swap replaces #members-content, invalidating stale references.
@@ -65,6 +65,6 @@ class MemberShowInactiveToggleUiTest extends UiTestBase {
         // 3) Toggle back and verify the round trip keeps working (state machine, both directions).
         driver.findElement(By.id("toggleMembersBtn")).click();
         wait.until(d -> "false".equals(((org.openqa.selenium.JavascriptExecutor) d).executeScript(
-                "return document.getElementById('members-content').getAttribute('data-show-inactive');")));
+                "return document.getElementById('member-list-region').getAttribute('data-show-inactive');")));
     }
 }
