@@ -660,12 +660,19 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     // Refresh just the #rehearsals-content fragment (single invite already applied;
-    // the server re-renders the attendance table + filters). The dedicated
-    // /{id}/list endpoint renders exactly this fragment, so we reuse it instead of
-    // a full /rehearsals/{id} page swap — same DOM contract, lighter request.
+    // the server re-renders the attendance table + counters). GET /rehearsals/{id}
+    // answers an HX-Request with the `rehearsals/detail :: #rehearsals-content`
+    // fragment (see RehearsalPageController#rehearsalDetail), which is exactly the
+    // node we swap here — the same route the quick-attendance save already uses.
+    //
+    // BUG FIX (issue #272): this used to call `/rehearsals/{id}/list`. That route
+    // does not exist (only the collection-level `/rehearsals/list` does), so the
+    // request 404-ed, HTMX swapped nothing and the invited person + the
+    // #attendance-response-filter-container counters stayed stale until a manual
+    // full-page reload.
     function refreshContent(id) {
         if (typeof htmx !== 'undefined') {
-            htmx.ajax('GET', '/rehearsals/' + id + '/list', { target: '#rehearsals-content', swap: 'innerHTML transition:true' });
+            htmx.ajax('GET', '/rehearsals/' + id, { target: '#rehearsals-content', swap: 'innerHTML transition:true' });
         }
     }
 
