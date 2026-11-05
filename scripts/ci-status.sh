@@ -16,7 +16,7 @@ fi
 BR="${1:-$(git branch --show-current 2>/dev/null || echo main)}"
 echo "== ostatnie runy: $BR =="
 gh run list --branch "$BR" --limit 5 \
-  --json status,conclusion,event,displayTitle,createdAt,htmlUrl
+  --json status,conclusion,event,displayTitle,createdAt,url
 echo "== main (ostatnie 3) =="
 gh run list --branch main --limit 3 \
-  --json status,conclusion,event,headSha,createdAt,htmlUrl
+  --json status,conclusion,event,headSha,createdAt,url
