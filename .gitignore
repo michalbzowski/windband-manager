@@ -20,3 +20,9 @@ themes/bandmanager/target/
 
 # --- Editor/tooling backup files ---
 *.bak
+
+# --- PIT mutation-testing history (scripts/mutation-check.sh, CI job 'pit') ---
+/.pitest/
+
+# --- private notes not related to the app (kept out of git; pre-push ?? gate) ---
+/dom-marzen-plan/
