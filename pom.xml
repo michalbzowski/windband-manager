@@ -425,4 +425,63 @@
 
         </plugins>
     </build>
+
+    <profiles>
+        <!--
+            PIT — mutation testing (Thoughtworks Tech Radar Vol.35 #2, ring Adopt).
+            Straze testow generowanych przez agenty AI: mutant, ktory przezywa,
+            to test przechodzacy bez sprawdzania logiki (fake coverage).
+
+            Run:  ./mvnw -B -Ppit test-compile org.pitest:pitest-maven:mutationCoverage
+            Fast scope (zalecane lokalnie i w CI):
+              -Dpit.target.classes='pl.michalbzowski.windband.domain.member.*'
+            Progi/scopes sa przelaczane przez wlasciwosci ponizej — NIE edytuj configu.
+            see scripts/mutation-check.sh + .github/workflows/ci.yml (job 'pit').
+        -->
+        <profile>
+            <id>pit</id>
+            <properties>
+                <!-- Business core only: no adapters/web/Selenium, no infrastructure boot. -->
+                <pit.target.classes>pl.michalbzowski.windband.domain.*,pl.michalbzowski.windband.application.*,pl.michalbzowski.windband.util.*</pit.target.classes>
+                <!-- Only *Test unit tests; exclude webui (Selenium/UiTestBase) and the Jasper compile test. -->
+                <pit.target.tests>pl.michalbzowski.windband.*Test,!pl.michalbzowski.windband.webui.*Test,!pl.michalbzowski.windband.application.report.ReportCompilationTest</pit.target.tests>
+                <!-- Mutation score gate. Wartosc tymczasowa (baseline 2026-11: do
+                     potwierdzenia po pierwszym pelnym zielonym runie CI) — podnosic
+                     o +5, gdy job bedzie przechodzil stabilnie, nigdy nie schodzic. -->
+                <pit.mutation.threshold>50</pit.mutation.threshold>
+            </properties>
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>org.pitest</groupId>
+                        <artifactId>pitest-maven</artifactId>
+                        <version>1.19.1</version>
+                        <dependencies>
+                            <dependency>
+                                <groupId>org.pitest</groupId>
+                                <artifactId>pitest-junit5-plugin</artifactId>
+                                <version>1.2.2</version>
+                            </dependency>
+                        </dependencies>
+                        <configuration>
+                            <!-- WITHOUT <param>: Plexus dzieli string po przecinkach na List<String> -->
+                            <targetClasses>${pit.target.classes}</targetClasses>
+                            <targetTests>${pit.target.tests}</targetTests>
+                            <!-- incremental analysis: repeat runs re-mutate only changed classes -->
+                            <withHistory>true</withHistory>
+                            <historyInputFile>${project.basedir}/.pitest/history.bin</historyInputFile>
+                            <historyOutputFile>${project.basedir}/.pitest/history.bin</historyOutputFile>
+                            <mutationThreshold>${pit.mutation.threshold}</mutationThreshold>
+                            <!-- narrow CI scopes (1 package) can legally yield no mutations -->
+                            <failWhenNoMutations>false</failWhenNoMutations>
+                            <outputFormats>
+                                <outputFormat>HTML</outputFormat>
+                                <outputFormat>XML</outputFormat>
+                            </outputFormats>
+                        </configuration>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
+    </profiles>
 </project>
