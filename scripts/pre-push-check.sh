@@ -36,16 +36,17 @@ if [ -n "$OTHER_UNTRACKED" ]; then
   printf '%s\n' "$OTHER_UNTRACKED"
 fi
 
-# --- 2) stamp agent-verify = HEAD ---
+# --- 2) stamp agent-verify: drzewo commita == drzewo zweryfikowane ---
 STAMP="$GITDIR/HERMES_VERIFY_STAMP"
-STAMP_SHA=""
-[ -f "$STAMP" ] && STAMP_SHA="$(grep '^sha=' "$STAMP" | cut -d= -f2)"
-if [ "$STAMP_SHA" = "$HEAD_SHA" ]; then
-  echo "OK(2): agent-verify potwierdzony dla $(git rev-parse --short HEAD)"
+STAMP_TREE=""
+[ -f "$STAMP" ] && STAMP_TREE="$(grep '^tree=' "$STAMP" | cut -d= -f2)"
+HEAD_TREE="$(git rev-parse "HEAD^{tree}")"
+if [ -n "$STAMP_TREE" ] && [ "$STAMP_TREE" = "$HEAD_TREE" ]; then
+  echo "OK(2): drzewo HEAD identyczne z drzewem przejdzym agent-verify (tree ${HEAD_TREE:0:8})"
 elif [ "${VERIFY_OVERRIDE:-}" = "1" ]; then
   echo "OVERRIDE(2): VERIFY_OVERRIDE=1 — powod: ${OVERRIDE_REASON:-PODaj OVERRIDE_REASON!}"
 else
-  echo "BLOKADA(2): brak aktualnego stampu agent-verify dla HEAD. Uruchom scripts/agent-verify.sh."
+  echo "BLOKADA(2): drzewo HEAD (${HEAD_TREE:0:8}) != drzewo ze stampu (${STAMP_TREE:0:8:-8}). Rebase/nowe zmiany = wymuszony ponowny scripts/agent-verify.sh."
   FAIL=1
 fi
 
