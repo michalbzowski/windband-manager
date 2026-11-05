@@ -136,6 +136,36 @@
         });
     }
 
+    // Pentest P1 (A01): CsrfFilter akceptuje token w parametrze _csrf lub w nagłówku
+    // X-XSRF-TOKEN (repozytorium CSRF zapisuje go w czytelnej cookie XSRF-TOKEN).
+    // Fetch z POST-em BEZ tego nagłówka jest odrzucany, a accessDeniedHandler
+    // przekierowuje do HTML-owej strony — tak w przeglądarce powstawał błąd:
+    //   Unexpected token '<', "&lt;!DOCTYPE html..." is not valid JSON.
+
+    function csrfHeaders(extra) {
+        var h = extra || {};
+        var part = null;
+        document.cookie.split(';').forEach(function (c) {
+            c = String(c).trim();
+            if (c.indexOf('XSRF-TOKEN=') === 0) { part = c.substring('XSRF-TOKEN='.length); }
+        });
+        if (part) { h['X-XSRF-TOKEN'] = decodeURIComponent(part); }
+        return h;
+    }
+
+    // Błąd serwera w GlobalExceptionHandler leży w polu "error" (nie "message"), a strona
+    // błędowa bywa wręcz HTML — parsowanie JSON bez guard-a zrywałoby handler błędu.
+    function jsonOrNull(text) {
+        if (!text) { return null; }
+        try { return JSON.parse(text); } catch (e) { return null; }
+    }
+
+    function httpError(p, status) {
+        var m = p && (p.message || p.error);
+        if (m) { return m + ' (HTTP ' + status + ')'; }
+        return 'HTTP ' + status + ' — odpowiedź serwera nie była JSON (HTML?)';
+    }
+
     // ---- KROK 1: start ------------------------------------------------------
     document.getElementById('nfp-start-form').addEventListener('submit', function (ev) {
         ev.preventDefault();
@@ -148,11 +178,16 @@
 
         var btn = document.getElementById('nfp-start-btn');
         if (btn) { btn.disabled = true; }
-        fetch('/bands/' + bandId + '/compositions/new-from-pdf/start', { method: 'POST', body: fd })
+        fetch('/bands/' + bandId + '/compositions/new-from-pdf/start', {
+            method: 'POST',
+            body: fd,
+            headers: csrfHeaders()
+        })
             .then(function (resp) {
-                return resp.json().then(function (p) {
-                    if (!resp.ok) { throw new Error((p && p.message) || ('HTTP ' + resp.status)); }
-                    return p;
+                return resp.text().then(function (text) {
+                    var p = jsonOrNull(text);
+                    if (!resp.ok) { throw new Error(httpError(p, resp.status)); }
+                    return p || {};
                 });
             })
             .then(function (result) {
@@ -294,7 +329,7 @@
         if (btn) { btn.disabled = true; btn.textContent = 'Tworzenie…'; }
         fetch('/bands/' + bandId + '/compositions/new-from-pdf/confirm', {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: csrfHeaders({ 'Content-Type': 'application/json' }),
             body: JSON.stringify({
                 compositionId: compositionId,
                 title: document.getElementById('nfp-work-title').value.trim() || null,
