@@ -443,8 +443,10 @@
             <properties>
                 <!-- Business core only: no adapters/web/Selenium, no infrastructure boot. -->
                 <pit.target.classes>pl.michalbzowski.windband.domain.*,pl.michalbzowski.windband.application.*,pl.michalbzowski.windband.util.*</pit.target.classes>
-                <!-- Only *Test unit tests; exclude webui (Selenium/UiTestBase) and the Jasper compile test. -->
-                <pit.target.tests>pl.michalbzowski.windband.*Test,!pl.michalbzowski.windband.webui.*Test,!pl.michalbzowski.windband.application.report.ReportCompilationTest</pit.target.tests>
+                <!-- Unit tests only. Selenium lives in webui.* AND adapter.in.web
+                     (92 classes extends UiTestBase — one named *RegressionTest);
+                     UI in coverage = minutes + flake noise, and it mutates nothing. -->
+                <pit.target.tests>pl.michalbzowski.windband.*Test,!pl.michalbzowski.windband.webui.*Test,!pl.michalbzowski.windband.adapter.in.web.*UiTest,!pl.michalbzowski.windband.adapter.in.web.UserInfoDisplayRegressionTest,!pl.michalbzowski.windband.application.report.ReportCompilationTest</pit.target.tests>
                 <!-- Mutation score gate. Wartosc tymczasowa (baseline 2026-11: do
                      potwierdzenia po pierwszym pelnym zielonym runie CI) — podnosic
                      o +5, gdy job bedzie przechodzil stabilnie, nigdy nie schodzic. -->

@@ -25,7 +25,7 @@ public final class ByteSizeFormatter {
     /**
      * Render {@code bytes} human-readable: "512 B" below 1 KiB, otherwise the largest unit where the
      * value is at least 1 with one decimal place (trailing ".0" trimmed) — e.g. "15.3 KB", "2 MB", "9 GB".
-     * Negative or null-ish inputs fall back to "—" so a bad seed never throws in the template.
+     * Zero and negative inputs fall back to "0 B" so a bad seed never throws in the template.
      */
     public static String human(long bytes) {
         if (bytes <= 0) {
