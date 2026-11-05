@@ -46,7 +46,7 @@ if [ -n "$STAMP_TREE" ] && [ "$STAMP_TREE" = "$HEAD_TREE" ]; then
 elif [ "${VERIFY_OVERRIDE:-}" = "1" ]; then
   echo "OVERRIDE(2): VERIFY_OVERRIDE=1 — powod: ${OVERRIDE_REASON:-PODaj OVERRIDE_REASON!}"
 else
-  echo "BLOKADA(2): drzewo HEAD (${HEAD_TREE:0:8}) != drzewo ze stampu (${STAMP_TREE:0:8:-8}). Rebase/nowe zmiany = wymuszony ponowny scripts/agent-verify.sh."
+  echo "BLOKADA(2): drzewo HEAD (${HEAD_TREE:0:8}) != drzewo ze stampu (${STAMP_TREE:0:8}). Rebase/nowe zmiany = wymuszony ponowny scripts/agent-verify.sh."
   FAIL=1
 fi
 
