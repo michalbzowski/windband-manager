@@ -29,7 +29,6 @@
                             <th>Nazwa</th>
                             <th>Data</th>
                             <th>Miejsce</th>
-                            <th>Typ</th>
                             <th>Potwierdzenia</th>
                             <th>Akcje</th>
                         </tr>
@@ -39,7 +38,6 @@
                             <td data-label="Nazwa" th:text="${e.name}">Koncert</td>
                             <td data-label="Data" th:text="${e.date}">01.01.2025</td>
                             <td data-label="Miejsce" th:text="${e.location}">Rynek</td>
-                            <td data-label="Typ" th:text="${e.eventType}">CONCERT</td>
                             <td data-label="Potwierdzenia">
                                 <span th:text="${e.confirmedCount} + ' potwierdzonych / ' + ${e.declinedCount} + ' odmownych / ' + ${e.noResponseCount} + ' bez odpowiedzi'">5 potwierdzonych / 2 odmownych / 8 bez odpowiedzi</span>
                             </td>
@@ -60,7 +58,6 @@
                             <th>Nazwa</th>
                             <th>Data</th>
                             <th>Miejsce</th>
-                            <th>Typ</th>
                             <th>Potwierdzenia</th>
                             <th>Akcje</th>
                         </tr>
@@ -73,7 +70,6 @@
                                 <span class="past-badge">Odbyło się</span>
                             </td>
                             <td data-label="Miejsce" th:text="${e.location}">Rynek</td>
-                            <td data-label="Typ" th:text="${e.eventType}">CONCERT</td>
                             <td data-label="Potwierdzenia">
                                 <span th:text="${e.confirmedCount} + ' potwierdzonych / ' + ${e.declinedCount} + ' odmownych / ' + ${e.noResponseCount} + ' bez odpowiedzi'">5 potwierdzonych / 2 odmownych / 8 bez odpowiedzi</span>
                             </td>
