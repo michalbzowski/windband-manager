@@ -443,8 +443,14 @@
             <properties>
                 <!-- Business core only: no adapters/web/Selenium, no infrastructure boot. -->
                 <pit.target.classes>pl.michalbzowski.windband.domain.*,pl.michalbzowski.windband.application.*,pl.michalbzowski.windband.util.*</pit.target.classes>
-                <!-- Only *Test unit tests; exclude webui (Selenium/UiTestBase) and the Jasper compile test. -->
-                <pit.target.tests>pl.michalbzowski.windband.*Test,!pl.michalbzowski.windband.webui.*Test,!pl.michalbzowski.windband.application.report.ReportCompilationTest</pit.target.tests>
+                <!-- Unit tests run in coverage; Selenium never. UI classes live in
+                     webui.* AND adapter.in.web and are cut by <excludedTestClasses>
+                     on the plugin (targetTests has NO negation syntax — '!'/'~' inside
+                     it are dead code; proven by CI run 42000113110 sending 210 classes
+                     and dying on a UI flake with 'Mutation testing requires a green
+                     suite'). ReportCompilationTest stays IN: it is the only coverage
+                     for Jasper report building and mutates nothing flaky. -->
+                <pit.target.tests>pl.michalbzowski.windband.*Test</pit.target.tests>
                 <!-- Mutation score gate. Wartosc tymczasowa (baseline 2026-11: do
                      potwierdzenia po pierwszym pelnym zielonym runie CI) — podnosic
                      o +5, gdy job bedzie przechodzil stabilnie, nigdy nie schodzic. -->
@@ -467,6 +473,17 @@
                             <!-- WITHOUT <param>: Plexus dzieli string po przecinkach na List<String> -->
                             <targetClasses>${pit.target.classes}</targetClasses>
                             <targetTests>${pit.target.tests}</targetTests>
+                            <!-- Selenium NIGDY w coverage PIT: testy UI mieszkaja w webui.*
+                                 ORAZ adapter.in.web (92 klasy extends UiTestBase; wyjatek
+                                 nazewniczy: UserInfoDisplayRegressionTest). targetTests nie
+                                 wspiera negacji — jest dedykowany parametr (plugin.xml
+                                 pitest-maven 1.19.1). CI run 42000113110 udowodnil, ze
+                                 zostawione w coverage wywala flak 'green suite'. -->
+                            <excludedTestClasses>
+                                <param>pl.michalbzowski.windband.webui.*</param>
+                                <param>pl.michalbzowski.windband.adapter.in.web.*UiTest</param>
+                                <param>pl.michalbzowski.windband.adapter.in.web.UserInfoDisplayRegressionTest</param>
+                            </excludedTestClasses>
                             <!-- incremental analysis: repeat runs re-mutate only changed classes -->
                             <withHistory>true</withHistory>
                             <historyInputFile>${project.basedir}/.pitest/history.bin</historyInputFile>

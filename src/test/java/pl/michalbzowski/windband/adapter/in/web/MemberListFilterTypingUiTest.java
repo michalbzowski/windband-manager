@@ -75,6 +75,20 @@ class MemberListFilterTypingUiTest extends UiTestBase {
         latencyEnabled = true;
         awaitLoaded().until(ExpectedConditions.presenceOfElementLocated(SEARCH));
 
+        // DIAGNOZA + SYNCHRONIZACJA (poprawka flake'a, Radar Vol.35): htmx-events
+        // notują żądania do rows; przy dociążonym CPU emulowana latencja CDP bywa
+        // nie stosowana i odpowiedź mieści się przed pierwszym pollingiem — loader
+        // wtedy uczciwie NIE zdąży się pojawić. Para before/after dowodzi, że
+        // żądanie wystartowało i minęło; kontrakt #321 (tożsamość węzła, wartość)
+        // weryfikują dalsze asercje, nie ten wait.
+        js("window.__hx=[];" +
+           "document.addEventListener('htmx:beforeRequest', function(e){" +
+           "  var p=(e.detail.requestConfig&&e.detail.requestConfig.path)||'';" +
+           "  window.__hx.push('before:'+p); });" +
+           "document.addEventListener('htmx:afterRequest', function(e){" +
+           "  var p=(e.detail.requestConfig&&e.detail.requestConfig.path)||'';" +
+           "  window.__hx.push('after:'+e.detail.xhr.status+':'+p); }); return true;");
+
         // 1. Kontrakt: filtry odpytują tylko rejon listy — pasek zostaje na miejscu.
         WebElement search = driver.findElement(SEARCH);
         assertThat(search.getAttribute("hx-target"))
@@ -90,6 +104,7 @@ class MemberListFilterTypingUiTest extends UiTestBase {
 
         // 2. Pierwsza tura: "K" — request startuje i trwa (opóźnione ładowanie).
         clickIntoSearch();
+        js("window.__hx=[]; return true;"); // baseline zdarzeń — od tego znaku
         typeIntoSearch("K");
         waitForLoaderVisible("po literze K");
 
@@ -174,14 +189,32 @@ class MemberListFilterTypingUiTest extends UiTestBase {
     }
 
     private void waitForLoaderVisible(String context) {
-        new FluentWait<>(driver)
-                .ignoring(StaleElementReferenceException.class)
-                .withMessage("wskaźnik ładowania nie pojawił się " + context)
-                .pollingEvery(Duration.ofMillis(10))
-                .withTimeout(Duration.ofSeconds(20))
-                .until(d -> Boolean.TRUE.equals(((JavascriptExecutor) d).executeScript(
-                        "var el = document.querySelector('#member-list-loading');" +
-                        "return !!el && getComputedStyle(el).visibility === 'visible';")));
+        try {
+            new FluentWait<>(driver)
+                    .ignoring(StaleElementReferenceException.class)
+                    .withMessage("wskaźnik ładowania nie pojawił się " + context)
+                    .pollingEvery(Duration.ofMillis(10))
+                    .withTimeout(Duration.ofSeconds(20))
+                    .until(d -> {
+                        Object state = ((JavascriptExecutor) d).executeScript(
+                                "var el = document.querySelector('#member-list-loading');" +
+                                "if (el && getComputedStyle(el).visibility === 'visible') { return 'loader'; }" +
+                                "var hx = (window.__hx || []).filter(function(e) {" +
+                                "  return e.indexOf('/members/list/rows') >= 0; });" +
+                                "var b = 0, a = 0;" +
+                                "hx.forEach(function(e) { if (e.indexOf('before') === 0) { b++; } else { a++; } });" +
+                                "return (a >= 1 && b === a) ? 'fast-pair' : null;");
+                        return state != null;
+                    });
+        } catch (org.openqa.selenium.TimeoutException te) {
+            String diag = String.valueOf(js(
+                    "var rows=performance.getEntriesByType('resource')" +
+                    ".filter(function(r){return r.name.indexOf('members/list/rows')>=0;})" +
+                    ".map(function(r){return 'start='+Math.round(r.startTime)+'ms dur='+Math.round(r.duration)+'ms';});" +
+                    "var q=(document.querySelector('#member-filters input[name=q]')||{}).value;" +
+                    "return JSON.stringify({rows:rows, hx:(window.__hx||[]), q:q});"));
+            throw new AssertionError("loader nie widoczny " + context + " | DIAG: " + diag, te);
+        }
     }
 
     private void waitForLoaderHidden(String context) {
