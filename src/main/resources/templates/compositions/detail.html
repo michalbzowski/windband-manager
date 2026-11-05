@@ -1207,6 +1207,31 @@
         if (moved > 0 && window.Toast) Toast.success('Dodano ' + moved + ' plik(ów) do utworu');
     }
 
+    // Issue #249 — oba selektory (analiza i „Dodaj głos") są renderowane po stronie serwera,
+    // więc plik wgrany w tej samej sesji nie pojawiał się na liście choice'ów aż do
+    // odświeżenia strony. Dodajemy go w chwili, gdy trafia na listę plików.
+    function appendScoreFileOption(dto) {
+        if (!dto || dto.fileId === undefined || dto.fileId === null) return;
+        var name = dto.originalName || 'plik';
+        var pages = (dto.pageCount !== undefined && dto.pageCount !== null) ? dto.pageCount + ' stron' : '—';
+        var pickers = [
+            {id: 'part-score-file-picker', label: name + ' • ' + pages},
+            {id: 'score-file-picker', label: '#' + dto.fileId + ' — ' + name + ' (' + (dto.mimeType || 'application/pdf') + ')'}
+        ];
+        pickers.forEach(function (picker) {
+            var select = document.getElementById(picker.id);
+            if (!select) return;
+            var alreadyThere = Array.prototype.some.call(select.options, function (o) {
+                return o.value === String(dto.fileId);
+            });
+            if (alreadyThere) return;
+            var opt = document.createElement('option');
+            opt.value = dto.fileId;
+            opt.textContent = picker.label;
+            select.appendChild(opt);
+        });
+    }
+
     function appendFileToList(dto) {
         var list = scoreFilesList;
         if (!list) return;
@@ -1290,6 +1315,7 @@
 
         li.appendChild(actions);
         list.insertBefore(li, list.firstChild);
+        appendScoreFileOption(dto);
     }
 
     // ---- Action Buttons -----------------------------------------------------
