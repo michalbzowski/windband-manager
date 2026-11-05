@@ -2,7 +2,7 @@
 
 Ten plik czytają agenci (Codex, Claude Code, Hermes*). Hermes dodatkowo
 ładuje skille `windband-manager-*` — tam jest pełna wiedza proceduralna.
-Tutraj: minimum, którego nie wolno pominąć.
+Tutaj: minimum, którego nie wolno pominąć.
 
 ## Stack i zasady twarde
 - Spring Boot 3.3.x, Java 21, Thymeleaf + htmx, Pico.css; testy: `./mvnw` (nigdy globalny mvn).
@@ -31,8 +31,10 @@ Tutraj: minimum, którego nie wolno pominąć.
 ## PIT (mutacje) — zmiana pakietów biznesowych
 Zmiany w `pl.michalbzowski.windband.{domain,application,util}` przechodzą
 `scripts/mutation-check.sh '<pakiet>.*'` (threshold 50). Przeżyły mutant =
-test nic nie assertuje: napraw test, nie próg. `util.*` ma dług (18%) —
-uzupełnij asercje zanim ruszasz klasy w util bez potrzeby.
+test nic nie assertuje: napraw test, nie próg. Dług `util.*` spłacony w #326
+(17/17 mutantów, `ByteSizeFormatterTest`). Selenium trzymany POZA coverage
+PIT przez `excludedTestClasses` w profilu `pit` — w `targetTests` nie ma
+negacji, `!`/`~` są tam martwym kodem.
 
 ## Grilling + OpenSpec przed większą zmianą
 Większa zmiana (>3 plików produkcyjnych, migracja Flyway, auth/security,
