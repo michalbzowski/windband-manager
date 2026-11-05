@@ -35,7 +35,7 @@ public class MeetingQueryService {
                     "REHEARSAL",
                     r.getId(),
                     "Próba",
-                    "Obecność " + present + "/" + total,
+                    rehearsalSubtitle(r, present, total),
                     r.getDate(),
                     r.getStartTime(),
                     r.getDate().isEqual(today) ? "Dziś" : formatRelativeLabel(r.getDate(), today),
@@ -80,6 +80,20 @@ public class MeetingQueryService {
                 .toList();
     }
 
+    /**
+     * Issue #227 — the "Miejsce" column on /meetings renders this subtitle, so a rehearsal has
+     * to lead with its place. Attendance stays in the same cell (that list has no progress bar,
+     * unlike the dashboard) but never at the cost of hiding where the band is supposed to be.
+     */
+    private static String rehearsalSubtitle(Rehearsal r, long present, long total) {
+        String attendance = "Obecność " + present + "/" + total;
+        String place = r.getLocation();
+        if (place == null || place.isBlank()) {
+            return attendance;
+        }
+        return place.trim() + " · " + attendance;
+    }
+
     public List<UpcomingItemDto> getPastMeetings(Long teamId) {
         LocalDate today = LocalDate.now();
         List<UpcomingItemDto> items = new ArrayList<>();
@@ -93,7 +107,7 @@ public class MeetingQueryService {
                     "REHEARSAL",
                     r.getId(),
                     "Próba",
-                    "Obecność " + present + "/" + total,
+                    rehearsalSubtitle(r, present, total),
                     r.getDate(),
                     r.getStartTime(),
                     formatRelativeLabel(r.getDate(), today),
