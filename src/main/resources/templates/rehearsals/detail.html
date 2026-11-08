@@ -26,10 +26,11 @@
 
         <article>
             <header>
-                <strong th:text="${rehearsal.date}">01.01.2025</strong>
+                <strong th:text="${#temporals.format(rehearsal.date, 'EEEE, d MMMM yyyy', #locale.forLanguageTag('pl'))}">niedziela, 1 stycznia 2025</strong>
                 <span th:text="${rehearsal.startTime} + ' - ' + ${rehearsal.endTime}">18:00 - 20:00</span>
             </header>
-            <p th:if="${rehearsal.location}" th:text="'Miejsce: ' + ${rehearsal.location}">Miejsce: Miejsce spotkania</p>
+            <p th:if="${!#strings.isEmpty(#strings.trim(rehearsal.location ?: ''))}" th:text="'Miejsce: ' + ${rehearsal.location}">Miejsce: Miejsce spotkania</p>
+            <p class="text-muted" th:if="${#strings.isEmpty(#strings.trim(rehearsal.location ?: ''))}">Brak miejsca — uzupełnij je w „Edytuj”.</p>
             <p th:if="${rehearsal.notes}" th:text="${rehearsal.notes}">Notatki</p>
         </article>
 
@@ -40,7 +41,7 @@
              The legacy two-dialog flow (#invite-members-modal + #invite-group-modal)
              was replaced by this host — the modal mounts itself into <body> on open(). -->
         <div class="rehearsal-invite-actions">
-            <button type="button" class="outline" id="open-invite-btn">➕ Zaproś</button>
+            <button type="button" class="outline" id="open-invite-btn"><th:block th:insert="~{fragments/icons :: plus}"/> Zaproś</button>
         </div>
         <div id="unified-invite-host"></div>
 
@@ -50,18 +51,21 @@
     <div id="uber-filter-container">
         <!-- Filter input - sticky on scroll -->
         <div id="attendance-filter-container">
-            <label for="attendance-filter" class="text-muted" style="font-size:0.85rem; margin-bottom:0.25rem; display:block;">Filtruj uczestników (imię, nazwisko, tagi)</label>
-            <input type="text" id="attendance-filter" placeholder="Wpisz imię, nazwisko lub tag..." 
-                   style="width:100%; max-width:400px; padding:0.5rem; border:1px solid var(--pico-muted-border-color); border-radius:4px;">
+            <label for="attendance-filter" class="text-muted uber-filter-label">Filtruj uczestników (imię, nazwisko, tagi)</label>
+            <input type="text" id="attendance-filter" class="uber-filter-input" placeholder="Wpisz imię, nazwisko lub tag...">
         </div>
 
-        <!-- Response status filter - sticky on scroll, below text filter -->
+        <!-- Response status filter - sticky on scroll, below text filter.
+             Chips: SVG icons (policy: no emoji) + visible PL labels + counts.
+             Keyboard: role=button/tabindex + keydown handled in bindRehearsalDetailFilters.
+             Geometry note (ISSUE #119): do NOT add padding/radius here — StickyManager
+             handoff tolerances depend on the current in-flow height. -->
         <div th:if="${not #lists.isEmpty(invitedMembers)}" id="attendance-response-filter-container" role="group" aria-label="Filtruj według statusu obecności">
-            <span class="response-filter-label text-muted" style="font-size:0.75rem; margin-right:0.5rem;">Status:</span>
-            <span class="stat confirmed response-filter-btn" title="Obecny" data-response-filter="PRESENT">✅ <span class="filter-count-present" th:text="${presentCount}">0</span></span>
-            <span class="stat declined response-filter-btn" title="Usprawiedliwiony" data-response-filter="EXCUSED">🕓 <span class="filter-count-excused" th:text="${excusedCount}">0</span></span>
-            <span class="stat declined response-filter-btn" title="Nieobecny" data-response-filter="UNEXCUSED">✕ <span class="filter-count-unexcused" th:text="${unexcusedCount}">0</span></span>
-            <span class="stat no-response response-filter-btn" title="Brak odpowiedzi" data-response-filter="NO_RESPONSE">? <span class="filter-count-no-response" th:text="${noResponseCount}">0</span></span>
+            <span class="response-filter-label text-muted">Status:</span>
+            <span class="stat confirmed response-filter-btn" role="button" tabindex="0" aria-pressed="false" title="Filtruj: obecni" data-response-filter="PRESENT"><th:block th:insert="~{fragments/icons :: check}"/> Obecni <span class="filter-count-present" th:text="${presentCount}">0</span></span>
+            <span class="stat later response-filter-btn" role="button" tabindex="0" aria-pressed="false" title="Filtruj: usprawiedliwieni" data-response-filter="EXCUSED"><th:block th:insert="~{fragments/icons :: clock}"/> Usprawiedliwieni <span class="filter-count-excused" th:text="${excusedCount}">0</span></span>
+            <span class="stat declined response-filter-btn" role="button" tabindex="0" aria-pressed="false" title="Filtruj: nieobecni" data-response-filter="UNEXCUSED"><th:block th:insert="~{fragments/icons :: close}"/> Nieobecni <span class="filter-count-unexcused" th:text="${unexcusedCount}">0</span></span>
+            <span class="stat no-response response-filter-btn" role="button" tabindex="0" aria-pressed="false" title="Filtruj: brak odpowiedzi" data-response-filter="NO_RESPONSE"><th:block th:insert="~{fragments/icons :: question}"/> Brak odp. <span class="filter-count-no-response" th:text="${noResponseCount}">0</span></span>
         </div>
     </div>
 
@@ -85,11 +89,13 @@
                     <td th:text="${m.firstName + ' ' + m.lastName}">Jan Kowalski</td>
                     <td th:text="${m.primaryInstrument}">Trąbka</td>
                     <td>
-                        <select class="status-select" th:attr="data-member-id=${m.id}" th:name="'status_' + ${m.id}" th:id="'status_' + ${m.id}">
-                            <option value="NO_RESPONSE" th:selected="${attendanceMap[m.id] == null or attendanceMap[m.id]?.name() == 'NO_RESPONSE'}">No response</option>
-                            <option value="PRESENT" th:selected="${attendanceMap[m.id]?.name() == 'PRESENT'}">Present</option>
-                            <option value="EXCUSED" th:selected="${attendanceMap[m.id]?.name() == 'EXCUSED'}">Excused</option>
-                            <option value="UNEXCUSED" th:selected="${attendanceMap[m.id]?.name() == 'UNEXCUSED'}">Unexcused</option>
+                        <select class="status-select" th:attr="data-member-id=${m.id}" th:name="'status_' + ${m.id}" th:id="'status_' + ${m.id}"
+                                th:data-current="${attendanceMap[m.id] != null ? attendanceMap[m.id].name() : 'NO_RESPONSE'}"
+                                th:aria-label="${'Status obecności: ' + m.firstName + ' ' + m.lastName}">
+                            <option value="NO_RESPONSE" th:selected="${attendanceMap[m.id] == null or attendanceMap[m.id]?.name() == 'NO_RESPONSE'}">Brak odpowiedzi</option>
+                            <option value="PRESENT" th:selected="${attendanceMap[m.id]?.name() == 'PRESENT'}">Obecny</option>
+                            <option value="EXCUSED" th:selected="${attendanceMap[m.id]?.name() == 'EXCUSED'}">Usprawiedliwiony</option>
+                            <option value="UNEXCUSED" th:selected="${attendanceMap[m.id]?.name() == 'UNEXCUSED'}">Nieobecny</option>
                         </select>
                     </td>
                 </tr>
@@ -328,8 +334,10 @@
 
                 btns.forEach(function(btn) {
                     var v = btn.getAttribute('data-response-filter');
-                    if (active.indexOf(v) !== -1) btn.classList.add('active');
+                    var on = active.indexOf(v) !== -1;
+                    if (on) btn.classList.add('active');
                     else btn.classList.remove('active');
+                    btn.setAttribute('aria-pressed', on ? 'true' : 'false');
                 });
 
                 saveToStorage();
@@ -362,6 +370,13 @@
                         var hidden = hiddenEl();
                         if (hidden) hidden.value = active.join(',');
                         applyFilters();   // syncs filterState.active + buttons + storage
+                    });
+                    btn.addEventListener('keydown', function(ev) {
+                        // role=button on a <span> must react to Enter/Space like a real button.
+                        if (ev.key === 'Enter' || ev.key === ' ') {
+                            ev.preventDefault();
+                            btn.click();
+                        }
                     });
                     btn.dataset.filterBound = 'yes';
                 });
@@ -490,7 +505,12 @@
             if (!resp.ok) throw new Error('HTTP ' + resp.status);
             qa.members[qa.index].status = status;
             var sel = document.querySelector('select.status-select[data-member-id="' + m.id + '"]');
-            if (sel) sel.value = status;
+            if (sel) {
+                sel.value = status;
+                // Keep the server-rendered status color in sync while the modal runs
+                // (the final htmx reload would re-derive it anyway; this avoids a stale hue mid-flow).
+                sel.setAttribute('data-current', status);
+            }
             if (qa.index < qa.members.length - 1) {
                 qa.index++;
                 window.quickAttendanceRender();

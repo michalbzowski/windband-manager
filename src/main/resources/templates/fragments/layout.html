@@ -525,7 +525,7 @@
 
     <footer th:fragment="footer" class="container">
         <hr>
-        <small>Team Manager &copy; 2025 Michał Bzowski | <span id="build-version" th:text="${@buildInfoStatus.isApiEnabled()} ? '...' : ''"></span></small>
+        <small>Team Manager &copy; 2025 Michał Bzowski<span th:if="${@buildInfoStatus.isApiEnabled()}"> | </span><span id="build-version" th:text="${@buildInfoStatus.isApiEnabled()} ? '...' : ''"></span></small>
     </footer>
 
 <th:block th:fragment="footer-scripts">
