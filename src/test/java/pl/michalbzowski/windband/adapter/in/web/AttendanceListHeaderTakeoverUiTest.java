@@ -148,9 +148,17 @@ class AttendanceListHeaderTakeoverUiTest extends UiTestBase {
 
         // Create ≥3 members (gives the attendance table enough rows that the filter + list can
         // physically travel under the sticky header and then past it out of the viewport).
+        // NB: the attendance rows are deliberately dense (ISSUE #119 follow-up: status-select
+        // no longer forces ~175px rows), so a 1-member page has no scroll runway for the
+        // filter to cross viewport-top — seeding to the documented ≥3 is what the machine
+        // under test actually needs.
         String uid = UUID.randomUUID().toString().substring(0, 8);
         String fn1 = "Tkr" + uid;
+        String fn2 = "Tkl" + uid;
+        String fn3 = "Tkm" + uid;
         createTestBand1Member(fn1, "Test" + uid, LocalDate.of(1992, 3, 4));
+        createTestBand1Member(fn2, "Test" + uid, LocalDate.of(1992, 3, 4));
+        createTestBand1Member(fn3, "Test" + uid, LocalDate.of(1992, 3, 4));
         Long mid1 = lookupMemberId(fn1);
 
         // Create a rehearsal dated in the future so it renders as "upcoming".
@@ -162,6 +170,8 @@ class AttendanceListHeaderTakeoverUiTest extends UiTestBase {
         assertThat(rehearsalId).describedAs("createRehearsalViaApi should return an id").isNotNull();
 
         inviteMemberToRehearsal(rehearsalId, mid1);
+        inviteMemberToRehearsal(rehearsalId, lookupMemberId(fn2));
+        inviteMemberToRehearsal(rehearsalId, lookupMemberId(fn3));
 
         driver.get(baseUrl() + "/rehearsals/" + rehearsalId);
         wait.until(ExpectedConditions.presenceOfElementLocated(By.id("uber-filter-container")));
@@ -238,6 +248,16 @@ class AttendanceListHeaderTakeoverUiTest extends UiTestBase {
         }
         assertThat(reachedTop).as("filter should reach the very top of the viewport").isTrue();
 
+        // Phase 4's REAL contract is "the machine has taken the filter over" — i.e.
+        // body.filter-pinned is set when the filter crosses viewport-top (0px).
+        // The helper above only guarantees top<=30 (a landing inside the unpinned
+        // dead zone is possible on dense tables); give it one more step and wait
+        // for the actual pin instead of measuring drift from a not-yet-sticky state.
+        nudgeScroll(40);
+        pumpFrames(3);
+        wait.until(d -> ((String) ((JavascriptExecutor) driver)
+                .executeScript("return document.body.className;")).contains("filter-pinned"));
+
         double filterTopAfterPush = rectTop("#uber-filter-container");
         double headerTopAfterPush = rectTop("#dashboardHeader");
         // Save the initial (pre-release) geometry so we can compare against it after scroll-up reset.
@@ -262,6 +282,12 @@ class AttendanceListHeaderTakeoverUiTest extends UiTestBase {
         // Spec requirement (phase 4): filter (and its sibling status-filter block) must now be STICKY —
         // i.e. if we scroll a bit MORE, the filter stays in place (within a small tolerance), instead of
         // following the page content up/off-screen.
+        System.out.println("[DBG119] headerBottom=" + rectBottom("#dashboardHeader")
+            + " top=" + rectTop("#uber-filter-container")
+            + " pinned=" + (( JavascriptExecutor) driver).executeScript("return document.body.className;")
+            + " scrollY=" + scrollY()
+            + " docH=" + ((JavascriptExecutor) driver).executeScript("return document.body.scrollHeight;")
+            + " vh=" + innerHeightPx());
         int beforeSticky = (int) rectTop("#uber-filter-container");
         exec("window.scrollTo(0, arguments[0]);", scrollY() + 150);
         pumpFrames(3);  // rAF pump replaces the fixed 300 ms sleep (machine settles in 1-2 frames)
@@ -364,6 +390,12 @@ class AttendanceListHeaderTakeoverUiTest extends UiTestBase {
 
         exec("window.scrollTo(0, arguments[0]);", scrollY() + 150);
         pumpFrames(3);
+        System.out.println("[DBG119] headerBottom=" + rectBottom("#dashboardHeader")
+            + " top=" + rectTop("#uber-filter-container")
+            + " pinned=" + (( JavascriptExecutor) driver).executeScript("return document.body.className;")
+            + " scrollY=" + scrollY()
+            + " docH=" + ((JavascriptExecutor) driver).executeScript("return document.body.scrollHeight;")
+            + " vh=" + innerHeightPx());
         int beforeSticky = (int) rectTop("#uber-filter-container");
         // sticky check: position is essentially frozen against further scroll
         assertThat(Math.abs((int) rectTop("#uber-filter-container") - beforeSticky))

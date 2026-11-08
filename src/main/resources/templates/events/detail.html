@@ -456,14 +456,13 @@
     <div id="uber-filter-container">
         <!-- Filter input - sticky on scroll -->
         <div id="participant-filter-container">
-            <label for="participant-filter" class="text-muted" style="font-size:0.85rem; margin-bottom:0.25rem; display:block;">Filtruj uczestników (imię, nazwisko, tagi)</label>
-            <input type="text" id="participant-filter" placeholder="Wpisz imię, nazwisko lub tag..." 
-                   style="width:100%; max-width:400px; padding:0.5rem; border:1px solid var(--pico-muted-border-color); border-radius:4px;">
+            <label for="participant-filter" class="text-muted uber-filter-label">Filtruj uczestników (imię, nazwisko, tagi)</label>
+            <input type="text" id="participant-filter" class="uber-filter-input" placeholder="Wpisz imię, nazwisko lub tag...">
         </div>
 
         <!-- Response status filter - sticky on scroll, below text filter -->
         <div th:if="${#lists.size(event.participations) > 0}" id="response-filter-container" role="group" aria-label="Filtruj według statusu odpowiedzi">
-            <span class="response-filter-label text-muted" style="font-size:0.75rem; margin-right:0.5rem;">Status:</span>
+            <span class="response-filter-label text-muted">Status:</span>
             <span class="stat confirmed response-filter-btn" title="Potwierdzeni (Będę)" data-response-filter="CONFIRMED">✅ <span th:text="${event.confirmedCount}">0</span></span>
             <span class="stat declined response-filter-btn" title="Nie biorą udziału (Nie będę)" data-response-filter="DECLINED">❌ <span th:text="${event.declinedCount}">0</span></span>
             <span class="stat later response-filter-btn" title="Dam znać później" data-response-filter="LATER" th:if="${#lists.size(event.participations.?[response == 'LATER']) > 0}">⏳ <span th:text="${#lists.size(event.participations.?[response == 'LATER'])}">0</span></span>

@@ -51,6 +51,39 @@
 
 .response-filter-label {
     font-weight: 600;
+    /* was an inline style on rehearsals+events "Status:" spans — values 1:1,
+       geometry unchanged (ISSUE #119 sticky-handoff tolerance). */
+    font-size: 0.75rem;
+    margin-right: 0.5rem;
+}
+
+/* Text-filter label + input (rehearsals + events detail). Extracted verbatim
+   from the old inline styles — computed geometry must stay identical. */
+.uber-filter-label {
+    font-size: 0.85rem;
+    margin-bottom: 0.25rem;
+    display: block;
+}
+.uber-filter-input {
+    width: 100%;
+    max-width: 400px;
+    padding: 0.5rem;
+    border: 1px solid var(--pico-muted-border-color);
+    border-radius: 4px;
+}
+
+/* Attendance status bar: SVG icons inside chips. Size set here (icons.html
+   holds no inline styles); 13px keeps the line box of the chip unchanged —
+   do NOT add padding/radius, see ISSUE #119 geometry note in this file. */
+#attendance-response-filter-container .response-filter-btn svg {
+    width: 13px;
+    height: 13px;
+    vertical-align: -2px;
+}
+#attendance-response-filter-container .response-filter-btn:focus-visible {
+    outline: 2px solid var(--pico-primary);
+    outline-offset: 2px;
+    border-radius: 4px;
 }
 
 .response-filter-btn {
@@ -222,6 +255,43 @@ html, body {
     gap: 0.5rem;
     margin-bottom: 1rem;
     flex-wrap: wrap;
+}
+/* SVG inside the invite button (replaced the ➕ emoji — icon policy). */
+.rehearsal-invite-actions svg {
+    vertical-align: -3px;
+}
+
+/* === ATTENDANCE STATUS SELECT (rehearsal detail) =====================
+   Before: no width/margin rules existed, so Pico rendered the select at
+   100% of the <td> plus its default 1rem bottom margin — ~175px rows and
+   zero visual distinction between Present and Unexcused.
+   Density: margin-bottom:0 + max-width only; Pico's internal padding and
+   chevron geometry stay untouched.
+   Color: keyed on [data-current], rendered server-side from attendanceMap.
+   windband-utils re-fetches the #rehearsals-content fragment after every
+   successful save, so the hue always reflects PERSISTED state. */
+#rehearsals-content select.status-select {
+    width: auto;
+    max-width: 15rem;
+    margin-bottom: 0;
+}
+#rehearsals-content select.status-select[data-current="PRESENT"]    { color: #1b7f37; border-color: #28a745; }
+#rehearsals-content select.status-select[data-current="EXCUSED"]    { color: #b45309; border-color: #f57f17; }
+#rehearsals-content select.status-select[data-current="UNEXCUSED"]  { color: #c62828; border-color: #c62828; }
+#rehearsals-content select.status-select[data-current="NO_RESPONSE"]{ color: var(--pico-muted-color); }
+
+/* Dark theme — opaque palette mirroring the filter chips (see #uber-filter
+   pill blocks below). */
+[data-theme="dark"] #rehearsals-content select.status-select[data-current="PRESENT"]    { color: #86efac; border-color: #22c55e; }
+[data-theme="dark"] #rehearsals-content select.status-select[data-current="EXCUSED"]    { color: #fde047; border-color: #d97706; }
+[data-theme="dark"] #rehearsals-content select.status-select[data-current="UNEXCUSED"]  { color: #fca5a5; border-color: #ef4444; }
+[data-theme="dark"] #rehearsals-content select.status-select[data-current="NO_RESPONSE"]{ color: #9ca3af; }
+
+@media (prefers-color-scheme: dark) {
+    #rehearsals-content select.status-select[data-current="PRESENT"]    { color: #86efac; border-color: #22c55e; }
+    #rehearsals-content select.status-select[data-current="EXCUSED"]    { color: #fde047; border-color: #d97706; }
+    #rehearsals-content select.status-select[data-current="UNEXCUSED"]  { color: #fca5a5; border-color: #ef4444; }
+    #rehearsals-content select.status-select[data-current="NO_RESPONSE"]{ color: #9ca3af; }
 }
 
 /* === TEAM CHIP (round avatar button) =========================== */

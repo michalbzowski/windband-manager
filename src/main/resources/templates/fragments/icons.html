@@ -205,6 +205,27 @@
     </svg>
 </th:block>
 
+<!-- Clock face — attendance "usprawiedliwiony" (zastępuje emoji 🕓 w chipach filtra). -->
+<th:block th:fragment="clock">
+    <svg viewBox="0 0 24 24" width="18" height="18"
+         fill="none" stroke="currentColor" stroke-width="1.8"
+         stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <circle cx="12" cy="12" r="9"/>
+        <path d="M12 7v5l3.5 2"/>
+    </svg>
+</th:block>
+
+<!-- Question mark in circle — attendance "brak odpowiedzi" (zastępuje "?"/emoji). -->
+<th:block th:fragment="question">
+    <svg viewBox="0 0 24 24" width="18" height="18"
+         fill="none" stroke="currentColor" stroke-width="1.8"
+         stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <circle cx="12" cy="12" r="9"/>
+        <path d="M9.4 9.2a2.7 2.7 0 1 1 3.7 2.6c-.8.3-1.1.9-1 1.7"/>
+        <path d="M12 17.1h.01"/>
+    </svg>
+</th:block>
+
 <!-- Lightning bolt — brand mark. -->
 <th:block th:fragment="bolt">
     <svg viewBox="0 0 24 24" width="18" height="18"
