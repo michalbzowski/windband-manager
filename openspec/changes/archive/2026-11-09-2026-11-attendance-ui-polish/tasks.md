@@ -21,6 +21,6 @@ Kolejność = kolejność realizacji. Każdy task: mały, samodzielny, weryfikow
 - [x] T7. Bramka wewnętrzna: celowane UiTesty (nowy + `RehearsalDetailFilterUiTest`
       + `AttendanceListHeaderTakeoverUiTest` + `RehearsalInviteModalUiTest`
       + `QuickAttendanceModalUiTest`) — geometria sticky i kontrakty przetestowane.
-- [ ] T8. `scripts/agent-verify.sh` (pełny clean verify + stamp) → commit → rebase →
+- [x] T8. `scripts/agent-verify.sh` (pełny clean verify + stamp) → commit → rebase →
       powtórzyć verify → `scripts/pre-push-check.sh` → push → PR → `ci-status.sh`.
-- [ ] T9. Po merge: `npx -y @fission-ai/openspec archive 2026-11-attendance-ui-polish`.
+- [x] T9. Po merge: `npx -y @fission-ai/openspec archive 2026-11-attendance-ui-polish`.
