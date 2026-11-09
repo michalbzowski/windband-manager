@@ -87,12 +87,26 @@ class AnalysisResumeUiTest extends UiTestBase {
         return d != null && !d.isEmpty() && !"none".equals(d);
     }
 
+    /**
+     * Wyścig widoczny w CI: do chwili, gdy app.css trafi do CSSOM przeglądarki,
+     * każdy panel z class="hidden" ma computed display "block" — reguła
+     * .hidden { display: none !important } jeszcze nie obowiązuje. W tym oknie
+     * visible() kłamie, a asercja potrafi przeczytać panel, którego JS fetch
+     * jeszcze nie wypełnił (errText pusty). Gate czeka na moment, w którym
+     * "hidden" realnie chowa — od tej chwili pojawienie się panelu wyniku
+     * oznacza wyłącznie showResultPanel(), który wypełnia treść synchronicznie.
+     */
+    private void waitForStylesheetControl(JavascriptExecutor js, WebDriverWait wait) {
+        wait.until(d -> "none".equals(displayOf(js, "analyze-result-panel")));
+    }
+
     @Test
     void runningAnalysis_pageShowsTrackingCard_andModalAttachesToTheRun() {
         seedAnalysis("RUNNING", "sa-job-42", null, null);
         loginAndNavigateTo("/bands/1/compositions/" + compositionId);
         JavascriptExecutor js = (JavascriptExecutor) driver;
         WebDriverWait wait = new WebDriverWait(driver, WAIT);
+        waitForStylesheetControl(js, wait);
 
         // Karta statusu: stan RUNNING widoczny na stronie (po załadowaniu / powrocie z wylogowaniem).
         WebElement actionBtn = wait.until(
@@ -147,6 +161,7 @@ class AnalysisResumeUiTest extends UiTestBase {
         loginAndNavigateTo("/bands/1/compositions/" + compositionId);
         JavascriptExecutor js = (JavascriptExecutor) driver;
         WebDriverWait wait = new WebDriverWait(driver, WAIT);
+        waitForStylesheetControl(js, wait);
 
         WebElement actionBtn = wait.until(
                 ExpectedConditions.presenceOfElementLocated(By.id("ai-analysis-action-btn")));
@@ -200,6 +215,7 @@ class AnalysisResumeUiTest extends UiTestBase {
         loginAndNavigateTo("/bands/1/compositions/" + compositionId);
         JavascriptExecutor js = (JavascriptExecutor) driver;
         WebDriverWait wait = new WebDriverWait(driver, WAIT);
+        waitForStylesheetControl(js, wait);
 
         WebElement actionBtn = wait.until(
                 ExpectedConditions.presenceOfElementLocated(By.id("ai-analysis-action-btn")));
@@ -237,6 +253,7 @@ class AnalysisResumeUiTest extends UiTestBase {
         loginAndNavigateTo("/bands/1/compositions/" + compositionId);
         JavascriptExecutor js = (JavascriptExecutor) driver;
         WebDriverWait wait = new WebDriverWait(driver, WAIT);
+        waitForStylesheetControl(js, wait);
 
         WebElement actionBtn = wait.until(
                 ExpectedConditions.presenceOfElementLocated(By.id("ai-analysis-action-btn")));
