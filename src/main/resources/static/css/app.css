@@ -80,6 +80,23 @@
     height: 13px;
     vertical-align: -2px;
 }
+
+/* Zgłoszenie mobile 2026-11-09 (produkcja, po #329): atrybut role="group" — dodany
+   dla dostępności jako grupa przełączników — łapie styl Pico v2
+   [role=group] { display:inline-flex; width:100% } BEZ zawijania. Na wąskim ekranie
+   rząd czipów (Status: + 4 etykiety) nie mieścił się: ostatnie chipy wypadały poza
+   prawą krawędź (zmierzone scrollWidth 607 px przy 360 px), a strona nie miała
+   poziomego scrolla — chipy były nieosiągalne. Zawijanie dotyczy wyłącznie dwóch
+   pasków czipów obecności/odpowiedzi; Pico-owe grupy (member-status-toggle,
+   status-cluster) zostają nienaruszone. Nie zmieniam display ani wysokości w
+   jednym rzędzie — geometria inline-flex jest identyczna jak baseline
+   AttendanceListHeaderTakeoverUiTest (ISSUE #119 tolerancje StickyManager);
+   na desktopie czipy nadal mieszczą się w jednej linii, więc zwisów nie widać. */
+#attendance-response-filter-container,
+#response-filter-container {
+    flex-wrap: wrap;
+    gap: 0.3rem 0.45rem;
+}
 #attendance-response-filter-container .response-filter-btn:focus-visible {
     outline: 2px solid var(--pico-primary);
     outline-offset: 2px;
