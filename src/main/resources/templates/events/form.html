@@ -100,6 +100,20 @@
     })();
 
     // Guard: prevent duplicate event listeners when form is reloaded via htmx
+    // Nagłówek CSRF (wzorzec z 65efec3b / PR #328): cookie XSRF-TOKEN (nie-HttpOnly)
+    // jako X-XSRF-TOKEN. Bez niego CsrfFilter odrzuca POST z 403 — a ciało błędu to
+    // JSON, więc .json() się "udaje" i strona cicho nawiguje do /events bez komunikatu
+    // (rejestracja produkcyjna 2026-11: dodanie koncertu bezpłatnego ginęło bez śladu).
+    function csrfTokenHeaders() {
+        var headers = {'Content-Type': 'application/json'};
+        if (typeof getCookie === 'function') {
+            var token = null;
+            try { token = getCookie('XSRF-TOKEN'); } catch (e) { token = null; }
+            if (token) { headers['X-XSRF-TOKEN'] = decodeURIComponent(token); }
+        }
+        return headers;
+    }
+
     function handleCreateFormSubmit(event) {
         event.preventDefault();
         var form = document.getElementById('event-form');
@@ -111,18 +125,38 @@
 
         fetch('/api/events', {
             method: 'POST',
-            headers: {'Content-Type': 'application/json'},
+            headers: csrfTokenHeaders(),
             body: JSON.stringify(data)
         }).then(function(response) {
+            // Inaczej niż 2xx = porażka: pokaż powód (tekst lub JSON error/message).
+            // POPRZEDEK: brak tej kontroli — 403 CSRF trafiało do gałęzi "sukcesu"
+            // (json() zwracał obiekt błędu bez id) i strona cicho nawigowała do /events.
+            if (!response.ok) {
+                return response.text().then(function(bodyText) {
+                    var reason = null;
+                    try {
+                        var parsed = JSON.parse(bodyText);
+                        if (parsed && (parsed.error || parsed.message)) {
+                            reason = String(parsed.error || parsed.message);
+                        }
+                    } catch (e) { /* ciało nie-JSON — zostaje ogólny komunikat */ }
+                    Toast.error(reason ? reason + ' [' + response.status + ']'
+                                      : 'Nie udało się utworzyć wydarzenia (' + response.status + ')');
+                }).catch(function() {
+                    Toast.error('Nie udało się utworzyć wydarzenia');
+                });
+            }
             return response.json();
         }).then(function(created) {
-            var newEventId = created && created.id ? created.id : null;
+            // Gałąź błędu kończy się undefined — nie nawiguj.
+            if (!created || !created.id) { return; }
+            var newEventId = created.id;
             if (saveAndAddAnother) {
                 htmx.ajax('GET', '/events/new', {target: '#events-list-container', swap: 'innerHTML transition:true'});
             } else {
                 // Full navigation to the list with ?focus= so the shared
                 // initFocusHighlight scrolls to and highlights the new row.
-                window.location.href = '/events' + (newEventId ? '?focus=' + newEventId : '');
+                window.location.href = '/events?focus=' + newEventId;
             }
         }).catch(function(err) {
             console.error('Create event error:', err);
