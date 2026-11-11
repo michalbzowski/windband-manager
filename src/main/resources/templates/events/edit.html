@@ -86,6 +86,19 @@
         </div>
     </form>
     <script th:inline="javascript">
+    // Nagłówek CSRF (wzorzec z 65efec3b / PR #328): cookie XSRF-TOKEN (nie-HttpOnly)
+    // jako X-XSRF-TOKEN — bez niego CsrfFilter odrzuca PUT z 403 (ta sama klasa błędu
+    // co ciche "dodaj wydarzenie" w form.html, rejestracja produkcyjna 2026-11).
+    function csrfTokenHeaders() {
+        var headers = {'Content-Type': 'application/json'};
+        if (typeof getCookie === 'function') {
+            var token = null;
+            try { token = getCookie('XSRF-TOKEN'); } catch (e) { token = null; }
+            if (token) { headers['X-XSRF-TOKEN'] = decodeURIComponent(token); }
+        }
+        return headers;
+    }
+
     function handleEditFormSubmit(event) {
         console.log('[EDIT FORM] onsubmit fired');
         event.preventDefault();
@@ -105,7 +118,7 @@
 
         fetch('/api/events/' + data.id, {
             method: 'PUT',
-            headers: {'Content-Type': 'application/json'},
+            headers: csrfTokenHeaders(),
             body: JSON.stringify(data)
         }).then(function(res) {
             console.log('[EDIT FORM] PUT status:', res.status);

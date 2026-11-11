@@ -106,6 +106,19 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
 
+    // Nagłówek CSRF (wzorzec z 65efec3b / PR #328): cookie XSRF-TOKEN (nie-HttpOnly)
+    // jako X-XSRF-TOKEN — bez niego CsrfFilter odrzuca POST z 403 (w UI tylko ogólny
+    // "Błąd serwera", bo generator nie wie, że nie wysłał tokenu).
+    function csrfTokenHeaders() {
+        var headers = {'Content-Type': 'application/json'};
+        if (typeof getCookie === 'function') {
+            var token = null;
+            try { token = getCookie('XSRF-TOKEN'); } catch (e) { token = null; }
+            if (token) { headers['X-XSRF-TOKEN'] = decodeURIComponent(token); }
+        }
+        return headers;
+    }
+
     // Handle form submission via fetch POST to /api/reports/sprawozdanie/generate
     const form = document.getElementById('sprawozdanie-form');
     
@@ -133,9 +146,7 @@ document.addEventListener('DOMContentLoaded', function() {
             
             const response = await fetch('/api/reports/sprawozdanie/generate', {
                 method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
+                headers: csrfTokenHeaders(),
                 body: JSON.stringify(requestBody)
             });
             
