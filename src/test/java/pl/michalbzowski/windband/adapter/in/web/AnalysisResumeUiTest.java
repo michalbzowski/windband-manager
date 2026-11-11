@@ -227,7 +227,12 @@ class AnalysisResumeUiTest extends UiTestBase {
 
         actionBtn.click();
         wait.until(d -> analyzeDialogOpen(js));
-        wait.until(d -> visible(js, "analyze-retry-row"));
+        // Stan końcowy gwarantowany przez app (gałąź FAILED showResultPanel wypełnia errText
+        // synchronicznie z un-hide). Wait czeka na REALNĄ treść, bo samotne visible() potrafiło
+        // w CI przejść na stanie pośrednim modalu — rekurencje 2026-11-11 (runy 43072425875 /
+        // 43076323453, ta sama sygnatura "") mimo gate'a stylesheetu z PR #330.
+        wait.until(d -> visible(js, "analyze-result-panel")
+                && !driver.findElement(By.id("analyze-error-text")).getText().isEmpty());
 
         // Błąd + wiersz ponowienia widoczne, start panel zasłonięty…
         assertThat(visible(js, "analyze-result-panel")).isTrue();
@@ -265,7 +270,11 @@ class AnalysisResumeUiTest extends UiTestBase {
         wait.until(d -> analyzeDialogOpen(js));
         // Modal MUSI wylądować w panelu wyniku z pełnym komunikatem błędu i drogą ponowienia —
         // nie w panelu startowym (efekt catch-a po niepoprawnym JSON) ani na ślepatym PENDING.
-        wait.until(d -> visible(js, "analyze-result-panel"));
+        // Wait obejmuje też treść gwarantowaną kontraktem app: samotne visible() potrafiło
+        // przejść na stanie pośrednim pod obciążeniem CI (rekurencja 2026-11-11, run 43072425875).
+        wait.until(d -> visible(js, "analyze-result-panel")
+                && driver.findElement(By.id("analyze-error-text")).getText().toLowerCase()
+                        .contains("openrouter http 429"));
         assertThat(visible(js, "analyze-start-panel"))
                 .as("start panel must NOT be offered when the latest analysis already FAILED")
                 .isFalse();
