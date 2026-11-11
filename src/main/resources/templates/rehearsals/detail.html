@@ -560,9 +560,15 @@
                     return;
                 }
 
-                const response = await fetch(`/api/rehearsals/${rehearsalId}`, {
+                                // CSRF — bez nagłówka X-XSRF-TOKEN CsrfFilter odrzuca DELETE z 403
+                // (ten sam kontrakt co PR #328; getCookie jest globalnym helperem z windband-utils.js).
+                const headers = {'Content-Type': 'application/json'};
+                const csrfToken = getCookie('XSRF-TOKEN');
+                if (csrfToken) { headers['X-XSRF-TOKEN'] = csrfToken; }
+
+                                const response = await fetch(`/api/rehearsals/${rehearsalId}`, {
                     method: 'DELETE',
-                    headers: {'Content-Type': 'application/json'}
+                    headers
                 });
 
                 if (response.ok) {

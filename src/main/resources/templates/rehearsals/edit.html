@@ -11,11 +11,11 @@
     <div id="rehearsals-content">
         <nav th:replace="~{fragments/page-header :: page-header-c(${editBackUrl}, 'Edytuj spotkanie', null, null)}"></nav>
 
-        <form id="rehearsal-edit-form"
-              hx-put="/api/rehearsals/[[${rehearsal.id}]]"
-              hx-target="#rehearsals-content"
-              hx-swap="innerHTML transition:true">
 
+        <!-- Celowo bez hx-put: endpoint zapisu przyjmuje JSON (@RequestBody), a HTMX domyślnie
+             wysyła application/x-www-form-urlencoded → 400. Zapis wykonuje handler JS poniżej
+             (PUT JSON + nagłówek X-XSRF-TOKEN; bez niego CsrfFilter odrzuca żądanie z 403). -->
+        <form id="rehearsal-edit-form">
             <div class="grid">
                 <label>
                     Data *
@@ -80,19 +80,42 @@
                         location: form.location.value || null,
                         notes: form.notes.value || null
                     };
+                    // CSRF — ten sam kontrakt co compositions/newFromPdf.html (PR #328):
+                    // cookie XSRF-TOKEN → nagłówek X-XSRF-TOKEN. Bez niego CsrfFilter odrzuca PUT z 403;
+                    // suity Selenium tego nie widzą (hook CDP w UiTestBase podkłada token we wszystkich żądaniach).
+                    function csrfHeaders() {
+                        var headers = {'Content-Type': 'application/json'};
+                        if (window.getCookie) {
+                            var token = window.getCookie('XSRF-TOKEN');
+                            if (token) { headers['X-XSRF-TOKEN'] = decodeURIComponent(token); }
+                        }
+                        return headers;
+                    }
                     fetch('/api/rehearsals/' + rehearsalId, {
                         method: 'PUT',
-                        headers: {'Content-Type': 'application/json'},
+                        headers: csrfHeaders(),
                         body: JSON.stringify(payload)
                     }).then(function(response) {
-                        if (!response.ok) {
-                            throw new Error('HTTP ' + response.status);
-                        }
-                        window.location.href = '/rehearsals/' + rehearsalId;
-                    }).catch(function(error) {
+                            if (!response.ok) {
+                                return response.text().then(function (text) {
+                                    var reason = null;
+                                    try {
+                                        var parsed = JSON.parse(text);
+                                        reason = parsed.error || parsed.message;
+                                    } catch (ignored) { /* nie-JSON, np. strona błędu HTML */ }
+                                    throw new Error(reason ? String(reason) : 'Zapis nie powiódł się (HTTP ' + response.status + ')');
+                                });
+                            }
+                    window.location.href = '/rehearsals/' + rehearsalId;
+                    }) .catch(function(error) {
                         console.error('Failed to update rehearsal:', error);
+                        if (window.Toast && window.Toast.error) {
+                            window.Toast.error('Zapis zmian nie powiódł się: ' + (error.message || String(error)));
+                        } else {
+                            alert('Zapis zmian nie powiódł się: ' + (error.message || String(error)));
+                        }
                     });
-                });
+                    });
             }
         </script>
     </div>
