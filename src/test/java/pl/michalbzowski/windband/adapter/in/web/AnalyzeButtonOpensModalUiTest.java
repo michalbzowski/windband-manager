@@ -66,11 +66,23 @@ class AnalyzeButtonOpensModalUiTest extends UiTestBase {
         return Boolean.TRUE.equals(open);
     }
 
+    /**
+     * Wait, aż app.css realnie obowiązuje w CSSOM (computed display panelu wyniku = "none").
+     * Do tego momentu widoczność paneli z class="hidden" może kłamać (cold start CI) —
+     * ten sam wzorzec co w {@link AnalysisResumeUiTest} (PR #330, utrwalony w #334).
+     */
+    private void waitForStylesheetControl(JavascriptExecutor js, WebDriverWait wait) {
+        wait.until(d -> "none".equals(js.executeScript(
+                "var el = document.getElementById('analyze-result-panel');" +
+                        "return el ? window.getComputedStyle(el).display : null;")));
+    }
+
     @Test
     void analyzeButtonClick_opensTheDialog_withStartPanel() {
         loginAndNavigateTo("/bands/1/compositions/" + compositionId);
         JavascriptExecutor js = (JavascriptExecutor) driver;
         WebDriverWait wait = new WebDriverWait(driver, WAIT);
+        waitForStylesheetControl(js, wait);
 
         // Precondition: with an attached score file the actions bar renders the button.
         WebElement analyzeBtn = wait.until(
@@ -88,6 +100,14 @@ class AnalyzeButtonOpensModalUiTest extends UiTestBase {
                 .isTrue();
 
         // And the user sees the start panel with a usable file picker.
+        // Kontrakt utworu BEZ analizy: modal KONIECZNIE ląduje w panelu startowym — ale dopiero
+        // po rozwiązaniu asynchronicznego fetcha /analysis/latest (openAnalyzeModal otwiera dialog
+        // PRZED tym, showStartPanel() działa w .then). Aserty tuż po otwarciu wyścigowały się z
+        // lotnym fetchem pod obciążeniem CI (rekurencja 2026-11-11, run 43081534940) — stąd wait
+        // na realnie obserwowalny terminalny stan gwarantowany przez app, nie sam fakt otwarcia.
+        wait.until(d -> (Boolean) js.executeScript(
+                "var sp = document.getElementById('analyze-start-panel');" +
+                        "return sp && window.getComputedStyle(sp).display !== 'none';"));
         Boolean startPanelDisplayed = (Boolean) js.executeScript(
                 "var sp = document.getElementById('analyze-start-panel');" +
                         "return sp && window.getComputedStyle(sp).display !== 'none';");
