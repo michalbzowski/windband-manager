@@ -1,0 +1,12 @@
+# Trivy — udokumentowane ignorowania (audyt bezpieczeństwa 2026-11-17)
+#
+# Zasada: wpis = CVE, którego fixa NIE MA w ramach linii Spring 6.1.x / Boot 3.3.x
+# (fix tylko w 6.2+/7.x). Każde ignorowanie musi mieć powód poniżej i wygasa
+# przy migracji Boot 3.4/3.5 (task P5) — wtedy je stąd usuwamy.
+# Trivy: jedno CVE na linie; '#' = komentarz.
+
+# spring-webmvc 6.1.14: fix wyłącznie w 7.0.9 (nieosiągalny bez Boot 3.4+)
+CVE-2026-47884
+
+# spring-security-web 6.3.4: fix wyłącznie w 6.5.9/7.0.4 (nieosiągalny bez Boot 3.4+/3.5)
+CVE-2026-22732

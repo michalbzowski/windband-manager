@@ -1,0 +1,24 @@
+# gitleaks — global allowlist (repo windband-manager)
+# Zasada: wpis tutaj = udokumentowane "to nie jest sekret". Allowlist pasuje tylko do
+# konkretnych, niżej wskazanych wartości; PRAWDZIWY secret nadal blokuje build.
+# Audyt początkowy 2026-11-17: pełna historia git (1016 commitów) — 6 findingów,
+# wszystkie fikcyjne/dokumentacyjne. Brak prawdziwych poświadczeń.
+
+# WYMAGANE w 8.x: bez [extend].useDefault własny plik ZASTĘPUJE domyślne reguły
+# (udowodnione lokalnie 2026-11-17: canara AKIA... niewykrywana z configiem).
+[extend]
+useDefault = true
+
+[allowlist]
+description = "Dokumentacja i fikcyjne klucze testowe — nie są prawdziwymi poświadczeniami (audyt 2026-11)"
+regexes = [
+  # TEAM_REGISTRATION Guide.md:58,133 — przykładowe hasło w żądaniu JSON / curl (docs)
+  'tajneHaslo123',
+  # TEAM_REGISTRATION Guide.md:194 — placeholder token zaproszenia (dokumentacyjny UUID)
+  'a1b2c3d4-e5f6-7890-abcd-ef1234567890',
+  # BrevoApiChannelTest (stary commit, plik usunięty z drzewa) — fikcyjny klucz API w teście
+  'test-api-key-12345',
+  # docker-compose.yml:32 — mapping portu "5433:5432"; reguła generic-api-key
+  # skleja fragmenty sąsiednich tokenów (5432/keycloak). Czysty false positive.
+  '5432/keycloak',
+]
