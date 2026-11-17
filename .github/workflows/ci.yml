@@ -227,9 +227,12 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 20
     # DC 13.x aktualizuje bazę przez NVD API 2.0 — wymaga (darmowego) klucza
-    # z https://tenant.nvd.nist.gov . Bez sekretu job jest POMINİYTY, a twardą
+    # z https://tenant.nvd.nist.gov . Bez sekretu kroki DC są pomijane w run:,
     # bramką SCA pozostają Dependabot alerts + trivy-fs (decyzja 2026-11).
-    if: ${{ secrets.NVD_API_KEY != '' }}
+    # UWAGA: secrets nie są dozwolone w if na poziomie joba/stepa (tabela
+    # availability z doków GitHub) — stąd guard bash w run:, nie `if:`.
+    env:
+      NVD_API_KEY: ${{ secrets.NVD_API_KEY }}
     steps:
       - name: Checkout
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
@@ -244,15 +247,14 @@ jobs:
       - name: Make mvnw executable
         run: chmod +x mvnw
 
-      # goal (a nie `verify`) — nie uruchamia testów, skanuje deklarowane zależności.
-      # -DnvdApiKey tylko gdy secret istnieje — pusty string BREAKS klienta NVD.
       - name: OWASP Dependency-Check
-        env:
-          NVD_API_KEY: ${{ secrets.NVD_API_KEY }}
         run: |
-          ARGS=()
-          if [ -n "${NVD_API_KEY:-}" ]; then ARGS+=("-DnvdApiKey=${NVD_API_KEY}"); fi
-          ./mvnw -B dependency-check:check "${ARGS[@]}"
+          if [ -z "${NVD_API_KEY:-}" ]; then
+            echo "secrets.NVD_API_KEY niedostarczone — pomijam OWASP Dependency-Check (bramką SCA są Dependabot + trivy-fs)"
+            exit 0
+          fi
+          # goal (a nie `verify`) — nie uruchamia testów, skanuje deklarowane zależności.
+          ./mvnw -B dependency-check:check "-DnvdApiKey=${NVD_API_KEY}"
 
       - name: Upload report
         if: always()
