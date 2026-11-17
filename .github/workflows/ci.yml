@@ -12,6 +12,9 @@ concurrency:
   cancel-in-progress: true
 
 # dorny/test-reporter wymaga checks: write; bez tego zwraca 404
+# (run 44089140171: rerun w tym samym kontekście zostawił utkwiony w
+# in_progress check-run "Maven Tests"; kolejna próba create = HttpError 404 —
+# świeży run bez historycznych stanów tego problemu nie ma)
 permissions:
   contents: read
   checks: write
