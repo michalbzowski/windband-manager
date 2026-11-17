@@ -164,6 +164,7 @@ jobs:
   # Radar bezpieczeństwa P1/P2 (free/OSS, bez kont i licencji):
   #   gitleaks        — sekrety w historii git (przeszłe + obecne); bramka: finding = fail
   #   Trivy fs        — bramka CRITICAL z fixem (.trivyignore) + raport HIGH/CRITICAL
+  #   semgrep SAST    — reguły Java pinned w repo (p/java), bramka: finding = fail
   #   dependency-check— CVE w zależnościach; warunkowy od darmowego klucza NVD (secret)
   # FindSecBugs działa już wewnątrz istniejącego joba Build (SpotBugs).
   # --------------------------------------------------------------------------
@@ -293,5 +294,40 @@ jobs:
         with:
           name: dependency-check-reports
           path: target/dependency-check/**
+          retention-days: 14
+          if-no-files-found: ignore
+
+  sast-semgrep:
+    name: SAST (Semgrep OSS)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    # Semgrep OSS (silnik LGPL-2.1, darmy). Zestaw reguł Java = PIN w repo:
+    # .semgrep/rules-java.yaml (p/java, sha + data pobrania w nagłówku) —
+    # skan jest offline i deterministyczny w obrębie pinu; zero SaaS.
+    # Bramka: --error na finding (baseline 2026-11: 0 findings w full code przy
+    # 60 regułach; detekcja zwalidowana canarim: Blowfish+MD5 = 2 hits).
+    steps:
+      - name: Checkout
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+
+      - name: SAST scan (gate na findingi)
+        image: semgrep/semgrep:1.185.0
+        run: |
+          semgrep scan --config .semgrep/rules-java.yaml --metrics=off --error \
+            src/main/java src/test/java
+
+      - name: SAST report (JSON)
+        if: always()
+        image: semgrep/semgrep:1.185.0
+        run: |
+          semgrep scan --config .semgrep/rules-java.yaml --metrics=off \
+            --json > sast-semgrep-report.json src/main/java src/test/java || true
+
+      - name: Upload report (JSON)
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: sast-semgrep-report
+          path: sast-semgrep-report.json
           retention-days: 14
           if-no-files-found: ignore
