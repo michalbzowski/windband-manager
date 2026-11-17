@@ -564,7 +564,16 @@
         var progress = document.getElementById('analyze-progress-panel');
         if (progress) { progress.classList.remove('hidden'); }
         setPhaseBadge('PENDING');
-        fetch('/bands/' + bandId + '/compositions/' + compId + '/score-files/' + state.fileId + '/analyze', { method: 'POST' })
+        // Ten sam błąd klasy co /accept: POST bez X-XSRF-TOKEN był podmieniany
+        // przez 302→HTML na resp.ok, a pollNext() zgłaszał SUCCEEDED poprzedniej
+        // analizy — użytkownik widział „działającą” analizę, która nigdy nie
+        // wystartowała. /analyze w tym IIFE to czysty fetch, nie htmx, więc hook
+        // htmx:configRequest tu nie pomaga; token dokładamy sami.
+        fetch('/bands/' + bandId + '/compositions/' + compId + '/score-files/' + state.fileId + '/analyze', {
+            method: 'POST',
+            headers: csrfHeadersAi(),
+            credentials: 'same-origin'
+        })
             .then(function (resp) {
                 if (!resp.ok) {
                     setPhaseBadge('FAILED');
@@ -934,10 +943,23 @@
         }
         fetch('/bands/' + bandId + '/compositions/' + compId + '/analysis/' + aiAnalysisId + '/accept', {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: csrfHeadersAi(),
+            credentials: 'same-origin',
             body: JSON.stringify({ rows: rows })
         })
             .then(function (resp) {
+                if (resp.ok) {
+                    // REGRESJA (prod 2026-11-17): bez X-XSRF-TOKEN request odkładał
+                    // CsrfFilter → accessDeniedHandler robi 302 '/' (ścieżka nie-/api),
+                    // fetch podążał za przekierowaniem i dostawał HTML pulpitu z
+                    // resp.ok=true; JSON.parse cicho wracał null, a gałąź sukcesu
+                    // pokazywała „Utworzono ? partie — Odświeżam widok utworu…”,
+                    // choć do bazy nie trafiło nic. Sukces akceptacji MUSI być JSON-em.
+                    var contentType = resp.headers.get('Content-Type') || '';
+                    if (contentType.indexOf('application/json') < 0) {
+                        throw new Error('serwer odpowiedział nie-JSON (utrcona sesja lub brak tokena CSRF)');
+                    }
+                }
                 return resp.text().then(function (text) {
                     var payload = null;
                     try { if (text) { payload = JSON.parse(text); } } catch (e) { /* puste ciało */ }

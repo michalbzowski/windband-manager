@@ -237,6 +237,69 @@ class AiProposalCreateTagUiTest extends UiTestBase {
                 .isEqualTo(Boolean.TRUE);
     }
 
+    @Test
+    @DisplayName("Po „Akceptuj zaznaczone” partia trafia do bazy i po odświeżeniu widać ją w sekcji „Głosy w nutach”")
+    void acceptedProposalBecomesVisibleVoiceAfterRefresh() throws Exception {
+        // Reprodukcja zgłoszenia z 2026-11-17 (produkcja): sukces był udawany przez
+        // 302→HTML bez tokena CSRF — modal się zamykał, komunikat „odświeżam widok”
+        // się pokazywał, a partii w bazie nie było. Test pilnuje obiegu end-to-end.
+        seedSucceededAnalysis(String.format(
+                "[{\"role\":\"%s\",\"pageFrom\":1,\"pageTo\":4,\"confidence\":0.91}]",
+                MATCHED_ROLE));
+
+        loginAndNavigateTo("/bands/1/compositions/" + compositionId);
+        driver.manage().window().setSize(new Dimension(1440, 1000));
+        JavascriptExecutor js = (JavascriptExecutor) driver;
+        WebDriverWait wait = new WebDriverWait(driver, WAIT);
+        waitForStylesheetControl(js, wait);
+
+        assertThat(partRowsSafe(js))
+                .as("przed akceptacją utwór nie ma głosów")
+                .isZero();
+
+        WebElement actionBtn = wait.until(
+                ExpectedConditions.presenceOfElementLocated(By.id("ai-analysis-action-btn")));
+        actionBtn.click();
+        wait.until(d -> analyzeDialogOpen(js));
+        wait.until(d -> visible(js, "analyze-accept-panel"));
+        wait.until(d -> Long.valueOf(1L).equals(js.executeScript(
+                "return document.querySelectorAll('.ai-row-select').length;")));
+
+        WebElement acceptBtn = wait.until(ExpectedConditions.elementToBeClickable(
+                By.id("ai-accept-btn")));
+        acceptBtn.click();
+
+        // JS przeładowuje stronę po ~2,5 s — czekamy na realny wiersz partii.
+        wait.until(d -> partRowsSafe(js) >= 1);
+        assertThat(partRowsSafe(js))
+                .as("dokładnie jedna zaakceptowana partia")
+                .isEqualTo(1L);
+        assertThat(js.executeScript(
+                "var tr = document.querySelector('#existing-parts tbody tr[data-part-id]');"
+                        + "return tr ? tr.getAttribute('data-instrument-name') + '|' + tr.getAttribute('data-page-from')"
+                        + " + '-' + tr.getAttribute('data-page-to') : null;"))
+                .isEqualTo(MATCHED_ROLE + "|1-4");
+
+        Long saksofonId = jdbcTemplate.queryForObject(
+                "SELECT id FROM instruments WHERE band_id = 1 AND name = ?", Long.class, MATCHED_ROLE);
+        Map<String, Object> row = jdbcTemplate.queryForMap(
+                "SELECT instrument_id, page_from, page_to FROM composition_instruments "
+                        + "WHERE composition_id = ?", compositionId);
+        assertThat(row.get("instrument_id")).isEqualTo(saksofonId);
+        assertThat(((Number) row.get("page_from")).intValue()).isEqualTo(1);
+        assertThat(((Number) row.get("page_to")).intValue()).isEqualTo(4);
+    }
+
+    /** Licznik wierszy partii odporny na moment przeładowania strony (nawigacja rzuca WebDriverException). */
+    private long partRowsSafe(JavascriptExecutor js) {
+        try {
+            return (Long) js.executeScript(
+                    "return document.querySelectorAll('#existing-parts tbody tr[data-part-id]').length;");
+        } catch (org.openqa.selenium.WebDriverException racingReload) {
+            return -1L;
+        }
+    }
+
     @SuppressWarnings("unchecked")
     private Map<String, Object> jsMap(Object value) {
         return (Map<String, Object>) value;
