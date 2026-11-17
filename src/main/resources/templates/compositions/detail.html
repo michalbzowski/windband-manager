@@ -368,7 +368,7 @@
 </dialog>
 
 <!-- Analyze Dialog (AI Analysis) -->
-<dialog id="analyze-dialog" class="app-modal">
+<dialog id="analyze-dialog" class="app-modal app-modal-wide">
     <div class="app-modal-content">
         <header class="app-modal-header">
             <div class="app-modal-header-text">
@@ -421,7 +421,7 @@
                 <p class="form-note">Zaznacz partie do utworzenia i potwierdź instrument (wstępnie z dopasowania).
                    Akceptowanie oznacza jednoczesną weryfikację partii Twoim podpisem.</p>
                 <div id="ai-work-meta" class="muted" style="font-size: 0.9em; margin-bottom: 0.5rem;"></div>
-                <div id="ai-proposals-wrap" style="max-height: 320px; overflow-y: auto; border: 1px solid var(--border, #ccc); border-radius: 6px; padding: 0.5rem;"></div>
+                <div id="ai-proposals-wrap" class="ai-proposals-wrap"></div>
                 <div id="ai-accept-error" class="danger hidden mt-2" role="alert"></div>
                 <div id="ai-accept-result" class="mt-2 hidden" role="status" aria-live="polite"></div>
                 <div class="modal-actions" style="margin-top: 1rem;">
@@ -672,25 +672,81 @@
     var aiInstruments = [];    // band instruments for the accept selects
     var aiAnalysisId = null;
 
+    function csrfHeadersAi() {
+        // REGRESJA (2026-11-17): ta IIFE wołała getCookieLocal(), ale helper jest
+        // zadeklarowany w INNERZE drugiego <script> (upload panel) — poza zasięgiem.
+        // Klik „+ utwórz tag” sypał ReferenceError, a okienko „nic się nie dzieje”.
+        // windband-utils.js eksponuje window.getCookie — to jest źródło CSRF tutaj.
+        var headers = { 'Content-Type': 'application/json' };
+        var token = (typeof window.getCookie === 'function') ? window.getCookie('XSRF-TOKEN') : null;
+        if (token) { headers['X-XSRF-TOKEN'] = decodeURIComponent(token); }
+        return headers;
+    }
+
+    function normalizeAiRole(s) {
+        // Ta sama normalizacja co RoleInstrumentResolver.normalize(): lowercase +
+        // odrzucone znaki diakrytyczne + złożone spacje — żeby „Sakshorn barytonowy”
+        // ze selecta i z nowego tagu zeszły się bez pełnego przerysowania panelu.
+        return String(s == null ? '' : s).trim().normalize('NFD')
+            .replace(/[\u0300-\u036f]/g, '').toLowerCase()
+            .replace(/\s\s+/g, ' ');
+    }
+
+    function applyNewInstrumentToRows(instrument) {
+        // Chirurgiczna aktualizacja zamiast loadAiProposals(): zachowuje stan
+        // checkboxów i pozycję scrolla (pełne przerysowanie zerowałoby obie).
+        var nameN = normalizeAiRole(instrument.name);
+        aiInstruments.push({ id: instrument.id, name: instrument.name });
+        aiProposals.forEach(function (row, idx) {
+            var sel = document.querySelector('.ai-row-select[data-idx="' + idx + '"]');
+            if (!sel) { return; }
+            var resolvesToNew = normalizeAiRole(row.role) === nameN
+                || (row.teamTag && normalizeAiRole(row.teamTag) === nameN);
+            if (!resolvesToNew || String(sel.value || '') === String(instrument.id)) { return; }
+            var opt = document.createElement('option');
+            opt.value = instrument.id;
+            opt.textContent = instrument.name;
+            sel.appendChild(opt);
+            sel.disabled = false;
+            sel.value = String(instrument.id);
+            var td = sel.closest('td');
+            if (td) {
+                td.querySelectorAll('.ai-row-nomatch, .ai-add-tag-btn').forEach(function (el) { el.remove(); });
+            }
+            sel.classList.add('ai-row-filled');
+        });
+    }
+
     function createBandInstrumentTag(name, btn) {
         // Tworzy tag instrumentu w zespole (POST /api/instruments = aktywnej ekipy,
-        // ten sam kontekst co strona zespołu) i przerysowuje panel: nowy tag = mapowanie.
+        // ten sam kontekst co strona zespołu) i podstawia go od razu do selectów
+        // głosów, które wskazują na tę nazwę — bez utraty zaznaczeń.
         if (!aiAnalysisId) { return; }
-        var headers = {'Content-Type': 'application/json'};
-        var csrfToken = getCookieLocal('XSRF-TOKEN');
-        if (csrfToken) { headers['X-XSRF-TOKEN'] = decodeURIComponent(csrfToken); }
         btn.disabled = true;
+        var originalLabel = btn.textContent;
+        btn.textContent = '⏳ Tworzenie…';
         fetch('/api/instruments', {
-            method: 'POST', headers: headers, credentials: 'same-origin',
-            body: JSON.stringify({name: name})
+            method: 'POST', headers: csrfHeadersAi(), credentials: 'same-origin',
+            body: JSON.stringify({ name: name })
         })
             .then(function (resp) {
                 if (!resp.ok) { throw new Error('HTTP ' + resp.status); }
                 return resp.json();
             })
-            .then(function () { loadAiProposals(aiAnalysisId); })
+            .then(function (instrument) {
+                if (!instrument || instrument.id == null || !instrument.name) {
+                    throw new Error('serwer nie zwrócił utworzonego tagu');
+                }
+                applyNewInstrumentToRows(instrument);
+                var el = document.getElementById('ai-accept-error');
+                if (el) { el.classList.add('hidden'); }
+                if (window.Toast && typeof window.Toast.success === 'function') {
+                    window.Toast.success('Utworzono tag «' + instrument.name + '» — instrument podstawiony w polu.');
+                }
+            })
             .catch(function (err) {
                 btn.disabled = false;
+                btn.textContent = originalLabel;
                 var el = document.getElementById('ai-accept-error');
                 if (el) {
                     el.textContent = 'Nie udało się utworzyć instrumentu „' + name + '”: ' + err.message
@@ -732,8 +788,7 @@
         if (aiProposals.length === 0) {
             if (dto && dto.simulated === true) {
                 var warn = document.createElement('div');
-                warn.style.cssText = 'padding:10px 12px;margin-bottom:8px;' +
-                    'border:1px solid #b45309;background:#fef3c7;border-radius:6px;';
+                warn.className = 'ai-sim-warn';
                 warn.textContent = '⚠️ To była symulacja (stub), bo w Band Managerze nie jest skonfigurowany ' +
                     'adres Score Analyzera (SCORE_ANALYZER_URL) — żaden plik nie przeszedł przez model AI. ' +
                     'Ustaw tę zmienną w środowisku WM, a następnie uruchom analizę ponownie.';
@@ -745,69 +800,73 @@
             return;
         }
         var table = document.createElement('table');
-        table.style.width = '100%';
-        table.style.borderCollapse = 'collapse';
-        var head = ['Głos', 'Strony', 'Pewność', 'Instrument'].map(function (h) {
-            return '<th style="text-align:left; padding:4px 6px;">' + h + '</th>';
-        }).join('');
-        table.innerHTML = '<thead><tr>' + head + '</tr></thead><tbody></tbody>';
+        table.className = 'ai-proposals-table';
+        table.innerHTML =
+            '<colgroup>' +
+            '<col class="ai-col-role"/><col class="ai-col-pages"/>' +
+            '<col class="ai-col-conf"/><col class="ai-col-inst"/>' +
+            '</colgroup>' +
+            '<thead><tr><th>Głos</th><th>Strony</th><th>Pewność</th><th>Instrument</th></tr></thead>' +
+            '<tbody></tbody>';
         var tbody = table.querySelector('tbody');
         aiProposals.forEach(function (row, idx) {
             var tr = document.createElement('tr');
             var members = (row.memberNames || []).join(', ');
+            var confPct = Math.round((row.confidence || 0) * 100);
+            var confCls = confPct >= 80 ? 'ai-conf-high' : (confPct >= 50 ? 'ai-conf-mid' : 'ai-conf-low');
             tr.innerHTML =
-                '<td style="padding:4px 6px;"><label><input type="checkbox" class="ai-row-cb" data-idx="' + idx + '" checked/>' +
-                '<strong>' + escapeHtml(row.role) + '</strong>' +
+                '<td class="ai-cell-role"><label class="ai-role-cell">' +
+                '<input type="checkbox" class="ai-row-cb" data-idx="' + idx + '" checked/>' +
+                '<span class="ai-role-body">' +
+                '<strong class="ai-role-name">' + escapeHtml(row.role) + '</strong>' +
                 (row.teamTag && row.teamTag.toLowerCase() !== String(row.role).toLowerCase()
-                    ? '<div class="muted" style="font-size:0.78em;">🏷 mapowanie: «' + escapeHtml(row.teamTag) + '»</div>'
+                    ? '<span class="ai-role-map">🏷 mapowanie: «' + escapeHtml(row.teamTag) + '»</span>'
                     : '') +
-                (members ? '<div class="muted" style="font-size:0.8em;">' + escapeHtml(members) + '</div>' : '') + '</label></td>' +
-                '<td style="padding:4px 6px; white-space:nowrap;">' + row.pageFrom + '–' + row.pageTo + '</td>' +
-                '<td style="padding:4px 6px;">' + Math.round((row.confidence || 0) * 100) + '%</td>';
+                (members ? '<span class="ai-role-members">👥 ' + escapeHtml(members) + '</span>' : '') +
+                '</span></label></td>' +
+                '<td class="ai-cell-pages">' + row.pageFrom + '–' + row.pageTo + '</td>' +
+                '<td class="ai-cell-conf"><span class="ai-conf ' + confCls + '">' + confPct + '%</span></td>';
             var tdInst = document.createElement('td');
+            tdInst.className = 'ai-cell-inst';
             var sel = document.createElement('select');
             sel.className = 'ai-row-select';
             sel.dataset.idx = String(idx);
-            if (aiInstruments.length === 0) {
-                sel.innerHTML = '<option></option>';
-                sel.disabled = true;
-            } else {
-                var matched = aiInstruments.some(function (opt) {
-                    return row.instrumentIdOrNull != null && String(opt.id) === String(row.instrumentIdOrNull);
-                });
-                if (!matched) {
-                    // Głos bez pewnego dopasowania do instrumentu zespołu:
-                    // JAWNY placeholder zamiast cichego domyślnego pierwszego optionu
-                    // (poprzednio każdy taki wiersz "wyciągał" pierwszy instrument w liście,
-                    // co użytkownik widział jako niezrozumiałe "F" w zgniecionym selekcie).
-                    var ph = document.createElement('option');
-                    ph.value = '';
-                    ph.textContent = '— wybierz instrument —';
-                    sel.appendChild(ph);
-                }
-                aiInstruments.forEach(function (opt) {
-                    var o = document.createElement('option');
-                    o.value = opt.id;
-                    o.textContent = opt.name;
-                    if (row.instrumentIdOrNull != null && String(opt.id) === String(row.instrumentIdOrNull)) { o.selected = true; }
-                    sel.appendChild(o);
-                });
-                if (!matched) {
-                    var badge = document.createElement('div');
-                    badge.className = 'ai-row-nomatch';
-                    badge.textContent = '⚠ nie dopasowano — wybierz instrument';
-                    tdInst.appendChild(badge);
-                    // Jawne wyjście: zespół nie ma tagu dla tego głosu → można go dodać
-                    // z tej strony; po zapisie panel przerysowuje się i głos się zmapuje.
-                    var addBtn = document.createElement('button');
-                    addBtn.type = 'button';
-                    addBtn.className = 'ai-add-tag-btn';
-                    addBtn.textContent = '+ utwórz tag «' + row.role + '»';
-                    addBtn.dataset.role = row.role;
-                    tdInst.appendChild(addBtn);
-                }
+            sel.setAttribute('aria-label', 'Instrument dla głosu ' + row.role);
+            var matched = aiInstruments.some(function (opt) {
+                return row.instrumentIdOrNull != null && String(opt.id) === String(row.instrumentIdOrNull);
+            });
+            if (!matched) {
+                // Głos bez pewnego dopasowania do instrumentu zespołu (albo zespół bez
+                // żadnych tagów): JAWNY placeholder zamiast cichego domyślnego pierwszego
+                // optionu (poprzednio każdy taki wiersz "wyciągał" pierwszy instrument w
+                // liście, co użytkownik widział jako niezrozumiałe „F” w zgniecionym selekcie).
+                var ph = document.createElement('option');
+                ph.value = '';
+                ph.textContent = '— wybierz instrument —';
+                sel.appendChild(ph);
             }
+            aiInstruments.forEach(function (opt) {
+                var o = document.createElement('option');
+                o.value = opt.id;
+                o.textContent = opt.name;
+                if (row.instrumentIdOrNull != null && String(opt.id) === String(row.instrumentIdOrNull)) { o.selected = true; }
+                sel.appendChild(o);
+            });
             tdInst.appendChild(sel);
+            if (!matched) {
+                var badge = document.createElement('div');
+                badge.className = 'ai-row-nomatch';
+                badge.textContent = '⚠ nie dopasowano — wybierz instrument';
+                tdInst.appendChild(badge);
+                // Jawne wyjście: zespół nie ma tagu dla tego głosu → można go dodać
+                // z tej strony; po zapisie tag zostaje podstawiony do selecta wyżej.
+                var addBtn = document.createElement('button');
+                addBtn.type = 'button';
+                addBtn.className = 'ai-add-tag-btn';
+                addBtn.textContent = '+ utwórz tag «' + row.role + '»';
+                addBtn.dataset.role = row.role;
+                tdInst.appendChild(addBtn);
+            }
             tr.appendChild(tdInst);
             tbody.appendChild(tr);
         });

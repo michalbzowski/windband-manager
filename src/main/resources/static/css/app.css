@@ -636,6 +636,54 @@ html, body {
     to   { opacity: 1; transform: translateY(0); }
 }
 
+/* ============================================================
+   APP MODAL WIDE — wariant dla dialogów z bogatą treścią
+   (analiza AI: tabela 4-kolumna z selectami nie mieści się w
+   bazowych 480 px i jest nieczytelnie zgniatana).
+   Na telefonach (<760px) zachowuje się jak zwykły pełnoekranowy
+   arkusz — mobile-first bez zmian.
+   ============================================================ */
+.app-modal-wide[open] {
+    align-items: center;
+}
+
+.app-modal-wide .app-modal-content {
+    width: min(1080px, 94vw);
+    max-width: none;
+    height: auto;
+    max-height: 92vh;
+    border-radius: 14px;
+    overflow: hidden;
+    box-shadow: 0 18px 48px rgba(0, 0, 0, 0.45);
+}
+
+.app-modal-wide .app-modal-header {
+    padding: 1rem 1.5rem;
+}
+
+.app-modal-wide .app-modal-body {
+    padding: 1rem 1.5rem 1.5rem;
+}
+
+@media (max-width: 760px) {
+    .app-modal-wide[open] {
+        align-items: stretch;
+    }
+    .app-modal-wide .app-modal-content {
+        width: 100%;
+        max-width: 480px;
+        height: 100%;
+        max-height: 100vh;
+        border-radius: 0;
+        box-shadow: none;
+    }
+    .app-modal-wide .app-modal-header,
+    .app-modal-wide .app-modal-body {
+        padding-left: 1rem;
+        padding-right: 1rem;
+    }
+}
+
 /* Fallback for browsers without <dialog> support */
 .app-modal-fallback {
     position: fixed;
@@ -1680,29 +1728,232 @@ tr.highlight-row > td {
     max-width: 200px;
 }
 
-/* Panel akceptacji propozycji AI (detail.html, #ai-proposals-wrap) —
-   select instrumentu MUSI pokazywać wybraną wartość: przy auto-layout tabeli
-   w wąskim modalu Pico zgniatało go do ~2 em i widać było jeden znak. */
-#ai-proposals-wrap { overflow-x: auto; }
-#ai-proposals-wrap table { min-width: 560px; }
-.ai-row-select {
-    width: 100%;
-    min-width: 14rem;
-    max-width: 18rem;
-    margin: 0.15rem 0;
+/* ============================================================
+   PANEL AKCEPTACJI PROPOZYCJI AI (compositions/detail.html,
+   #analyze-dialog → #ai-proposals-wrap)
+   Tabela w szerokim modalu: sensowne szerokości kolumn, jeden
+   scroll-container (ciało modalu) zamiast zagnieżdżonego okna
+   320px, które ucięło nagłówki. Badge pewności i chipy są
+   tematyczne (jasny + ciemny motyw) — bez wysp koloru.
+   ============================================================ */
+.ai-proposals-wrap {
+    margin-top: 0.5rem;
 }
+
+.ai-proposals-wrap table.ai-proposals-table {
+    width: 100%;
+    margin: 0;
+    border-collapse: separate; /* sticky <th> gubi bordery przy collapse */
+    border-spacing: 0;
+    font-size: 0.95rem;
+}
+
+.ai-col-role  { width: 32%; }
+.ai-col-pages { width: 11%; }
+.ai-col-conf  { width: 11%; }
+.ai-col-inst  { width: 46%; }
+
+.ai-proposals-table thead th {
+    position: sticky;
+    top: 0;
+    z-index: 1;
+    background: var(--pico-card-background-color);
+    color: var(--pico-muted-color);
+    font-size: 0.78rem;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    text-align: left;
+    padding: 0.55rem 0.75rem;
+    border-bottom: 2px solid var(--pico-muted-border-color);
+}
+
+.ai-proposals-table tbody td {
+    padding: 0.7rem 0.75rem;
+    border-bottom: 1px solid var(--pico-muted-border-color);
+    vertical-align: top;
+}
+
+.ai-proposals-table tbody tr:hover {
+    background: rgba(128, 128, 128, 0.08);
+}
+
+/* Komórka „Głos”: checkbox wyrównany do pierwszej linii nazwy,
+   całość klikalna (label), mapa/odsłona pod nazwą. */
+.ai-role-cell {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.6rem;
+    margin: 0;
+    cursor: pointer;
+}
+
+.ai-role-cell input[type="checkbox"] {
+    margin: 0.3rem 0 0;
+    flex-shrink: 0;
+}
+
+.ai-role-body {
+    display: flex;
+    flex-direction: column;
+    gap: 0.15rem;
+    min-width: 0;
+}
+
+.ai-role-name {
+    font-weight: 700;
+    line-height: 1.3;
+    overflow-wrap: anywhere;
+}
+
+.ai-role-map,
+.ai-role-members {
+    font-size: 0.8rem;
+    color: var(--pico-muted-color);
+    line-height: 1.35;
+}
+
+.ai-cell-pages {
+    white-space: nowrap;
+    font-variant-numeric: tabular-nums;
+}
+
+/* Pewność: kolor informuje, nie dekoruje (high/mid/low). */
+.ai-conf {
+    display: inline-block;
+    padding: 0.12rem 0.6rem;
+    border-radius: 999px;
+    font-size: 0.8rem;
+    font-weight: 600;
+    line-height: 1.4;
+    border: 1px solid transparent;
+}
+
+.ai-conf-high { color: #166534; background: #dcfce7; border-color: #86efac; }
+.ai-conf-mid  { color: #92400e; background: #fef3c7; border-color: #fcd34d; }
+.ai-conf-low  { color: #991b1b; background: #fee2e2; border-color: #fca5a5; }
+
+[data-theme="dark"] .ai-conf-high { color: #4ade80; background: rgba(34, 197, 94, 0.14); border-color: rgba(34, 197, 94, 0.45); }
+[data-theme="dark"] .ai-conf-mid  { color: #fbbf24; background: rgba(245, 158, 11, 0.14); border-color: rgba(245, 158, 11, 0.45); }
+[data-theme="dark"] .ai-conf-low  { color: #f87171; background: rgba(239, 68, 68, 0.14); border-color: rgba(239, 68, 68, 0.45); }
+
+@media (prefers-color-scheme: dark) {
+    .ai-conf-high { color: #4ade80; background: rgba(34, 197, 94, 0.14); border-color: rgba(34, 197, 94, 0.45); }
+    .ai-conf-mid  { color: #fbbf24; background: rgba(245, 158, 11, 0.14); border-color: rgba(245, 158, 11, 0.45); }
+    .ai-conf-low  { color: #f87171; background: rgba(239, 68, 68, 0.14); border-color: rgba(239, 68, 68, 0.45); }
+}
+
+/* Komórka „Instrument”: select pełną szerokością kolumny (był
+   zgniatany do ~2 em), pod nim chip ostrzeżenia i przycisk
+   utworzenia tagu — kolejność od razu czytelna. */
+.ai-cell-inst .ai-row-select {
+    width: 100%;
+    max-width: 24rem;
+    margin: 0;
+}
+
+.ai-row-select.ai-row-filled {
+    border-color: #16a34a;
+}
+
+[data-theme="dark"] .ai-row-select.ai-row-filled {
+    border-color: #4ade80;
+}
+
 /* Głos bez dopasowania do instrumentu zespołu — jawny placeholder,
-   w tle "wybierz" zamiast cichego domyślnego pierwszego optionu. */
+   w tle „wybierz” zamiast cichego domyślnego pierwszego optionu. */
 .ai-row-nomatch {
     display: inline-block;
-    margin-top: 2px;
-    padding: 1px 8px;
+    margin-top: 0.45rem;
+    padding: 0.18rem 0.7rem;
     border-radius: 999px;
-    font-size: 0.78em;
+    font-size: 0.8rem;
+    font-weight: 600;
     white-space: nowrap;
-    color: var(--pico-warnings-color, #b45309);
-    background: var(--pico-warnings-background, #fef3c7);
-    border: 1px solid var(--pico-border-color, #e2c896);
+    color: #92400e;
+    background: #fef3c7;
+    border: 1px solid #fcd34d;
+}
+
+[data-theme="dark"] .ai-row-nomatch {
+    color: #fbbf24;
+    background: rgba(245, 158, 11, 0.14);
+    border-color: rgba(245, 158, 11, 0.45);
+}
+
+@media (prefers-color-scheme: dark) {
+    .ai-row-nomatch { color: #fbbf24; background: rgba(245, 158, 11, 0.14); border-color: rgba(245, 158, 11, 0.45); }
+}
+
+.ai-add-tag-btn {
+    display: block;
+    width: auto;
+    margin: 0.45rem 0 0;
+    padding: 0.3rem 0.8rem;
+    font-size: 0.8rem;
+    line-height: 1.4;
+    background: transparent;
+    border: 1px solid var(--pico-muted-border-color);
+    border-radius: 999px;
+    /* Pico resetuje color na <button> na --pico-primary-inverse (biel
+       w jasnym motywie) → jawne kolory w obu motywach, wg wzorca
+       Theme-Aware Text Colors. */
+    color: #334155;
+}
+
+.ai-add-tag-btn:hover {
+    border-color: var(--pico-primary);
+    color: var(--pico-primary);
+}
+
+[data-theme="dark"] .ai-add-tag-btn {
+    color: #cbd5e1;
+}
+
+@media (prefers-color-scheme: dark) {
+    .ai-add-tag-btn {
+        color: #cbd5e1;
+    }
+}
+
+/* Ostrzeżenie „to była symulacja (stub)” — poprzednio inline
+   kolory jasnego motywu (biała wyspa na ciemnym tle). */
+.ai-sim-warn {
+    padding: 0.75rem 1rem;
+    margin-bottom: 0.75rem;
+    border: 1px solid #fcd34d;
+    border-radius: 8px;
+    background: #fef3c7;
+    color: #92400e;
+    font-size: 0.9rem;
+    line-height: 1.45;
+}
+
+[data-theme="dark"] .ai-sim-warn {
+    background: rgba(245, 158, 11, 0.12);
+    border-color: rgba(245, 158, 11, 0.45);
+    color: #fbbf24;
+}
+
+@media (prefers-color-scheme: dark) {
+    .ai-sim-warn {
+        background: rgba(245, 158, 11, 0.12);
+        border-color: rgba(245, 158, 11, 0.45);
+        color: #fbbf24;
+    }
+}
+
+/* Wąskie ekrany: tabela nie zgniata się — przechodzi w własny
+   poziomy scroll (sticky thead na desktopie pozostaje działający,
+   bo overflow-x włącza się dopiero tutaj). */
+@media (max-width: 760px) {
+    .ai-proposals-wrap {
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+    }
+    .ai-proposals-wrap table.ai-proposals-table {
+        min-width: 620px;
+    }
 }
 
 /* Responsive tabs for inventory */
@@ -4161,13 +4412,6 @@ button.secondary.danger:focus-visible {
     align-items: center;
     padding: 0 0.25rem;
     color: #94a3b8;
-}
-
-.ai-add-tag-btn {
-    margin-top: 4px;
-    padding: 2px 8px;
-    font-size: 0.78rem;
-    width: auto;
 }
 
 /* Issue #268 — pasek filtrowania listy członków (szukanie + sekcja obok siebie, do kolumny na telefonie) */
