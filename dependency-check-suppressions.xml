@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  OWASP Dependency-Check — świadomie zaakceptowane ryzyka (supresje).
+
+  Konwencja repo (wymagana przy każdej dodanej supresji):
+   1. Supresja = świadoma decyzja o uznaniu ryzyka, NIE ukrycie problemu.
+   2. Każdy wpis podaje: CVE-id + dlaczego akceptujemy (np. ścieżka nieeksploatowalna
+      przy naszym sposobie użycia) LBO ticketa na upgrade, jeśli istnieje.
+   3. WAŻNE: data wygaszenia (<confidence> + comment 'wygasa: YYYY-MM-DD').
+      Po tej dacie build MA przechodzić — albo upgrade, albo nowa decyzja z cytatem
+      powodu (jak OVERRIDE_REASON w gatesach).
+   4. Nigdy nie supresuj CVE w zależnościach ekspozowanych publicznie bez zgody
+      właściciela projektu.
+
+  Przykład szablonu (skopiuj przy pierwszej supresji):
+  <suppress until="2027-05-31">
+    <packageUrl regex="true">^.*net\.sf\.jasperreports:jasperreports@.*$</packageUrl>
+    <cve>CVE-XXXX-YYYY</cve>
+  </suppress>
+  Konwencja: data wygaszenia = komentarz obok albo atrybut 'until' (DC 10+).
+-->
+<suppressions xmlns="https://jeremylong.github.io/DependencyCheck/dependency-suppression.1.3.xsd">
+</suppressions>

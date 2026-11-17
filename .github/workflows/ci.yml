@@ -149,3 +149,116 @@ jobs:
           path: target/pit-reports/**
           retention-days: 14
           if-no-files-found: ignore
+
+  # --------------------------------------------------------------------------
+  # Radar bezpieczeństwa P1/P2 (free/OSS, bez kont i licencji):
+  #   gitleaks        — sekrety w historii git (przeszłe + obecne); bramka: finding = fail
+  #   Trivy fs        — bramka CRITICAL z fixem (.trivyignore) + raport HIGH/CRITICAL
+  #   dependency-check— CVE w zależnościach; warunkowy od darmowego klucza NVD (secret)
+  # FindSecBugs działa już wewnątrz istniejącego joba Build (SpotBugs).
+  # --------------------------------------------------------------------------
+  secrets-scan:
+    name: Secrets (gitleaks, MIT)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout (pełna historia — gitleaks skanuje cały log)
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          fetch-depth: 0
+
+      # gitleaks CLI = MIT (repo gitleaks/gitleaks). CELOWO nie używamy oficjalnego
+      # gitleaks-action — od v2 action jest pod licencją komercyjną Gitleaks LLC (EULA),
+      # a repo wymaga czystego OSS (decyzja 2026-11). Wersja przypięta świadomie.
+      - name: Install gitleaks binary (pinned)
+        run: |
+          VER=8.30.1
+          curl -sSL "https://github.com/gitleaks/gitleaks/releases/download/v${VER}/gitleaks_${VER}_linux_x64.tar.gz" -o /tmp/gl.tgz
+          tar xzf /tmp/gl.tgz -C "$RUNNER_TEMP"
+
+      # Explicit --config: domyślne reguły (extend.useDefault=true w pliku) + nasz allowlist.
+      - name: gitleaks detect
+        run: |
+          "$RUNNER_TEMP/gitleaks" detect --source . --config ./.gitleaks.toml --no-banner
+
+  trivy-fs:
+    name: FS scan (Trivy)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+
+      # trivy CLI = Apache-2.0 (pinned). Celowo surowy CLI zamiast trivy-action:
+      # jeden job musi zrobić dwa różne skany — bramka CRITICAL + raport HIGH (decyzja 2026-11).
+      - name: Install trivy (pinned)
+        run: |
+          VER=0.76.2
+          curl -sSL "https://github.com/aquasecurity/trivy/releases/download/v${VER}/trivy_${VER}_Linux-64bit.tar.gz" -o /tmp/tr.tgz
+          tar xzf /tmp/tr.tgz -C "$RUNNER_TEMP"
+
+      # BRAMKA: tylko CRITICAL, tylko z fixem (ignore-unfixed), minus udokumentowane
+      # w .trivyignore (CVE bez fixa na linii Spring 6.1/Boot 3.3 — wygasają przy P5).
+      # HIGH są raportowane niżej, ale nie blokują, dopóki backlog P5 (Boot 3.4/3.5) żyje.
+      # --exit-code 1 JEST OBOWIĄZKOWY: domyślnie trivy wyrzuca 0 nawet przy findingach!
+      - name: Trivy gate (CRITICAL)
+        run: |
+          "$RUNNER_TEMP/trivy" fs --scanners vuln --severity CRITICAL \
+            --ignore-unfixed --ignorefile ./.trivyignore --exit-code 1 --no-progress .
+
+      # RAPORT (celowo bez --exit-code: ma informować, nie blokować)
+      - name: Trivy report (HIGH+CRITICAL)
+        run: |
+          "$RUNNER_TEMP/trivy" fs --scanners vuln --severity HIGH,CRITICAL \
+            --ignorefile ./.trivyignore --no-progress .
+          "$RUNNER_TEMP/trivy" fs --scanners vuln --severity HIGH,CRITICAL \
+            --ignorefile ./.trivyignore --no-progress -f json -o trivy-fs-report.json .
+
+      - name: Upload report (JSON)
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: trivy-fs-report
+          path: trivy-fs-report.json
+          if-no-files-found: ignore
+
+  dependency-check:
+    name: Deps scan (OWASP)
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    # DC 13.x aktualizuje bazę przez NVD API 2.0 — wymaga (darmowego) klucza
+    # z https://tenant.nvd.nist.gov . Bez sekretu job jest POMINİYTY, a twardą
+    # bramką SCA pozostają Dependabot alerts + trivy-fs (decyzja 2026-11).
+    if: ${{ secrets.NVD_API_KEY != '' }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@cf277c60eb25467037889841efdb72551f06f6c3 # v4.9.1
+        with:
+          distribution: temurin
+          java-version: '21'
+          cache: maven
+
+      - name: Make mvnw executable
+        run: chmod +x mvnw
+
+      # goal (a nie `verify`) — nie uruchamia testów, skanuje deklarowane zależności.
+      # -DnvdApiKey tylko gdy secret istnieje — pusty string BREAKS klienta NVD.
+      - name: OWASP Dependency-Check
+        env:
+          NVD_API_KEY: ${{ secrets.NVD_API_KEY }}
+        run: |
+          ARGS=()
+          if [ -n "${NVD_API_KEY:-}" ]; then ARGS+=("-DnvdApiKey=${NVD_API_KEY}"); fi
+          ./mvnw -B dependency-check:check "${ARGS[@]}"
+
+      - name: Upload report
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: dependency-check-reports
+          path: target/dependency-check/**
+          retention-days: 14
+          if-no-files-found: ignore
