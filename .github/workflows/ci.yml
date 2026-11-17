@@ -304,21 +304,23 @@ jobs:
     # Semgrep OSS (silnik LGPL-2.1, darmy). Zestaw reguł Java = PIN w repo:
     # .semgrep/rules-java.yaml (p/java, sha + data pobrania w nagłówku) —
     # skan jest offline i deterministyczny w obrębie pinu; zero SaaS.
+    # Job-container = obraz silnika (weryfikowane lokalnie actionlint v1.7.12:
+    # `image:` w kroku NIE istnieje — tylko `container` na poziomie joba).
     # Bramka: --error na finding (baseline 2026-11: 0 findings w full code przy
     # 60 regułach; detekcja zwalidowana canarim: Blowfish+MD5 = 2 hits).
+    container:
+      image: semgrep/semgrep:1.185.0
     steps:
       - name: Checkout
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
 
-      - name: SAST scan (gate na findingi)
-        image: semgrep/semgrep:1.185.0
+      - name: SAST scan (bramka na findingi)
         run: |
           semgrep scan --config .semgrep/rules-java.yaml --metrics=off --error \
             src/main/java src/test/java
 
       - name: SAST report (JSON)
         if: always()
-        image: semgrep/semgrep:1.185.0
         run: |
           semgrep scan --config .semgrep/rules-java.yaml --metrics=off \
             --json > sast-semgrep-report.json src/main/java src/test/java || true
