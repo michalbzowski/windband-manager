@@ -59,6 +59,13 @@ jobs:
       - name: Publish Test Results
         if: always()
         uses: dorny/test-reporter@31a54ee7ebcacc03a09ea97a7e5465a47b84aea5 # v1.9.1
+        # continue-on-error: anotacje to dodatek, nie bramka — testy i tak gwarantuje
+        # mvn verify powyżej. Root-cause 404 dornyego nie jest w pełni rozpoznany:
+        # endpoint /check-runs w tym repo zwraca dla tokena użytkownika
+        # 403 "must authenticate via a GitHub App" (probe 2026-11-17), a GITHUB_TOKEN
+        # runu dostawał 404 mimo poprawnego SHA — runy 44089140171 i 44097149929,
+        # obie zielone w mvn, czerwone wyłącznie na tym kroku. Osobne śledztwo = osobny PR.
+        continue-on-error: true
         with:
           name: Maven Tests
           path: '**/target/surefire-reports/*.xml'
