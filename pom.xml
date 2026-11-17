@@ -31,6 +31,7 @@
              patche z fixami CVE): audyt trivy 2026-11, bramka CI 'trivy-fs'. -->
         <thymeleaf.version>3.1.7.RELEASE</thymeleaf.version> <!-- CVE-2026-40477/40478/41901 (SSTI); Boot 3.3.11 zarządza → 3.1.3 -->
         <tomcat.version>10.1.62</tomcat.version> <!-- CRITICAL/HIGH CVE tomcat 2025–26; Boot 3.3.11 zarządza → 10.1.40 -->
+        <postgresql.version>42.7.14</postgresql.version> <!-- CVE-2025-49146 / -2026-42198 / -2026-54291 (pgjdbc); fix ≤ 42.7.12, najnowszy w linii = 42.7.14; Boot 3.3.11 zarządza → 42.7.5 -->
         <!-- US-2.2: page-count extraction on upload (Apache PDFBox). -->
         <pdfbox.version>3.0.7</pdfbox.version>
         <!-- Surefire: UI-suite dominated build runs sequentially (each ChromeDriver is ~300MB;
@@ -195,7 +196,8 @@
         <dependency>
             <groupId>io.github.bonigarcia</groupId>
             <artifactId>webdrivermanager</artifactId>
-            <version>5.9.2</version>
+            <!-- GHSA-pwm3-776c-8q7q / CVE-2025-4641 (XXE, critical): fix od 6.1.0 — brak poprawki w linii 5.x; scope=test, UI tests walidują -->
+            <version>6.4.0</version>
             <scope>test</scope>
         </dependency>
 
