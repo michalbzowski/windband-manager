@@ -185,9 +185,30 @@ jobs:
     name: FS scan (Trivy)
     runs-on: ubuntu-latest
     timeout-minutes: 15
+    # needs: build — trivy fs pobiera pomy rodzicielskie zdalnie, gdy lokalny
+    # cache jest pusty; Maven Central throttluje nawet IP runnerow GitHuba
+    # (429 po fan-out'ach, blok ~30 min) — run 44084995227 umarł właśnie tak.
+    # Po buildzie cache m2 jest już w shared actions/cache (~100% hitu),
+    # więc trivy czyta pomy z dysku i nie dzwoni do centrala.
+    needs: [build]
     steps:
       - name: Checkout
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+
+      # Warmup cache zalecany przez trivy (własny błąd 429 podpowiada go wprost):
+      # setup-java z maven-cache + go-offline = skan już bez zdalnych dzwonów.
+      - name: "Set up JDK 21, maven cache"
+        uses: actions/setup-java@cf277c60eb25467037889841efdb72551f06f6c3 # v4.9.1
+        with:
+          distribution: temurin
+          java-version: '21'
+          cache: maven
+
+      - name: Make mvnw executable
+        run: chmod +x mvnw
+
+      - name: Warm Maven cache (dependency:go-offline)
+        run: ./mvnw -B -q dependency:go-offline
 
       # trivy CLI = Apache-2.0 (pinned). Celowo surowy CLI zamiast trivy-action:
       # jeden job musi zrobić dwa różne skany — bramka CRITICAL + raport HIGH (decyzja 2026-11).
