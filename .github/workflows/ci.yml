@@ -412,9 +412,10 @@ jobs:
         run: |
           curl -sL --fail --show-error --max-time 300 \
             -o nuclei.zip "https://github.com/projectdiscovery/nuclei/releases/download/v3.11.1/nuclei_3.11.1_linux_amd64.zip"
-          unzip -q nuclei.zip -d .
-          chmod +x nuclei
-          ./nuclei -version | head -2
+          mkdir -p tools
+          unzip -qo nuclei.zip -d tools
+          chmod +x tools/nuclei
+          ./tools/nuclei -version | head -2
 
       - name: Szablony (pin 5b96bcad; community, MIT)
         run: |
@@ -439,7 +440,7 @@ jobs:
 
       - name: Scan (faza 1 = raport; zielono nawet z findingami)
         run: |
-          ./nuclei \
+          ./tools/nuclei \
             -u http://localhost:8090/ -u http://localhost:8090/login -u http://localhost:8090/register \
             -H "$NDCOOKIE" \
             -tags cve,misconfiguration,exposure \
