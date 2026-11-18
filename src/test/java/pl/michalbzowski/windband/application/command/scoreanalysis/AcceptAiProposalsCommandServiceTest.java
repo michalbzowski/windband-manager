@@ -180,14 +180,16 @@ class AcceptAiProposalsCommandServiceTest {
                 COMPOSITION_ID, BAND_ID, ANALYSIS_ID,
                 List.of(row("Trąbka II", 1, 1, 13L, 0.7)), VERIFIER))
                 .isInstanceOf(IllegalArgumentException.class)
-                .hasMessageContaining("Zakres");
+                .hasMessageContaining("stron");
     }
 
     @Test
-    @DisplayName("rola już w utworze → pominięcie, NIGDY nadpisanie (inaczej case roli)")
+    @DisplayName("ta sama rola I ten sam zakres stron już w utworze → pominięcie, NIGDY nadpisanie")
     void existingRoleSkippedNotOverwritten() {
         CompositionInstrument taken = mock(CompositionInstrument.class);
         when(taken.getInstrumentRole()).thenReturn("trąbka ii"); // celowo inny zapis
+        when(taken.getPageFrom()).thenReturn(3);
+        when(taken.getPageTo()).thenReturn(3);
         when(partRepository.findAllByComposition(composition)).thenReturn(List.of(taken));
 
         AcceptAiProposalsCommandService.AcceptResult result = service.accept(
@@ -239,6 +241,41 @@ class AcceptAiProposalsCommandServiceTest {
         assertThatThrownBy(() -> service.accept(null, BAND_ID, ANALYSIS_ID,
                 List.of(row("Trąbka II", 3, 3, 13L, null)), VERIFIER))
                 .isInstanceOf(IllegalArgumentException.class);
+    }
+
+    @Test
+    @DisplayName("Rola powtórzona z różnymi zakresami stron (przypadek prod „Amerland”) → oba bloki akceptowane, zero 400")
+    void repeatedRoleDifferentPageRangesBothAccepted() throws Exception {
+        Files.writeString(workDir.resolve("arrangement.json"), """
+                [
+                  {"role":"Puzon I B♭","pageFrom":3,"pageTo":3,"confidence":0.8},
+                  {"role":"Puzon I B♭","pageFrom":7,"pageTo":7,"confidence":0.7}
+                ]""");
+        when(instrumentRepository.findByIdAndBandId(13L, BAND_ID)).thenReturn(Optional.of(trabka));
+
+        AcceptAiProposalsCommandService.AcceptResult result = service.accept(
+                COMPOSITION_ID, BAND_ID, ANALYSIS_ID,
+                List.of(row("Puzon I B♭", 3, 3, 13L, 0.8), row("Puzon I B♭", 7, 7, 13L, 0.7)),
+                VERIFIER);
+
+        assertThat(result.created()).isEqualTo(2); // przed naprawą: 400 „Zakres stron ... nie zgadza się"
+        assertThat(result.skipped()).isEmpty();
+    }
+
+    @Test
+    @DisplayName("rola z innego zakresu niż w utworze ale w propozycjach → IAE (400) ze wskazówką")
+    void repeatedRoleWrongRangeRejectedWithHint() throws Exception {
+        Files.writeString(workDir.resolve("arrangement.json"), """
+                [
+                  {"role":"Puzon I B♭","pageFrom":3,"pageTo":3,"confidence":0.8},
+                  {"role":"Puzon I B♭","pageFrom":7,"pageTo":7,"confidence":0.7}
+                ]""");
+
+        assertThatThrownBy(() -> service.accept(
+                COMPOSITION_ID, BAND_ID, ANALYSIS_ID,
+                List.of(row("Puzon I B♭", 46, 46, 13L, 0.8)), VERIFIER))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("nie dla stron");
     }
 
     @Test

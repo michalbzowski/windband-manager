@@ -34,8 +34,10 @@ import pl.michalbzowski.windband.domain.member.InstrumentRepository;
  *
  * <p>Guards, in order: proposal row must exist in this analysis's {@code arrangement.json} with
  * an identical page range (the endpoint only accepts what the AI actually suggested — anything
- * else belongs to {@code addPart}); the instrument must belong to the band; a role that already
- * has a part in the composition is SKIPPED (never overwrites a human mapping) and reported.
+ * else belongs to {@code addPart}); the instrument must belong to the band; an EXACT duplicate
+ * (same role AND same page range) part already in the composition is SKIPPED (never overwrites a
+ * human mapping) and reported. A repeated role with a DIFFERENT page range is a distinct voice
+ * block (e.g. „Puzon I B♭" on pages 45 and 48 of Amerland) — both blocks are accepted verbatim.
  *
  * <p>{@code PartSource}: the chosen instrument equals the resolver's candidate for the role →
  * {@link PartSource#AI} (accepted verbatim); any other choice → {@link PartSource#HYBRID}.
@@ -102,14 +104,25 @@ public class AcceptAiProposalsCommandService {
                 .orElseThrow(() -> new IllegalArgumentException(
                         "Plik nut analizowany w biegu " + analysisId + " nie istnieje."));
 
+        // REGRESJA (prod 2026-11-18, „Amerland”): arrangement.json bywa powtarzany dla tej samej
+        // roli z różnymi zakresami stron („Puzon I B♭" na str. 45 i 48 — dwa bloki tego samego
+        // głosu). Poprzedni klucz po samej roli (putIfAbsent) trzymał tylko pierwszy wiersz, a
+        // akceptacja któregoś z następnych sypała „Zakres stron nie zgadza się" → HTTP 400.
+        // Klucz musi więc identyfikować WIERZ: rola + zakres stron.
         java.util.Map<String, AIProposals> known = new java.util.HashMap<>();
+        Set<String> knownRoles = new HashSet<>();
         for (AIProposals p : proposals) {
-            known.putIfAbsent(normalize(p.role()), p);
+            String norm = normalize(p.role());
+            known.putIfAbsent(partKey(norm, p.pageFrom(), p.pageTo()), p);
+            if (!norm.isEmpty()) {
+                knownRoles.add(norm);
+            }
         }
 
-        Set<String> existingRoles = new HashSet<>();
+        Set<String> existingParts = new HashSet<>();
         for (CompositionInstrument part : partRepository.findAllByComposition(composition)) {
-            existingRoles.add(normalize(part.getInstrumentRole()));
+            existingParts.add(partKey(normalize(part.getInstrumentRole()),
+                    part.getPageFrom(), part.getPageTo()));
         }
 
         List<SkippedRow> skipped = new ArrayList<>();
@@ -119,17 +132,20 @@ public class AcceptAiProposalsCommandService {
             if (normRole.isEmpty()) {
                 throw new IllegalArgumentException("Wiersz bez roli nie może być zaakceptowany.");
             }
-            AIProposals source = known.get(normRole);
+            AIProposals source = known.get(partKey(normRole, row.pageFrom(), row.pageTo()));
             if (source == null) {
+                if (knownRoles.contains(normRole)) {
+                    throw new IllegalArgumentException(
+                            "Rola \"" + row.role() + "\" występuje w propozycjach analizy " + analysisId
+                                    + ", ale nie dla stron " + row.pageFrom() + "–" + row.pageTo()
+                                    + " — zaakceptuj wiersz o faktycznym zakresie z podglądu.");
+                }
                 throw new IllegalArgumentException(
                         "Rola \"" + row.role() + "\" nie występuje w propozycjach analizy " + analysisId + ".");
             }
-            if (source.pageFrom() != row.pageFrom() || source.pageTo() != row.pageTo()) {
-                throw new IllegalArgumentException(
-                        "Zakres stron wiersza \"" + row.role() + "\" nie zgadza się z propozycjami analizy AI.");
-            }
-            if (existingRoles.contains(normRole)) {
-                skipped.add(new SkippedRow(row.role(), "partia o tej roli już istnieje w utworze"));
+            if (existingParts.contains(partKey(normRole, row.pageFrom(), row.pageTo()))) {
+                skipped.add(new SkippedRow(row.role(),
+                        "partia o tej roli i stronach już istnieje w utworze"));
                 continue;
             }
 
@@ -158,10 +174,16 @@ public class AcceptAiProposalsCommandService {
                     null, scoreFile, sourceValue, confidence);
             part.verify(verifier, Instant.now());
             partRepository.save(part);
-            existingRoles.add(normRole);
+            existingParts.add(partKey(normRole, row.pageFrom(), row.pageTo()));
             created++;
         }
         return new AcceptResult(created, skipped);
+    }
+
+    /** Composite identity of a voice block: normalized role + exact page range (see guards above). */
+    private static String partKey(String normalizedRole, Object pageFrom, Object pageTo) {
+        return normalizedRole + "|" + java.util.Objects.toString(pageFrom, "") + "-"
+                + java.util.Objects.toString(pageTo, "");
     }
 
     private static String normalize(String s) {

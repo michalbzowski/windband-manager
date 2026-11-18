@@ -862,6 +862,18 @@
                 sel.appendChild(o);
             });
             tdInst.appendChild(sel);
+            // REGRESJA (prod 2026-11-18, Android): wybór instrumentu nie zostawiał ŻADNEGO
+            // widocznego potwierdzenia — użytkownik widział „niby zaznaczony, a wartości nie widać".
+            // Po zmianie select od razu zapala się zieloną ramką (ai-row-filled), a chip
+// ostrzeżenia i przycisk dodania tagu znikają: wybór jest jednoznacznie zarejestrowany.
+            sel.addEventListener('change', function () {
+                if (sel.value == null || String(sel.value) === '') { return; }
+                sel.classList.add('ai-row-filled');
+                var td = sel.closest('td');
+                if (td) {
+                    td.querySelectorAll('.ai-row-nomatch, .ai-add-tag-btn').forEach(function (el) { el.remove(); });
+                }
+            });
             if (!matched) {
                 var badge = document.createElement('div');
                 badge.className = 'ai-row-nomatch';
@@ -963,7 +975,7 @@
                 return resp.text().then(function (text) {
                     var payload = null;
                     try { if (text) { payload = JSON.parse(text); } } catch (e) { /* puste ciało */ }
-                    if (!resp.ok) { throw new Error((payload && payload.message) || ('HTTP ' + resp.status)); }
+                    if (!resp.ok) { throw new Error((payload && (payload.error || payload.message)) || ('HTTP ' + resp.status)); }
                     return { status: resp.status, body: payload };
                 });
             })
