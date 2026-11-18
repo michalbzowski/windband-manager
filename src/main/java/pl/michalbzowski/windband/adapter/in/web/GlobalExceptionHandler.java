@@ -108,6 +108,21 @@ public class GlobalExceptionHandler {
                 .body(errorBody(ex.getMessage()));
     }
 
+    /**
+     * Równoległa akceptacja tego samego bloku głosu (dwa zlecenia, dwa zakładki):
+     * wygrywa jedno, przegrane dostaje unikalny klucz z bazy. Klient ma zobaczyć
+     * czytelnego 409 (PL), a nie surowe SQL w ciele 500 — po odświeżeniu ponowna
+     * próba trafia w guard "partia już istnieje" i kończy się pominięciem.
+     */
+    @ExceptionHandler(org.springframework.dao.DataIntegrityViolationException.class)
+    public ResponseEntity<Map<String, Object>> handleDataIntegrityConflict(
+            org.springframework.dao.DataIntegrityViolationException ex) {
+        log.warn("Data integrity conflict → 409 (raw: {})", ex.getMessage());
+        return ResponseEntity.status(HttpStatus.CONFLICT)
+                .body(errorBody("Ta zmiana koliduje z równoległą akceptacją tej samej partii — "
+                        + "odśwież widok utworu i spróbuj ponownie."));
+    }
+
     @ExceptionHandler(IllegalArgumentException.class)
     public ResponseEntity<Map<String, Object>> handleBadRequest(IllegalArgumentException ex) {
         // REGRESJA (prod 2026-11-18): biznesowy 400 nie zostawiał po stronie serwerowej żadnego
