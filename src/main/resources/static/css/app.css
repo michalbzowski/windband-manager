@@ -1742,6 +1742,7 @@ tr.highlight-row > td {
 
 .ai-proposals-wrap table.ai-proposals-table {
     width: 100%;
+    table-layout: fixed; /* kolumny wg colgroup, nie wg tresci wiersza */
     margin: 0;
     border-collapse: separate; /* sticky <th> gubi bordery przy collapse */
     border-spacing: 0;
@@ -1811,6 +1812,7 @@ tr.highlight-row > td {
     font-size: 0.8rem;
     color: var(--pico-muted-color);
     line-height: 1.35;
+    overflow-wrap: anywhere; /* fixed layout: dlugie nazwy wracaja do kolumny */
 }
 
 .ai-cell-pages {
@@ -1850,6 +1852,7 @@ tr.highlight-row > td {
     width: 100%;
     max-width: 24rem;
     margin: 0;
+    min-height: 2.5rem; /* cel dotyku (UX: minimum 40px) */
 }
 
 .ai-row-select.ai-row-filled {
@@ -1943,16 +1946,91 @@ tr.highlight-row > td {
     }
 }
 
-/* Wąskie ekrany: tabela nie zgniata się — przechodzi w własny
-   poziomy scroll (sticky thead na desktopie pozostaje działający,
-   bo overflow-x włącza się dopiero tutaj). */
+/* Wąskie ekrany: tabela przechodzi w kartę — pełna widoczność każdego elementu, bez poziomego scrollowania (poprzednio min-width: 620px + overflow-x: auto wymuszało “przesuń i szukaj” na telefonie), a szerokości wierszy są stabilne: usunięcie chipa ostrzeżzeniowego po wyborze instrumentu niczego nie zaciska i nie poszerza. */
 @media (max-width: 760px) {
     .ai-proposals-wrap {
-        overflow-x: auto;
-        -webkit-overflow-scrolling: touch;
+        overflow-x: visible;
+        -webkit-overflow-scrolling: auto;
     }
-    .ai-proposals-wrap table.ai-proposals-table {
-        min-width: 620px;
+
+    .ai-proposals-wrap table.ai-proposals-table,
+    .ai-proposals-wrap table.ai-proposals-table tbody,
+    .ai-proposals-wrap table.ai-proposals-table tr {
+        display: block;
+    }
+
+    .ai-proposals-wrap table.ai-proposals-table colgroup,
+    .ai-proposals-wrap table.ai-proposals-table thead {
+        display: none; /* zastąpione etykietami komórek poniżej — dane się nie chowają, przestawiają */
+    }
+
+    .ai-proposals-wrap table.ai-proposals-table tr {
+        border: 1px solid var(--pico-muted-border-color);
+        border-radius: 10px;
+        margin-bottom: 0.75rem;
+        overflow: hidden;
+
+    }
+
+    .ai-proposals-wrap table.ai-proposals-table tbody td {
+        display: block;
+        width: 100%;
+        min-width: 0;
+        border-bottom: 0;
+        padding: 0.55rem 0.85rem;
+    }
+
+    .ai-proposals-wrap table.ai-proposals-table tbody td + td {
+        border-top: 1px solid var(--pico-muted-border-color);
+    }
+
+    /* “Strony” i “Pewność” obok siebie — obie krótkie. */
+    .ai-proposals-wrap table.ai-proposals-table .ai-cell-pages,
+    .ai-proposals-wrap table.ai-proposals-table .ai-cell-conf {
+        display: inline-block;
+        width: 49%;
+        vertical-align: middle;
+        white-space: normal;
+    }
+
+    /* Etykiety komórek zamiast ukrytego <thead> (najlepsza praktyka
+       tabel responsywnych: przełożenie kolumn, a nie ich odcięcie). */
+    .ai-proposals-wrap table.ai-proposals-table td::before {
+        display: block;
+        margin-bottom: 0.35rem;
+        font-size: 0.7rem;
+        font-weight: 600;
+        letter-spacing: 0.05em;
+        text-transform: uppercase;
+        color: var(--pico-muted-color);
+    }
+
+    .ai-proposals-wrap table.ai-proposals-table .ai-cell-role::before   { content: "Głos"; }
+    .ai-proposals-wrap table.ai-proposals-table .ai-cell-pages::before  { content: "Strony"; }
+    .ai-proposals-wrap table.ai-proposals-table .ai-cell-conf::before   { content: "Pewność"; }
+    .ai-proposals-wrap table.ai-proposals-table .ai-cell-inst::before   { content: "Instrument"; }
+
+    /* Chip ostrzeżzeniowy nie ucieka poza kraweńdz ekranu (poprzednio
+       white-space: nowrap + siatka 620px wypychały go za kolumnę). */
+    .ai-row-nomatch {
+        display: block;
+        width: auto;
+        white-space: normal;
+        text-align: center;
+    }
+
+    /* Duże cele dotyku (kciuk): select i przycisk tagu na pełną szerokość. */
+    .ai-cell-inst .ai-row-select {
+        max-width: none;
+        min-height: 2.75rem;
+    }
+
+    .ai-add-tag-btn {
+        display: block;
+        width: 100%;
+        min-height: 2.75rem;
+        margin-top: 0.55rem;
+        padding: 0.5rem 0.9rem;
     }
 }
 
