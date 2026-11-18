@@ -110,6 +110,9 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(IllegalArgumentException.class)
     public ResponseEntity<Map<String, Object>> handleBadRequest(IllegalArgumentException ex) {
+        // REGRESJA (prod 2026-11-18): biznesowy 400 nie zostawiał po stronie serwerowej żadnego
+        // śladu, a front widział goły „HTTP 400" — komunikat w ciele był jedyną wskazówką.
+        log.warn("Biznesowy 400 (IAE): {}", ex.getMessage());
         return ResponseEntity.status(HttpStatus.BAD_REQUEST)
                 .body(errorBody(ex.getMessage()));
     }
