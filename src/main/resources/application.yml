@@ -108,6 +108,11 @@ app:
   # włączane jawnie per środowisko lokalne (app.api.build-info-enabled=true).
   api:
     build-info-enabled: false
+  # Raport spójności AI (M1, flaga funkcji): widok /verify-ai + endpoint accept-corrected.
+  # Default OFF — stary flow AI (tabela propozycji + /accept) działa bez zmian; włączenie
+  # odsłania nowy widok raportu z korektą zakresów. Rozstrzygnięcie: "prosty switch".
+  ai-verify-report:
+    enabled: false
   # Pentest P2 (A01): tokeny zaproszeń wygasają po N dniach (domyślnie 7).
   team:
     invitation-expiry-days: 7

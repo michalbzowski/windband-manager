@@ -3,6 +3,7 @@ package pl.michalbzowski.windband.adapter.in.web;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.io.IOException;
 import java.util.List;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.oauth2.core.oidc.user.OidcUser;
@@ -18,10 +19,12 @@ import pl.michalbzowski.windband.application.query.scoreanalysis.ProposalsPrevie
 import pl.michalbzowski.windband.application.query.scoreanalysis.ScoreAnalysisProposalsQueryService;
 
 /**
- * Faza D — the two human-in-the-loop endpoints of one finished analysis:
+ * Faza D — the human-in-the-loop endpoints of one finished analysis:
  * <ul>
- *   <li>{@code GET  .../proposals} — resolved AI proposals (+ work metadata + band instruments);</li>
- *   <li>{@code POST .../accept}    — create the accepted part rows (verified by the caller, US-4.5).
+ *   <li>{@code GET  .../proposals}      — resolved AI proposals (+ work metadata + band instruments);</li>
+ *   <li>{@code POST .../accept}         — accept rows verbatim (verified by the caller, US-4.5);</li>
+ *   <li>{@code POST .../proposals/accept-corrected} — flagged feature M1 ("raport spójności"):
+ *       accept with a user-corrected page range; 404 while {@code app.ai-verify-report.enabled=false}.
  * </ul>
  * JSON is written through {@link ObjectMapper} (Phase B convention) so standalone MockMvc tests pin
  * the contract without a configured Jackson module.
@@ -34,11 +37,15 @@ public class ScoreAnalysisAiRestController {
 
     private final ScoreAnalysisProposalsQueryService queryService;
     private final AcceptAiProposalsCommandService commandService;
+    private final boolean aiVerifyReportEnabled;
 
     public ScoreAnalysisAiRestController(ScoreAnalysisProposalsQueryService queryService,
-                                         AcceptAiProposalsCommandService commandService) {
+                                         AcceptAiProposalsCommandService commandService,
+                                         @Value("${app.ai-verify-report.enabled:false}")
+                                         boolean aiVerifyReportEnabled) {
         this.queryService = queryService;
         this.commandService = commandService;
+        this.aiVerifyReportEnabled = aiVerifyReportEnabled;
     }
 
     /** GET → 200 {@code {work, instruments[], proposals[]}} (409 when the run is not finished). */
@@ -74,6 +81,33 @@ public class ScoreAnalysisAiRestController {
             return String.valueOf(wu.getUserId());
         }
         return "ai-accept";
+    }
+
+    /**
+     * Flagged feature M1 — corrected-range acceptance ("raport spójności"). The rows carry the AI
+     * anchor (role + original range) and the FINAL range; see {@code acceptCorrected} for the rules.
+     *
+     * <p>Flag off → 404 (the endpoint is INVISIBLE, as if it never existed — not a 403/400 that
+     * invites probing). Flag on → same guard + contract semantics as {@code /accept}.
+     */
+    public record AcceptCorrectedBody(List<AcceptAiProposalsCommandService.AcceptedRowCorrected> rows) {}
+
+    @PostMapping("/proposals/accept-corrected")
+    public ResponseEntity<String> acceptCorrected(
+            @PathVariable("bandId") Long bandId,
+            @PathVariable("compositionId") Long compositionId,
+            @PathVariable("analysisId") Long analysisId,
+            @RequestBody(required = false) AcceptCorrectedBody body,
+            @AuthenticationPrincipal OidcUser principal) throws IOException {
+        if (!aiVerifyReportEnabled) {
+            return ResponseEntity.notFound().build();
+        }
+        String verifier = verifierOf(principal);
+        List<AcceptAiProposalsCommandService.AcceptedRowCorrected> rows =
+                body == null ? null : body.rows();
+        AcceptAiProposalsCommandService.AcceptCorrectedResult result = commandService.acceptCorrected(
+                compositionId, bandId, analysisId, rows, verifier);
+        return json(MAPPER.writeValueAsString(result));
     }
 
     private static ResponseEntity<String> json(String body) {

@@ -112,6 +112,12 @@
                             <span th:text="${(latestErrorMessage != null and !latestErrorMessage.isBlank()) ? latestErrorMessage : 'brak szczegółów'}">—</span></span>
                         <button type="button" id="ai-analysis-action-btn" class="secondary" onclick="openAnalyzeModal()"
                                 th:text="${(latestPhase == 'SUCCEEDED') ? '🎼 Otwórz propozycje AI' : ((latestPhase == 'FAILED') ? '↻ Spróbuj ponownie' : '▶ Śledź postęp')}">śledź</button>
+                        <!-- Flaga M1 (app.ai-verify-report.enabled): raport spójności + akceptacja z korektą.
+                             Only rendered server-side when the feature flag is ON, so a flagged-off
+                             deployment has zero trace of this surface — same indistinguishability as REST 404. -->
+                        <a id="ai-verify-entry" class="secondary verify-entry-btn"
+                           th:if="${aiVerifyReportEnabled and latestPhase == 'SUCCEEDED'}"
+                           th:href="@{/bands/{bandId}/compositions/{id}/verify-ai(bandId=${bandId}, id=${composition.id})}">Raport spójności AI</a>
                     </div>
                 </header>
             </article>
