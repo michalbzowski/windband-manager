@@ -80,6 +80,10 @@ server:
 
 app:
   base-url: http://localhost:8080
+  # Flaga M1 (raport spójności AI): ON w suite testów UI — AiVerifyReportUiTest renderuje nowy
+  # widok. Domyślne OFF z application.yml pilnują testy jednostkowe (REST 404 + page 404).
+  ai-verify-report:
+    enabled: true
   # UI testy logują się wielokrotnie z jednego IP (127.0.0.1) w krótkim czasie —
   # limit produkcyjny (10/60s) wywoływałby fałszywe bloki. Ścieżka filtra test
   # pozostaje aktywna; w prod obowiązuje app.security.login z application.yml.

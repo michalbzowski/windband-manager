@@ -295,4 +295,172 @@ class AcceptAiProposalsCommandServiceTest {
         assertThat(captor.getValue().getSource()).isEqualTo(PartSource.AI);
         assertThat(captor.getValue().getInstrumentRole()).isEqualTo("Klarnet Basowy");
     }
+
+    // ─────────────────────────── acceptCorrected (flaga M1) ───────────────────────────
+
+    private static AcceptAiProposalsCommandService.AcceptedRowCorrected cRow(String role,
+            int aiFrom, int aiTo, int from, int to, Long instrumentId) {
+        return new AcceptAiProposalsCommandService.AcceptedRowCorrected(role, aiFrom, aiTo, from, to, instrumentId);
+    }
+
+    @Test
+    @DisplayName("korekta zakresu → partia HYBRID z ostatecznymi stronami; pewność z artefaktu")
+    void correctedRangeCreatesHybridPartWithArtifactConfidence() {
+        when(instrumentRepository.findByIdAndBandId(13L, BAND_ID)).thenReturn(Optional.of(trabka));
+
+        AcceptAiProposalsCommandService.AcceptCorrectedResult result = service.acceptCorrected(
+                COMPOSITION_ID, BAND_ID, ANALYSIS_ID,
+                List.of(cRow("Trąbka II", 3, 3, 4, 6, 13L)), VERIFIER);
+
+        assertThat(result.created()).isEqualTo(1);
+        assertThat(result.correctedRows()).isEqualTo(1);
+        assertThat(result.verbatimRows()).isZero();
+
+        ArgumentCaptor<CompositionInstrument> captor = ArgumentCaptor.forClass(CompositionInstrument.class);
+        verify(partRepository).save(captor.capture());
+        CompositionInstrument part = captor.getValue();
+        assertThat(part.getSource()).isEqualTo(PartSource.HYBRID);
+        assertThat(part.getPageFrom()).isEqualTo(4);
+        assertThat(part.getPageTo()).isEqualTo(6);
+        assertThat(part.getConfidenceScore()).isEqualTo(0.7d); // z arrangement.json, nie z payloadu
+        assertThat(part.getVerifiedBy()).isEqualTo(VERIFIER);
+    }
+
+    @Test
+    @DisplayName("zakres bez zmian + instrument zgodny z mapowaniem → partia AI")
+    void unchangedRangeWithResolverInstrumentStaysAi() {
+        when(instrumentRepository.findByIdAndBandId(13L, BAND_ID)).thenReturn(Optional.of(trabka));
+
+        AcceptAiProposalsCommandService.AcceptCorrectedResult result = service.acceptCorrected(
+                COMPOSITION_ID, BAND_ID, ANALYSIS_ID,
+                List.of(cRow("Trąbka II", 3, 3, 3, 3, 13L)), VERIFIER);
+
+        assertThat(result.created()).isEqualTo(1);
+        assertThat(result.verbatimRows()).isEqualTo(1);
+        assertThat(result.allVerbatim()).isTrue();
+
+        ArgumentCaptor<CompositionInstrument> captor = ArgumentCaptor.forClass(CompositionInstrument.class);
+        verify(partRepository).save(captor.capture());
+        assertThat(captor.getValue().getSource()).isEqualTo(PartSource.AI);
+    }
+
+    @Test
+    @DisplayName("zakres bez zmian, ale inny instrument niż kandydat rozstrzygacza → HYBRID")
+    void unchangedRangeWithForeignChoiceIsHybrid() {
+        when(instrumentRepository.findByIdAndBandId(14L, BAND_ID)).thenReturn(Optional.of(kornet));
+
+        AcceptAiProposalsCommandService.AcceptCorrectedResult result = service.acceptCorrected(
+                COMPOSITION_ID, BAND_ID, ANALYSIS_ID,
+                List.of(cRow("Trąbka II", 3, 3, 3, 3, 14L)), VERIFIER);
+
+        assertThat(result.correctedRows()).isEqualTo(1);
+    }
+
+    @Test
+    @DisplayName("po poprawce zakres wykracza poza plik (pageCount znana) → IAE (400)")
+    void correctedRangeBeyondFileRejected() {
+        when(instrumentRepository.findByIdAndBandId(13L, BAND_ID)).thenReturn(Optional.of(trabka));
+
+        assertThatThrownBy(() -> service.acceptCorrected(
+                COMPOSITION_ID, BAND_ID, ANALYSIS_ID,
+                List.of(cRow("Trąbka II", 3, 3, 5, 12, 13L)), // plik ma 10 stron
+                VERIFIER))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("wykracza poza plik");
+    }
+
+    @Test
+    @DisplayName("odwrócony zakres (od > do) → IAE (400)")
+    void invertedCorrectedRangeRejected() {
+        when(instrumentRepository.findByIdAndBandId(13L, BAND_ID)).thenReturn(Optional.of(trabka));
+
+        assertThatThrownBy(() -> service.acceptCorrected(
+                COMPOSITION_ID, BAND_ID, ANALYSIS_ID,
+                List.of(cRow("Trąbka II", 3, 3, 6, 4, 13L)), VERIFIER))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("niedopuszczalny");
+    }
+
+    @Test
+    @DisplayName("partia już istnieje na ostatecznym zakresie → pominięcie, NIGDY nadpisanie")
+    void existingPartAtFinalRangeSkipped() {
+        CompositionInstrument taken = mock(CompositionInstrument.class);
+        when(taken.getInstrumentRole()).thenReturn("trąbka ii");
+        when(taken.getPageFrom()).thenReturn(4);
+        when(taken.getPageTo()).thenReturn(6);
+        when(partRepository.findAllByComposition(composition)).thenReturn(List.of(taken));
+        when(instrumentRepository.findByIdAndBandId(13L, BAND_ID)).thenReturn(Optional.of(trabka));
+
+        AcceptAiProposalsCommandService.AcceptCorrectedResult result = service.acceptCorrected(
+                COMPOSITION_ID, BAND_ID, ANALYSIS_ID,
+                List.of(cRow("Trąbka II", 3, 3, 4, 6, 13L)), VERIFIER);
+
+        assertThat(result.created()).isZero();
+        assertThat(result.skipped()).hasSize(1);
+        verify(partRepository, never()).save(any(CompositionInstrument.class));
+    }
+
+    @Test
+    @DisplayName("rola spoza propozycji analizy → IAE (400), jak w starym accept")
+    void correctedUnknownRoleRejected() {
+        when(instrumentRepository.findByIdAndBandId(12L, BAND_ID)).thenReturn(Optional.of(flet));
+
+        assertThatThrownBy(() -> service.acceptCorrected(
+                COMPOSITION_ID, BAND_ID, ANALYSIS_ID,
+                List.of(cRow("Klarnet B", 2, 4, 2, 4, 12L)), VERIFIER))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("nie występuje");
+    }
+
+    @Test
+    @DisplayName("bez wyboru instrumentu kandydat z mapowania: zakres bez zmian → partia AI na jego instrument")
+    void nullInstrumentFallsBackToResolverCandidate() {
+        AcceptAiProposalsCommandService.AcceptCorrectedResult result = service.acceptCorrected(
+                COMPOSITION_ID, BAND_ID, ANALYSIS_ID,
+                List.of(cRow("Trąbka II", 3, 3, 3, 3, null)), VERIFIER);
+
+        assertThat(result.created()).isEqualTo(1);
+        assertThat(result.verbatimRows()).isEqualTo(1);
+        assertThat(result.allVerbatim()).isTrue();
+
+        ArgumentCaptor<CompositionInstrument> captor = ArgumentCaptor.forClass(CompositionInstrument.class);
+        verify(partRepository).save(captor.capture());
+        assertThat(captor.getValue().getInstrumentRole()).isEqualTo("Trąbka II");
+        assertThat(captor.getValue().getInstrument()).isInstanceOf(Instrument.class); // kandydat z mapowania
+        assertThat(captor.getValue().getSource()).isEqualTo(PartSource.AI);
+    }
+
+    @Test
+    @DisplayName("bez wyboru instrumentu i bez kandydata w mapowaniu → IAE (400) z czytelnym komunikatem")
+    void nullInstrumentWithoutCandidateRejected() {
+        assertThatThrownBy(() -> service.acceptCorrected(
+                COMPOSITION_ID, BAND_ID, ANALYSIS_ID,
+                List.of(cRow("Flet I", 1, 1, 1, 1, null)), VERIFIER)) // „Flet” nie ma mapowania
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("wybierz instrument");
+    }
+
+    @Test
+    @DisplayName("kolejność wierszy bez zmian a ostateczny zakres w kolizji z drugim głosem → i tak akceptacja decyduje użytkownik")
+    void correctedRangeMayOverlapOtherParts() {
+        // Scenariusz UX z makiet: user świadomie rozszerza „Trąbka II” 3→5, choć Tuba zaczyna od 5.
+        AcceptAiProposalsCommandService.AcceptCorrectedResult result = service.acceptCorrected(
+                COMPOSITION_ID, BAND_ID, ANALYSIS_ID,
+                List.of(cRow("Trąbka II", 3, 3, 3, 5, null)), VERIFIER);
+
+        assertThat(result.created()).isEqualTo(1);
+        assertThat(result.correctedRows()).isEqualTo(1);
+    }
+
+    @Test
+    @DisplayName("stary accept nadal odrzuca zakres inny niż propozycja AI (umowa bez zmian)")
+    void legacyAcceptStillRejectsAnyRangeChange() {
+        when(instrumentRepository.findByIdAndBandId(13L, BAND_ID)).thenReturn(Optional.of(trabka));
+
+        assertThatThrownBy(() -> service.accept(
+                COMPOSITION_ID, BAND_ID, ANALYSIS_ID,
+                List.of(row("Trąbka II", 4, 6, 13L, 0.7)), VERIFIER))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("stron");
+    }
 }

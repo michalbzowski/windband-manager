@@ -1,12 +1,17 @@
 package pl.michalbzowski.windband.adapter.in.web;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.anyList;
+import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import java.util.List;
 import org.junit.jupiter.api.BeforeEach;
+import org.springframework.http.ResponseEntity;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
@@ -33,7 +38,8 @@ class ScoreAnalysisAiRestControllerTest {
     @BeforeEach
     void setUp() {
         when(user.getUserId()).thenReturn(42L);
-        controller = new ScoreAnalysisAiRestController(queryService, commandService);
+        // Flaga M1 włączona — część testów celowo buduje kontroler z flagą wyłączoną.
+        controller = new ScoreAnalysisAiRestController(queryService, commandService, true);
     }
 
     @Test
@@ -92,5 +98,56 @@ class ScoreAnalysisAiRestControllerTest {
             // kontrakt service: pusta lista → IAE (tutaj ważna tylko tożsamość weryfikatora)
         }
         verify(commandService).accept(COMPOSITION, BAND, ANALYSIS, List.of(), "ai-accept");
+    }
+
+
+    @Test
+    @DisplayName("M1: accept-corrected przekazuje wiersze + weryfikatora i zwraca wynik service")
+    void acceptCorrectedForwardsRowsWithVerifier() throws java.io.IOException {
+        List<AcceptAiProposalsCommandService.AcceptedRowCorrected> rows = List.of(
+                new AcceptAiProposalsCommandService.AcceptedRowCorrected("Trąbka II", 3, 3, 4, 6, 13L));
+        AcceptAiProposalsCommandService.AcceptCorrectedResult result =
+                new AcceptAiProposalsCommandService.AcceptCorrectedResult(1, 0, 1, List.of());
+        when(commandService.acceptCorrected(COMPOSITION, BAND, ANALYSIS, rows, "42"))
+                .thenReturn(result);
+
+        ResponseEntity<String> response = controller.acceptCorrected(
+                BAND, COMPOSITION, ANALYSIS,
+                new ScoreAnalysisAiRestController.AcceptCorrectedBody(rows), user);
+
+        assertThat(response.getStatusCode().value()).isEqualTo(200);
+        assertThat(response.getBody()).contains("\"created\":1").contains("\"correctedRows\":1");
+        verify(commandService).acceptCorrected(COMPOSITION, BAND, ANALYSIS, rows, "42");
+    }
+
+    @Test
+    @DisplayName("M1: flaga wyłącza accept-corrected → 404 (endpoint niewidoczny), service NIE wywołane")
+    void flagOffMakesCorrectedEndpointInvisible() throws java.io.IOException {
+        ScoreAnalysisAiRestController disabled =
+                new ScoreAnalysisAiRestController(queryService, commandService, false);
+        List<AcceptAiProposalsCommandService.AcceptedRowCorrected> rows = List.of(
+                new AcceptAiProposalsCommandService.AcceptedRowCorrected("Trąbka II", 3, 3, 4, 6, 13L));
+
+        ResponseEntity<String> response = disabled.acceptCorrected(
+                BAND, COMPOSITION, ANALYSIS,
+                new ScoreAnalysisAiRestController.AcceptCorrectedBody(rows), user);
+
+        assertThat(response.getStatusCode().value()).isEqualTo(404);
+        verify(commandService, never()).acceptCorrected(anyLong(), anyLong(), anyLong(), anyList(), anyString());
+    }
+
+    @Test
+    @DisplayName("M1: flaga wyłączona nie rusza starego flow (GET /proposals dalej 200)")
+    void flagOffLeavesLegacyEndpointsUntouched() throws java.io.IOException {
+        ScoreAnalysisAiRestController disabled =
+                new ScoreAnalysisAiRestController(queryService, commandService, false);
+        when(queryService.preview(COMPOSITION, BAND, ANALYSIS)).thenReturn(new ProposalsPreviewDto(
+                new ProposalsPreviewDto.WorkMeta("Zadzwonił Polonez", "J. Elsner", null),
+                List.of(), List.of(), false));
+
+        ResponseEntity<String> response =
+                disabled.proposals(BAND, COMPOSITION, ANALYSIS);
+
+        assertThat(response.getStatusCode().value()).isEqualTo(200);
     }
 }
