@@ -4,6 +4,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.Duration;
 import java.util.Map;
+import java.util.Objects;
 import java.util.UUID;
 
 import org.junit.jupiter.api.DisplayName;
@@ -33,6 +34,9 @@ class AiVerifyReportUiTest extends UiTestBase {
 
     private long compositionId;
 
+    /** Instrument bandu 1 rozwiązany z teamTag wiersza „Saksofon altowy” (regresja białego ekranu). */
+    private long resolvedSaxInstrumentId;
+
     /** Utwór + nuty (10 stron) + SUCCEEDED analiza z czterema głosami: dwa czyste, luka, przekroczenie. */
     private void seedSucceededAnalysis() throws Exception {
         String title = "Raport spójności UI-" + UUID.randomUUID();
@@ -56,16 +60,19 @@ class AiVerifyReportUiTest extends UiTestBase {
 
         // 2-4 czysty; 5-7 sąsiedni (bez luki); 9-10 → luka po stronie 8 (ostrzeżenie);
         // 11-12 → poza pageCount=10 (błąd BEYOND_PAGES).
+        // „Saksofon altowy” ma teamTag rozwiązany do dedykowanego instrumentu bandu 1 —
+        // jedyny wiersz z przypisanym instrumentem (piastuje gałąź true renderowania wiersza).
+        String saxTag = "Saksofony raportowe " + UUID.randomUUID().toString().substring(0, 6);
         Path artifact = Path.of(System.getProperty("java.io.tmpdir"), "windband-verify-report",
                 UUID.randomUUID() + "_arrangement.json");
         Files.writeString(artifact, """
                 [
                   {"role":"Trąbka I","pageFrom":2,"pageTo":4,"confidence":0.95},
                   {"role":"Tuba E","pageFrom":5,"pageTo":7,"confidence":0.85},
-                  {"role":"Saksofon altowy","pageFrom":9,"pageTo":10,"confidence":0.8},
+                  {"role":"Saksofon altowy","teamTag":"@@SAX_TAG@@","pageFrom":9,"pageTo":10,"confidence":0.8},
                   {"role":"Klarnet basowy","pageFrom":11,"pageTo":12,"confidence":0.75}
                 ]
-                """);
+                """.replace("@@SAX_TAG@@", saxTag));
 
         jdbcTemplate.update(
                 "INSERT INTO score_analysis (composition_id, score_file_id, phase, runner_ref, error_message, "
@@ -77,6 +84,10 @@ class AiVerifyReportUiTest extends UiTestBase {
 
         // Instrument ręcznie do wyboru w korekcie (wyraźna nazwa testowa).
         createTestBand1Instrument("Klarnety raportowe " + UUID.randomUUID().toString().substring(0, 6), 85);
+        // Dedykowany instrument równy teamTag — jedyny wiersz „rozwiązany” na stronie raportu.
+        createTestBand1Instrument(saxTag, 90);
+        resolvedSaxInstrumentId = jdbcTemplate.queryForObject(
+                "SELECT id FROM instruments WHERE band_id = 1 AND name = ?", Long.class, saxTag);
     }
 
     private void seedCompositionWithoutAnalysis() {
@@ -140,6 +151,30 @@ class AiVerifyReportUiTest extends UiTestBase {
                         + " return h && h.textContent.trim()==='Saksofon altowy';});"
                         + "return !!(r && r.querySelector('.issue-warn'));"))
                 .as("głos Saksofon altowy ma ostrzeżenie (luka)").isEqualTo(true);
+
+        // Wiersz Z przypisanym instrumentem: atrybut data-instrument i pre-selekcja selectu
+        // piastują gałąź „rozwiaż” szablonu (regresja: SpEL po nieistniejącej własności → biały ekran).
+        long saxResolvedIdx = rowIndexByRole(js, "Saksofon altowy");
+        assertThat(saxResolvedIdx).isGreaterThanOrEqualTo(0L);
+        assertThat((String) js.executeScript(
+                "return document.getElementById('accept-row-' + arguments[0]).getAttribute('data-instrument');",
+                Long.valueOf(saxResolvedIdx)))
+                .as("sugestia AI (rozwiązany instrument) jawnie w atrybucie data-instrument")
+                .isEqualTo(String.valueOf(resolvedSaxInstrumentId));
+        assertThat((String) js.executeScript(
+                "return document.getElementById('fix-inst-' + arguments[0]).value;",
+                Long.valueOf(saxResolvedIdx)))
+                .as("select instrumentu pre-selekcjonuje sugestię AI")
+                .isEqualTo(String.valueOf(resolvedSaxInstrumentId));
+        // I wiersz BEZ przypisania: atrybut pusty lub nieobecny (gałąź null; Thymeleaf znosi
+        // atrybut z pustą wartością).
+        long trumpetNullIdx = rowIndexByRole(js, "Trąbka I");
+        assertThat(trumpetNullIdx).isGreaterThanOrEqualTo(0L);
+        String trumpetDataInst = (String) js.executeScript(
+                "return document.getElementById('accept-row-' + arguments[0]).getAttribute('data-instrument');",
+                Long.valueOf(trumpetNullIdx));
+        assertThat(Objects.toString(trumpetDataInst, ""))
+                .as("wiersz bez przypisanego instrumentu: pusty data-instrument").isEmpty();
 
         long instrumentId = jdbcTemplate.queryForObject(
                 "SELECT id FROM instruments WHERE band_id = 1 AND name LIKE 'Klarnety raportowe%'",
