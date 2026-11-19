@@ -145,8 +145,13 @@ class AnalysisResumeUiTest extends UiTestBase {
         assertThat(visible(js, "analyze-start-panel"))
                 .as("start panel must NOT be the landing panel when an analysis is already running")
                 .isFalse();
-        String badge = driver.findElement(By.id("analyze-phase-badge")).getText();
-        assertThat(badge).containsIgnoringCase("RUNNING");
+        // Badge dostaje tekst po asynchronicznej (mockowanej) rezolucji fetch —
+        // odczyt bez czekania racuje z wypełnieniem tekstu przy obciążeniu CI.
+        String badge = wait.until(d -> {
+            String t = driver.findElement(By.id("analyze-phase-badge")).getText();
+            return t != null && t.toLowerCase().contains("running") ? t : null;
+        });
+        assertThat(badge).as("phase badge pokazuje RUNNING").containsIgnoringCase("RUNNING");
     }
 
     @Test
