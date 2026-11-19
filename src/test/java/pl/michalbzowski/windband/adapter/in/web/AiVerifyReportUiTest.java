@@ -37,6 +37,9 @@ class AiVerifyReportUiTest extends UiTestBase {
     /** Instrument bandu 1 rozwiązany z teamTag wiersza „Saksofon altowy” (regresja białego ekranu). */
     private long resolvedSaxInstrumentId;
 
+    /** Dedykowany teamTag rozwiązany do powyższego instrumentu (chip → instrument w karcie). */
+    private String resolvedSaxTag;
+
     /** Utwór + nuty (10 stron) + SUCCEEDED analiza z czterema głosami: dwa czyste, luka, przekroczenie. */
     private void seedSucceededAnalysis() throws Exception {
         String title = "Raport spójności UI-" + UUID.randomUUID();
@@ -86,6 +89,7 @@ class AiVerifyReportUiTest extends UiTestBase {
         createTestBand1Instrument("Klarnety raportowe " + UUID.randomUUID().toString().substring(0, 6), 85);
         // Dedykowany instrument równy teamTag — jedyny wiersz „rozwiązany” na stronie raportu.
         createTestBand1Instrument(saxTag, 90);
+        resolvedSaxTag = saxTag;
         resolvedSaxInstrumentId = jdbcTemplate.queryForObject(
                 "SELECT id FROM instruments WHERE band_id = 1 AND name = ?", Long.class, saxTag);
     }
@@ -175,6 +179,36 @@ class AiVerifyReportUiTest extends UiTestBase {
                 Long.valueOf(trumpetNullIdx));
         assertThat(Objects.toString(trumpetDataInst, ""))
                 .as("wiersz bez przypisanego instrumentu: pusty data-instrument").isEmpty();
+
+        // ── Elementy wizualne kolejki dowodów (makieta C) ───────────────────────
+        // Każdy głos ma podgląd stron z pliku nut (miniatury przez endpoint /thumb).
+        boolean everyRowHasImage = (boolean) js.executeScript(
+                "var ok = true;"
+                        + "document.querySelectorAll('#verify-queue .verify-row').forEach(function (r) {"
+                        + "  if (!r.querySelector('.verify-evidence img')) { ok = false; }"
+                        + "}); return ok;");
+        assertThat(everyRowHasImage).as("każdy wiersz ma podgląd stron (strony pierwsza/ostatnia zakresu)").isTrue();
+        String saxImgSrc = (String) js.executeScript(
+                "return document.querySelectorAll('#verify-queue .verify-row')[arguments[0]]"
+                        + ".querySelector('.verify-evidence img').src;",
+                Long.valueOf(saxResolvedIdx));
+        assertThat(saxImgSrc).as("miniatury pochodzą z pliku nut (endpoint /thumb)").contains("/thumb");
+        String saxImgAlt = (String) js.executeScript(
+                "return document.querySelectorAll('#verify-queue .verify-row')[arguments[0]]"
+                        + ".querySelector('.verify-evidence img').alt;",
+                Long.valueOf(saxResolvedIdx));
+        assertThat(saxImgAlt).as("alt miniatury identyfikuje stronę").startsWith("Podgląd strony");
+
+        // Tag / mapowanie głosu widoczne w karcie: rozwiązany wiersz → chip instrumentu.
+        String saxChip = (String) js.executeScript(
+                "var e = document.querySelectorAll('#verify-queue .verify-row')[arguments[0]].querySelector('.verify-instchip');"
+                        + "return e ? e.textContent : '';",
+                Long.valueOf(saxResolvedIdx));
+        assertThat(saxChip).as("wiersz rozwiązany pokazuje chip z instrumentem w zespole").contains(resolvedSaxTag);
+        boolean trumpetChipMissing = (boolean) js.executeScript(
+                "return !!document.querySelectorAll('#verify-queue .verify-row')[arguments[0]].querySelector('.verify-tagmiss');",
+                Long.valueOf(trumpetNullIdx));
+        assertThat(trumpetChipMissing).as("wiersz bez tagu i mapowania sygnałizuje brak mapowania").isTrue();
 
         long instrumentId = jdbcTemplate.queryForObject(
                 "SELECT id FROM instruments WHERE band_id = 1 AND name LIKE 'Klarnety raportowe%'",

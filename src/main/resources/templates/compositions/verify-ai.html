@@ -32,7 +32,7 @@
             <div class="verify-work">
                 <span class="verify-work-title" th:text="${report.work != null and report.work.title != null ? report.work.title : '—'}">Tytuł</span>
                 <span class="verify-work-meta">
-                    <span th:if="${report.work != null and report.work.composer != null}" th:text="'z ' + report.work.composer"></span>
+                    <span th:if="${report.work != null and report.work.composer != null}" th:text="'z ' + ${report.work.composer}"></span>
                     <span th:if="${report.pageCount != null}" th:text="${#strings.concat('• ', #strings.concat(report.pageCount.toString(), ' stron w pliku nut'))}"></span>
                     <span th:if="${report.simulated}" class="verify-sim">DANE TESTOWE</span>
                 </span>
@@ -50,7 +50,8 @@
         </section>
 
         <p class="verify-legend">
-            <span class="lg-error">błąd</span> — zakresy nakładają się albo wykraczają poza nuty;
+            Jeden głos = jedna karta: zobacz strony, sprawdź tag i zakres —
+            i dopiero wtedy przyjmij. <span class="lg-error">błąd</span> — zakresy nakładają się albo wykraczają poza nuty;
             popraw „od–do", a dopiero wtedy przyjmij głos.
             <span class="lg-warn">ostrzeżenie</span> — luki między głosami są dopuszczalne, ale sprawdź je.
         </p>
@@ -63,6 +64,13 @@
                     <h4 class="verify-role" th:text="${row.role}">Głos</h4>
                     <span class="verify-range"
                           th:text="'s. ' + ${row.pageFrom} + (row.pageFrom == row.pageTo ? '' : '–' + row.pageTo)"></span>
+                    <!-- Tag / mapowanie głosu: widoczne w karcie i skorygowalne w selectcie poniżej. -->
+                    <span class="verify-instchip" th:if="${row.instrumentIdOrNull != null}"
+                          th:text="'→ ' + ${row.instrumentNameOrNull != null ? row.instrumentNameOrNull : 'instrument w zespole'}"></span>
+                    <span class="verify-tagchip" th:if="${row.instrumentIdOrNull == null and row.teamTag != null and row.teamTag != ''}"
+                          th:text="'tag: ' + ${row.teamTag} + ' (bez głosu w zespole)'"></span>
+                    <span class="verify-tagmiss" th:if="${row.instrumentIdOrNull == null and (row.teamTag == null or row.teamTag == '')}"
+                          th:text="'brak mapowania — wybierz instrument'">brak mapowania</span>
                     <span th:if="${row.confidence > 0}" class="verify-conf"
                           th:title="'Pewność modelu (stała dla trybu detekcji)'">AI ~<span th:text="${T(java.lang.Math).round(row.confidence * 100)}"></span>%</span>
                 </div>
@@ -76,6 +84,20 @@
                         th:classappend="${issue.severity == 'ERROR' ? ' issue-error' : ' issue-warn'}"
                         th:text="${issue.detail}"></li>
                 </ul>
+
+                <!-- Dowod wizualny: strony pierwsza i ostatnia zakresu głosu (miniatury z pliku nut). -->
+                <div class="verify-evidence" th:if="${report.fileId != null and report.pageCount != null}">
+                    <figure class="verify-page">
+                        <img th:src="@{/bands/{b}/compositions/{c}/files/{f}/thumb(b=${bandId}, c=${compositionId}, f=${report.fileId}, page=${row.firstPage()}, width=320)}"
+                             th:alt="'Podgląd strony ' + ${row.firstPage()}" loading="lazy">
+                        <figcaption th:text="'str. ' + ${row.firstPage()}"></figcaption>
+                    </figure>
+                    <figure class="verify-page" th:if="${row.lastPage() != row.firstPage()}">
+                        <img th:src="@{/bands/{b}/compositions/{c}/files/{f}/thumb(b=${bandId}, c=${compositionId}, f=${report.fileId}, page=${row.lastPage()}, width=320)}"
+                             th:alt="'Podgląd strony ' + ${row.lastPage()}" loading="lazy">
+                        <figcaption th:text="'str. ' + ${row.lastPage()}"></figcaption>
+                    </figure>
+                </div>
 
                 <!-- Korekta zakresu przed akceptacją (flaga M1). -->
                 <form class="verify-fix" data-row-form>
@@ -123,7 +145,7 @@
 <div th:replace="~{fragments/layout :: dialogs}"></div>
 
 <style>
-/* ── Raport spójności AI (flaga M1) — wąska kolumna, mobile-first ───────────── */
+/* ── Raport spójności AI (flaga M1) — kolejka dowodów, mobile-first ─────────── */
 .verify-ai-page .container { max-width: 640px; }
 .verify-empty { text-align: center; padding: 2.5rem 1rem; }
 .verify-empty h3 { margin-top: 0.75rem; }
@@ -142,16 +164,19 @@
 .lg-error { background:#dc2626; color:#fff; padding:0 0.3em; border-radius:3px; font-size:0.72rem; }
 .lg-warn  { background:#b45309; color:#fff; padding:0 0.3em; border-radius:3px; font-size:0.72rem; }
 
-.verify-queue { list-style: none; padding: 0; margin: 0; display: grid; gap: 0.8rem; counter-reset: verifyrow; }
+.verify-queue { list-style: none; padding: 0; margin: 0; display: grid; gap: 0.9rem; counter-reset: verifyrow; }
 .verify-row { position: relative; background: #fff; border: 1px solid var(--pico-border-color, #e2e6ec); border-left: 4px solid #d3d9e0; border-radius: 10px; padding: 0.8rem 0.9rem; }
 .row-error { border-left-color: #dc2626; }
 .row-warn  { border-left-color: #b45309; }
 .row-ok    { border-left-color: #059669; }
 
 .verify-row-head { display: flex; align-items: baseline; gap: 0.5rem; flex-wrap: wrap; }
-.verify-role { margin: 0; font-size: 1rem; font-weight: 650; }
+.verify-role { margin: 0; font-size: 1.02rem; font-weight: 650; }
 .verify-range { background: rgba(1,170,255,0.12); color: #0369a1; padding: 0.1rem 0.5rem; border-radius: 999px; font-size: 0.8rem; font-weight: 600; }
 .verify-conf { color: var(--pico-muted-color, #667); font-size: 0.75rem; margin-left: auto; }
+.verify-instchip { background:#e7f6ef; color:#047857; border:1px solid #a9dfc9; padding:0.1rem 0.55rem; border-radius:999px; font-size:0.78rem; font-weight:600; }
+.verify-tagchip { background:#eef1f5; color:#33415c; border:1px solid #d3d9e0; padding:0.1rem 0.55rem; border-radius:999px; font-size:0.78rem; }
+.verify-tagmiss { background:#fdf0e2; color:#8a4a10; border:1px solid #f3d9b0; padding:0.1rem 0.55rem; border-radius:999px; font-size:0.78rem; }
 .verify-members { margin: 0.4rem 0 0; font-size: 0.82rem; color: #33415c; }
 
 .verify-issues { list-style: none; padding: 0.35rem 0 0; margin: 0.25rem 0 0; display: grid; gap: 0.25rem; }
@@ -159,11 +184,17 @@
 .issue-error { background: #fdecec; color: #9b1c1c; }
 .issue-warn  { background: #fdf0e2; color: #8a4a10; }
 
+/* Dowody wizualne — strony zakresu głosu z pliku nut. */
+.verify-evidence { display: flex; gap: 0.6rem; margin: 0.55rem 0 0.1rem; }
+.verify-page { margin: 0; flex: 1 1 45%; background: #fff; border: 1px solid var(--pico-border-color, #e2e6ec); border-radius: 8px; overflow: hidden; }
+.verify-page img { width: 100%; height: 150px; object-fit: cover; object-position: center top; display: block; background: #f6f7f9; }
+.verify-page figcaption { font-size: 0.72rem; color: var(--pico-muted-color, #667); padding: 0.25rem 0.5rem; border-top: 1px solid #edeff3; text-align: center; }
+
 .verify-fix { margin-top: 0.55rem; display: grid; gap: 0.45rem; padding-top: 0.55rem; border-top: 1px dashed var(--pico-border-color, #e2e6ec); }
 .verify-grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 0.45rem; }
 .verify-field span { display: block; font-size: 0.72rem; color: var(--pico-muted-color, #667); margin-bottom: 2px; }
 .verify-field input, .verify-field select { width: 100%; }
-.verify-row-status { font-size: 0.8rem; min-height: 1.1em; }
+.verify-row-status { font-size: 0.8rem; min-height: 1.1em; display: block; }
 .verify-row-status.err { color: #b91c1c; }
 .verify-row-status.ok  { color: #047857; }
 
@@ -178,6 +209,13 @@
                   position: sticky; bottom: 0; background: #fff; padding: 0.7rem 0.9rem;
                   border-top: 1px solid var(--pico-border-color, #e2e6ec); }
 .verify-count { font-size: 0.85rem; color: #33415c; }
+
+/* Wide (nawigacyjna): szersza kolumna + karty 2×. */
+@media (min-width: 960px) {
+    .verify-ai-page .container { max-width: 1080px; }
+    .verify-queue { grid-template-columns: repeat(2, minmax(380px, 1fr)); }
+    .verify-page img { height: 210px; }
+}
 </style>
 
 
@@ -229,6 +267,14 @@
         if (el) { el.textContent = 'Przyjęte: ' + countAccepted() + ' z ' + totalRows() + ' głosów'; }
         var bulk = document.getElementById('accept-unchanged-btn');
         if (bulk) { bulk.disabled = countAccepted() >= totalRows(); }
+    }
+
+    // „Jeden głos na raz": po akceptacji prowadzimy wzrok do kolejnej oczekującej karty.
+    function scrollToNextPending() {
+        var next = document.querySelector('#verify-queue .verify-row:not(.is-accepted)');
+        if (next && typeof next.scrollIntoView === 'function') {
+            next.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
     }
 
     function sendRows(rows, onDone) {
@@ -292,6 +338,7 @@
                 markAccepted(rowEl, payload && payload.correctedRows > 0 ? 'Przyjęto (z korektą)' : 'Przyjęto');
                 setStatus(idx, '', false);
                 toast('Głos „' + row.role + '” przyjęty.', 'success');
+                scrollToNextPending();
             });
         });
     });
