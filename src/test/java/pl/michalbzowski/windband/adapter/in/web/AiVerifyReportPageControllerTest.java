@@ -85,6 +85,7 @@ class AiVerifyReportPageControllerTest {
                 new ProposalsPreviewDto.WorkMeta("Zadzwonił Polonez", "J. Elsner", null),
                 List.of(new ProposalsPreviewDto.InstrumentOption(13L, "Trąbka")),
                 false, 1, 2,
+                List.of(),
                 List.of());
         when(reportQueryService.reportForLatestSucceeded(COMPOSITION, BAND)).thenReturn(Optional.of(report));
 

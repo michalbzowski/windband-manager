@@ -150,4 +150,51 @@ class ScoreAnalysisAiRestControllerTest {
 
         assertThat(response.getStatusCode().value()).isEqualTo(200);
     }
+
+    // ─────────────── POST /gaps/assign — karty luk (2026-11-verify-ai-cardflow) ───────────────
+
+    @Test
+    @DisplayName("Karta luki: POST /gaps/assign forwarduje zakres + instrument, zwraca wynik service")
+    void gapsAssignForwardsRangeAndInstrument() throws java.io.IOException {
+        AcceptAiProposalsCommandService.AcceptCorrectedResult result =
+                new AcceptAiProposalsCommandService.AcceptCorrectedResult(1, 0, 1, List.of());
+        when(commandService.assignGapPages(COMPOSITION, BAND, ANALYSIS, 8, 9, 12L, "42"))
+                .thenReturn(result);
+
+        ResponseEntity<String> response = controller.gapsAssign(
+                BAND, COMPOSITION, ANALYSIS,
+                new ScoreAnalysisAiRestController.GapAssignBody(8, 9, 12L), user);
+
+        assertThat(response.getStatusCode().value()).isEqualTo(200);
+        assertThat(response.getBody()).contains("\"created\":1");
+        verify(commandService).assignGapPages(COMPOSITION, BAND, ANALYSIS, 8, 9, 12L, "42");
+    }
+
+    @Test
+    @DisplayName("Karta luki: pusta treść żądania → IAE (400 przez handler), service nie wywołane")
+    void gapsAssignRejectsEmptyBody() {
+        org.assertj.core.api.Assertions.assertThatThrownBy(() -> controller.gapsAssign(
+                BAND, COMPOSITION, ANALYSIS, null, user))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("treści żądania");
+        verify(commandService, never()).assignGapPages(anyLong(), anyLong(), anyLong(),
+                org.mockito.ArgumentMatchers.anyInt(), org.mockito.ArgumentMatchers.anyInt(),
+                anyLong(), anyString());
+    }
+
+    @Test
+    @DisplayName("Karta luki: flaga wyłączona → 404 (endpoint niewidoczny), service nie wywołane")
+    void flagOffHidesGapsEndpoint() throws java.io.IOException {
+        ScoreAnalysisAiRestController disabled =
+                new ScoreAnalysisAiRestController(queryService, commandService, false);
+
+        ResponseEntity<String> response = disabled.gapsAssign(
+                BAND, COMPOSITION, ANALYSIS,
+                new ScoreAnalysisAiRestController.GapAssignBody(8, 9, 12L), user);
+
+        assertThat(response.getStatusCode().value()).isEqualTo(404);
+        verify(commandService, never()).assignGapPages(anyLong(), anyLong(), anyLong(),
+                org.mockito.ArgumentMatchers.anyInt(), org.mockito.ArgumentMatchers.anyInt(),
+                anyLong(), anyString());
+    }
 }

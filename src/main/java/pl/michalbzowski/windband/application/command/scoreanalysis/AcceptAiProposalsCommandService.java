@@ -80,13 +80,17 @@ public class AcceptAiProposalsCommandService {
         }
     }
 
+    /** Page range of one stored voice block — feeds the overlap guard and the UI's gap coverage. */
+    public record PartRange(int pageFrom, int pageTo, String role) {}
+
     /** Shared immutable state of one acceptance run (guards + artefacts), reused by both endpoints. */
     private record AcceptContext(
             Composition composition,
             java.util.Map<String, AIProposals> known,
             Set<String> knownRoles,
             Set<String> existingParts,
-            ScoreFile scoreFile) {}
+            ScoreFile scoreFile,
+            List<PartRange> partRanges) {}
 
     /**
      * Accepts the listed proposal rows onto the composition (legacy contract — the range must be
@@ -118,6 +122,7 @@ public class AcceptAiProposalsCommandService {
 
         List<SkippedRow> skipped = new ArrayList<>();
         int created = 0;
+        List<PartRange> createdNow = new ArrayList<>();
         for (AcceptedRow row : rows) {
             String normRole = normalize(row.role());
             if (normRole.isEmpty()) {
@@ -160,12 +165,16 @@ public class AcceptAiProposalsCommandService {
                     ? 1.0d
                     : Math.max(0.0d, Math.min(1.0d, row.confidence()));
 
+            ensureNoPageOverlap(ctx.partRanges(), row.pageFrom(), row.pageTo());
+            ensureNoPageOverlap(createdNow, row.pageFrom(), row.pageTo());
+
             CompositionInstrument part = CompositionInstrument.forComposition(
                     composition, instrument, row.role(), row.pageFrom(), row.pageTo(),
                     null, scoreFile, sourceValue, confidence);
             part.verify(verifier, Instant.now());
             partRepository.save(part);
             existingParts.add(partKey(normRole, row.pageFrom(), row.pageTo()));
+            createdNow.add(new PartRange(row.pageFrom(), row.pageTo(), row.role()));
             created++;
         }
         return new AcceptResult(created, skipped);
@@ -202,6 +211,7 @@ public class AcceptAiProposalsCommandService {
         int created = 0;
         int verbatimRows = 0;
         int correctedRows = 0;
+        List<PartRange> createdNow = new ArrayList<>();
         for (AcceptedRowCorrected row : rows) {
             String normRole = normalize(row.role());
             if (normRole.isEmpty()) {
@@ -236,6 +246,8 @@ public class AcceptAiProposalsCommandService {
                         "partia o tej roli i stronach już istnieje w utworze"));
                 continue;
             }
+            ensureNoPageOverlap(ctx.partRanges(), pageFrom, pageTo);
+            ensureNoPageOverlap(createdNow, pageFrom, pageTo);
 
             Optional<Instrument> byRole = resolver.resolveInstrument(bandId, row.role());
             Optional<Instrument> candidate = source.teamTag() != null
@@ -265,6 +277,7 @@ public class AcceptAiProposalsCommandService {
             part.verify(verifier, Instant.now());
             partRepository.save(part);
             ctx.existingParts().add(partKey(normRole, pageFrom, pageTo));
+            createdNow.add(new PartRange(pageFrom, pageTo, row.role()));
             created++;
             if (sourceValue == PartSource.AI) {
                 verbatimRows++;
@@ -273,6 +286,87 @@ public class AcceptAiProposalsCommandService {
             }
         }
         return new AcceptCorrectedResult(created, verbatimRows, correctedRows, skipped);
+    }
+
+    /**
+     * Twarza walidacja (reguła domeny, patrz {@code ProposalConsistency OVERLAP}): jedna strona nut
+     * może należeć do jednego głosu. Zakres kolidujący z dowolną inną partią utworu — także tą z
+     * wcześniejszej analizy lub przyjętą w tej samej kolejce — jest odrzucany, zanim cokolwiek trafi
+     * do bazy.
+     */
+    private static void ensureNoPageOverlap(List<PartRange> existing, int pageFrom, int pageTo) {
+        for (PartRange r : existing) {
+            if (Math.max(pageFrom, r.pageFrom()) <= Math.min(pageTo, r.pageTo())) {
+                String who = r.role() == null || r.role().isBlank() ? "" : " („" + r.role() + "”)";
+                throw new IllegalArgumentException(
+                        "Zakres stron " + pageFrom + "–" + pageTo
+                                + " nachodzi na partię str. " + r.pageFrom() + "–" + r.pageTo() + who
+                                + " — strona może należeć do jednego głosu.");
+            }
+        }
+    }
+
+    /**
+     * Karta luki (widok verify-ai): user widzi, że strony nie należą do żadnego głosu po skróconym
+     * zakresie innego głosu (np. partytura 1–14 → 1–13 zwiastuje, że strona 14 czeka na oznaczenie).
+     * Oznaczenie tworzy normalna partię utworu: rola = nazwa wybranego instrumentu z zespołu, źródło
+     * HYBRID (ludzka decyzja), confidence 1.0 (brak artefaktu AI dla tej decyzji).
+     *
+     * <p>Zasady: zakres musi być legalny i mieścić się w pliku nut; dokładny duplikat zakresu
+     * (nawet pod inną rolą) jest pomijany; cokolwiek pokrywające się tylko częściowo → 400.
+     */
+    @Transactional
+    public AcceptCorrectedResult assignGapPages(Long compositionId, Long bandId, Long analysisId,
+            int pageFrom, int pageTo, Long instrumentId, String verifier) {
+        if (compositionId == null || bandId == null || analysisId == null) {
+            throw new IllegalArgumentException("compositionId, bandId i analysisId są wymagane.");
+        }
+        if (verifier == null || verifier.isBlank()) {
+            throw new IllegalArgumentException("Oznaczenie luki wymaga tożsamości użytkownika (US-4.5).");
+        }
+        if (pageFrom < 1 || pageTo < 1 || pageFrom > pageTo) {
+            throw new IllegalArgumentException(
+                    "Zakres stron jest niedopuszczalny (" + pageFrom + "–" + pageTo + ").");
+        }
+
+        AcceptContext ctx = prepareContext(compositionId, bandId, analysisId);
+        Integer pageCount = ctx.scoreFile().getPageCount();
+        if (pageCount != null && (pageFrom > pageCount || pageTo > pageCount)) {
+            throw new IllegalArgumentException(
+                    "Zakres stron " + pageFrom + "–" + pageTo + " wykracza poza plik "
+                            + "(plik ma " + pageCount + " stron).");
+        }
+
+        Instrument instrument = instrumentId == null
+                ? null
+                : instrumentRepository.findByIdAndBandId(instrumentId, bandId)
+                        .orElseThrow(() -> new IllegalArgumentException(
+                                "Wybierz instrument z zespołu " + bandId
+                                        + ", którego partia ma objąć te strony."))
+                ;
+        if (instrument == null) {
+            throw new IllegalArgumentException(
+                    "Oznaczenie luki wymaga wyboru instrumentu z zespołu.");
+        }
+
+        // dokładny duplikat zakresu = ta sama strona już oznaczona → skip zamiast błędu;
+        // częściowe nachodzenie = sprzeczność → 400 (por. ensureNoPageOverlap).
+        for (PartRange r : ctx.partRanges()) {
+            if (r.pageFrom() == pageFrom && r.pageTo() == pageTo) {
+                return new AcceptCorrectedResult(0, 0, 0,
+                        List.of(new SkippedRow(instrument.getName(),
+                                "partia na stronach " + pageFrom + "–" + pageTo
+                                        + " już istnieje w utworze")));
+            }
+        }
+        ensureNoPageOverlap(ctx.partRanges(), pageFrom, pageTo);
+
+        CompositionInstrument part = CompositionInstrument.forComposition(
+                ctx.composition(), instrument, instrument.getName(), pageFrom, pageTo,
+                null, ctx.scoreFile(), PartSource.HYBRID, 1.0d);
+        part.verify(verifier, Instant.now());
+        partRepository.save(part);
+        return new AcceptCorrectedResult(1, 0, 1, List.of());
     }
 
     /** All guards + artefact loading shared by {@link #accept} and {@link #acceptCorrected}. */
@@ -317,11 +411,17 @@ public class AcceptAiProposalsCommandService {
         }
 
         Set<String> existingParts = new HashSet<>();
+        List<PartRange> partRanges = new ArrayList<>();
         for (CompositionInstrument part : partRepository.findAllByComposition(composition)) {
-            existingParts.add(partKey(normalize(part.getInstrumentRole()),
-                    part.getPageFrom(), part.getPageTo()));
+            int from = part.getPageFrom() == null ? 0 : part.getPageFrom();
+            int to = part.getPageTo() == null ? 0 : part.getPageTo();
+            if (from <= 0 || to <= 0) {
+                continue; // legacy row without pages — takes no part of the pages model
+            }
+            existingParts.add(partKey(normalize(part.getInstrumentRole()), from, to));
+            partRanges.add(new PartRange(from, to, part.getInstrumentRole()));
         }
-        return new AcceptContext(composition, known, knownRoles, existingParts, scoreFile);
+        return new AcceptContext(composition, known, knownRoles, existingParts, scoreFile, partRanges);
     }
 
     /** Composite identity of a voice block: normalized role + exact page range (see guards above). */

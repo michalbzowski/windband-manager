@@ -463,4 +463,130 @@ class AcceptAiProposalsCommandServiceTest {
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("stron");
     }
+
+    // ─────────────── walidacja overlapu + karty luk (2026-11-verify-ai-cardflow) ───────────────
+
+    private static CompositionInstrument stored(int from, int to, String role) {
+        CompositionInstrument p = mock(CompositionInstrument.class);
+        when(p.getPageFrom()).thenReturn(from);
+        when(p.getPageTo()).thenReturn(to);
+        when(p.getInstrumentRole()).thenReturn(role);
+        return p;
+    }
+
+    @Test
+    @DisplayName("korekta zakresu nachodząca na istniejącą partię → IAE, partia nie powstaje")
+    void correctedRangeOverlappingStoredPartIsRejected() {
+        CompositionInstrument st = stored(8, 9, "Flet");
+        when(partRepository.findAllByComposition(composition))
+                .thenReturn(List.of(st));
+
+        assertThatThrownBy(() -> service.acceptCorrected(
+                COMPOSITION_ID, BAND_ID, ANALYSIS_ID,
+                List.of(cRow("Trąbka II", 3, 3, 8, 9, 13L)), VERIFIER))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("nachodzi na")
+                .hasMessageContaining("strona może należeć do jednego głosu");
+        verify(partRepository, never()).save(any(CompositionInstrument.class));
+    }
+
+    @Test
+    @DisplayName("dwa zakresy w tej samej kolejce nachodzące na siebie → drugi jest odrzucony")
+    void overlapWithinSameBatchIsRejected() {
+        when(instrumentRepository.findByIdAndBandId(12L, BAND_ID)).thenReturn(Optional.of(flet));
+        when(instrumentRepository.findByIdAndBandId(13L, BAND_ID)).thenReturn(Optional.of(trabka));
+
+        assertThatThrownBy(() -> service.acceptCorrected(
+                COMPOSITION_ID, BAND_ID, ANALYSIS_ID,
+                List.of(cRow("Flet I", 1, 1, 5, 6, 12L), cRow("Trąbka II", 3, 3, 6, 7, 13L)), VERIFIER))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("nachodzi na");
+        verify(partRepository, org.mockito.Mockito.times(1)).save(any(CompositionInstrument.class));
+    }
+
+    @Test
+    @DisplayName("legacy accept: zakres nachodzący na istniejącą partię → IAE")
+    void legacyAcceptOverlappingStoredPartIsRejected() {
+        CompositionInstrument st = stored(1, 3, "Flet II");
+        when(partRepository.findAllByComposition(composition))
+                .thenReturn(List.of(st));
+        when(instrumentRepository.findByIdAndBandId(12L, BAND_ID)).thenReturn(Optional.of(flet));
+
+        assertThatThrownBy(() -> service.accept(COMPOSITION_ID, BAND_ID, ANALYSIS_ID,
+                List.of(row("Flet I", 1, 1, 12L, 0.8)), VERIFIER))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("nachodzi na");
+        verify(partRepository, never()).save(any(CompositionInstrument.class));
+    }
+
+    @Test
+    @DisplayName("karta luki: oznaczenie tworzy partię HYBRID, rola = nazwa instrumentu, z audytem")
+    void gapAssignCreatesHybridPartWithInstrumentNameAsRole() {
+        when(instrumentRepository.findByIdAndBandId(12L, BAND_ID)).thenReturn(Optional.of(flet));
+
+        AcceptAiProposalsCommandService.AcceptCorrectedResult result = service.assignGapPages(
+                COMPOSITION_ID, BAND_ID, ANALYSIS_ID, 8, 9, 12L, VERIFIER);
+
+        assertThat(result.created()).isEqualTo(1);
+        assertThat(result.skipped()).isEmpty();
+        ArgumentCaptor<CompositionInstrument> captor = ArgumentCaptor.forClass(CompositionInstrument.class);
+        verify(partRepository).save(captor.capture());
+        CompositionInstrument part = captor.getValue();
+        assertThat(part.getInstrumentRole()).isEqualTo("Flet");
+        assertThat(part.getInstrument()).isSameAs(flet);
+        assertThat(part.getPageFrom()).isEqualTo(8);
+        assertThat(part.getPageTo()).isEqualTo(9);
+        assertThat(part.getSource()).isEqualTo(PartSource.HYBRID);
+        assertThat(part.getConfidenceScore()).isEqualTo(1.0d);
+        assertThat(part.getVerifiedBy()).isEqualTo(VERIFIER);
+        assertThat(part.getVerifiedAt()).isNotNull();
+    }
+
+    @Test
+    @DisplayName("karta luki: dokładny duplikat zakresu → skip bez zapisu")
+    void gapAssignDuplicateRangeIsSkipped() {
+        CompositionInstrument st = stored(8, 9, "Flet");
+        when(partRepository.findAllByComposition(composition))
+                .thenReturn(List.of(st));
+        when(instrumentRepository.findByIdAndBandId(12L, BAND_ID)).thenReturn(Optional.of(flet));
+
+        AcceptAiProposalsCommandService.AcceptCorrectedResult result = service.assignGapPages(
+                COMPOSITION_ID, BAND_ID, ANALYSIS_ID, 8, 9, 12L, VERIFIER);
+
+        assertThat(result.created()).isZero();
+        assertThat(result.skipped()).hasSize(1);
+        verify(partRepository, never()).save(any(CompositionInstrument.class));
+    }
+
+    @Test
+    @DisplayName("karta luki: częściowe nachodzenie na istniejącą partię → IAE")
+    void gapAssignPartialOverlapIsRejected() {
+        CompositionInstrument st = stored(7, 8, "Flet");
+        when(partRepository.findAllByComposition(composition))
+                .thenReturn(List.of(st));
+        when(instrumentRepository.findByIdAndBandId(12L, BAND_ID)).thenReturn(Optional.of(flet));
+
+        assertThatThrownBy(() -> service.assignGapPages(
+                COMPOSITION_ID, BAND_ID, ANALYSIS_ID, 8, 9, 12L, VERIFIER))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("nachodzi na");
+    }
+
+    @Test
+    @DisplayName("karta luki: zakres poza plikiem nut → IAE (pageCount = 10)")
+    void gapAssignBeyondPageCountIsRejected() {
+        assertThatThrownBy(() -> service.assignGapPages(
+                COMPOSITION_ID, BAND_ID, ANALYSIS_ID, 11, 12, 12L, VERIFIER))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("wykracza poza plik");
+    }
+
+    @Test
+    @DisplayName("karta luki: brak tożsamości weryfikatora → IAE (US-4.5)")
+    void gapAssignRequiresVerifier() {
+        assertThatThrownBy(() -> service.assignGapPages(
+                COMPOSITION_ID, BAND_ID, ANALYSIS_ID, 8, 9, 12L, null))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("tożsamości użytkownika");
+    }
 }

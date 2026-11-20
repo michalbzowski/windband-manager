@@ -19,8 +19,29 @@ public record AiVerifyReportDto(
         boolean simulated,
         int errorRows,
         int warningRows,
-        List<AiVerifyRow> rows) {
+        List<AiVerifyRow> rows,
+        List<PageRange> existingPartRanges) {
 
+    /** Page range of one already-stored part of the composition (gap-coverage baseline). */
+    public record PageRange(int pageFrom, int pageTo) {}
+
+    /** Stable JSON for the boot script (numeric-only payload, safe for th:attr). */
+    public String existingPartRangesJson() {
+        char q = (char) 34;
+        StringBuilder sb = new StringBuilder("[");
+        List<PageRange> rs = existingPartRanges == null ? List.of() : existingPartRanges;
+        for (int i = 0; i < rs.size(); i++) {
+            PageRange r = rs.get(i);
+            if (i > 0) {
+                sb.append(",");
+            }
+            sb.append("{").append(q).append("from").append(q).append(":")
+                    .append(r.pageFrom())
+                    .append(",").append(q).append("to").append(q).append(":")
+                    .append(r.pageTo()).append("}");
+        }
+        return sb.append("]").toString();
+    }
     /**
      * One proposal row in the report, with the consistency verdicts that apply to it.
      * {@code issues} is empty when the row participates in no detected problem.
@@ -62,5 +83,10 @@ public record AiVerifyReportDto(
     /** All rows are clean — the accept button can carry a strong positive. */
     public boolean allClear() {
         return errorRows == 0 && warningRows == 0;
+    }
+
+    /** Gap-coverage baseline: pages already owned by stored parts (empty when unknown). */
+    public List<PageRange> partRanges() {
+        return existingPartRanges == null ? List.of() : existingPartRanges;
     }
 }

@@ -75,6 +75,29 @@ public class ScoreAnalysisAiRestController {
         return json(MAPPER.writeValueAsString(result));
     }
 
+    /** Gap card (verify-ai view): assign uncovered pages to one of the band's voices. */
+    public record GapAssignBody(int pageFrom, int pageTo, Long instrumentId) {}
+
+    /** POST → 200 {@code {created, skipped[]}}; IAE → 400, ISE → 409 by the GlobalExceptionHandler. */
+    @PostMapping("/gaps/assign")
+    public ResponseEntity<String> gapsAssign(@PathVariable("bandId") Long bandId,
+            @PathVariable("compositionId") Long compositionId,
+            @PathVariable("analysisId") Long analysisId,
+            @RequestBody GapAssignBody body,
+            @AuthenticationPrincipal OidcUser principal) throws IOException {
+        if (!aiVerifyReportEnabled) {
+            return ResponseEntity.notFound().build();
+        }
+        if (body == null) {
+            throw new IllegalArgumentException("Brak treści żądania (zakres stron + instrument).");
+        }
+        String verifier = verifierOf(principal);
+        AcceptAiProposalsCommandService.AcceptCorrectedResult result = commandService.assignGapPages(
+                compositionId, bandId, analysisId, body.pageFrom(), body.pageTo(),
+                body.instrumentId(), verifier);
+        return json(MAPPER.writeValueAsString(result));
+    }
+
     /** Acceptance stamps the US-4.5 audit pair — fall back to a stable system tag if no user is bound. */
     private static String verifierOf(Object principal) {
         if (principal instanceof WindbandOidcUser wu && wu.getUserId() != null) {

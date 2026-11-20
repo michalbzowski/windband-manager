@@ -1,5 +1,6 @@
 package pl.michalbzowski.windband.application.query.scoreanalysis;
 
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 import lombok.RequiredArgsConstructor;
@@ -7,6 +8,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import pl.michalbzowski.windband.domain.composition.CompositionInstrument;
+import pl.michalbzowski.windband.domain.composition.CompositionInstrumentRepository;
 import pl.michalbzowski.windband.domain.composition.ScoreAnalysis;
 import pl.michalbzowski.windband.domain.composition.ScoreAnalysisRepository;
 import pl.michalbzowski.windband.domain.composition.ScoreFile;
@@ -34,6 +37,7 @@ public class AiVerifyReportQueryService {
     private final ScoreAnalysisProposalsQueryService previewQuery;
     private final ScoreAnalysisRepository analysisRepository;
     private final ScoreFileRepository scoreFileRepository;
+    private final CompositionInstrumentRepository partRepository;
 
     /**
      * Builds the report for one explicit analysis.
@@ -70,6 +74,8 @@ public class AiVerifyReportQueryService {
                     p.instrumentIdOrNull(), p.instrumentNameOrNull(), p.memberNames(), issues));
         }
 
+        List<AiVerifyReportDto.PageRange> existingPartRanges = partRangesOf(analysis, scoreFile);
+
         return new AiVerifyReportDto(
                 analysisId,
                 scoreFile.getId(),
@@ -79,7 +85,32 @@ public class AiVerifyReportQueryService {
                 base.simulated(),
                 verdicts.errorRows(),
                 verdicts.warningRows(),
-                rows);
+                rows,
+                List.copyOf(existingPartRanges));
+    }
+
+    /**
+     * Pages already owned by stored parts of the composition — the UI's gap-coverage baseline.
+     * Preference goes to parts bound to THIS score file (page numbers are per-file); when the
+     * composition has no such binding (legacy rows) all part ranges take the baseline role.
+     */
+    private List<AiVerifyReportDto.PageRange> partRangesOf(ScoreAnalysis analysis, ScoreFile file) {
+        var parts = partRepository.findAllByComposition(analysis.getComposition());
+        Long fileId = file.getId();
+        List<CompositionInstrument> bound = new java.util.ArrayList<>();
+        for (CompositionInstrument p : parts) {
+            if (p.getScoreFile() != null && fileId.equals(p.getScoreFile().getId())) {
+                bound.add(p);
+            }
+        }
+        Collection<CompositionInstrument> used = bound.isEmpty() ? parts : bound;
+        List<AiVerifyReportDto.PageRange> out = new java.util.ArrayList<>(used.size());
+        for (CompositionInstrument p : used) {
+            if (p.getPageFrom() != null && p.getPageTo() != null && p.getPageFrom() <= p.getPageTo()) {
+                out.add(new AiVerifyReportDto.PageRange(p.getPageFrom(), p.getPageTo()));
+            }
+        }
+        return out;
     }
 
     /**

@@ -50,10 +50,11 @@
         </section>
 
         <p class="verify-legend">
-            Jeden głos = jedna karta: zobacz strony, sprawdź tag i zakres —
-            i dopiero wtedy przyjmij. <span class="lg-error">błąd</span> — zakresy nakładają się albo wykraczają poza nuty;
-            popraw „od–do", a dopiero wtedy przyjmij głos.
+            Jeden głos = jedna karta: zobacz strony, sprawdź tag i zakres — i dopiero wtedy przyjmij.
+            <span class="lg-error">błąd</span> — zakresy nakładają się albo wykraczają poza nuty;
+            popraw „od–do”, a dopiero wtedy przyjmij głos.
             <span class="lg-warn">ostrzeżenie</span> — luki między głosami są dopuszczalne, ale sprawdź je.
+            Po przyjęciu głosu o skróconym zakresie luki pojawiają się jako osobne karty do oznaczenia.
         </p>
 
         <ol class="verify-queue" id="verify-queue">
@@ -99,7 +100,7 @@
                     </figure>
                 </div>
 
-                <!-- Korekta zakresu przed akceptacją (flaga M1). -->
+                <!-- Korekta zakresu przed akceptacją (flaga M1) + podgląd na żywo edytowanej strony. -->
                 <form class="verify-fix" data-row-form>
                     <div class="verify-grid2">
                         <label class="verify-field"><span>Strona od</span>
@@ -108,6 +109,22 @@
                         <label class="verify-field"><span>Strona do</span>
                             <input type="number" min="1" th:max="${report.pageCount != null ? report.pageCount : 999}"
                                    th:id="'fix-to-' + ${rowStat.index}" th:value="${row.pageTo}"></label>
+                    </div>
+                    <div class="verify-lp" th:if="${report.fileId != null and report.pageCount != null}">
+                        <figure class="verify-lp-page" data-lp="from" th:data-row="${rowStat.index}">
+                            <img th:id="'lp-from-' + ${rowStat.index}"
+                                 th:src="@{/bands/{b}/compositions/{c}/files/{f}/thumb(b=${bandId}, c=${compositionId}, f=${report.fileId}, page=${row.pageFrom}, width=240)}"
+                                 th:alt="'Strona od: ' + ${row.pageFrom}" loading="lazy">
+                            <figcaption><span>str. od</span>
+                                <b th:id="'lp-from-cap-' + ${rowStat.index}" th:text="${row.pageFrom}"></b></figcaption>
+                        </figure>
+                        <figure class="verify-lp-page" data-lp="to" th:data-row="${rowStat.index}">
+                            <img th:id="'lp-to-' + ${rowStat.index}"
+                                 th:src="@{/bands/{b}/compositions/{c}/files/{f}/thumb(b=${bandId}, c=${compositionId}, f=${report.fileId}, page=${row.pageTo}, width=240)}"
+                                 th:alt="'Strona do: ' + ${row.pageTo}" loading="lazy">
+                            <figcaption><span>str. do</span>
+                                <b th:id="'lp-to-cap-' + ${rowStat.index}" th:text="${row.pageTo}"></b></figcaption>
+                        </figure>
                     </div>
                     <div class="verify-field">
                         <span>Instrument (opcjonalnie — bez wyboru AI zaproponuje sama mapowanie)</span>
@@ -133,11 +150,19 @@
             </li>
         </ol>
 
-        <!-- Pasek zbiorczy: licznik + masowe przyjęcie niezmienionych głosów. -->
+        <!-- Pasek dolny: nawigacja jedna-karta-na-raz + licznik + masowe zatwierdzenie. -->
         <section class="verify-actions" id="verify-actions">
+            <nav class="verify-nav" aria-label="Nawigacja po kartach głosów">
+                <button type="button" class="secondary verify-nav-btn" id="verify-prev-btn"
+                        aria-label="Poprzednia karta" disabled>‹ Poprzedni</button>
+                <span class="verify-nav-pos" id="verify-nav-pos" role="status">Karta 1 z 0</span>
+                <button type="button" class="secondary verify-nav-btn" id="verify-next-btn"
+                        aria-label="Następna karta" disabled>Następny ›</button>
+            </nav>
             <span class="verify-count" id="verify-count" role="status"
                   th:text="${#strings.concat('Przyjęte: 0 z ' + report.rowCount(), ' głosów')}"></span>
-            <button type="button" class="secondary" id="accept-unchanged-btn">Przyjmij pozostałe bez zmian</button>
+            <!-- Nazwa podpowiada skutek: reszta (nieprzyjęte) idzie w oryginalnych zakresach AI. -->
+            <button type="button" class="secondary" id="accept-unchanged-btn">Przyjmij pozostałe głosy bez zmian</button>
         </section>
     </div>
 </main>
@@ -145,8 +170,14 @@
 <div th:replace="~{fragments/layout :: dialogs}"></div>
 
 <style>
-/* ── Raport spójności AI (flaga M1) — kolejka dowodów, mobile-first ─────────── */
+/* ── Raport spójności AI (flaga M1) — jedna karta na raz, mobile-first ─────── */
 .verify-ai-page .container { max-width: 640px; }
+
+/* Menu (sticky dashboard-header) zasłania karty na wąskim ekranie — schowaj je tutaj. -->
+@media (max-width: 959.98px) {
+    .verify-ai-page .dashboard-header { display: none !important; }
+}
+
 .verify-empty { text-align: center; padding: 2.5rem 1rem; }
 .verify-empty h3 { margin-top: 0.75rem; }
 
@@ -164,8 +195,10 @@
 .lg-error { background:#dc2626; color:#fff; padding:0 0.3em; border-radius:3px; font-size:0.72rem; }
 .lg-warn  { background:#b45309; color:#fff; padding:0 0.3em; border-radius:3px; font-size:0.72rem; }
 
+/* Kolejka kart: z zasady widoczna jest tylko karta aktywna (pasek nawigacji u dołu). */
 .verify-queue { list-style: none; padding: 0; margin: 0; display: grid; gap: 0.9rem; counter-reset: verifyrow; }
-.verify-row { position: relative; background: #fff; border: 1px solid var(--pico-border-color, #e2e6ec); border-left: 4px solid #d3d9e0; border-radius: 10px; padding: 0.8rem 0.9rem; }
+.verify-row { position: relative; background: #fff; border: 1px solid var(--pico-border-color, #e2e6ec); border-left: 4px solid #d3d9e0; border-radius: 10px; padding: 0.8rem 0.9rem; display: none; }
+.verify-row.is-active { display: block; }
 .row-error { border-left-color: #dc2626; }
 .row-warn  { border-left-color: #b45309; }
 .row-ok    { border-left-color: #059669; }
@@ -190,6 +223,13 @@
 .verify-page img { width: 100%; height: 150px; object-fit: cover; object-position: center top; display: block; background: #f6f7f9; }
 .verify-page figcaption { font-size: 0.72rem; color: var(--pico-muted-color, #667); padding: 0.25rem 0.5rem; border-top: 1px solid #edeff3; text-align: center; }
 
+/* Podgląd na żywo edytowanej strony (od/do) w formularzu korekty. */
+.verify-lp { display: grid; grid-template-columns: 1fr 1fr; gap: 0.45rem; }
+.verify-lp-page { margin: 0; background: #fbfcfe; border: 1px dashed var(--pico-border-color, #e2e6ec); border-radius: 8px; overflow: hidden; }
+.verify-lp-page img { width: 100%; height: 96px; object-fit: cover; object-position: center top; display: block; background: #f6f7f9; }
+.verify-lp-page figcaption { font-size: 0.7rem; color: var(--pico-muted-color, #667); padding: 0.2rem 0.45rem; border-top: 1px solid #edeff3; text-align: center; display: flex; justify-content: space-between; }
+.verify-lp-page figcaption b { color: #33415c; }
+
 .verify-fix { margin-top: 0.55rem; display: grid; gap: 0.45rem; padding-top: 0.55rem; border-top: 1px dashed var(--pico-border-color, #e2e6ec); }
 .verify-grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 0.45rem; }
 .verify-field span { display: block; font-size: 0.72rem; color: var(--pico-muted-color, #667); margin-bottom: 2px; }
@@ -201,19 +241,28 @@
 .verify-accept-btn { white-space: nowrap; font-size: 0.9rem; }
 .verify-row.is-accepted { opacity: 0.72; }
 .verify-row.is-accepted .verify-fix,
-.verify-row.is-accepted .verify-accept-btn { display: none; }
+.verify-row.is-accepted .verify-accept-btn,
+.verify-row.is-accepted .verify-lp { display: none; }
 .verify-accept-chip { display: none; background:#059669; color:#fff; border-radius:999px; padding:0.1rem 0.6rem; font-size:0.78rem; margin-left:auto; }
 .verify-row.is-accepted .verify-accept-chip { display: inline-block; }
 
+/* Karta luki (brak oznaczonego głosu po skróceniu zakresu / na niepokrytych stronach). */
+.gap-card { border-left-color: #b45309; background: #fffdf9; }
+.gap-note { font-size: 0.82rem; color: #8a4a10; margin: 0.25rem 0 0; }
+
+/* Pasek dolny: nawigacja + licznik + zatwierdzanie; przyklejony do krawędzi okna. */
 .verify-actions { display: flex; align-items: center; gap: 0.6rem; flex-wrap: wrap;
                   position: sticky; bottom: 0; background: #fff; padding: 0.7rem 0.9rem;
-                  border-top: 1px solid var(--pico-border-color, #e2e6ec); }
+                  margin-top: 0.9rem; border: 1px solid var(--pico-border-color, #e2e6ec); border-bottom: none;
+                  border-radius: 10px 10px 0 0; z-index: 5; }
 .verify-count { font-size: 0.85rem; color: #33415c; }
+.verify-nav { display: inline-flex; align-items: center; gap: 0.4rem; }
+.verify-nav-btn { white-space: nowrap; }
+.verify-nav-pos { font-size: 0.8rem; color: #33415c; min-width: 6.5em; text-align: center; }
 
-/* Wide (nawigacyjna): szersza kolumna + karty 2×. */
+/* Wide: szersza kolumna, jedna karta nadal (czytelność dowodów). */
 @media (min-width: 960px) {
     .verify-ai-page .container { max-width: 1080px; }
-    .verify-queue { grid-template-columns: repeat(2, minmax(380px, 1fr)); }
     .verify-page img { height: 210px; }
 }
 </style>
@@ -221,12 +270,22 @@
 
 <script th:if="${report != null}" th:data-base="'/bands/' + ${bandId} + '/compositions/' + ${compositionId}"
         th:data-accept-url="@{/bands/{b}/compositions/{c}/analysis/{a}/proposals/accept-corrected(b=${bandId}, c=${compositionId}, a=${report.analysisId})}"
+        th:data-gaps-url="@{/bands/{b}/compositions/{c}/analysis/{a}/gaps/assign(b=${bandId}, c=${compositionId}, a=${report.analysisId})}"
+        th:data-file-id="${report.fileId != null ? report.fileId : ''}"
+        th:data-page-count="${report.pageCount != null ? report.pageCount : ''}"
+        th:data-part-ranges="${report.existingPartRangesJson()}"
         id="verify-boot">
 (function () {
     'use strict';
     var boot = document.getElementById('verify-boot');
     var base = boot.getAttribute('data-base');
     var acceptUrl = boot.getAttribute('data-accept-url');
+    var gapsUrl = boot.getAttribute('data-gaps-url');
+    var fileId = boot.getAttribute('data-file-id') || '';
+    var pageCountRaw = parseInt(boot.getAttribute('data-page-count'), 10);
+    var pageCount = isNaN(pageCountRaw) ? 0 : pageCountRaw;
+    var partRanges = [];
+    try { partRanges = JSON.parse(boot.getAttribute('data-part-ranges') || '[]'); } catch (e) { partRanges = []; }
 
     function csrfHeaders() {
         var headers = { 'Content-Type': 'application/json' };
@@ -250,6 +309,53 @@
         if (text) { el.classList.add(isError ? 'err' : 'ok'); }
     }
 
+    // ── Nawigacja: jedna karta na raz, przyciski u dołu widoku ───────────────
+    var queue = document.getElementById('verify-queue');
+    var prevBtn = document.getElementById('verify-prev-btn');
+    var nextBtn = document.getElementById('verify-next-btn');
+    var posEl = document.getElementById('verify-nav-pos');
+    var activeIdx = 0;
+
+    function cardList() {
+        return Array.prototype.slice.call(queue ? queue.children : []);
+    }
+
+    function showCard(i) {
+        var cards = cardList();
+        var n = cards.length;
+        if (n === 0) { return; }
+        if (i < 0) { i = 0; }
+        if (i > n - 1) { i = n - 1; }
+        activeIdx = i;
+        for (var k = 0; k < n; k++) {
+            cards[k].classList.toggle('is-active', k === i);
+        }
+        prevBtn.disabled = i <= 0;
+        nextBtn.disabled = i >= n - 1;
+        if (posEl) { posEl.textContent = 'Karta ' + (i + 1) + ' z ' + n; }
+    }
+
+    function firstPendingIdx(startIdx) {
+        var cards = cardList();
+        for (var i = startIdx; i < cards.length; i++) {
+            if (!cards[i].classList.contains('is-accepted')) { return i; }
+        }
+        return -1;
+    }
+
+    prevBtn.addEventListener('click', function () { showCard(activeIdx - 1); });
+    nextBtn.addEventListener('click', function () { showCard(activeIdx + 1); });
+
+    // ── Licznik przyjętych ────────────────────────────────────────────────────
+    function countAccepted() { return document.querySelectorAll('#verify-queue .verify-row.is-accepted').length; }
+    function totalRows() { return cardList().length; }
+    function bumpCount() {
+        var el = document.getElementById('verify-count');
+        if (el) { el.textContent = 'Przyjęte: ' + countAccepted() + ' z ' + totalRows() + ' głosów'; }
+        var bulk = document.getElementById('accept-unchanged-btn');
+        if (bulk) { bulk.disabled = countAccepted() >= totalRows(); }
+    }
+
     function markAccepted(rowEl, label) {
         rowEl.classList.add('is-accepted');
         var chip = document.createElement('span');
@@ -260,29 +366,13 @@
         bumpCount();
     }
 
-    function countAccepted() { return document.querySelectorAll('#verify-queue .verify-row.is-accepted').length; }
-    function totalRows() { return document.querySelectorAll('#verify-queue .verify-row').length; }
-    function bumpCount() {
-        var el = document.getElementById('verify-count');
-        if (el) { el.textContent = 'Przyjęte: ' + countAccepted() + ' z ' + totalRows() + ' głosów'; }
-        var bulk = document.getElementById('accept-unchanged-btn');
-        if (bulk) { bulk.disabled = countAccepted() >= totalRows(); }
-    }
-
-    // „Jeden głos na raz": po akceptacji prowadzimy wzrok do kolejnej oczekującej karty.
-    function scrollToNextPending() {
-        var next = document.querySelector('#verify-queue .verify-row:not(.is-accepted)');
-        if (next && typeof next.scrollIntoView === 'function') {
-            next.scrollIntoView({ behavior: 'smooth', block: 'center' });
-        }
-    }
-
-    function sendRows(rows, onDone) {
-        fetch(acceptUrl, {
+    // ── Transport JSON ────────────────────────────────────────────────────────
+    function sendJson(url, body, onDone) {
+        fetch(url, {
             method: 'POST',
             headers: csrfHeaders(),
             credentials: 'same-origin',
-            body: JSON.stringify({ rows: rows })
+            body: JSON.stringify(body)
         })
         .then(function (resp) {
             if (resp.ok) {
@@ -293,19 +383,175 @@
             }
             return resp.text().then(function (text) {
                 var payload = null;
-                try { if (text) { payload = JSON.parse(text); } } catch (e) { /* puste ciało */ }
+                try { if (text) { payload = JSON.parse(text); } } catch (e2) { /* puste ciało */ }
                 if (!resp.ok) { throw new Error((payload && (payload.error || payload.message)) || ('HTTP ' + resp.status)); }
                 return payload;
             });
         })
         .then(onDone)
-        .catch(function (err) { toast(String(err.message || err), 'error'); onDone(null, err); });
+        .catch(function (err) { try { window.__lastErr = String((err && err.message) || err); } catch (_) { window.__lastErr = '[obj]'; } toast(String(err.message || err), 'error'); onDone(null, err); });
+    }
+
+    function sendRows(rows, onDone) { sendJson(acceptUrl, { rows: rows }, onDone); }
+
+    // ── Podgląd na żywo: zmiana „od/do” odświeża miniaturę owej strony ───────
+    function thumbSrc(page) {
+        if (!fileId || !pageCount || page < 1) { return null; }
+        return base + '/files/' + fileId + '/thumb?page=' + page + '&width=240';
+    }
+
+    function wirePreview(n) {
+        var fromInput = document.getElementById('fix-from-' + n);
+        var toInput = document.getElementById('fix-to-' + n);
+        if (!fromInput || !toInput) { return; }
+
+        function update(which, input) {
+            var page = parseInt(input.value, 10);
+            var img = document.getElementById((which === 'from' ? 'lp-from-' : 'lp-to-') + n);
+            var cap = document.getElementById((which === 'from' ? 'lp-from-cap-' : 'lp-to-cap-') + n);
+            if (isNaN(page) || !img) { return; }
+            if (page < 1) { page = 1; }
+            if (pageCount && page > pageCount) { page = pageCount + 1; } /* celowo za górną granicą: użytkownik widzi, co robi */
+            var src = thumbSrc(Math.min(page, pageCount));
+            img.src = src || (img.getAttribute('src') || '');
+            if (cap) { cap.textContent = page; }
+        }
+
+        fromInput.addEventListener('input', function () { update('from', fromInput); });
+        toInput.addEventListener('input', function () { update('to', toInput); });
+    }
+
+    // ── Luki: niepokryte strony → karta do oznaczenia nowym tagiem ───────────
+    var sessionAccepted = []; /* [{from, to}] głosy przyjęte w tej sesji */
+
+    function coveredSet() {
+        var set = {};
+        for (var i = 0; i < partRanges.length; i++) {
+            var r = partRanges[i];
+            for (var p = r.from; p <= r.to; p++) { set[p] = true; }
+        }
+        for (var j = 0; j < sessionAccepted.length; j++) {
+            var a = sessionAccepted[j];
+            for (var q = a.from; q <= a.to; q++) { set[q] = true; }
+        }
+        return set;
+    }
+
+    function computeGaps() {
+        if (!pageCount) { return []; }
+        var set = coveredSet();
+        var ranges = [];
+        var start = null;
+        for (var p = 1; p <= pageCount; p++) {
+            if (set[p]) {
+                if (start !== null) { ranges.push([start, p - 1]); start = null; }
+            } else if (start === null) {
+                start = p;
+            }
+        }
+        if (start !== null) { ranges.push([start, pageCount]); }
+        return ranges;
+    }
+
+    function clearGapCards() {
+        document.querySelectorAll('#verify-queue .gap-card').forEach(function (el) { el.remove(); });
+    }
+
+    function instrumentOptions() {
+        var src = document.querySelector('#verify-queue select.fix-inst, #verify-queue [id^="fix-inst-"]');
+        if (!src) { return []; }
+        return Array.prototype.slice.call(src.options).filter(function (o) { return o.value !== ''; });
+    }
+
+    function buildGapCard(range, idxInNew) {
+        var li = document.createElement('li');
+        li.className = 'verify-row gap-card row-warn';
+        li.dataset.gapFrom = range[0];
+        li.dataset.gapTo = range[1];
+
+        var head = document.createElement('div');
+        head.className = 'verify-row-head';
+        var h4 = document.createElement('h4');
+        h4.className = 'verify-role';
+        h4.textContent = 'Luka — str. ' + range[0] + (range[0] === range[1] ? '' : '–' + range[1]);
+        var tag = document.createElement('span');
+        tag.className = 'verify-tagmiss';
+        tag.textContent = 'brak głosu — oznacz instrumentem';
+        head.appendChild(h4);
+        head.appendChild(tag);
+        li.appendChild(head);
+
+        var note = document.createElement('p');
+        note.className = 'gap-note';
+        note.textContent = 'Tej strony (lub tego zakresu) nie obejmuje żaden przyjęty głos. Wybierz instrument, do którego należy.';
+        li.appendChild(note);
+
+        var form = document.createElement('div');
+        form.className = 'verify-fix';
+        var label = document.createElement('label');
+        label.className = 'verify-field';
+        var span = document.createElement('span');
+        span.textContent = 'Instrument dla stron ' + range[0] + (range[0] === range[1] ? '' : '–' + range[1]) + ':';
+        var sel = document.createElement('select');
+        var emptyOpt = document.createElement('option');
+        emptyOpt.value = '';
+        emptyOpt.textContent = '— wybierz instrument —';
+        sel.appendChild(emptyOpt);
+        instrumentOptions().forEach(function (o) {
+            var opt = document.createElement('option');
+            opt.value = o.value;
+            opt.textContent = o.textContent;
+            sel.appendChild(opt);
+        });
+        label.appendChild(sel);
+        form.appendChild(label);
+
+        var statusEl = document.createElement('span');
+        statusEl.className = 'verify-row-status';
+        statusEl.setAttribute('role', 'status');
+        form.appendChild(statusEl);
+
+        var btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'primary verify-accept-btn';
+        btn.textContent = 'Oznacz stronę(i) tym instrumentem';
+        btn.addEventListener('click', function () {
+            var instId = sel.value !== '' ? parseInt(sel.value, 10) : null;
+            if (!instId) { statusEl.textContent = 'Wybierz najpierw instrument.'; statusEl.classList.add('err'); return; }
+            btn.disabled = true;
+            sendJson(gapsUrl, { pageFrom: range[0], pageTo: range[1], instrumentId: instId }, function (payload, err) {
+                if (err) {
+                    btn.disabled = false;
+                    statusEl.textContent = 'Nie oznaczono — ' + (err.message || ''); 
+                    statusEl.classList.add('err');
+                    return;
+                }
+                sessionAccepted.push({ from: range[0], to: range[1] });
+                toast('Strona(y) ' + range[0] + (range[0] === range[1] ? '' : '–' + range[1]) + ' oznaczone.', 'success');
+                refreshGapsAndNav();
+            });
+        });
+        li.appendChild(btn);
+        return li;
+    }
+
+    function refreshGapsAndNav() {
+        var before = cardList().length;
+        clearGapCards();
+        var gaps = computeGaps();
+        for (var i = 0; i < gaps.length; i++) {
+            queue.appendChild(buildGapCard(gaps[i], i));
+        }
+        var cards = cardList();
+        if (activeIdx >= cards.length) { activeIdx = cards.length - 1; }
+        showCard(Math.max(0, activeIdx));
+        bumpCount();
     }
 
     // ── akceptacja pojedynczego głosu z korektą zakresu/instrumentu ───────────
-    document.querySelectorAll('#verify-queue [data-row-form] button.verify-accept-btn, .verify-accept-btn[data-role]').forEach(function (btn) {
+    document.querySelectorAll('#verify-queue button.verify-accept-btn[data-role]').forEach(function (btn) {
         var rowEl = btn.closest('.verify-row');
-        if (!rowEl || rowEl.dataset.wired) { return; }
+        if (!rowEl || rowEl.dataset.wired || rowEl.classList.contains('gap-card')) { return; }
         rowEl.dataset.wired = '1';
 
         function readFix(n) {
@@ -315,11 +561,18 @@
             return { from: from, to: to, instrument: sel && sel.value !== '' ? parseInt(sel.value, 10) : null };
         }
 
+        var idxOnce = btn.id.replace('accept-row-', '');
+        wirePreview(idxOnce); /* raz przy przyciskaniu — podgląd na żywo od pierwszej klawiatury */
+
         btn.addEventListener('click', function () {
             var idx = btn.id.replace('accept-row-', '');
             var fix = readFix(idx);
             if (isNaN(fix.from) || isNaN(fix.to) || fix.from > fix.to) {
                 setStatus(idx, 'Zakres „od–do” jest niedopuszczalny — sprawdź numery stron.', true);
+                return;
+            }
+            if (pageCount && (fix.from < 1 || fix.to > pageCount)) {
+                setStatus(idx, 'Strony muszą mieścić się w zakresie 1–' + pageCount + '. Serwer również to zweryfikuje.', true);
                 return;
             }
             var row = {
@@ -338,7 +591,10 @@
                 markAccepted(rowEl, payload && payload.correctedRows > 0 ? 'Przyjęto (z korektą)' : 'Przyjęto');
                 setStatus(idx, '', false);
                 toast('Głos „' + row.role + '” przyjęty.', 'success');
-                scrollToNextPending();
+                sessionAccepted.push({ from: fix.from, to: fix.to });
+                refreshGapsAndNav();
+                var next = firstPendingIdx(activeIdx + 1);
+                showCard(next >= 0 ? next : activeIdx);
             });
         });
     });
@@ -350,7 +606,7 @@
         bulk.addEventListener('click', function () {
             var rows = [];
             document.querySelectorAll('#verify-queue .verify-row').forEach(function (rowEl) {
-                if (rowEl.classList.contains('is-accepted')) { return; }
+                if (rowEl.classList.contains('is-accepted') || rowEl.classList.contains('gap-card')) { return; }
                 var btn = rowEl.querySelector('.verify-accept-btn[data-role]');
                 if (!btn) { return; }
                 rows.push({
@@ -367,23 +623,32 @@
             sendRows(rows, function (payload, err) {
                 if (err) {
                     toast('Nie przyjęto — ' + (err.message || ''), 'error');
-                    var anyRemain = document.querySelectorAll('#verify-queue .verify-row:not(.is-accepted)').length > 0;
+                    var anyRemain = document.querySelectorAll('#verify-queue .verify-row:not(.is-accepted):not(.gap-card)').length > 0;
                     bulk.disabled = !anyRemain;
+                    showCard(activeIdx);
                     return;
                 }
                 var skippedRoles = new Set();
                 if (payload && payload.skipped) { payload.skipped.forEach(function (s) { skippedRoles.add(s.role); }); }
                 document.querySelectorAll('#verify-queue .verify-row').forEach(function (rowEl) {
-                    if (rowEl.classList.contains('is-accepted')) { return; }
+                    if (rowEl.classList.contains('is-accepted') || rowEl.classList.contains('gap-card')) { return; }
                     var btn = rowEl.querySelector('.verify-accept-btn[data-role]');
-                    if (btn && !skippedRoles.has(btn.getAttribute('data-role'))) { markAccepted(rowEl, 'Przyjęto'); }
+                    if (!btn || skippedRoles.has(btn.getAttribute('data-role'))) { return; }
+                    markAccepted(rowEl, 'Przyjęto');
+                    var f = parseInt(btn.getAttribute('data-ai-from'), 10);
+                    var t = parseInt(btn.getAttribute('data-ai-to'), 10);
+                    if (!isNaN(f) && !isNaN(t)) { sessionAccepted.push({ from: f, to: t }); }
                 });
                 var skipped = (payload && payload.created != null) ? Math.max(0, rows.length - payload.created) : 0;
                 toast('Przyjęte głosy: ' + ((payload && payload.created) || rows.length) +
                       (skipped > 0 ? ' (pominięte: ' + skipped + ')' : '') + '.', 'success');
+                refreshGapsAndNav();
             });
         });
     }
+
+    // ── start: pierwsza karta aktywna, licznik z synchronizowany ──────────────
+    showCard(0);
     bumpCount();
 }
 )();

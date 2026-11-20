@@ -136,6 +136,16 @@ class AiVerifyReportUiTest extends UiTestBase {
         long rowCount = (Long) js.executeScript(
                 "return document.querySelectorAll('#verify-queue .verify-row').length;");
         assertThat(rowCount).as("kolejka pokazuje cztery głosy AI").isEqualTo(4L);
+
+        // Jedna karta na raz: tylko aktywna jest widoczna; reszta dostępna z paska u dołu.
+        long activeCount = (Long) js.executeScript(
+                "return document.querySelectorAll('#verify-queue .verify-row.is-active').length;");
+        assertThat(activeCount).as("widoczna jest dokładnie jedna (aktywna) karta").isEqualTo(1L);
+        String navPos = wait.until(d -> {
+            String p = (String) js.executeScript("return document.getElementById('verify-nav-pos').textContent;");
+            return p != null && p.length() > 0 ? p : null;
+        });
+        assertThat(navPos).as("licznik pozycji w kolejkach").isEqualTo("Karta 1 z 4");
         assertThat(summary.getAttribute("data-errors")).as("jeden błąd spójności (Klarnet 11–12 > 10 stron)")
                 .isEqualTo("1");
         // Luka na s. 8 jest pewna; niezmapowane głosy zależą od reszty suity (band 1) — „co najmniej”.
@@ -228,6 +238,18 @@ class AiVerifyReportUiTest extends UiTestBase {
                 var li = Array.from(document.querySelectorAll('#verify-queue .verify-row'));
                 return !!li[arguments[0]] && li[arguments[0]].classList.contains('is-accepted');""",
                 Long.valueOf(trumpetIdx)));
+
+        // Akceptacja skróconego zakresu (3–4) odsłania luki: s. 1–2 oraz 5–10 stają się kartami do oznaczenia;
+        // licznik odzwierciedla powiększoną kolejkę (4 głosy AI + 2 luki = 6 kart).
+        long gapCards = wait.until(d -> {
+            Long g = (Long) js.executeScript(
+                    "return document.querySelectorAll('#verify-queue .gap-card').length;");
+            return g != null && g >= 1 ? g : 0L;
+        });
+        assertThat(gapCards).as("luki pojawiły się jako karty do oznaczenia").isGreaterThanOrEqualTo(1L);
+        String navPos2 = (String) js.executeScript(
+                "return document.getElementById('verify-nav-pos').textContent;");
+        assertThat(navPos2).as("licznik po rozszerzeniu kolejki o luki").isEqualTo("Karta 2 z 6");
 
         Map<String, Object> createdPart = jdbcTemplate.queryForList(
                 "SELECT instrument_role, instrument_id, page_from, page_to, source FROM composition_instruments "

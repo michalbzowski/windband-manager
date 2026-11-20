@@ -15,6 +15,8 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 import pl.michalbzowski.windband.domain.band.Band;
 import pl.michalbzowski.windband.domain.composition.Composition;
+import pl.michalbzowski.windband.domain.composition.CompositionInstrument;
+import pl.michalbzowski.windband.domain.composition.CompositionInstrumentRepository;
 import pl.michalbzowski.windband.domain.composition.CompositionRepository;
 import pl.michalbzowski.windband.domain.composition.InstrumentRoleMap;
 import pl.michalbzowski.windband.domain.composition.InstrumentRoleMapRepository;
@@ -48,6 +50,7 @@ class AiVerifyReportQueryServiceTest {
     private final MemberRepository memberRepository = mock(MemberRepository.class);
     private final InstrumentRoleMapRepository roleMapRepository = mock(InstrumentRoleMapRepository.class);
     private final ScoreFileRepository scoreFileRepository = mock(ScoreFileRepository.class);
+    private final CompositionInstrumentRepository partRepository = mock(CompositionInstrumentRepository.class);
 
     private final Instrument trabka = mock(Instrument.class);
 
@@ -92,7 +95,8 @@ class AiVerifyReportQueryServiceTest {
                 new RoleInstrumentResolver(instrumentRepository, memberRepository, roleMapRepository);
         ScoreAnalysisProposalsQueryService previewQuery = new ScoreAnalysisProposalsQueryService(
                 compositionRepository, analysisRepository, instrumentRepository, resolver);
-        service = new AiVerifyReportQueryService(previewQuery, analysisRepository, scoreFileRepository);
+        when(partRepository.findAllByComposition(composition)).thenReturn(List.of());
+        service = new AiVerifyReportQueryService(previewQuery, analysisRepository, scoreFileRepository, partRepository);
     }
 
     private ScoreAnalysis succeeded(Path dir, long scoreFileId) {
@@ -204,6 +208,47 @@ class AiVerifyReportQueryServiceTest {
         assertThatThrownBy(() -> service.report(COMPOSITION_ID, BAND_ID, ANALYSIS_ID))
                 .isInstanceOf(IllegalStateException.class)
                 .hasMessageContaining("nie należy");
+    }
+
+@Test
+    @DisplayName("existingPartRanges — partie powiązane z plikiem nut (luka 14 po 1–13)")
+    void existingPartRangesComesFromPartsBoundToScoreFile() {
+        CompositionInstrument scorePart = mock(CompositionInstrument.class);
+        when(scorePart.getPageFrom()).thenReturn(1);
+        when(scorePart.getPageTo()).thenReturn(13);
+        ScoreFile bound = mock(ScoreFile.class);
+        when(bound.getId()).thenReturn(FILE_ID);
+        when(scorePart.getScoreFile()).thenReturn(bound);
+
+        CompositionInstrument otherFilePart = mock(CompositionInstrument.class);
+        when(otherFilePart.getPageFrom()).thenReturn(4);
+        when(otherFilePart.getPageTo()).thenReturn(6);
+        when(otherFilePart.getScoreFile()).thenReturn(null);
+
+        when(partRepository.findAllByComposition(composition)).thenReturn(List.of(scorePart, otherFilePart));
+
+        AiVerifyReportDto dto = service.report(COMPOSITION_ID, BAND_ID, ANALYSIS_ID);
+
+        assertThat(dto.partRanges()).containsExactly(new AiVerifyReportDto.PageRange(1, 13));
+                        assertThat(dto.existingPartRangesJson())
+                .startsWith("[")
+                .endsWith("]")
+                .contains(":13")
+                .doesNotContain(":4")
+;
+    }
+
+    @Test
+    @DisplayName("Brak partii powiązanych z plikiem → fallback na wszystkie partie utworu")
+    void existingPartRangesFallbackToAllPartsWhenUnbound() {
+        CompositionInstrument legacy = mock(CompositionInstrument.class);
+        when(legacy.getPageFrom()).thenReturn(2);
+        when(legacy.getPageTo()).thenReturn(9);
+        when(partRepository.findAllByComposition(composition)).thenReturn(List.of(legacy));
+
+        AiVerifyReportDto dto = service.report(COMPOSITION_ID, BAND_ID, ANALYSIS_ID);
+
+        assertThat(dto.partRanges()).containsExactly(new AiVerifyReportDto.PageRange(2, 9));
     }
 
     @Test
