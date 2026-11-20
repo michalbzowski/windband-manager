@@ -11,6 +11,6 @@ Nie zaznaczaj [x] bez uruchomionej weryfikacji danego taska.
 - [x] T6. UI: karty luk (recompute pokrycia po każdej akceptacji; intervaly; wybór instrumentu; podgląd stron; akceptacja → POST gaps/assign)
 - [x] T7. UI: mobile — ukryć `.dashboard-header` tylko na tym widoku (CSS scope'owany)
 - [x] T8. Testy UI (Selenium, *UiTest): nawigacja, jedyna widoczna karta, live preview (src/alt), luka po skróceniu zakresu (tworzenie + zanik), przycisk masowy (nowa nazwa, confirm, odhaczanie), dup skip, hidden header mobile
-- [ ] T9. Bramki: agent-quick.sh w pętli → agent-verify.sh przed commitem; mutation-check 'pl.michalbzowski.windband.application.*'
-- [ ] T10. Commit + pre-push-check + push main + ci-status do zieleni + Railway SUCCESS (prod)
-- [ ] T11. Archiwizacja openspec (npx @fission-ai/openspec archive 2026-11-verify-ai-cardflow)
+- [x] T9. Bramki: agent-quick.sh w pętli → agent-verify.sh przed commitem; mutation-check 'pl.michalbzowski.windband.application.*'
+- [x] T10. Commit + pre-push-check + push main + ci-status do zieleni + Railway SUCCESS (prod)
+- [x] T11. Archiwizacja openspec (npx @fission-ai/openspec archive 2026-11-verify-ai-cardflow)
