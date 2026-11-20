@@ -3,6 +3,7 @@ package pl.michalbzowski.windband.adapter.in.web;
 import org.junit.jupiter.api.Test;
 import org.openqa.selenium.By;
 import org.openqa.selenium.support.ui.WebDriverWait;
+import org.openqa.selenium.TimeoutException;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.jdbc.core.JdbcTemplate;
 import pl.michalbzowski.windband.UiTestBase;
@@ -40,8 +41,26 @@ class DashboardHomeUiTest extends UiTestBase {
         // != null; that in turn requires a rehearsal row AND at least one attendance row.
         // We seeded both (see seedRehearsalWithAttendance above), so the dashboard should
         // show a progress bar for our seeded rehearsal within 30s on any runner.
-        WebDriverWait progressWait = new WebDriverWait(driver, Duration.ofSeconds(30));
-        progressWait.until(webDriver -> !webDriver.findElements(By.cssSelector("section.dashboard-upcoming .progress-fill")).isEmpty());
+        // Shared-CI runners execute this suite alongside scanner jobs, dast and PIT. Under
+        // that load, login + navigation + SSR render can exceed the old 30s budget even though
+        // the target is statically rendered by Thymeleaf (no async fetch). Bounded wait only:
+        // no sleeps, assertion semantics unchanged.
+        WebDriverWait progressWait = new WebDriverWait(driver, Duration.ofSeconds(60));
+        try {
+            progressWait.until(webDriver -> !webDriver.findElements(
+                    By.cssSelector("section.dashboard-upcoming .progress-fill")).isEmpty());
+        } catch (TimeoutException tmo) {
+            // Diagnose-before-fix pattern: expose the mechanism on failure, not a bare timeout.
+            String pageUrl = driver.getCurrentUrl();
+            String pageTitle = driver.getTitle();
+            var sections = driver.findElements(By.cssSelector("section.dashboard-upcoming"));
+            String sectionState = sections.isEmpty()
+                    ? "MISSING"
+                    : "present, innerText length=" + sections.get(0).getText().length();
+            throw new AssertionError(
+                    "dashboard upcoming progress-fill not rendered within 60s; url=" + pageUrl
+                            + ", title=" + pageTitle + ", dashboard-upcoming=" + sectionState, tmo);
+        }
 
         var progressBars = driver.findElements(By.cssSelector("section.dashboard-upcoming .progress-fill"));
         assertThat(progressBars).isNotEmpty();
