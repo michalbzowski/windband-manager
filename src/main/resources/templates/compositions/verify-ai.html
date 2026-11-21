@@ -4,6 +4,11 @@
 <body class="dashboard-page verify-ai-page">
 
 <main class="container" id="content">
+    <!-- Powrót do poprzedniego widoku (karta utworu) — prawy górny róg; menu tego widoku nie ma. -->
+    <a class="verify-close" th:href="@{/bands/{bandId}/compositions/{id}(bandId=${bandId}, id=${compositionId})}"
+       title="Wróć do utworu (zamknij raport)"
+       aria-label="Wróć do utworu (zamknij raport)">&#x2715;</a>
+
     <header th:replace="~{fragments/layout :: dashboard-header}"></header>
 
     <!-- Unified page header (PR A contract, 10 params; zero actions on this view). -->
@@ -23,41 +28,13 @@
         <a class="primary" th:href="@{/bands/{bandId}/compositions/{id}(bandId=${bandId}, id=${compositionId})}">Wróć do utworu</a>
     </section>
 
-    <!-- ═══════════ Raport: podsumowanie + kolejka dowodów ──────────────────── -->
+    <!-- ═══════════ Raport: kolejka głosów AI + luki do oznaczenia ───────────── -->
     <div th:if="${report != null}">
-        <section class="verify-summary" id="verify-summary"
-                 th:data-errors="${report.errorRows}"
-                 th:data-warnings="${report.warningRows}"
-                 th:data-rows="${report.rowCount()}">
-            <div class="verify-work">
-                <span class="verify-work-title" th:text="${report.work != null and report.work.title != null ? report.work.title : '—'}">Tytuł</span>
-                <span class="verify-work-meta">
-                    <span th:if="${report.work != null and report.work.composer != null}" th:text="'z ' + ${report.work.composer}"></span>
-                    <span th:if="${report.pageCount != null}" th:text="${#strings.concat('• ', #strings.concat(report.pageCount.toString(), ' stron w pliku nut'))}"></span>
-                    <span th:if="${report.simulated}" class="verify-sim">DANE TESTOWE</span>
-                </span>
-            </div>
-            <div class="verify-stats">
-                <span class="verify-stat" data-stat="rows"
-                      th:text="${#strings.concat('# ' + report.rowCount(), ' głosów od AI')}"></span>
-                <span class="verify-stat stat-error" th:if="${report.errorRows > 0}"
-                      th:text="${#strings.concat(report.errorRows, ' błędów (zakresy)')}"></span>
-                <span class="verify-stat stat-warn" th:if="${report.warningRows > 0}"
-                      th:text="${#strings.concat(report.warningRows, ' ostrzeżeń (luki)')}"></span>
-                <span class="verify-stat stat-ok" th:if="${report.allClear()}"
-                      th:text="'Wszystkie głosy się zgadzają'"></span>
-            </div>
-        </section>
-
-        <p class="verify-legend">
-            Jeden głos = jedna karta: zobacz strony, sprawdź tag i zakres — i dopiero wtedy przyjmij.
-            <span class="lg-error">błąd</span> — zakresy nakładają się albo wykraczają poza nuty;
-            popraw „od–do”, a dopiero wtedy przyjmij głos.
-            <span class="lg-warn">ostrzeżenie</span> — luki między głosami są dopuszczalne, ale sprawdź je.
-            Po przyjęciu głosu o skróconym zakresie luki pojawiają się jako osobne karty do oznaczenia.
-        </p>
-
-        <ol class="verify-queue" id="verify-queue">
+        <!-- Stan raportu (błędy/ostrzeżenia/linie) jako dane maszynowe — bez widocznego nagłówka. -->
+        <ol class="verify-queue" id="verify-queue"
+            th:data-errors="${report.errorRows}"
+            th:data-warnings="${report.warningRows}"
+            th:data-rows="${report.rowCount()}">
             <li th:each="row, rowStat : ${report.rows}"
                 class="verify-row"
                 th:classappend="${row.hasError() ? ' row-error' : (row.needsAttention() ? ' row-warn' : ' row-ok')}">
@@ -86,21 +63,7 @@
                         th:text="${issue.detail}"></li>
                 </ul>
 
-                <!-- Dowod wizualny: strony pierwsza i ostatnia zakresu głosu (miniatury z pliku nut). -->
-                <div class="verify-evidence" th:if="${report.fileId != null and report.pageCount != null}">
-                    <figure class="verify-page">
-                        <img th:src="@{/bands/{b}/compositions/{c}/files/{f}/thumb(b=${bandId}, c=${compositionId}, f=${report.fileId}, page=${row.firstPage()}, width=320)}"
-                             th:alt="'Podgląd strony ' + ${row.firstPage()}" loading="lazy">
-                        <figcaption th:text="'str. ' + ${row.firstPage()}"></figcaption>
-                    </figure>
-                    <figure class="verify-page" th:if="${row.lastPage() != row.firstPage()}">
-                        <img th:src="@{/bands/{b}/compositions/{c}/files/{f}/thumb(b=${bandId}, c=${compositionId}, f=${report.fileId}, page=${row.lastPage()}, width=320)}"
-                             th:alt="'Podgląd strony ' + ${row.lastPage()}" loading="lazy">
-                        <figcaption th:text="'str. ' + ${row.lastPage()}"></figcaption>
-                    </figure>
-                </div>
-
-                <!-- Korekta zakresu przed akceptacją (flaga M1) + podgląd na żywo edytowanej strony. -->
+                <!-- Podgląd stron zakresu głosu: pojedynczy rząd (od/do) w formularzu korekty poniżej. -->
                 <form class="verify-fix" data-row-form>
                     <div class="verify-grid2">
                         <label class="verify-field"><span>Strona od</span>
@@ -167,33 +130,37 @@
     </div>
 </main>
 
+<!-- Pełnoekranowe powiększenie miniaturki strony nut (przytrzymaj; zwolnij, aby wrócić). -->
+<div id="verify-zoom" class="verify-zoom" role="img" aria-label="Powiększony podgląd strony nut" hidden>
+    <img alt="" src="">
+</div>
+
 <div th:replace="~{fragments/layout :: dialogs}"></div>
 
 <style>
 /* ── Raport spójności AI (flaga M1) — jedna karta na raz, mobile-first ─────── */
 .verify-ai-page .container { max-width: 640px; }
 
-/* Menu (sticky dashboard-header) zasłania karty na wąskim ekranie — schowaj je tutaj. -->
-@media (max-width: 959.98px) {
-    .verify-ai-page .dashboard-header { display: none !important; }
-}
+/* Menu (dashboard-header) jest zbędne na tym widoku — powrót zapewnia przycisk X. */
+.verify-ai-page .dashboard-header { display: none !important; }
 
 .verify-empty { text-align: center; padding: 2.5rem 1rem; }
 .verify-empty h3 { margin-top: 0.75rem; }
 
-.verify-work-title { font-weight: 650; font-size: 1.05rem; display: block; }
-.verify-work-meta { color: var(--pico-muted-color, #667); font-size: 0.85rem; display: block; margin-top: 2px; }
-.verify-sim { text-transform: uppercase; letter-spacing: 0.04em; font-weight: 600; color: var(--pico-primary, #01aaff); font-size: 0.72rem; margin-left: 0.35em; }
+/* Przycisk „X” — powrót do poprzedniego widoku (karty utworu), prawy górny róg ekranu. */
+.verify-close { position: fixed; top: 0.6rem; right: 0.8rem; z-index: 60; width: 42px; height: 42px;
+               display: flex; align-items: center; justify-content: center; border-radius: 50%;
+               background: #fff; color: #33415c; border: 1px solid var(--pico-border-color, #e2e6ec);
+               box-shadow: 0 2px 10px rgba(15, 23, 42, 0.14); text-decoration: none; font-size: 1rem; }
+.verify-close:hover { color: #b91c1c; border-color: #f0b9b9; background: #fff; }
 
-.verify-stats { display: flex; flex-wrap: wrap; gap: 0.4rem; margin-top: 0.6rem; }
-.verify-stat { font-size: 0.8rem; padding: 0.2rem 0.55rem; border-radius: 999px; background: rgba(0,0,0,0.06); }
-.stat-error { background: #dc2626; color: #fff; font-weight: 600; }
-.stat-warn  { background: #b45309; color: #fff; font-weight: 600; }
-.stat-ok    { background: #059669; color: #fff; font-weight: 600; }
-
-.verify-legend { font-size: 0.78rem; color: var(--pico-muted-color, #667); line-height: 1.4; margin: 0.75rem 0; }
-.lg-error { background:#dc2626; color:#fff; padding:0 0.3em; border-radius:3px; font-size:0.72rem; }
-.lg-warn  { background:#b45309; color:#fff; padding:0 0.3em; border-radius:3px; font-size:0.72rem; }
+/* Pełnoekranowe powiększenie miniaturki (przytrzymaj, aby powiększyć; zwolnij palec lub przycisk myszy, aby wrócić). */
+.verify-zoom { position: fixed; inset: 0; z-index: 600; background: rgba(8, 12, 18, 0.93);
+              display: flex; align-items: center; justify-content: center; }
+.verify-zoom[hidden] { display: none; }
+.verify-zoom img { max-width: calc(100vw - 24px); max-height: calc(100vh - 24px); width: auto; height: auto;
+                   object-fit: contain; border-radius: 6px; background: #fff; box-shadow: 0 12px 48px rgba(0,0,0,0.55); }
+#verify-queue img { cursor: zoom-in; -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
 
 /* Kolejka kart: z zasady widoczna jest tylko karta aktywna (pasek nawigacji u dołu). */
 .verify-queue { list-style: none; padding: 0; margin: 0; display: grid; gap: 0.9rem; counter-reset: verifyrow; }
@@ -217,16 +184,12 @@
 .issue-error { background: #fdecec; color: #9b1c1c; }
 .issue-warn  { background: #fdf0e2; color: #8a4a10; }
 
-/* Dowody wizualne — strony zakresu głosu z pliku nut. */
-.verify-evidence { display: flex; gap: 0.6rem; margin: 0.55rem 0 0.1rem; }
-.verify-page { margin: 0; flex: 1 1 45%; background: #fff; border: 1px solid var(--pico-border-color, #e2e6ec); border-radius: 8px; overflow: hidden; }
-.verify-page img { width: 100%; height: 150px; object-fit: cover; object-position: center top; display: block; background: #f6f7f9; }
-.verify-page figcaption { font-size: 0.72rem; color: var(--pico-muted-color, #667); padding: 0.25rem 0.5rem; border-top: 1px solid #edeff3; text-align: center; }
-
-/* Podgląd na żywo edytowanej strony (od/do) w formularzu korekty. */
-.verify-lp { display: grid; grid-template-columns: 1fr 1fr; gap: 0.45rem; }
-.verify-lp-page { margin: 0; background: #fbfcfe; border: 1px dashed var(--pico-border-color, #e2e6ec); border-radius: 8px; overflow: hidden; }
-.verify-lp-page img { width: 100%; height: 96px; object-fit: cover; object-position: center top; display: block; background: #f6f7f9; }
+/* Podgląd stron z pliku nut — jeden rząd (od/do), odświeżany na żywo przy edycji zakresu.
+   Przytrzymanie miniaturki powiększa ją na cały ekran; zwolnienie palca lub przycisku myszy wraca do normalnego rozmiaru. */
+.verify-lp { display: grid; grid-template-columns: 1fr 1fr; gap: 0.45rem; margin-top: 0.55rem; }
+.verify-lp-single { grid-template-columns: 1fr; }
+.verify-lp-page { margin: 0; background: #fbfcfe; border: 1px solid var(--pico-border-color, #e2e6ec); border-radius: 8px; overflow: hidden; }
+.verify-lp-page img { width: 100%; height: 140px; object-fit: cover; object-position: center top; display: block; background: #f6f7f9; }
 .verify-lp-page figcaption { font-size: 0.7rem; color: var(--pico-muted-color, #667); padding: 0.2rem 0.45rem; border-top: 1px solid #edeff3; text-align: center; display: flex; justify-content: space-between; }
 .verify-lp-page figcaption b { color: #33415c; }
 
@@ -344,7 +307,20 @@
     }
 
     prevBtn.addEventListener('click', function () { showCard(activeIdx - 1); });
-    nextBtn.addEventListener('click', function () { showCard(activeIdx + 1); });
+    nextBtn.addEventListener('click', function () {
+        /* „Następny" najpierw celuje w lukę odsłoniętą niedawnym skróceniem zakresu — i dopiero potem idzie kartą dalej. */
+        if (pendingTarget >= 0) {
+            var cards = cardList();
+            if (pendingTarget < cards.length && !cards[pendingTarget].classList.contains('is-accepted')) {
+                var target = pendingTarget;
+                pendingTarget = -1;
+                showCard(target);
+                return;
+            }
+        }
+        pendingTarget = -1;
+        showCard(activeIdx + 1);
+    });
 
     // ── Licznik przyjętych ────────────────────────────────────────────────────
     function countAccepted() { return document.querySelectorAll('#verify-queue .verify-row.is-accepted').length; }
@@ -415,6 +391,7 @@
             var src = thumbSrc(Math.min(page, pageCount));
             img.src = src || (img.getAttribute('src') || '');
             if (cap) { cap.textContent = page; }
+            onRangeEdited(n); /* luki + cel „Następnego" od razu reagują na nową wartość */
         }
 
         fromInput.addEventListener('input', function () { update('from', fromInput); });
@@ -486,6 +463,33 @@
         note.textContent = 'Tej strony (lub tego zakresu) nie obejmuje żaden przyjęty głos. Wybierz instrument, do którego należy.';
         li.appendChild(note);
 
+        /* Podgląd stron luki (ten sam mechanizm miniatur: przytrzymaj, aby powiększyć na cały ekran). */
+        var prov = document.createElement('div');
+        prov.className = range[0] === range[1] ? 'verify-lp verify-lp-single' : 'verify-lp';
+        function gapFig(page) {
+            var fig = document.createElement('figure');
+            fig.className = 'verify-lp-page';
+            var im = document.createElement('img');
+            var src2 = thumbSrc(page);
+            if (src2) { im.src = src2; }
+            im.alt = 'Podgląd strony ' + page + ' (luka do oznaczenia)';
+            im.loading = 'lazy';
+            im.setAttribute('draggable', 'false');
+            fig.appendChild(im);
+            var cap = document.createElement('figcaption');
+            var s = document.createElement('span');
+            s.textContent = 'str.';
+            var b = document.createElement('b');
+            b.textContent = String(page);
+            cap.appendChild(s);
+            cap.appendChild(b);
+            fig.appendChild(cap);
+            return fig;
+        }
+        prov.appendChild(gapFig(range[0]));
+        if (range[1] !== range[0]) { prov.appendChild(gapFig(range[1])); }
+        li.appendChild(prov);
+
         var form = document.createElement('div');
         form.className = 'verify-fix';
         var label = document.createElement('label');
@@ -510,6 +514,7 @@
         statusEl.className = 'verify-row-status';
         statusEl.setAttribute('role', 'status');
         form.appendChild(statusEl);
+        li.appendChild(form); /* formularz (select + status) musi być w karcie — bez niego "Oznacz" nic nie pozwala wybrać */
 
         var btn = document.createElement('button');
         btn.type = 'button';
@@ -527,8 +532,9 @@
                     return;
                 }
                 sessionAccepted.push({ from: range[0], to: range[1] });
-                toast('Strona(y) ' + range[0] + (range[0] === range[1] ? '' : '–' + range[1]) + ' oznaczone.', 'success');
+                toast('Strona(y) ' + range[0] + (range[1] !== range[0] ? '–' + range[1] : '') + ' oznaczone.', 'success');
                 refreshGapsAndNav();
+                pendingTarget = -1; /* luka dopiero co obsadzona — cel „Następnego" nie może na nią wskazywać */
             });
         });
         li.appendChild(btn);
@@ -546,6 +552,65 @@
         if (activeIdx >= cards.length) { activeIdx = cards.length - 1; }
         showCard(Math.max(0, activeIdx));
         bumpCount();
+    }
+
+    // ── Cel nawigacji po skróceniu zakresu: „Następny" wskazuje nowo odsłoniętą lukę ─────
+    /* Indeks karty luki (w childach kolejki), do której „Następny" ma przenieść widok. */
+    var pendingTarget = -1;
+
+    function findGapCardForPage(page) {
+        var cards = cardList();
+        for (var i = 0; i < cards.length; i++) {
+            var el = cards[i];
+            if (!el.classList || !el.classList.contains('gap-card')) { continue; }
+            var f = parseInt(el.dataset.gapFrom, 10);
+            var t = parseInt(el.dataset.gapTo, 10);
+            if (!isNaN(f) && !isNaN(t) && page >= f && page <= t) { return i; }
+        }
+        return -1;
+    }
+
+    /* Strony objęte propozycją AI, ale wyjęte z zakresu po korekcie (np. 1–14 → 1–13 odsłania s. 14). */
+    function exposedPagesForRow(btn, keepFrom, keepTo) {
+        var aF = parseInt(btn.getAttribute('data-ai-from'), 10);
+        var aT = parseInt(btn.getAttribute('data-ai-to'), 10);
+        if (isNaN(aF) || isNaN(aT) || isNaN(keepFrom) || isNaN(keepTo)) { return []; }
+        var out = [];
+        var lo = Math.min(aF, keepFrom);
+        var hi = Math.max(aT, keepTo);
+        for (var p = lo; p <= hi; p++) {
+            if (p >= aF && p <= aT && (p < keepFrom || p > keepTo)) { out.push(p); }
+        }
+        return out;
+    }
+
+    /* Ustawia „Następny” na lukę odsłaniającą któreś z „page" albo czyści, gdy strona jest już pokryta. */
+    function applyPendingFromExposed(excluded, keepFrom, keepTo) {
+        var covered = coveredSet();
+        if (!isNaN(keepFrom) && !isNaN(keepTo)) {
+            var from = Math.max(1, Math.min(keepFrom, keepTo));
+            var to = Math.min(keepTo, pageCount > 0 ? pageCount : keepTo);
+            for (var p = from; p <= to && p <= 9999; p++) { covered[p] = true; }
+        }
+        pendingTarget = -1;
+        for (var e = 0; e < excluded.length; e++) {
+            if (covered[excluded[e]]) { continue; }
+            var idx = findGapCardForPage(excluded[e]);
+            if (idx >= 0) { pendingTarget = idx; break; }
+        }
+    }
+
+    /* Edycja „od/do" (zwykłe stukanie) natychmiast odświeża luki i ustawia cel „Następnego". */
+    function onRangeEdited(n) {
+        var btn = document.getElementById('accept-row-' + n);
+        if (!btn) { return; }
+        var rowEl = btn.closest ? btn.closest('.verify-row') : null;
+        if (rowEl && rowEl.classList.contains('is-accepted')) { return; }
+        var f0 = parseInt(document.getElementById('fix-from-' + n).value, 10);
+        var t0 = parseInt(document.getElementById('fix-to-' + n).value, 10);
+        if (isNaN(f0) || isNaN(t0)) { return; }
+        refreshGapsAndNav();
+        applyPendingFromExposed(exposedPagesForRow(btn, f0, t0), f0, t0);
     }
 
     // ── akceptacja pojedynczego głosu z korektą zakresu/instrumentu ───────────
@@ -593,6 +658,8 @@
                 toast('Głos „' + row.role + '” przyjęty.', 'success');
                 sessionAccepted.push({ from: fix.from, to: fix.to });
                 refreshGapsAndNav();
+                /* Po przyjęciu skróconego zakresu „Następny" wskazuje odsłoniętą lukę (np. s. 14 po 1–13). */
+                applyPendingFromExposed(exposedPagesForRow(btn, fix.from, fix.to), fix.from, fix.to);
                 var next = firstPendingIdx(activeIdx + 1);
                 showCard(next >= 0 ? next : activeIdx);
             });
@@ -643,7 +710,35 @@
                 toast('Przyjęte głosy: ' + ((payload && payload.created) || rows.length) +
                       (skipped > 0 ? ' (pominięte: ' + skipped + ')' : '') + '.', 'success');
                 refreshGapsAndNav();
+                pendingTarget = -1; /* masowa akceptacja = bez zmian zakresów ⇒ brak odsłoniętej luki */
             });
+        });
+    }
+
+    // ── Pełnoekranowe powiększenie miniaturki: przytrzymaj, aby powiększyć; puść, aby wrócić ─
+    var zoomBox = document.getElementById('verify-zoom');
+    if (zoomBox && queue) {
+        var zoomImg = zoomBox.querySelector('img');
+        function zoomHide() { zoomBox.hidden = true; }
+        /* Delegacja na kolejkę: miniatury kart luk powstają dynamicznie — muszą też działać. */
+        queue.addEventListener('pointerdown', function (ev) {
+            var node = ev.target;
+            while (node && node !== queue && node.tagName && node.tagName !== 'IMG') { node = node.parentNode; }
+            if (!node || node === queue) { return; }
+            var src = node.currentSrc || node.src || '';
+            if (!src) { return; }
+            /* Fullscreen w wyraźnej rozdzielczości: ten sam endpoint /thumb, ale width=1600. */
+            var hi = src.replace(/width=\d+/, 'width=1600');
+            if (hi === src) { hi = src + (src.indexOf('?') !== -1 ? '&width=1600' : '?width=1600'); }
+            zoomImg.alt = node.getAttribute('alt') || 'Powiększony podgląd strony nut';
+            var shown = false;
+            function showZoom() { if (!shown) { shown = true; zoomBox.hidden = false; } }
+            zoomImg.onload = showZoom;
+            zoomImg.onerror = showZoom; /* pokazać i tak — lepiej pusty kadr niż zamrożony ekran */
+            zoomImg.src = hi;
+            setTimeout(showZoom, 400); /* zapas: obraz z cache może nie odpalić onload */
+            window.addEventListener('pointerup', zoomHide, { once: true });
+            window.addEventListener('pointercancel', zoomHide, { once: true });
         });
     }
 

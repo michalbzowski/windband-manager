@@ -132,7 +132,9 @@ class AiVerifyReportUiTest extends UiTestBase {
         // (1) Wejście z karty utworu: link widoczny tylko przy zakończonej analizie i flamie ON.
         WebElement entry = wait.until(ExpectedConditions.visibilityOfElementLocated(org.openqa.selenium.By.id("ai-verify-entry")));
         entry.click();
-        WebElement summary = wait.until(ExpectedConditions.visibilityOfElementLocated(org.openqa.selenium.By.id("verify-summary")));
+        // Kolejka renderuje się przy wczesnym rysunku widoku; stan raportu (błędy/ostrzeżenia/linie)
+        // mieszka teraz w data-* na <ol id="verify-queue"> — widoczny nagłówek podsumowania nie istnieje.
+        WebElement queueEl = wait.until(ExpectedConditions.visibilityOfElementLocated(org.openqa.selenium.By.id("verify-queue")));
         long rowCount = (Long) js.executeScript(
                 "return document.querySelectorAll('#verify-queue .verify-row').length;");
         assertThat(rowCount).as("kolejka pokazuje cztery głosy AI").isEqualTo(4L);
@@ -146,10 +148,10 @@ class AiVerifyReportUiTest extends UiTestBase {
             return p != null && p.length() > 0 ? p : null;
         });
         assertThat(navPos).as("licznik pozycji w kolejkach").isEqualTo("Karta 1 z 4");
-        assertThat(summary.getAttribute("data-errors")).as("jeden błąd spójności (Klarnet 11–12 > 10 stron)")
+        assertThat(queueEl.getAttribute("data-errors")).as("jeden błąd spójności (Klarnet 11–12 > 10 stron)")
                 .isEqualTo("1");
         // Luka na s. 8 jest pewna; niezmapowane głosy zależą od reszty suity (band 1) — „co najmniej”.
-        assertThat(Integer.parseInt(summary.getAttribute("data-warnings")))
+        assertThat(Integer.parseInt(queueEl.getAttribute("data-warnings")))
                 .as("co najmniej jedno ostrzeżenie (luka na s. 8)")
                 .isGreaterThanOrEqualTo(1);
         // Błąd i ostrzeżenie są widoczne przy właściwych rolach.
@@ -190,24 +192,24 @@ class AiVerifyReportUiTest extends UiTestBase {
         assertThat(Objects.toString(trumpetDataInst, ""))
                 .as("wiersz bez przypisanego instrumentu: pusty data-instrument").isEmpty();
 
-        // ── Elementy wizualne kolejki dowodów (makieta C) ───────────────────────
-        // Każdy głos ma podgląd stron z pliku nut (miniatury przez endpoint /thumb).
+        // ── Elementy wizualne kolejki (jeden rząd od/do; podwójny podgląd świadomie nie istnieje) ─
+        // Każdy głos ma jeden rząd podglądu stron od/do z pliku nut (miniatury przez endpoint /thumb).
         boolean everyRowHasImage = (boolean) js.executeScript(
                 "var ok = true;"
                         + "document.querySelectorAll('#verify-queue .verify-row').forEach(function (r) {"
-                        + "  if (!r.querySelector('.verify-evidence img')) { ok = false; }"
+                        + "  if (!r.querySelector('.verify-lp-page img')) { ok = false; }"
                         + "}); return ok;");
-        assertThat(everyRowHasImage).as("każdy wiersz ma podgląd stron (strony pierwsza/ostatnia zakresu)").isTrue();
+        assertThat(everyRowHasImage).as("każdy wiersz ma jeden podgląd stron (od/do z pliku nut)").isTrue();
         String saxImgSrc = (String) js.executeScript(
                 "return document.querySelectorAll('#verify-queue .verify-row')[arguments[0]]"
-                        + ".querySelector('.verify-evidence img').src;",
+                        + ".querySelector('.verify-lp-page img').src;",
                 Long.valueOf(saxResolvedIdx));
         assertThat(saxImgSrc).as("miniatury pochodzą z pliku nut (endpoint /thumb)").contains("/thumb");
         String saxImgAlt = (String) js.executeScript(
                 "return document.querySelectorAll('#verify-queue .verify-row')[arguments[0]]"
-                        + ".querySelector('.verify-evidence img').alt;",
+                        + ".querySelector('.verify-lp-page img').alt;",
                 Long.valueOf(saxResolvedIdx));
-        assertThat(saxImgAlt).as("alt miniatury identyfikuje stronę").startsWith("Podgląd strony");
+        assertThat(saxImgAlt).as("alt miniatury identyfikuje stronę „od”").startsWith("Strona od:");
 
         // Tag / mapowanie głosu widoczne w karcie: rozwiązany wiersz → chip instrumentu.
         String saxChip = (String) js.executeScript(
@@ -250,6 +252,23 @@ class AiVerifyReportUiTest extends UiTestBase {
         String navPos2 = (String) js.executeScript(
                 "return document.getElementById('verify-nav-pos').textContent;");
         assertThat(navPos2).as("licznik po rozszerzeniu kolejki o luki").isEqualTo("Karta 2 z 6");
+
+        // Po przyjęciu skróconego zakresu (AI 2–4 → 3–4, odsłonięta s. 2) „Następny"
+        // przenosi na nowo powstałą kartę luki (s. 1–2), nie po prostu o krok dalej:
+        // analogicznie w scenariuszu użytkownika 1–14 → 1–13 trafia tam s. 14 z podglądem.
+        ((JavascriptExecutor) driver).executeScript("document.getElementById('verify-next-btn').click();");
+        String navPosGap = wait.until(d -> {
+            String p = (String) js.executeScript("return document.getElementById('verify-nav-pos').textContent;");
+            return "Karta 5 z 6".equals(p) ? p : null;
+        });
+        assertThat(navPosGap).as("„Następny” po skróceniu zakresu wskazuje kartę luki").isEqualTo("Karta 5 z 6");
+        boolean gapCardReady = (Boolean) js.executeScript(
+                "var li=document.getElementById('verify-queue').children[4];"
+                        + "return !!li"
+                        + " && li.classList.contains('gap-card')"
+                        + " && !!li.querySelector('select')"
+                        + " && !!li.querySelector('.verify-lp-page img');");
+        assertThat(gapCardReady).as("karta luki ma podgląd strony i wybór instrumentu (tagu)").isEqualTo(true);
 
         Map<String, Object> createdPart = jdbcTemplate.queryForList(
                 "SELECT instrument_role, instrument_id, page_from, page_to, source FROM composition_instruments "
