@@ -3,6 +3,7 @@ package pl.michalbzowski.windband.application.command.scoreanalysis;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -10,6 +11,7 @@ import static org.mockito.Mockito.when;
 
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
 import org.junit.jupiter.api.BeforeEach;
@@ -478,8 +480,8 @@ class AcceptAiProposalsCommandServiceTest {
     @DisplayName("korekta zakresu nachodząca na istniejącą partię → IAE, partia nie powstaje")
     void correctedRangeOverlappingStoredPartIsRejected() {
         CompositionInstrument st = stored(8, 9, "Flet");
-        when(partRepository.findAllByComposition(composition))
-                .thenReturn(List.of(st));
+        when(partRepository.findAllByComposition(composition)).thenReturn(List.of(st));
+        when(instrumentRepository.findByIdAndBandId(13L, BAND_ID)).thenReturn(Optional.of(trabka));
 
         assertThatThrownBy(() -> service.acceptCorrected(
                 COMPOSITION_ID, BAND_ID, ANALYSIS_ID,
@@ -488,6 +490,103 @@ class AcceptAiProposalsCommandServiceTest {
                 .hasMessageContaining("nachodzi na")
                 .hasMessageContaining("strona może należeć do jednego głosu");
         verify(partRepository, never()).save(any(CompositionInstrument.class));
+    }
+
+    // ── korekta WŁASNEJ partii (regresja prod 2026-11-21, „Amerland” 1–14 → 1–13) ──
+
+    private static CompositionInstrument stored(int from, int to, String role, long id) {
+        CompositionInstrument p = stored(from, to, role);
+        when(p.getId()).thenReturn(id);
+        return p;
+    }
+
+    @Test
+    @DisplayName("korekta zakresu WŁASNEJ partii (prod „Amerland”) → aktualizacja zakresu, NIE 400")
+    void correctedRangeOverlappingOwnPartUpdatesIt() throws Exception {
+        Files.writeString(workDir.resolve("arrangement.json"), """
+                [{"role":"Partytura","pageFrom":1,"pageTo":14,"confidence":0.9}]
+                """);
+        when(scoreFile.getPageCount()).thenReturn(20);
+        when(scoreFile.getId()).thenReturn(SCORE_FILE_ID);
+        CompositionInstrument st = stored(1, 14, "Partytura", 701L);
+        when(partRepository.findAllByComposition(composition)).thenReturn(List.of(st));
+        when(partRepository.findById(701L)).thenReturn(Optional.of(st));
+        when(instrumentRepository.findByIdAndBandId(12L, BAND_ID)).thenReturn(Optional.of(flet));
+
+        AcceptAiProposalsCommandService.AcceptCorrectedResult result = service.acceptCorrected(
+                COMPOSITION_ID, BAND_ID, ANALYSIS_ID,
+                List.of(cRow("Partytura", 1, 14, 1, 13, 12L)), VERIFIER);
+
+        // przyjęte (aktualizowane), sklasyfikowane jako korekta; audyt zamrożony na nowo
+        assertThat(result.created()).isEqualTo(1);
+        assertThat(result.correctedRows()).isEqualTo(1);
+        // kontrakt JSON (verify-ai.html): stary zakres nadpisanej partii, aby klient odsłonił lukę
+        assertThat(result.superseded())
+                .containsExactly(new AcceptAiProposalsCommandService.SupersededPart(1, 14));
+        // US-6.5: updateMapping rozwalnia parę audytu → świeży verify użytkownika ją zamarza
+        verify(st).updateMapping(eq(flet), eq("Partytura"), eq(1), eq(13), eq(scoreFile));
+        verify(st).verify(eq(VERIFIER), any(Instant.class));
+        verify(partRepository).save(st); // ta sama partia (id 701) — zero nowych wierszy
+        org.mockito.Mockito.verify(partRepository, org.mockito.Mockito.times(1))
+                .save(any(CompositionInstrument.class));
+    }
+
+    @Test
+    @DisplayName("korekta własnej partii: DWA zakresy tej roli nachodzą na nowy → IAE (jednoznaczność)")
+    void correctedRangeWithTwoOwnPartsIsAmbiguous() throws Exception {
+        Files.writeString(workDir.resolve("arrangement.json"), """
+                [{"role":"Partytura","pageFrom":1,"pageTo":14,"confidence":0.9}]
+                """);
+        when(scoreFile.getPageCount()).thenReturn(20);
+        CompositionInstrument a = stored(1, 10, "partytura", 711L);
+        CompositionInstrument b = stored(8, 16, "partytura", 712L);
+        when(partRepository.findAllByComposition(composition)).thenReturn(List.of(a, b));
+        when(instrumentRepository.findByIdAndBandId(12L, BAND_ID)).thenReturn(Optional.of(flet));
+
+        assertThatThrownBy(() -> service.acceptCorrected(
+                COMPOSITION_ID, BAND_ID, ANALYSIS_ID,
+                List.of(cRow("Partytura", 1, 14, 5, 9, 12L)), VERIFIER))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("którą chcesz poprawić");
+        verify(partRepository, never()).save(any(CompositionInstrument.class));
+    }
+
+    @Test
+    @DisplayName("legacy accept: re-akceptacja zakresu AI na własnej partii → aktualizacja, nie 400")
+    void legacyAcceptUpdatesOwnPartInsteadOfClashing() {
+        CompositionInstrument st = stored(1, 4, "trąbka ii", 731L);
+        when(partRepository.findAllByComposition(composition)).thenReturn(List.of(st));
+        when(partRepository.findById(731L)).thenReturn(Optional.of(st));
+        when(instrumentRepository.findByIdAndBandId(13L, BAND_ID)).thenReturn(Optional.of(trabka));
+
+        AcceptAiProposalsCommandService.AcceptResult result = service.accept(
+                COMPOSITION_ID, BAND_ID, ANALYSIS_ID,
+                List.of(row("Trąbka II", 3, 3, 13L, 0.7)), VERIFIER);
+
+        assertThat(result.created()).isEqualTo(1);
+        assertThat(result.skipped()).isEmpty();
+        verify(st).updateMapping(eq(trabka), eq("Trąbka II"), eq(3), eq(3), eq(scoreFile));
+        verify(partRepository).save(st);
+    }
+
+    @Test
+    @DisplayName("partia tej samej roli w INNYM pliku nut nie blokuje akceptacji (własna przestrzeń stron)")
+    void storedPartInOtherScoreFileDoesNotBlockCreation() {
+        ScoreFile otherFile = mock(ScoreFile.class);
+        when(otherFile.getId()).thenReturn(78L);
+        CompositionInstrument foreign = stored(1, 4, "flet i", 721L);
+        when(foreign.getScoreFile()).thenReturn(otherFile);
+        when(partRepository.findAllByComposition(composition)).thenReturn(List.of(foreign));
+        when(scoreFile.getId()).thenReturn(SCORE_FILE_ID);
+        when(instrumentRepository.findByIdAndBandId(12L, BAND_ID)).thenReturn(Optional.of(flet));
+
+        AcceptAiProposalsCommandService.AcceptCorrectedResult result = service.acceptCorrected(
+                COMPOSITION_ID, BAND_ID, ANALYSIS_ID,
+                List.of(cRow("Flet I", 1, 1, 1, 4, 12L)), VERIFIER);
+
+        // przed naprawą: pominięcie „partia ... już istnieje” / konflikt 400 z partią innego pliku
+        assertThat(result.created()).isEqualTo(1);
+        assertThat(result.skipped()).isEmpty();
     }
 
     @Test

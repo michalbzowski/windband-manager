@@ -107,7 +107,9 @@ class ScoreAnalysisAiRestControllerTest {
         List<AcceptAiProposalsCommandService.AcceptedRowCorrected> rows = List.of(
                 new AcceptAiProposalsCommandService.AcceptedRowCorrected("Trąbka II", 3, 3, 4, 6, 13L));
         AcceptAiProposalsCommandService.AcceptCorrectedResult result =
-                new AcceptAiProposalsCommandService.AcceptCorrectedResult(1, 0, 1, List.of());
+                new AcceptAiProposalsCommandService.AcceptCorrectedResult(
+                        1, 0, 1, List.of(),
+                        List.of(new AcceptAiProposalsCommandService.SupersededPart(3, 4)));
         when(commandService.acceptCorrected(COMPOSITION, BAND, ANALYSIS, rows, "42"))
                 .thenReturn(result);
 
@@ -117,6 +119,9 @@ class ScoreAnalysisAiRestControllerTest {
 
         assertThat(response.getStatusCode().value()).isEqualTo(200);
         assertThat(response.getBody()).contains("\"created\":1").contains("\"correctedRows\":1");
+        /* kontrakt zużywany przez verify-ai.html (odsłanianie luki po korekcie własnej partii) */
+        assertThat(response.getBody())
+                .contains("\"superseded\":[{\"pageFrom\":3,\"pageTo\":4}]");
         verify(commandService).acceptCorrected(COMPOSITION, BAND, ANALYSIS, rows, "42");
     }
 
@@ -157,7 +162,7 @@ class ScoreAnalysisAiRestControllerTest {
     @DisplayName("Karta luki: POST /gaps/assign forwarduje zakres + instrument, zwraca wynik service")
     void gapsAssignForwardsRangeAndInstrument() throws java.io.IOException {
         AcceptAiProposalsCommandService.AcceptCorrectedResult result =
-                new AcceptAiProposalsCommandService.AcceptCorrectedResult(1, 0, 1, List.of());
+                new AcceptAiProposalsCommandService.AcceptCorrectedResult(1, 0, 1, List.of(), List.of());
         when(commandService.assignGapPages(COMPOSITION, BAND, ANALYSIS, 8, 9, 12L, "42"))
                 .thenReturn(result);
 

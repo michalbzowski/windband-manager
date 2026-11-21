@@ -34,6 +34,9 @@ class AiVerifyReportUiTest extends UiTestBase {
 
     private long compositionId;
 
+    /** Plik nut seedowanej analizy (potrzebny do partii w TEJ przestrzeni stron). */
+    private long scoreFileId;
+
     /** Instrument bandu 1 rozwiązany z teamTag wiersza „Saksofon altowy” (regresja białego ekranu). */
     private long resolvedSaxInstrumentId;
 
@@ -60,6 +63,7 @@ class AiVerifyReportUiTest extends UiTestBase {
                 compositionId, pdf.toString(), PAGE_COUNT);
         long scoreFileId = jdbcTemplate.queryForObject(
                 "SELECT id FROM score_files WHERE composition_id = ?", Long.class, compositionId);
+        this.scoreFileId = scoreFileId;
 
         // 2-4 czysty; 5-7 sąsiedni (bez luki); 9-10 → luka po stronie 8 (ostrzeżenie);
         // 11-12 → poza pageCount=10 (błąd BEYOND_PAGES).
@@ -222,9 +226,9 @@ class AiVerifyReportUiTest extends UiTestBase {
                 Long.valueOf(trumpetNullIdx));
         assertThat(trumpetChipMissing).as("wiersz bez tagu i mapowania sygnałizuje brak mapowania").isTrue();
 
-        long instrumentId = jdbcTemplate.queryForObject(
-                "SELECT id FROM instruments WHERE band_id = 1 AND name LIKE 'Klarnety raportowe%'",
-                Long.class);
+        // Tabela instruments NIE jest truncowana między testami (patrz UiTestBase.cleanDatabase),
+        // więc LIKE po nazwie kumuluje wiersze z innych metod — bierzemy WŁASNY instrument seedu.
+        long instrumentId = resolvedSaxInstrumentId;
 
         // (2) Korekta zakresu „Trąbka I” 2–4 → 3–4 + jawny wybór instrumentu → HYBRID.
         long trumpetIdx = rowIndexByRole(js, "Trąbka I");
@@ -327,6 +331,74 @@ class AiVerifyReportUiTest extends UiTestBase {
 
         assertThat(partCount()).as("łącznie trzy zaakceptowane partie (Trąbka skorygowana + Tuba + Saksofon)")
                 .isEqualTo(3L);
+    }
+
+    @Test
+    @DisplayName("skrócenie zakresu JUŻ PRZYJĘTEGO głosu → aktualizacja partii, nie 400; strona luki do oznaczenia")
+    void correctionOfAlreadyAcceptedVoiceUpdatesPart() throws Exception {
+        // Regresja prod 2026-11-21 („Amerland”: AI wyznaczyła „Partytura” na 1–14, user skracając
+        // do 1–13 dostawał 400 „nachodzi na partię str. 1–14 („Partytura”)” — własna partia
+        // blokowała własną korektę). Analogicznie tu: Tuba E już zaakceptowana na 5–7.
+        seedSucceededAnalysis();
+        jdbcTemplate.update("""
+                INSERT INTO composition_instruments
+                    (composition_id, instrument_id, instrument_role, page_from, page_to,
+                     score_file_id, source, confidence_score, verified_by, verified_at,
+                     created_at, updated_at)
+                VALUES (?, ?, 'Tuba E', 5, 7, ?, 'AI', 0.85, 'seed', CURRENT_TIMESTAMP,
+                        CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)""",
+                compositionId, resolvedSaxInstrumentId, scoreFileId);
+
+        loginAndNavigateTo("/bands/1/compositions/" + compositionId);
+        JavascriptExecutor js = (JavascriptExecutor) driver;
+        WebDriverWait wait = new WebDriverWait(driver, WAIT);
+        WebElement entry = wait.until(
+                ExpectedConditions.visibilityOfElementLocated(org.openqa.selenium.By.id("ai-verify-entry")));
+        entry.click();
+        wait.until(ExpectedConditions.visibilityOfElementLocated(org.openqa.selenium.By.id("verify-queue")));
+
+        long tubaIdx = rowIndexByRole(js, "Tuba E");
+        assertThat(tubaIdx).isGreaterThanOrEqualTo(0L);
+        long instrumentId = jdbcTemplate.queryForObject(
+                "SELECT id FROM instruments WHERE band_id = 1 AND name LIKE 'Klarnety raportowe%'",
+                Long.class);
+
+        // Korekta zakresu 5–7 → 5–6 + jawny wybór instrumentu → akceptacja = aktualizacja partii.
+        js.executeScript("document.getElementById('fix-to-' + arguments[0]).value = '6';",
+                Long.valueOf(tubaIdx));
+        js.executeScript(
+                "var s = document.getElementById('fix-inst-' + arguments[0]);"
+                        + "s.value = arguments[1]; s.dispatchEvent(new Event('change', {bubbles: true}));",
+                Long.valueOf(tubaIdx), String.valueOf(instrumentId));
+        ((JavascriptExecutor) driver).executeScript(
+                "document.getElementById('accept-row-' + arguments[0]).click();", Long.valueOf(tubaIdx));
+        wait.until(d -> (Boolean) js.executeScript("""
+                var li = Array.from(document.querySelectorAll('#verify-queue .verify-row'));
+                return !!li[arguments[0]] && li[arguments[0]].classList.contains('is-accepted');""",
+                Long.valueOf(tubaIdx)));
+
+        assertThat(partCount()).as("korekta = aktualizacja istniejącej partii, zero nowych wierszy")
+                .isEqualTo(1L);
+        Map<String, Object> tuba = jdbcTemplate.queryForList(
+                        "SELECT instrument_role, page_from, page_to FROM composition_instruments "
+                                + "WHERE composition_id = ?",
+                        compositionId).stream()
+                .filter(p -> "Tuba E".equals(p.get("instrument_role"))).findFirst().orElseThrow();
+        assertThat(String.valueOf(tuba.get("page_from"))).isEqualTo("5");
+        assertThat(String.valueOf(tuba.get("page_to")))
+                .as("zakres skorygowany 5–7 → 5–6 (przed naprawą: HTTP 400 „nachodzi na partię ...”)")
+                .isEqualTo("6");
+
+        // Strona 7 — zwolniona przez skrócony zakres — stała się kartą luki do oznaczenia.
+        wait.until(d -> {
+            Long g = (Long) js.executeScript(
+                    "return document.querySelectorAll('#verify-queue .gap-card').length;");
+            return g != null && g >= 1 ? g : 0L;
+        });
+        boolean gapCoversPage7 = (Boolean) js.executeScript("""
+                return Array.from(document.querySelectorAll('#verify-queue .gap-card'))
+                        .some(function (g) { return g.textContent.indexOf('7') >= 0; });""");
+        assertThat(gapCoversPage7).as("strona 7 pojawiła się jako karta luki").isEqualTo(true);
     }
 
     @Test

@@ -656,6 +656,17 @@
                 markAccepted(rowEl, payload && payload.correctedRows > 0 ? 'Przyjęto (z korektą)' : 'Przyjęto');
                 setStatus(idx, '', false);
                 toast('Głos „' + row.role + '” przyjęty.', 'success');
+                /* Korekta nadpisała istniejącą partię — usuwamy jej STARY zakres z pokrycia;
+                   odsłonięte strony (np. s. 14 po 1–13) stają się lukami do oznaczenia. */
+                if (payload && payload.superseded) {
+                    for (var sp = 0; sp < payload.superseded.length; sp++) {
+                        var sf = payload.superseded[sp].pageFrom;
+                        var stp = payload.superseded[sp].pageTo;
+                        for (var pr = partRanges.length - 1; pr >= 0; pr--) {
+                            if (partRanges[pr].from === sf && partRanges[pr].to === stp) { partRanges.splice(pr, 1); break; }
+                        }
+                    }
+                }
                 sessionAccepted.push({ from: fix.from, to: fix.to });
                 refreshGapsAndNav();
                 /* Po przyjęciu skróconego zakresu „Następny" wskazuje odsłoniętą lukę (np. s. 14 po 1–13). */
