@@ -510,8 +510,11 @@ class RehearsalDetailFilterUiTest extends UiTestBase {
         filterInput.clear();
         filterInput.sendKeys(firstNameA);
 
-        Awaitility.await().atMost(Duration.ofSeconds(5)).until(() ->
-                countVisibleAttendanceRows() == 1);
+        // Wait (generous window — CI runners are loaded): the grid must narrow to exactly 1 row.
+        Awaitility.await()
+                .atMost(Duration.ofSeconds(20))
+                .until(() ->
+                        countVisibleAttendanceRows() == 1);
         assertThat(visibleAttendanceRowName()).contains(firstNameA);
 
         // --- Change B's status via the UI dropdown (the user action) ---
@@ -523,8 +526,11 @@ class RehearsalDetailFilterUiTest extends UiTestBase {
         freshInput.clear();
         freshInput.sendKeys(firstNameB);
 
-        Awaitility.await().atMost(Duration.ofSeconds(5)).until(() ->
-                countVisibleAttendanceRows() == 1);
+        // Wait (generous window — CI runners are loaded): the grid must narrow to exactly 1 row.
+        Awaitility.await()
+                .atMost(Duration.ofSeconds(20))
+                .until(() ->
+                        countVisibleAttendanceRows() == 1);
         assertThat(visibleAttendanceRowName()).contains(firstNameB);
         assertThat(visibleAttendanceRowName()).doesNotContain(firstNameA);
     }

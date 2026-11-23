@@ -14,6 +14,8 @@ import org.openqa.selenium.chrome.ChromeOptions;
 import org.openqa.selenium.support.ui.ExpectedConditions;
 import org.openqa.selenium.support.ui.FluentWait;
 import org.openqa.selenium.support.ui.WebDriverWait;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.web.server.LocalServerPort;
@@ -24,11 +26,14 @@ import java.io.BufferedReader;
 import java.io.InputStreamReader;
 import java.time.Duration;
 import java.time.LocalDate;
+import java.util.List;
 
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 @ActiveProfiles("test")
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 public abstract class UiTestBase {
+
+    private static final Logger log = LoggerFactory.getLogger(UiTestBase.class);
 
     @LocalServerPort
     protected int port;
@@ -276,30 +281,54 @@ public abstract class UiTestBase {
         try {
             jdbcTemplate.execute("DELETE FROM group_members");
             jdbcTemplate.execute("DELETE FROM member_groups");
-        } catch (Exception ignored) { /* intentionally ignored — see below */ }
-
-        // Child tables only — keep members/bands/teams/users seeded by data.sql
-        // so legacy UI tests that rely on those rows keep working. CASCADE clears
-        // dependent rows (consent tokens, attendances, participations) without FK violations.
-        // IMPORTANT: Do NOT truncate member_consent_tokens / member_consents —
-        // these are needed by Spring Security to authorize admin after each login.
-        // TRUNCATEing them mid-test causes 302 → /login loops (unterminated session).
-        String allTables = "attendances, event_participations, member_instruments, " +
-                "rehearsals, band_events, member_attribute_values, member_attribute_defs, team_members, " +
-                "compositions, composition_instruments, score_files";
-        try {
-            jdbcTemplate.execute("TRUNCATE TABLE " + allTables + " RESTART IDENTITY CASCADE");
         } catch (Exception e) {
+            log.warn("cleanDatabase: cleanup group_members/member_groups failed: {}", String.valueOf(e.getMessage()));
+        }
+
+        // Only child tables — keep members/bands/teams/users seeded by data.sql so that
+        // legacy UI tests that depend on them continue to work. FK-dependent rows
+        // (participations, invitations, attendances) are cleared explicitly without
+        // violating key constraints, so no per-database CASCADE semantics are needed.
+        // IMPORTANT: do NOT delete from member_consent_tokens / member_consents — these are
+        // required by Spring Security to authorize admin after each login. Deleting them
+        // mid-test causes a 302 → /login loop (not terminated session).
+        // The event child tables (V22/V43/V46) are included in the list above — if any of
+        // them is left behind, the parent band_events wipe fails and stale events survive
+        // for other tests (e.g. the dashboard list cap gets filled with events that have
+        // no attendance records).
+        String allTables = "attendances, event_participations, event_invitations, event_compositions, " +
+                "event_part_deliveries, member_instruments, rehearsals, band_events, " +
+                "member_attribute_values, member_attribute_defs, team_members, " +
+                "composition_instruments, score_files, compositions";
+        // NOTE: DELETE FROM (not TRUNCATE) — the local test engine is H2, which rejects
+        // Postgres TRUNCATE syntax entirely (every TRUNCATE failed silently before, so the
+        // local suite ran on never-cleaned state while CI/Postgres really did wipe rows from
+        // under parallel tests). Child-before-parent order keeps FKs happy on both engines.
+        for (String table : allTables.split(", ")) {
             try {
-                jdbcTemplate.execute("TRUNCATE TABLE " + allTables + " CASCADE");
-            } catch (Exception e2) {
-                for (String t : allTables.split(",")) {
-                    String table = t.trim();
-                    try {
-                        jdbcTemplate.execute("TRUNCATE TABLE " + table + " CASCADE");
-                    } catch (Exception ignored) { /* intentionally ignored */ }
-                }
+                jdbcTemplate.execute("DELETE FROM " + table);
+            } catch (Exception ee) {
+                log.warn("cleanDatabase: DELETE FROM {} failed: {}",
+                        String.valueOf(table), String.valueOf(ee.getMessage()));
             }
+        }
+
+        // Fail clearly if any residual row remains in the main child tables —
+        // silent leaks previously turned into 60-second downstream timeouts with no state
+        // visible anywhere.
+        List<String> leftovers = new java.util.ArrayList<>();
+        for (String table : List.of("band_events", "rehearsals", "attendances", "compositions")) {
+            try {
+                Integer count = jdbcTemplate.queryForObject("SELECT COUNT(*) FROM " + table, Integer.class);
+                if (count != null && count > 0) leftovers.add(table + "=" + count);
+            } catch (Exception e) {
+                log.warn("cleanDatabase: post-check of {} failed: {}", String.valueOf(table), String.valueOf(e.getMessage()));
+            }
+        }
+        if (!leftovers.isEmpty()) {
+            throw new IllegalStateException(
+                    "cleanDatabase: residual rows after wipe: " + String.join(", ", leftovers)
+                            + " — a prior test class left committed state; see WARN logs above for the blocked TRUNCATE");
         }
 
         // Re-seed the 3 baseline groups from data.sql (lines 39-44) so the
@@ -314,6 +343,79 @@ public abstract class UiTestBase {
         jdbcTemplate.update(
                 "INSERT INTO member_groups (name, description, band_id) VALUES (?, ?, ?)",
                 "Saksofony", "Saksofoniści", 2L);
+
+        // Re-seed the data.sql schedule baseline (wiped above). Several legacy tests rely on
+        // it — meetings list ("showsSeededEvents"), page-header edit forms, invite modal
+        // ("seeded band-1 rehearsals in data.sql"). Historically CI kept these rows by
+        // accident (FK-blocked TRUNCATE) and local H2 kept them because TRUNCATE never ran;
+        // reseeding makes the baseline explicit and identical on both engines.
+        reseedBaselineSchedule();
+
+        // Restore the default member instruments from data.sql (Jan: Trąbka, Anna: Bęben).
+        // member_instruments was wiped above and tests such as EventParticipationInstrument
+        // assert these defaults; historically they only survived because the stale rows
+        // from context startup were never cleaned on H2.
+        restoreBaselineMemberInstruments();
+    }
+
+    /** Re-inserts data.sql's fixed member→instrument defaults if the wipe removed them. */
+    private void restoreBaselineMemberInstruments() {
+        insertDefaultInstrumentIfMissing("Jan", "Kowalski", "Trąbka");
+        insertDefaultInstrumentIfMissing("Anna", "Nowak", "Bęben");
+    }
+
+    private void insertDefaultInstrumentIfMissing(String firstName, String lastName, String instrumentName) {
+        Integer present = jdbcTemplate.queryForObject(
+                "SELECT COUNT(*) FROM member_instruments mi " +
+                        "JOIN members m ON m.id = mi.member_id " +
+                        "JOIN instruments i ON i.id = mi.instrument_id " +
+                        "WHERE m.first_name = ? AND m.last_name = ? AND i.name = ?",
+                Integer.class, firstName, lastName, instrumentName);
+        if (present != null && present > 0) {
+            return;
+        }
+        jdbcTemplate.update(
+                "INSERT INTO member_instruments (member_id, instrument_id, is_primary) " +
+                        "SELECT m.id, i.id, true FROM members m, instruments i " +
+                        "WHERE m.first_name = ? AND m.last_name = ? AND i.name = ? AND i.band_id = 1",
+                firstName, lastName, instrumentName);
+    }
+
+    /**
+     * Mirrors the schedule part of {@code src/test/resources/data.sql}: two band_events
+     * (Koncert Noworoczny at +30 days, Parada 3 Maja at -10 days), three rehearsals
+     * (+1/+2/+5 days) and their attendance rows. Called from {@link #cleanDatabase} only —
+     * tests that need extra rows use the dedicated seed helper on top of this baseline.
+     */
+    private void reseedBaselineSchedule() {
+        LocalDate today = LocalDate.now();
+        jdbcTemplate.update(
+                "INSERT INTO band_events (name, date, start_time, location, event_type, payment_type, payment_amount, notes, band_id) "
+                        + "VALUES (?, ?, ?, ?, 'CONCERT', 'FREE', NULL, 'Występ plenerowy', 1)",
+                "Koncert Noworoczny", today.plusDays(30), "18:00", "Rynek");
+        jdbcTemplate.update(
+                "INSERT INTO band_events (name, date, start_time, location, event_type, payment_type, payment_amount, notes, band_id) "
+                        + "VALUES (?, ?, ?, ?, 'PARADE', 'FREE', NULL, 'Uczestnictwo w paradzie', 1)",
+                "Parada 3 Maja", today.minusDays(10), "10:00", "Park Miejski");
+        Long r1 = seedRehearsal(today.plusDays(1), "18:00", "20:00", "Sala prób", "Próba regularna");
+        Long r2 = seedRehearsal(today.plusDays(2), "18:00", "21:00", "Sala prób", "Próba przed koncertem");
+        seedRehearsal(today.plusDays(5), "19:00", "22:00", "Sala prób", "Próba weekendowa");
+        jdbcTemplate.update(
+                "INSERT INTO attendances (rehearsal_id, member_id, status) VALUES (?, 1, 'PRESENT')", r1);
+        jdbcTemplate.update(
+                "INSERT INTO attendances (rehearsal_id, member_id, status) VALUES (?, 2, 'PRESENT')", r1);
+        jdbcTemplate.update(
+                "INSERT INTO attendances (rehearsal_id, member_id, status) VALUES (?, 1, 'PRESENT')", r2);
+        jdbcTemplate.update(
+                "INSERT INTO attendances (rehearsal_id, member_id, status) VALUES (?, 2, 'UNEXCUSED')", r2);
+    }
+
+    /** Inserts a rehearsal for band 1 and returns its generated id (single-threaded test use). */
+    private Long seedRehearsal(LocalDate date, String startTime, String endTime, String location, String notes) {
+        jdbcTemplate.update(
+                "INSERT INTO rehearsals (date, start_time, end_time, location, notes, band_id) VALUES (?, ?, ?, ?, ?, 1)",
+                date, startTime, endTime, location, notes);
+        return jdbcTemplate.queryForObject("SELECT MAX(id) FROM rehearsals", Long.class);
     }
 
     private void reseedDeletedMembersIfNeeded() {
@@ -364,6 +466,15 @@ public abstract class UiTestBase {
         } catch (Exception e) {
             System.err.println("[cleanup] Could not remove orphan consent rows (ignoring): " + e.getMessage());
         }
+    }
+
+    /**
+     * Login only, without navigating anywhere. Use before time-critical seeding: a cold CI
+     * login inside {@link #loginAndNavigateTo} can take ~100s with retries — rows committed
+     * in that gap are subject to a parallel test class's cleanDatabase() TRUNCATE.
+     */
+    protected void establishSessionOnly() {
+        doLogin();
     }
 
     protected void loginAndNavigateTo(String path) {

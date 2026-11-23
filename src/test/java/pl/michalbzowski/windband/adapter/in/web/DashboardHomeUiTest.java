@@ -4,8 +4,6 @@ import org.junit.jupiter.api.Test;
 import org.openqa.selenium.By;
 import org.openqa.selenium.support.ui.WebDriverWait;
 import org.openqa.selenium.TimeoutException;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.jdbc.core.JdbcTemplate;
 import pl.michalbzowski.windband.UiTestBase;
 
 import java.time.Duration;
@@ -20,19 +18,15 @@ import static org.assertj.core.api.Assertions.assertThat;
  */
 class DashboardHomeUiTest extends UiTestBase {
 
-    @Autowired
-    private JdbcTemplate jdbcTemplate;
+
 
     @Test
     void shouldShowUpcomingListAsFirstContent() {
-        // .progress-fill is only rendered for a rehearsal that has at least one attendance
-        // row, and UiTestBase.cleanDatabase() TRUNCATEs all of data.sql's seeded
-        // rehearsals+attendances before this test runs. Self-seed a deterministic
-        // rehearsal + two attendances so the assertion below doesn't depend on
-        // incidental state wiped by any other UI test we happened to run before.
-        Long rehearsalId = seedRehearsalWithAttendance("Sesja próbna", LocalDate.now().plusDays(2));
-        assertThat(rehearsalId).as("seed rehearsal should have an id").isNotNull();
-
+        // cleanDatabase() wipes the whole schedule and then re-seeds the data.sql baseline
+        // (2 events, 3 rehearsals with attendance) — identical on H2 and Postgres. This test
+        // verifies that the baseline "Próba regularna" (+1 day, 2/2 attendance) renders: both
+        // its row and a .progress-fill bar. It does NOT self-seed an extra row: a six item
+        // would simply be cut by the server-side cap-5 upcoming list.
         loginAndNavigateTo("/");
 
         assertThat(driver.getTitle()).contains("Podsumowanie");
@@ -65,6 +59,20 @@ class DashboardHomeUiTest extends UiTestBase {
         var progressBars = driver.findElements(By.cssSelector("section.dashboard-upcoming .progress-fill"));
         assertThat(progressBars).isNotEmpty();
 
+        // Fingerprint of the baseline's first rehearsal — proves the rendered row/bar is
+        // re-seeded data.sql state, not incidental leftovers from a parallel test class.
+        String expectedDate = LocalDate.now().plusDays(1)
+                .format(java.time.format.DateTimeFormatter.ofPattern("dd.MM.yyyy"));
+        String sectionText = driver.findElement(By.cssSelector("section.dashboard-upcoming")).getText();
+        assertThat(sectionText)
+                .as("dashboard upcoming list must contain the baseline rehearsal on %s "
+                        + "(missing = reseed not applied or lost to the 5-item cap). "
+                        + "Rendered section: <" + sectionText + ">", expectedDate)
+                .contains(expectedDate);
+        assertThat(sectionText)
+                .as("baseline rehearsal must show its 2/2 attendance on %s", expectedDate)
+                .contains("Obecność 2/2");
+
         // Check that at least one view (cards or table) has content
         var cards = driver.findElements(By.cssSelector("section.dashboard-upcoming .upcoming-card"));
         var tableRows = driver.findElements(By.cssSelector("section.dashboard-upcoming .upcoming-table tbody tr"));
@@ -76,25 +84,5 @@ class DashboardHomeUiTest extends UiTestBase {
         // Removed widgets must NOT be present
         assertThat(driver.findElements(By.cssSelector(".dashboard-hero"))).isEmpty();
         assertThat(driver.findElements(By.cssSelector(".dashboard-events"))).isEmpty();
-    }
-
-    /**
-     * Inserts a rehearsal (band_id=1, tomorrow-or-later date) and one attendance row
-     * linking it to member 1. Returns the new rehearsal id. Mirrors data.sql's seed
-     * shape so that the dashboard will render a .progress-fill for this rehearsal.
-     */
-    private Long seedRehearsalWithAttendance(String name, LocalDate date) {
-        jdbcTemplate.update(
-                "INSERT INTO rehearsals (date, start_time, end_time, location, notes, band_id)" +
-                " VALUES (?, '18:00', '20:00', 'Sala prób', ?, 1)",
-                date, name);
-        Long rehearsalId = jdbcTemplate.queryForObject(
-                "SELECT MAX(id) FROM rehearsals WHERE notes = ?", Long.class, name);
-        if (rehearsalId == null) throw new IllegalStateException("seeding rehearsal failed");
-        jdbcTemplate.update(
-                "INSERT INTO attendances (rehearsal_id, member_id, status)" +
-                " VALUES (?, 1, 'PRESENT')",
-                rehearsalId);
-        return rehearsalId;
     }
 }

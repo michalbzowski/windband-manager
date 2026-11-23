@@ -309,8 +309,19 @@ class PageHeaderConsistencyUiTest extends pl.michalbzowski.windband.UiTestBase {
     //  PR D — tail (wide lists + band-attribute module + reports)
     // ------------------------------------------------------------------
 
-    @Test void formEventsEdit_pageHeader()         { assertFormPageHeader("/events/1/edit", "Edytuj wydarzenie"); }
-    @Test void formRehearsalsEdit_pageHeader()     { assertFormPageHeader("/rehearsals/1/edit", "Edytuj spotkanie"); }
+    @Test void formEventsEdit_pageHeader() {
+        // Resolve the seeded event dynamically: hard-coded ids break on H2, where H2's
+        // identity counters keep climbing across DELETE-based cleanups (TRUNCATE would
+        // have reset them, but H2 rejects that syntax and it silently no-opped before).
+        Long id = firstSeededId("band_events", "band_id");
+        assertThat(id).as("seeded band_event must exist for edit test").isNotNull();
+        assertFormPageHeader("/events/" + id + "/edit", "Edytuj wydarzenie");
+    }
+    @Test void formRehearsalsEdit_pageHeader() {
+        Long id = firstSeededId("rehearsals", "band_id");
+        assertThat(id).as("seeded rehearsal must exist for edit test").isNotNull();
+        assertFormPageHeader("/rehearsals/" + id + "/edit", "Edytuj spotkanie");
+    }
     @Test void listMeetings_pageHeader()           { assertListPageHeader(null, "/meetings", "Spotkania"); }
     @Test void listDashboards_pageHeader()         { assertListPageHeader(null, "/dashboards", "Dashboardy"); }
     @Test void listReports_pageHeader()            { assertListPageHeader(null, "/reports", "Raporty"); }
