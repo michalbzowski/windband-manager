@@ -59,6 +59,7 @@ class AcceptAiProposalsCommandServiceTest {
     private final ScoreFileRepository scoreFileRepository = mock(ScoreFileRepository.class);
     private final InstrumentRepository instrumentRepository = mock(InstrumentRepository.class);
     private final CompositionInstrumentRepository partRepository = mock(CompositionInstrumentRepository.class);
+    private final ExcludePagesCommandService exclusionService = mock(ExcludePagesCommandService.class);
     private final InstrumentRepository bandInstruments = mock(InstrumentRepository.class);
     private final MemberRepository memberRepository = mock(MemberRepository.class);
     private final InstrumentRoleMapRepository roleMapRepository = mock(InstrumentRoleMapRepository.class);
@@ -120,7 +121,7 @@ class AcceptAiProposalsCommandServiceTest {
 
         service = new AcceptAiProposalsCommandService(
                 compositionRepository, analysisRepository, scoreFileRepository,
-                instrumentRepository, partRepository, resolver);
+                instrumentRepository, partRepository, resolver, exclusionService);
     }
 
     private static AcceptAiProposalsCommandService.AcceptedRow row(
@@ -687,5 +688,30 @@ class AcceptAiProposalsCommandServiceTest {
                 COMPOSITION_ID, BAND_ID, ANALYSIS_ID, 8, 9, 12L, null))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("tożsamości użytkownika");
+    }
+
+    @Test
+    @DisplayName("przyjęcie wiersza unieważnia znaczenie „nie wykorzystam” na zajętych stronach")
+    void acceptanceClearsOverlappingExclusionMarks() {
+        when(instrumentRepository.findByIdAndBandId(13L, BAND_ID)).thenReturn(Optional.of(trabka));
+        when(exclusionService.removeOverlap(composition, scoreFile, 3, 3))
+                .thenReturn(List.of(new ExcludedScope(3, 4)));
+
+        service.accept(COMPOSITION_ID, BAND_ID, ANALYSIS_ID,
+                List.of(row("Trąbka II", 3, 3, 13L, 0.7)), VERIFIER);
+
+        verify(exclusionService).removeOverlap(composition, scoreFile, 3, 3);
+    }
+
+    @Test
+    @DisplayName("karta luki: przyjęcie zakresu czyści nachodzące znaczenia przez ten sam mechanizm")
+    void gapAssignmentClearsExclusionMarks() {
+        when(instrumentRepository.findByIdAndBandId(12L, BAND_ID)).thenReturn(Optional.of(flet));
+        when(exclusionService.removeOverlap(composition, scoreFile, 8, 9))
+                .thenReturn(List.of(new ExcludedScope(7, 10)));
+
+        service.assignGapPages(COMPOSITION_ID, BAND_ID, ANALYSIS_ID, 8, 9, 12L, VERIFIER);
+
+        verify(exclusionService).removeOverlap(composition, scoreFile, 8, 9);
     }
 }

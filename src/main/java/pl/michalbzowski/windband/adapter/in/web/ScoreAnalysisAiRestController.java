@@ -15,6 +15,8 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 import pl.michalbzowski.windband.adapter.in.security.WindbandOidcUser;
 import pl.michalbzowski.windband.application.command.scoreanalysis.AcceptAiProposalsCommandService;
+import pl.michalbzowski.windband.application.command.scoreanalysis.ExcludePagesCommandService;
+import pl.michalbzowski.windband.application.command.scoreanalysis.ExcludedScope;
 import pl.michalbzowski.windband.application.query.scoreanalysis.ProposalsPreviewDto;
 import pl.michalbzowski.windband.application.query.scoreanalysis.ScoreAnalysisProposalsQueryService;
 
@@ -37,14 +39,17 @@ public class ScoreAnalysisAiRestController {
 
     private final ScoreAnalysisProposalsQueryService queryService;
     private final AcceptAiProposalsCommandService commandService;
+    private final ExcludePagesCommandService pageMarkService;
     private final boolean aiVerifyReportEnabled;
 
     public ScoreAnalysisAiRestController(ScoreAnalysisProposalsQueryService queryService,
                                          AcceptAiProposalsCommandService commandService,
+                                         ExcludePagesCommandService pageMarkService,
                                          @Value("${app.ai-verify-report.enabled:false}")
                                          boolean aiVerifyReportEnabled) {
         this.queryService = queryService;
         this.commandService = commandService;
+        this.pageMarkService = pageMarkService;
         this.aiVerifyReportEnabled = aiVerifyReportEnabled;
     }
 
@@ -59,6 +64,46 @@ public class ScoreAnalysisAiRestController {
 
     /** The rows the user accepted out of the preview (subset, ranges verbatim). */
     public record AcceptBody(List<AcceptAiProposalsCommandService.AcceptedRow> rows) {}
+
+    /** Zakres stron dla znaczenia „nie wykorzystam” (widok verify-ai). */
+    public record PageMarkBody(int pageFrom, int pageTo) {}
+
+    /** POST → 200 {@code {from,to}}; IAE → 400 (zły zakres / strony zajęte); ISE → 409. Flag OFF → 404. */
+    @PostMapping("/pages/exclude")
+    public ResponseEntity<String> pagesExclude(@PathVariable("bandId") Long bandId,
+                                               @PathVariable("compositionId") Long compositionId,
+                                               @PathVariable("analysisId") Long analysisId,
+                                               @RequestBody(required = false) PageMarkBody body,
+                                               @AuthenticationPrincipal OidcUser principal) throws IOException {
+        if (!aiVerifyReportEnabled) {
+            return ResponseEntity.notFound().build();
+        }
+        if (body == null || body.pageFrom() < 1 || body.pageTo() < 1) {
+            throw new IllegalArgumentException("Brak poprawnego zakresu stron.");
+        }
+        ExcludedScope marked = pageMarkService.markUnusedByIds(bandId, compositionId, analysisId,
+                body.pageFrom(), body.pageTo(), verifierOf(principal));
+        return json(MAPPER.writeValueAsString(marked));
+    }
+
+    /** POST → 200 {@code {restored:[{from,to}]}}; IAE → 400; ISE → 409. Flag OFF → 404. */
+    @PostMapping("/pages/restore")
+    public ResponseEntity<String> pagesRestore(@PathVariable("bandId") Long bandId,
+                                               @PathVariable("compositionId") Long compositionId,
+                                               @PathVariable("analysisId") Long analysisId,
+                                               @RequestBody(required = false) PageMarkBody body) throws IOException {
+        if (!aiVerifyReportEnabled) {
+            return ResponseEntity.notFound().build();
+        }
+        if (body == null || body.pageFrom() < 1 || body.pageTo() < 1) {
+            throw new IllegalArgumentException("Brak poprawnego zakresu stron.");
+        }
+        List<ExcludedScope> restored = pageMarkService.restoreByIds(bandId, compositionId, analysisId,
+                body.pageFrom(), body.pageTo());
+        java.util.Map<String, Object> payload = new java.util.LinkedHashMap<>();
+        payload.put("restored", restored);
+        return json(MAPPER.writeValueAsString(payload));
+    }
 
     /** POST → 200 {@code {created, skipped[]}}; IAE → 400, ISE → 409 by the GlobalExceptionHandler. */
     @PostMapping("/accept")

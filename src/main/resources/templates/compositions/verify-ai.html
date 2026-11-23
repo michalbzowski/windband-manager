@@ -213,6 +213,11 @@
 .gap-card { border-left-color: #b45309; background: #fffdf9; }
 .gap-note { font-size: 0.82rem; color: #8a4a10; margin: 0.25rem 0 0; }
 
+/* „Nie używam”: karta luki świadomie odrzucona — przytłumiona, z przypinką, odwracalna. */
+.verify-row.gap-excluded { background: #f7f4ec; border-style: dashed; }
+.verify-row.gap-excluded .gap-note { color: #6b5d3f; }
+.verify-exclbadge { margin-left: auto; padding: 0.1rem 0.55rem; border-radius: 999px; font-size: 0.72rem; background: #efe9dc; color: #6b5d3f; white-space: nowrap; font-style: italic; }
+
 /* Pasek dolny: nawigacja + licznik + zatwierdzanie; przyklejony do krawędzi okna. */
 .verify-actions { display: flex; align-items: center; gap: 0.6rem; flex-wrap: wrap;
                   position: sticky; bottom: 0; background: #fff; padding: 0.7rem 0.9rem;
@@ -234,9 +239,12 @@
 <script th:if="${report != null}" th:data-base="'/bands/' + ${bandId} + '/compositions/' + ${compositionId}"
         th:data-accept-url="@{/bands/{b}/compositions/{c}/analysis/{a}/proposals/accept-corrected(b=${bandId}, c=${compositionId}, a=${report.analysisId})}"
         th:data-gaps-url="@{/bands/{b}/compositions/{c}/analysis/{a}/gaps/assign(b=${bandId}, c=${compositionId}, a=${report.analysisId})}"
+        th:data-exclude-url="@{/bands/{b}/compositions/{c}/analysis/{a}/pages/exclude(b=${bandId}, c=${compositionId}, a=${report.analysisId})}"
+        th:data-restore-url="@{/bands/{b}/compositions/{c}/analysis/{a}/pages/restore(b=${bandId}, c=${compositionId}, a=${report.analysisId})}"
         th:data-file-id="${report.fileId != null ? report.fileId : ''}"
         th:data-page-count="${report.pageCount != null ? report.pageCount : ''}"
         th:data-part-ranges="${report.existingPartRangesJson()}"
+        th:data-excluded-ranges="${report.excludedRangesJson()}"
         id="verify-boot">
 (function () {
     'use strict';
@@ -244,11 +252,21 @@
     var base = boot.getAttribute('data-base');
     var acceptUrl = boot.getAttribute('data-accept-url');
     var gapsUrl = boot.getAttribute('data-gaps-url');
+    var excludeUrl = boot.getAttribute('data-exclude-url') || '';
+    var restoreUrl = boot.getAttribute('data-restore-url') || '';
     var fileId = boot.getAttribute('data-file-id') || '';
     var pageCountRaw = parseInt(boot.getAttribute('data-page-count'), 10);
     var pageCount = isNaN(pageCountRaw) ? 0 : pageCountRaw;
     var partRanges = [];
     try { partRanges = JSON.parse(boot.getAttribute('data-part-ranges') || '[]'); } catch (e) { partRanges = []; }
+    /* „Nie wykorzystam”: zakresy stron bez głosu, które użytkownik świadomie odrzucił z listy luk. */
+    var excludedRanges = [];
+    try {
+        var rawExcl = JSON.parse(boot.getAttribute('data-excluded-ranges') || '[]');
+        for (var xe = 0; xe < rawExcl.length; xe++) {
+            if (rawExcl[xe] && rawExcl[xe].from && rawExcl[xe].to) { excludedRanges.push(rawExcl[xe]); }
+        }
+    } catch (e) { excludedRanges = []; }
 
     function csrfHeaders() {
         var headers = { 'Content-Type': 'application/json' };
@@ -434,6 +452,60 @@
         document.querySelectorAll('#verify-queue .gap-card').forEach(function (el) { el.remove(); });
     }
 
+    /* Miniatura strony nut (wspólna dla kart luki i kart „nie używam”). */
+    function pageFigure(page) {
+        var fig = document.createElement('figure');
+        fig.className = 'verify-lp-page';
+        var im = document.createElement('img');
+        var src2 = thumbSrc(page);
+        if (src2) { im.src = src2; }
+        im.alt = 'Podgląd strony ' + page + ' (luka do oznaczenia)';
+        im.loading = 'lazy';
+        im.setAttribute('draggable', 'false');
+        fig.appendChild(im);
+        var cap = document.createElement('figcaption');
+        var s = document.createElement('span');
+        s.textContent = 'str.';
+        var b = document.createElement('b');
+        b.textContent = String(page);
+        cap.appendChild(s);
+        cap.appendChild(b);
+        fig.appendChild(cap);
+        return fig;
+    }
+
+    /* ── „Nie używam” — lokalne lustro tabeli score_page_exclusions ─────────────
+       Semantyka 1:1 z serwerem (markUnused / removeOverlap): dotykanie scala,
+       częściowe „Przywróć” dzieli zakres na ogony z audytem oryginału. */
+    function excludedCoveringRange(from, to) {
+        for (var i = 0; i < excludedRanges.length; i++) {
+            var r = excludedRanges[i];
+            if (r.from <= to && r.to >= from) { return r; }
+        }
+        return null;
+    }
+
+    function applyMarkLocal(m0, m1) {
+        var keep = [];
+        for (var i = 0; i < excludedRanges.length; i++) {
+            var r = excludedRanges[i];
+            if (!(r.from <= m1 + 1 && r.to >= m0 - 1)) { keep.push(r); } /* swobodne znaczenie zostaje */
+        }
+        keep.push({ from: m0, to: m1 });
+        excludedRanges = keep;
+    }
+
+    function applyClearLocal(a, b) {
+        var out = [];
+        for (var i = 0; i < excludedRanges.length; i++) {
+            var r = excludedRanges[i];
+            if (r.to < a || r.from > b) { out.push(r); continue; } /* bez nachodzenia — nietknięte */
+            if (r.from < a) { out.push({ from: r.from, to: a - 1 }); }
+            if (r.to > b) { out.push({ from: b + 1, to: r.to }); }
+        }
+        excludedRanges = out;
+    }
+
     function instrumentOptions() {
         var src = document.querySelector('#verify-queue select.fix-inst, #verify-queue [id^="fix-inst-"]');
         if (!src) { return []; }
@@ -458,36 +530,29 @@
         head.appendChild(tag);
         li.appendChild(head);
 
+        var exMark = excludedCoveringRange(range[0], range[1]);
+
         var note = document.createElement('p');
         note.className = 'gap-note';
-        note.textContent = 'Tej strony (lub tego zakresu) nie obejmuje żaden przyjęty głos. Wybierz instrument, do którego należy.';
+        if (exMark) {
+            li.classList.remove('row-warn');
+            li.classList.add('gap-excluded');
+            var badge = document.createElement('span');
+            badge.className = 'verify-exclbadge';
+            badge.textContent = 'nie używam';
+            head.appendChild(badge);
+            var meta = exMark.by ? ' (oznaczył/a: ' + exMark.by + ')' : '';
+            note.textContent = 'Strony oznaczono jako nieużywane' + meta + '. Oznaczenie zniknie samo, gdy je później oznaczysz instrumentem.';
+        } else {
+            note.textContent = 'Tej strony (lub tego zakresu) nie obejmuje żaden przyjęty głos. Wybierz instrument, do którego należy, albo oznacz jako nieużywane.';
+        }
         li.appendChild(note);
 
         /* Podgląd stron luki (ten sam mechanizm miniatur: przytrzymaj, aby powiększyć na cały ekran). */
         var prov = document.createElement('div');
         prov.className = range[0] === range[1] ? 'verify-lp verify-lp-single' : 'verify-lp';
-        function gapFig(page) {
-            var fig = document.createElement('figure');
-            fig.className = 'verify-lp-page';
-            var im = document.createElement('img');
-            var src2 = thumbSrc(page);
-            if (src2) { im.src = src2; }
-            im.alt = 'Podgląd strony ' + page + ' (luka do oznaczenia)';
-            im.loading = 'lazy';
-            im.setAttribute('draggable', 'false');
-            fig.appendChild(im);
-            var cap = document.createElement('figcaption');
-            var s = document.createElement('span');
-            s.textContent = 'str.';
-            var b = document.createElement('b');
-            b.textContent = String(page);
-            cap.appendChild(s);
-            cap.appendChild(b);
-            fig.appendChild(cap);
-            return fig;
-        }
-        prov.appendChild(gapFig(range[0]));
-        if (range[1] !== range[0]) { prov.appendChild(gapFig(range[1])); }
+        prov.appendChild(pageFigure(range[0]));
+        if (range[1] !== range[0]) { prov.appendChild(pageFigure(range[1])); }
         li.appendChild(prov);
 
         var form = document.createElement('div');
@@ -532,12 +597,54 @@
                     return;
                 }
                 sessionAccepted.push({ from: range[0], to: range[1] });
-                toast('Strona(y) ' + range[0] + (range[1] !== range[0] ? '–' + range[1] : '') + ' oznaczone.', 'success');
+                applyClearLocal(range[0], range[1]); /* przyjęcie zmywa znaczenie po stronie serwera — odbłask lokalny */
+                var clearedNote = (payload && payload.exclusionsCleared && payload.exclusionsCleared.length)
+                    ? ' Znaczenie „nie używam” na tych stronach zdjęte — strony trafiły do głosu.' : '';
+                toast('Strona(y) ' + range[0] + (range[1] !== range[0] ? '–' + range[1] : '') + ' oznaczone.' + clearedNote, 'success');
                 refreshGapsAndNav();
                 pendingTarget = -1; /* luka dopiero co obsadzona — cel „Następnego" nie może na nią wskazywać */
             });
         });
         li.appendChild(btn);
+
+        /* Dwa losy luki: albo głos, albo świadome „nie używam” (odwracalne). */
+        if (exMark) {
+            var resBtn = document.createElement('button');
+            resBtn.type = 'button';
+            resBtn.className = 'secondary gap-restore-btn';
+            resBtn.textContent = 'Przywróć (usuń oznaczenie „nie używam”)';
+            resBtn.addEventListener('click', function () {
+                resBtn.disabled = true;
+                sendJson(restoreUrl, { pageFrom: range[0], pageTo: range[1] }, function (payload, err) {
+                    if (err) { resBtn.disabled = false; statusEl.textContent = 'Nie przywrócono — ' + (err.message || ''); statusEl.classList.add('err'); return; }
+                    applyClearLocal(range[0], range[1]);
+                    toast('Oznaczenie usunięte — strony znowu dostępne.', 'success');
+                    statusEl.textContent = 'Przywrócono.';
+                    statusEl.classList.remove('err');
+                    refreshGapsAndNav();
+                });
+            });
+            li.appendChild(resBtn);
+        } else {
+            var unusedBtn = document.createElement('button');
+            unusedBtn.type = 'button';
+            unusedBtn.className = 'secondary gap-unused-btn';
+            unusedBtn.textContent = 'Nie używam tych stron';
+            unusedBtn.addEventListener('click', function () {
+                unusedBtn.disabled = true;
+                sendJson(excludeUrl, { pageFrom: range[0], pageTo: range[1] }, function (payload, err) {
+                    if (err) { unusedBtn.disabled = false; statusEl.textContent = 'Nie oznaczono „nie używam” — ' + (err.message || ''); statusEl.classList.add('err'); return; }
+                    var mf = payload && payload.pageFrom ? payload.pageFrom : range[0];
+                    var mt = payload && payload.pageTo ? payload.pageTo : range[1];
+                    applyMarkLocal(mf, mt); /* serwer zwraca zakres już po scaleniu dotykających */
+                    toast('Strony ' + mf + (mt !== mf ? '–' + mt : '') + ' oznaczone jako nieużywane.', 'success');
+                    statusEl.textContent = 'Oznaczono „nie używam”.';
+                    statusEl.classList.remove('err');
+                    refreshGapsAndNav();
+                });
+            });
+            li.appendChild(unusedBtn);
+        }
         return li;
     }
 
@@ -655,7 +762,9 @@
                 if (created === 0) { setStatus(idx, 'Pominięto: taki part już istnieje w utworze.', true); btn.disabled = false; return; }
                 markAccepted(rowEl, payload && payload.correctedRows > 0 ? 'Przyjęto (z korektą)' : 'Przyjęto');
                 setStatus(idx, '', false);
-                toast('Głos „' + row.role + '” przyjęty.', 'success');
+                var clearedNoteRow = (payload && payload.exclusionsCleared && payload.exclusionsCleared.length)
+                    ? ' Znaczenie „nie używam” na tych stronach zdjęte.' : '';
+                toast('Głos „' + row.role + '” przyjęty.' + clearedNoteRow, 'success');
                 /* Korekta nadpisała istniejącą partię — usuwamy jej STARY zakres z pokrycia;
                    odsłonięte strony (np. s. 14 po 1–13) stają się lukami do oznaczenia. */
                 if (payload && payload.superseded) {
@@ -668,6 +777,7 @@
                     }
                 }
                 sessionAccepted.push({ from: fix.from, to: fix.to });
+                applyClearLocal(fix.from, fix.to); /* przyjęcie zmywa znaczenie po stronie serwera — odbłask lokalny */
                 refreshGapsAndNav();
                 /* Po przyjęciu skróconego zakresu „Następny" wskazuje odsłoniętą lukę (np. s. 14 po 1–13). */
                 applyPendingFromExposed(exposedPagesForRow(btn, fix.from, fix.to), fix.from, fix.to);
@@ -715,7 +825,7 @@
                     markAccepted(rowEl, 'Przyjęto');
                     var f = parseInt(btn.getAttribute('data-ai-from'), 10);
                     var t = parseInt(btn.getAttribute('data-ai-to'), 10);
-                    if (!isNaN(f) && !isNaN(t)) { sessionAccepted.push({ from: f, to: t }); }
+                    if (!isNaN(f) && !isNaN(t)) { sessionAccepted.push({ from: f, to: t }); applyClearLocal(f, t); }
                 });
                 var skipped = (payload && payload.created != null) ? Math.max(0, rows.length - payload.created) : 0;
                 toast('Przyjęte głosy: ' + ((payload && payload.created) || rows.length) +
@@ -753,9 +863,9 @@
         });
     }
 
-    // ── start: pierwsza karta aktywna, licznik z synchronizowany ──────────────
-    showCard(0);
-    bumpCount();
+    // ── start: najpierw karty niepokrytych stron (luki + ewentualne „nie używam”),
+    // następnie pierwsza karta aktywna i zliczany licznik. ─────────────────
+    refreshGapsAndNav();
 }
 )();
 </script>

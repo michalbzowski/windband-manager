@@ -52,6 +52,7 @@ public class AcceptAiProposalsCommandService {
     private final InstrumentRepository instrumentRepository;
     private final CompositionInstrumentRepository partRepository;
     private final RoleInstrumentResolver resolver;
+    private final ExcludePagesCommandService exclusionService;
 
     /** One accepted proposal row, as submitted by the UI (role/range copied from the preview). */
     public record AcceptedRow(String role, int pageFrom, int pageTo, Long instrumentId, Double confidence) {}
@@ -73,7 +74,8 @@ public class AcceptAiProposalsCommandService {
 
     /** Result of {@link #acceptCorrected} — split counts feed the success summary and future audit. */
     public record AcceptCorrectedResult(int created, int verbatimRows, int correctedRows,
-                                        List<SkippedRow> skipped, List<SupersededPart> superseded) {
+                                        List<SkippedRow> skipped, List<SupersededPart> superseded,
+                                        List<ExcludedScope> exclusionsCleared) {
 
         /** True when every created row was accepted exactly as the AI proposed it. */
         public boolean allVerbatim() {
@@ -136,6 +138,7 @@ public class AcceptAiProposalsCommandService {
         int created = 0;
         List<StoredPart> createdNow = new ArrayList<>();
         Set<Long> updatedIds = new java.util.HashSet<>();
+        List<ExcludedScope> clearedMarks = new ArrayList<>();
         for (AcceptedRow row : rows) {
             String normRole = normalize(row.role());
             if (normRole.isEmpty()) {
@@ -169,6 +172,7 @@ public class AcceptAiProposalsCommandService {
             if (own != null) {
                 existingParts.add(partKey(normRole, row.pageFrom(), row.pageTo()));
                 created++;
+                clearExclusionsInto(ctx, clearedMarks, row.pageFrom(), row.pageTo());
                 continue;
             }
 
@@ -200,6 +204,7 @@ public class AcceptAiProposalsCommandService {
             existingParts.add(partKey(normRole, row.pageFrom(), row.pageTo()));
             createdNow.add(new StoredPart(null, row.pageFrom(), row.pageTo(), row.role()));
             created++;
+            clearExclusionsInto(ctx, clearedMarks, row.pageFrom(), row.pageTo());
         }
         return new AcceptResult(created, skipped);
     }
@@ -233,6 +238,7 @@ public class AcceptAiProposalsCommandService {
         AcceptContext ctx = prepareContext(compositionId, bandId, analysisId);
         List<SkippedRow> skipped = new ArrayList<>();
         List<SupersededPart> superseded = new ArrayList<>();
+        List<ExcludedScope> excludedCleared = new ArrayList<>();
         int created = 0;
         int verbatimRows = 0;
         int correctedRows = 0;
@@ -299,6 +305,7 @@ public class AcceptAiProposalsCommandService {
                 ctx.existingParts().add(partKey(normRole, pageFrom, pageTo));
                 created++;
                 correctedRows++; // przyjęcie z modyfikacją = audit „z korektą”
+                clearExclusionsInto(ctx, excludedCleared, pageFrom, pageTo);
                 continue;
             }
 
@@ -318,13 +325,14 @@ public class AcceptAiProposalsCommandService {
             ctx.existingParts().add(partKey(normRole, pageFrom, pageTo));
             createdNow.add(new StoredPart(null, pageFrom, pageTo, row.role()));
             created++;
+            clearExclusionsInto(ctx, excludedCleared, pageFrom, pageTo);
             if (sourceValue == PartSource.AI) {
                 verbatimRows++;
             } else {
                 correctedRows++;
             }
         }
-        return new AcceptCorrectedResult(created, verbatimRows, correctedRows, skipped, superseded);
+        return new AcceptCorrectedResult(created, verbatimRows, correctedRows, skipped, superseded, excludedCleared);
     }
 
     /**
@@ -462,6 +470,7 @@ public class AcceptAiProposalsCommandService {
                         List.of(new SkippedRow(instrument.getName(),
                                 "partia na stronach " + pageFrom + "–" + pageTo
                                         + " już istnieje w utworze")),
+                        List.of(),
                         List.of());
             }
         }
@@ -472,7 +481,19 @@ public class AcceptAiProposalsCommandService {
                 null, ctx.scoreFile(), PartSource.HYBRID, 1.0d);
         part.verify(verifier, Instant.now());
         partRepository.save(part);
-        return new AcceptCorrectedResult(1, 0, 1, List.of(), List.of());
+        // Strony są teraz zajęte — znaczenie „nie wykorzystam” w tym zakresie traci sens (auto-odznaczenie).
+        List<ExcludedScope> cleared =
+                exclusionService.removeOverlap(ctx.composition(), ctx.scoreFile(), pageFrom, pageTo);
+        return new AcceptCorrectedResult(1, 0, 1, List.of(), List.of(), cleared);
+    }
+
+    /**
+     * Przyjęcie (w jakiejkolwiek formie) zajmuje strony — unieważnia znaczenia „nie wykorzystam”,
+     * które z tym zakresem nachodzą (split wewnątrz {@link ExcludePagesCommandService}).
+     */
+    private void clearExclusionsInto(AcceptContext ctx, List<ExcludedScope> sink,
+                                     int pageFrom, int pageTo) {
+        sink.addAll(exclusionService.removeOverlap(ctx.composition(), ctx.scoreFile(), pageFrom, pageTo));
     }
 
     /** All guards + artefact loading shared by {@link #accept} and {@link #acceptCorrected}. */

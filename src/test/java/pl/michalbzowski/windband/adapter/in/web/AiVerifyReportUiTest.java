@@ -139,9 +139,10 @@ class AiVerifyReportUiTest extends UiTestBase {
         // Kolejka renderuje się przy wczesnym rysunku widoku; stan raportu (błędy/ostrzeżenia/linie)
         // mieszka teraz w data-* na <ol id="verify-queue"> — widoczny nagłówek podsumowania nie istnieje.
         WebElement queueEl = wait.until(ExpectedConditions.visibilityOfElementLocated(org.openqa.selenium.By.id("verify-queue")));
+        // Seed nie ma przyjętych partii → całą przestrzeń 1–10 pokrywa jedna karta luki.
         long rowCount = (Long) js.executeScript(
                 "return document.querySelectorAll('#verify-queue .verify-row').length;");
-        assertThat(rowCount).as("kolejka pokazuje cztery głosy AI").isEqualTo(4L);
+        assertThat(rowCount).as("kolejka pokazuje cztery głosy AI + jedną kartę luki (1–10)").isEqualTo(5L);
 
         // Jedna karta na raz: tylko aktywna jest widoczna; reszta dostępna z paska u dołu.
         long activeCount = (Long) js.executeScript(
@@ -151,7 +152,7 @@ class AiVerifyReportUiTest extends UiTestBase {
             String p = (String) js.executeScript("return document.getElementById('verify-nav-pos').textContent;");
             return p != null && p.length() > 0 ? p : null;
         });
-        assertThat(navPos).as("licznik pozycji w kolejkach").isEqualTo("Karta 1 z 4");
+        assertThat(navPos).as("licznik pozycji w kolejkach (4 głosy + karta luki)").isEqualTo("Karta 1 z 5");
         assertThat(queueEl.getAttribute("data-errors")).as("jeden błąd spójności (Klarnet 11–12 > 10 stron)")
                 .isEqualTo("1");
         // Luka na s. 8 jest pewna; niezmapowane głosy zależą od reszty suity (band 1) — „co najmniej”.
@@ -399,6 +400,60 @@ class AiVerifyReportUiTest extends UiTestBase {
                 return Array.from(document.querySelectorAll('#verify-queue .gap-card'))
                         .some(function (g) { return g.textContent.indexOf('7') >= 0; });""");
         assertThat(gapCoversPage7).as("strona 7 pojawiła się jako karta luki").isEqualTo(true);
+    }
+
+    @Test
+    @DisplayName("oznaczenie luki „nie używam”: karta z przypinką + audyt w bazie; Przywróć przywraca lukę i czyści bazę")
+    void unusedPageMarkingRoundtrip() throws Exception {
+        seedSucceededAnalysis();
+        loginAndNavigateTo("/bands/1/compositions/" + compositionId);
+        JavascriptExecutor js = (JavascriptExecutor) driver;
+        WebDriverWait wait = new WebDriverWait(driver, WAIT);
+        WebElement entry = wait.until(
+                ExpectedConditions.visibilityOfElementLocated(org.openqa.selenium.By.id("ai-verify-entry")));
+        entry.click();
+        wait.until(ExpectedConditions.visibilityOfElementLocated(org.openqa.selenium.By.id("verify-queue")));
+
+        // Seed nie ma przyjętych partii → cała przestrzeń 1–10 jest jedną kartą luki.
+        boolean gapCardPresent = (Boolean) js.executeScript("""
+                var g = Array.from(document.querySelectorAll('#verify-queue .gap-card'))
+                        .find(function (g) { return g.dataset.gapFrom === '1' && g.dataset.gapTo === '10'; });
+                return !!g;""");
+        assertThat(gapCardPresent).as("niepokryte strony renderują się jako karta luki już na starcie").isTrue();
+
+        // (1) „Nie używam tych stron” → POST /pages/exclude: karta dostaje przypinkę, audyt leci do bazy.
+        js.executeScript("""
+                var g = Array.from(document.querySelectorAll('#verify-queue .gap-card'))
+                        .find(function (g) { return g.dataset.gapFrom === '1' && g.dataset.gapTo === '10'; });
+                g.querySelector('.gap-unused-btn').click();""");
+        wait.until(d -> (Boolean) js.executeScript("""
+                var g = Array.from(document.querySelectorAll('#verify-queue .gap-card'))
+                        .find(function (g) { return g.dataset.gapFrom === '1' && g.dataset.gapTo === '10'; });
+                return !!g && g.classList.contains('gap-excluded')
+                        && !!g.querySelector('.verify-exclbadge');"""));
+        Map<String, Object> exclusion = jdbcTemplate.queryForList("""
+                SELECT page_from, page_to, marked_by FROM score_page_exclusions
+                WHERE composition_id = ? AND score_file_id = ?""", compositionId, scoreFileId)
+                .stream().findFirst().orElseThrow();
+        assertThat(String.valueOf(exclusion.get("page_from"))).isEqualTo("1");
+        assertThat(String.valueOf(exclusion.get("page_to"))).isEqualTo("10");
+        assertThat(Objects.toString(exclusion.get("marked_by")))
+                .as("oznaczenie niesie parę audytową (autor)").isNotEmpty();
+
+        // (2) „Przywróć” → POST /pages/restore: znaczenie znika i z karty, i z bazy (odwracalność).
+        js.executeScript("""
+                var g = Array.from(document.querySelectorAll('#verify-queue .gap-card'))
+                        .find(function (g) { return g.dataset.gapFrom === '1' && g.dataset.gapTo === '10'; });
+                g.querySelector('.gap-restore-btn').click();""");
+        wait.until(d -> (Boolean) js.executeScript("""
+                var g = Array.from(document.querySelectorAll('#verify-queue .gap-card'))
+                        .find(function (g) { return g.dataset.gapFrom === '1' && g.dataset.gapTo === '10'; });
+                return !!g && !g.classList.contains('gap-excluded')
+                        && !!g.querySelector('.gap-unused-btn');"""));
+        long marksLeft = jdbcTemplate.queryForObject("""
+                SELECT COUNT(*) FROM score_page_exclusions WHERE composition_id = ? AND score_file_id = ?""",
+                Long.class, compositionId, scoreFileId);
+        assertThat(marksLeft).as("przywrócenie usuwa oznaczenie z bazy (działanie w pełni odwracalne)").isEqualTo(0L);
     }
 
     @Test

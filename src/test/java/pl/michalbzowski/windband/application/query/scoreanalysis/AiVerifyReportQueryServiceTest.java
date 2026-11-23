@@ -24,6 +24,7 @@ import pl.michalbzowski.windband.domain.composition.ScoreAnalysis;
 import pl.michalbzowski.windband.domain.composition.ScoreAnalysisRepository;
 import pl.michalbzowski.windband.domain.composition.ScoreFile;
 import pl.michalbzowski.windband.domain.composition.ScoreFileRepository;
+import pl.michalbzowski.windband.domain.composition.ScorePageExclusionRepository;
 import pl.michalbzowski.windband.domain.member.Instrument;
 import pl.michalbzowski.windband.domain.member.InstrumentRepository;
 import pl.michalbzowski.windband.domain.member.MemberRepository;
@@ -51,6 +52,7 @@ class AiVerifyReportQueryServiceTest {
     private final InstrumentRoleMapRepository roleMapRepository = mock(InstrumentRoleMapRepository.class);
     private final ScoreFileRepository scoreFileRepository = mock(ScoreFileRepository.class);
     private final CompositionInstrumentRepository partRepository = mock(CompositionInstrumentRepository.class);
+    private final ScorePageExclusionRepository exclusionRepository = mock(ScorePageExclusionRepository.class);
 
     private final Instrument trabka = mock(Instrument.class);
 
@@ -96,7 +98,8 @@ class AiVerifyReportQueryServiceTest {
         ScoreAnalysisProposalsQueryService previewQuery = new ScoreAnalysisProposalsQueryService(
                 compositionRepository, analysisRepository, instrumentRepository, resolver);
         when(partRepository.findAllByComposition(composition)).thenReturn(List.of());
-        service = new AiVerifyReportQueryService(previewQuery, analysisRepository, scoreFileRepository, partRepository);
+        service = new AiVerifyReportQueryService(
+                previewQuery, analysisRepository, scoreFileRepository, partRepository, exclusionRepository);
     }
 
     private ScoreAnalysis succeeded(Path dir, long scoreFileId) {

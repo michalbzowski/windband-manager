@@ -1,6 +1,7 @@
 package pl.michalbzowski.windband.application.query.scoreanalysis;
 
 import java.util.Collection;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Optional;
 import lombok.RequiredArgsConstructor;
@@ -14,6 +15,8 @@ import pl.michalbzowski.windband.domain.composition.ScoreAnalysis;
 import pl.michalbzowski.windband.domain.composition.ScoreAnalysisRepository;
 import pl.michalbzowski.windband.domain.composition.ScoreFile;
 import pl.michalbzowski.windband.domain.composition.ScoreFileRepository;
+import pl.michalbzowski.windband.domain.composition.ScorePageExclusion;
+import pl.michalbzowski.windband.domain.composition.ScorePageExclusionRepository;
 
 /**
  * Flagged feature — "raport spójności" read model: the legacy proposal preview (unchanged)
@@ -38,6 +41,7 @@ public class AiVerifyReportQueryService {
     private final ScoreAnalysisRepository analysisRepository;
     private final ScoreFileRepository scoreFileRepository;
     private final CompositionInstrumentRepository partRepository;
+    private final ScorePageExclusionRepository exclusionRepository;
 
     /**
      * Builds the report for one explicit analysis.
@@ -76,6 +80,13 @@ public class AiVerifyReportQueryService {
 
         List<AiVerifyReportDto.PageRange> existingPartRanges = partRangesOf(analysis, scoreFile);
 
+        List<AiVerifyReportDto.ExcludedRange> excludedRanges = exclusionRepository
+                .findAllByScoreFile(scoreFile).stream()
+                .sorted(Comparator.comparingInt(ScorePageExclusion::getPageFrom))
+                .map(x -> new AiVerifyReportDto.ExcludedRange(
+                        x.getPageFrom(), x.getPageTo(), x.getMarkedBy(), x.getMarkedAt().toString()))
+                .toList();
+
         return new AiVerifyReportDto(
                 analysisId,
                 scoreFile.getId(),
@@ -86,7 +97,8 @@ public class AiVerifyReportQueryService {
                 verdicts.errorRows(),
                 verdicts.warningRows(),
                 rows,
-                List.copyOf(existingPartRanges));
+                List.copyOf(existingPartRanges),
+                excludedRanges);
     }
 
     /**

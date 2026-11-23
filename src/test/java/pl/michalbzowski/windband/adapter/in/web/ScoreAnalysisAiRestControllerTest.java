@@ -17,6 +17,7 @@ import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 import pl.michalbzowski.windband.adapter.in.security.WindbandOidcUser;
 import pl.michalbzowski.windband.application.command.scoreanalysis.AcceptAiProposalsCommandService;
+import pl.michalbzowski.windband.application.command.scoreanalysis.ExcludePagesCommandService;
 import pl.michalbzowski.windband.application.query.scoreanalysis.AiProposalPreview;
 import pl.michalbzowski.windband.application.query.scoreanalysis.ProposalsPreviewDto;
 import pl.michalbzowski.windband.application.query.scoreanalysis.ScoreAnalysisProposalsQueryService;
@@ -32,6 +33,7 @@ class ScoreAnalysisAiRestControllerTest {
 
     private final ScoreAnalysisProposalsQueryService queryService = mock(ScoreAnalysisProposalsQueryService.class);
     private final AcceptAiProposalsCommandService commandService = mock(AcceptAiProposalsCommandService.class);
+    private final ExcludePagesCommandService pageMarkService = mock(ExcludePagesCommandService.class);
     private final WindbandOidcUser user = mock(WindbandOidcUser.class);
     private ScoreAnalysisAiRestController controller;
 
@@ -39,7 +41,7 @@ class ScoreAnalysisAiRestControllerTest {
     void setUp() {
         when(user.getUserId()).thenReturn(42L);
         // Flaga M1 włączona — część testów celowo buduje kontroler z flagą wyłączoną.
-        controller = new ScoreAnalysisAiRestController(queryService, commandService, true);
+        controller = new ScoreAnalysisAiRestController(queryService, commandService, pageMarkService, true);
     }
 
     @Test
@@ -109,7 +111,8 @@ class ScoreAnalysisAiRestControllerTest {
         AcceptAiProposalsCommandService.AcceptCorrectedResult result =
                 new AcceptAiProposalsCommandService.AcceptCorrectedResult(
                         1, 0, 1, List.of(),
-                        List.of(new AcceptAiProposalsCommandService.SupersededPart(3, 4)));
+                        List.of(new AcceptAiProposalsCommandService.SupersededPart(3, 4)),
+                        List.of());
         when(commandService.acceptCorrected(COMPOSITION, BAND, ANALYSIS, rows, "42"))
                 .thenReturn(result);
 
@@ -129,7 +132,7 @@ class ScoreAnalysisAiRestControllerTest {
     @DisplayName("M1: flaga wyłącza accept-corrected → 404 (endpoint niewidoczny), service NIE wywołane")
     void flagOffMakesCorrectedEndpointInvisible() throws java.io.IOException {
         ScoreAnalysisAiRestController disabled =
-                new ScoreAnalysisAiRestController(queryService, commandService, false);
+                new ScoreAnalysisAiRestController(queryService, commandService, pageMarkService, false);
         List<AcceptAiProposalsCommandService.AcceptedRowCorrected> rows = List.of(
                 new AcceptAiProposalsCommandService.AcceptedRowCorrected("Trąbka II", 3, 3, 4, 6, 13L));
 
@@ -145,7 +148,7 @@ class ScoreAnalysisAiRestControllerTest {
     @DisplayName("M1: flaga wyłączona nie rusza starego flow (GET /proposals dalej 200)")
     void flagOffLeavesLegacyEndpointsUntouched() throws java.io.IOException {
         ScoreAnalysisAiRestController disabled =
-                new ScoreAnalysisAiRestController(queryService, commandService, false);
+                new ScoreAnalysisAiRestController(queryService, commandService, pageMarkService, false);
         when(queryService.preview(COMPOSITION, BAND, ANALYSIS)).thenReturn(new ProposalsPreviewDto(
                 new ProposalsPreviewDto.WorkMeta("Zadzwonił Polonez", "J. Elsner", null),
                 List.of(), List.of(), false));
@@ -162,7 +165,7 @@ class ScoreAnalysisAiRestControllerTest {
     @DisplayName("Karta luki: POST /gaps/assign forwarduje zakres + instrument, zwraca wynik service")
     void gapsAssignForwardsRangeAndInstrument() throws java.io.IOException {
         AcceptAiProposalsCommandService.AcceptCorrectedResult result =
-                new AcceptAiProposalsCommandService.AcceptCorrectedResult(1, 0, 1, List.of(), List.of());
+                new AcceptAiProposalsCommandService.AcceptCorrectedResult(1, 0, 1, List.of(), List.of(), List.of());
         when(commandService.assignGapPages(COMPOSITION, BAND, ANALYSIS, 8, 9, 12L, "42"))
                 .thenReturn(result);
 
@@ -191,7 +194,7 @@ class ScoreAnalysisAiRestControllerTest {
     @DisplayName("Karta luki: flaga wyłączona → 404 (endpoint niewidoczny), service nie wywołane")
     void flagOffHidesGapsEndpoint() throws java.io.IOException {
         ScoreAnalysisAiRestController disabled =
-                new ScoreAnalysisAiRestController(queryService, commandService, false);
+                new ScoreAnalysisAiRestController(queryService, commandService, pageMarkService, false);
 
         ResponseEntity<String> response = disabled.gapsAssign(
                 BAND, COMPOSITION, ANALYSIS,

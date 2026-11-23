@@ -86,6 +86,7 @@ class AiVerifyReportPageControllerTest {
                 List.of(new ProposalsPreviewDto.InstrumentOption(13L, "Trąbka")),
                 false, 1, 2,
                 List.of(),
+                List.of(),
                 List.of());
         when(reportQueryService.reportForLatestSucceeded(COMPOSITION, BAND)).thenReturn(Optional.of(report));
 
