@@ -102,31 +102,36 @@
                     <span class="verify-row-status" th:id="'row-status-' + ${rowStat.index}" role="status"></span>
                 </form>
 
-                <button type="button" class="primary verify-accept-btn"
-                        th:id="'accept-row-' + ${rowStat.index}"
-                        th:data-role="${row.role}"
-                        th:data-ai-from="${row.pageFrom}"
-                        th:data-ai-to="${row.pageTo}"
-                        th:data-instrument="${row.instrumentIdOrNull != null ? row.instrumentIdOrNull : ''}">
-                    Przyjmij ten głos
-                </button>
+                <!-- Stopka karty: akcje decyzyjne + nawigacja jako zwarty element karty (UX: nie „pływający pasek”). -->
+                <div class="verify-footer">
+                    <div class="verify-actions-main">
+                        <button type="button" class="primary verify-accept-btn"
+                                th:id="'accept-row-' + ${rowStat.index}"
+                                th:data-role="${row.role}"
+                                th:data-ai-from="${row.pageFrom}"
+                                th:data-ai-to="${row.pageTo}"
+                                th:data-instrument="${row.instrumentIdOrNull != null ? row.instrumentIdOrNull : ''}">
+                            Przyjmij ten głos
+                        </button>
+                        <div class="verify-bulk-group">
+                            <!-- Nazwa podpowiada skutek: reszta (nieprzyjęte) idzie w oryginalnych zakresach AI. -->
+                            <button type="button" class="secondary verify-bulk-btn" data-verify-bulk>
+                                Przyjmij pozostałe głosy bez zmian
+                            </button>
+                            <span class="verify-count" role="status"
+                                  th:text="${#strings.concat('Przyjęte: 0 z ' + report.rowCount(), ' głosów')}"></span>
+                        </div>
+                    </div>
+                    <nav class="verify-nav" aria-label="Nawigacja po kartach głosów">
+                        <button type="button" class="secondary verify-nav-btn" data-verify-nav="prev"
+                                aria-label="Poprzednia karta" disabled>&#8249; Poprzedni</button>
+                        <span class="verify-nav-pos">Karta 1</span>
+                        <button type="button" class="secondary verify-nav-btn" data-verify-nav="next"
+                                aria-label="Następna karta">Następny &#8250;</button>
+                    </nav>
+                </div>
             </li>
         </ol>
-
-        <!-- Pasek dolny: nawigacja jedna-karta-na-raz + licznik + masowe zatwierdzenie. -->
-        <section class="verify-actions" id="verify-actions">
-            <nav class="verify-nav" aria-label="Nawigacja po kartach głosów">
-                <button type="button" class="secondary verify-nav-btn" id="verify-prev-btn"
-                        aria-label="Poprzednia karta" disabled>‹ Poprzedni</button>
-                <span class="verify-nav-pos" id="verify-nav-pos" role="status">Karta 1 z 0</span>
-                <button type="button" class="secondary verify-nav-btn" id="verify-next-btn"
-                        aria-label="Następna karta" disabled>Następny ›</button>
-            </nav>
-            <span class="verify-count" id="verify-count" role="status"
-                  th:text="${#strings.concat('Przyjęte: 0 z ' + report.rowCount(), ' głosów')}"></span>
-            <!-- Nazwa podpowiada skutek: reszta (nieprzyjęte) idzie w oryginalnych zakresach AI. -->
-            <button type="button" class="secondary" id="accept-unchanged-btn">Przyjmij pozostałe głosy bez zmian</button>
-        </section>
     </div>
 </main>
 
@@ -162,7 +167,7 @@
                    object-fit: contain; border-radius: 6px; background: #fff; box-shadow: 0 12px 48px rgba(0,0,0,0.55); }
 #verify-queue img { cursor: zoom-in; -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
 
-/* Kolejka kart: z zasady widoczna jest tylko karta aktywna (pasek nawigacji u dołu). */
+/* Kolejka kart: z zasady widoczna jest tylko karta aktywna (nawigacja + akcje żyją w jej stopce). */
 .verify-queue { list-style: none; padding: 0; margin: 0; display: grid; gap: 0.9rem; counter-reset: verifyrow; }
 .verify-row { position: relative; background: #fff; border: 1px solid var(--pico-border-color, #e2e6ec); border-left: 4px solid #d3d9e0; border-radius: 10px; padding: 0.8rem 0.9rem; display: none; }
 .verify-row.is-active { display: block; }
@@ -218,20 +223,25 @@
 .verify-row.gap-excluded .gap-note { color: #6b5d3f; }
 .verify-exclbadge { margin-left: auto; padding: 0.1rem 0.55rem; border-radius: 999px; font-size: 0.72rem; background: #efe9dc; color: #6b5d3f; white-space: nowrap; font-style: italic; }
 
-/* Pasek dolny: nawigacja + licznik + zatwierdzanie; przyklejony do krawędzi okna. */
-.verify-actions { display: flex; align-items: center; gap: 0.6rem; flex-wrap: wrap;
-                  position: sticky; bottom: 0; background: #fff; padding: 0.7rem 0.9rem;
-                  margin-top: 0.9rem; border: 1px solid var(--pico-border-color, #e2e6ec); border-bottom: none;
-                  border-radius: 10px 10px 0 0; z-index: 5; }
-.verify-count { font-size: 0.85rem; color: #33415c; }
-.verify-nav { display: inline-flex; align-items: center; gap: 0.4rem; }
-.verify-nav-btn { white-space: nowrap; }
-.verify-nav-pos { font-size: 0.8rem; color: #33415c; min-width: 6.5em; text-align: center; }
+/* Stopka karty: akcje decyzyjne + nawigacja w jednym zwartym elemencie (zamiast „pływającego paska”).
+   Mobile-first: kolumna przycisków full-width; ≥960px: rząd z grupą [masowe przyjęcie + licznik] po prawej. */
+.verify-footer { margin-top: 0.7rem; padding-top: 0.6rem; border-top: 1px dashed var(--pico-border-color, #e2e6ec); display: grid; gap: 0.55rem; }
+.verify-actions-main { display: flex; flex-direction: column; gap: 0.4rem; }
+.verify-bulk-group { display: flex; flex-direction: column; gap: 0.3rem; align-items: stretch; }
+.verify-bulk-btn { white-space: normal; }
+.verify-count { font-size: 0.8rem; color: var(--pico-muted-color, #667); text-align: center; }
+.verify-nav { display: flex; align-items: center; gap: 0.4rem; }
+.verify-nav .verify-nav-btn { flex: 1 1 auto; white-space: nowrap; }
+.verify-nav-pos { font-size: 0.8rem; color: #33415c; min-width: 6.5em; text-align: center; white-space: nowrap; }
 
 /* Wide: szersza kolumna, jedna karta nadal (czytelność dowodów). */
 @media (min-width: 960px) {
     .verify-ai-page .container { max-width: 1080px; }
     .verify-page img { height: 210px; }
+    .verify-actions-main { flex-direction: row; align-items: center; gap: 0.7rem; }
+    .verify-bulk-group { margin-left: auto; flex-direction: row; align-items: center; gap: 0.7rem; }
+    .verify-count { text-align: right; white-space: nowrap; }
+    .verify-nav .verify-nav-btn { flex: 0 1 auto; padding-inline: 0.85rem; }
 }
 </style>
 
@@ -290,11 +300,8 @@
         if (text) { el.classList.add(isError ? 'err' : 'ok'); }
     }
 
-    // ── Nawigacja: jedna karta na raz, przyciski u dołu widoku ───────────────
+    // ── Nawigacja: jedna karta na raz; przyciski żyją w stopce KAŻDEJ karty (także dynamicznych luk) ──
     var queue = document.getElementById('verify-queue');
-    var prevBtn = document.getElementById('verify-prev-btn');
-    var nextBtn = document.getElementById('verify-next-btn');
-    var posEl = document.getElementById('verify-nav-pos');
     var activeIdx = 0;
 
     function cardList() {
@@ -310,10 +317,14 @@
         activeIdx = i;
         for (var k = 0; k < n; k++) {
             cards[k].classList.toggle('is-active', k === i);
+            var prev = cards[k].querySelector('[data-verify-nav="prev"]');
+            if (prev) { prev.disabled = k <= 0; }
+            var next = cards[k].querySelector('[data-verify-nav="next"]');
+            if (next) { next.disabled = k >= n - 1; }
+            var pos = cards[k].querySelector('.verify-nav-pos');
+            if (pos) { pos.textContent = 'Karta ' + (i + 1) + ' z ' + n; }
+            if (k === i) { cards[k].setAttribute('aria-current', 'true'); } else { cards[k].removeAttribute('aria-current'); }
         }
-        prevBtn.disabled = i <= 0;
-        nextBtn.disabled = i >= n - 1;
-        if (posEl) { posEl.textContent = 'Karta ' + (i + 1) + ' z ' + n; }
     }
 
     function firstPendingIdx(startIdx) {
@@ -324,30 +335,50 @@
         return -1;
     }
 
-    prevBtn.addEventListener('click', function () { showCard(activeIdx - 1); });
-    nextBtn.addEventListener('click', function () {
-        /* „Następny" najpierw celuje w lukę odsłoniętą niedawnym skróceniem zakresu — i dopiero potem idzie kartą dalej. */
-        if (pendingTarget >= 0) {
-            var cards = cardList();
-            if (pendingTarget < cards.length && !cards[pendingTarget].classList.contains('is-accepted')) {
-                var target = pendingTarget;
+    /* Delegacja kliknięć na kolejce: stopka każdej karty ma własne [data-verify-nav] / [data-verify-bulk];
+       indeks karty liczymy żywo, bo karty luk dodają się i znikają podczas sesji. */
+    if (queue) {
+        queue.addEventListener('click', function (ev) {
+            var target = ev.target;
+            if (!target || typeof target.closest !== 'function') { return; }
+
+            var navBtn = target.closest('[data-verify-nav]');
+            if (navBtn && queue.contains(navBtn)) {
+                var card = navBtn.closest('.verify-row');
+                if (!card) { return; }
+                var cards = cardList();
+                var idx = -1;
+                for (var c = 0; c < cards.length; c++) { if (cards[c] === card) { idx = c; break; } }
+                if (idx < 0) { return; }
+                if (navBtn.getAttribute('data-verify-nav') === 'prev') { showCard(idx - 1); return; }
+                /* „Następny" najpierw celuje w lukę odsłoniętą niedawnym skróceniem zakresu — i dopiero potem idzie kartą dalej. */
+                var targetIdx = (pendingTarget >= 0 && pendingTarget < cards.length
+                                 && !cards[pendingTarget].classList.contains('is-accepted'))
+                    ? pendingTarget : idx + 1;
                 pendingTarget = -1;
-                showCard(target);
+                showCard(targetIdx);
                 return;
             }
-        }
-        pendingTarget = -1;
-        showCard(activeIdx + 1);
-    });
+
+            var bulkBtn = target.closest('[data-verify-bulk]');
+            if (bulkBtn && queue.contains(bulkBtn)) { startBulkAccept(); }
+        });
+    }
 
     // ── Licznik przyjętych ────────────────────────────────────────────────────
     function countAccepted() { return document.querySelectorAll('#verify-queue .verify-row.is-accepted').length; }
     function totalRows() { return cardList().length; }
+    /* Licznik i masowy przycisk żyją w stopce każdej karty — aktualizujemy wszystkie instancje naraz. */
+    function setAllBulk(disabled) {
+        var bulks = document.querySelectorAll('#verify-queue [data-verify-bulk]');
+        for (var b = 0; b < bulks.length; b++) { bulks[b].disabled = !!disabled; }
+    }
     function bumpCount() {
-        var el = document.getElementById('verify-count');
-        if (el) { el.textContent = 'Przyjęte: ' + countAccepted() + ' z ' + totalRows() + ' głosów'; }
-        var bulk = document.getElementById('accept-unchanged-btn');
-        if (bulk) { bulk.disabled = countAccepted() >= totalRows(); }
+        var acc = countAccepted();
+        var text = 'Przyjęte: ' + acc + ' z ' + totalRows() + ' głosów';
+        var counts = document.querySelectorAll('#verify-queue .verify-count');
+        for (var c = 0; c < counts.length; c++) { counts[c].textContent = text; }
+        setAllBulk(acc >= totalRows());
     }
 
     function markAccepted(rowEl, label) {
@@ -645,7 +676,59 @@
             });
             li.appendChild(unusedBtn);
         }
+
+        /* Stopka wspólna (nawigacja + masowe przyjęcie + licznik) — karta luki też z niej korzysta,
+           by „Poprzedni/Następny” i licznik były dostępne niezależnie od tego, czy to głos, czy luka. */
+        li.appendChild(makeVerifyFooter());
+
         return li;
+    }
+
+    /* Buduje zwartą stopkę karty: [masowe przyjęcie + licznik] + [Poprzedni / Karta x z y / Następny].
+       Kliknięcia obsługiwane wspólnie przez delegację na #verify-queue (patrz handler 'click'). */
+    function makeVerifyFooter() {
+        var footer = document.createElement('div');
+        footer.className = 'verify-footer';
+
+        var main = document.createElement('div');
+        main.className = 'verify-actions-main';
+        var group = document.createElement('div');
+        group.className = 'verify-bulk-group';
+        var bulk = document.createElement('button');
+        bulk.type = 'button';
+        bulk.className = 'secondary verify-bulk-btn';
+        bulk.setAttribute('data-verify-bulk', '');
+        bulk.textContent = 'Przyjmij pozostałe głosy bez zmian';
+        var count = document.createElement('span');
+        count.className = 'verify-count';
+        count.setAttribute('role', 'status');
+        count.textContent = 'Przyjęte: 0 z 0 głosów';
+        group.appendChild(bulk);
+        group.appendChild(count);
+        main.appendChild(group);
+        footer.appendChild(main);
+
+        var nav = document.createElement('nav');
+        nav.className = 'verify-nav';
+        nav.setAttribute('aria-label', 'Nawigacja po kartach głosów');
+        function navBtn(label, kind) {
+            var b = document.createElement('button');
+            b.type = 'button';
+            b.className = 'secondary verify-nav-btn';
+            b.setAttribute('data-verify-nav', kind);
+            b.setAttribute('aria-label', kind === 'prev' ? 'Poprzednia karta' : 'Następna karta');
+            b.textContent = label;
+            return b;
+        }
+        nav.appendChild(navBtn('\u2039 Poprzedni', 'prev'));
+        var pos = document.createElement('span');
+        pos.className = 'verify-nav-pos';
+        pos.textContent = 'Karta 1';
+        nav.appendChild(pos);
+        nav.appendChild(navBtn('Nast\u00e9pny \u203a', 'next'));
+        footer.appendChild(nav);
+
+        return footer;
     }
 
     function refreshGapsAndNav() {
@@ -787,52 +870,49 @@
         });
     });
 
-    // ── masowe: pozostałe głosy bez zmian (oryginalne zakresy AI) ─────────────
-    var bulk = document.getElementById('accept-unchanged-btn');
-    if (bulk) {
-        bulk.disabled = countAccepted() >= totalRows();
-        bulk.addEventListener('click', function () {
-            var rows = [];
+    // ── masowe: pozostałe głosy bez zmian (oryginalne zakresy AI) — wspólna logika
+    // dla stopki każdej karty (kliknięcie dociera tu przez delegację na kolejce). ──
+    function startBulkAccept() {
+        var rows = [];
+        document.querySelectorAll('#verify-queue .verify-row').forEach(function (rowEl) {
+            if (rowEl.classList.contains('is-accepted') || rowEl.classList.contains('gap-card')) { return; }
+            var btn = rowEl.querySelector('.verify-accept-btn[data-role]');
+            if (!btn) { return; }
+            rows.push({
+                role: btn.getAttribute('data-role'),
+                aiPageFrom: parseInt(btn.getAttribute('data-ai-from'), 10),
+                aiPageTo:   parseInt(btn.getAttribute('data-ai-to'), 10),
+                pageFrom:   parseInt(btn.getAttribute('data-ai-from'), 10),
+                pageTo:     parseInt(btn.getAttribute('data-ai-to'), 10),
+                instrumentId: btn.getAttribute('data-instrument') ? parseInt(btn.getAttribute('data-instrument'), 10) : null
+            });
+        });
+        if (rows.length === 0) { return; }
+        setAllBulk(true);
+        sendRows(rows, function (payload, err) {
+            if (err) {
+                toast('Nie przyjęto — ' + (err.message || ''), 'error');
+                var anyRemain = document.querySelectorAll('#verify-queue .verify-row:not(.is-accepted):not(.gap-card)').length > 0;
+                setAllBulk(!anyRemain);
+                showCard(activeIdx);
+                return;
+            }
+            var skippedRoles = new Set();
+            if (payload && payload.skipped) { payload.skipped.forEach(function (s) { skippedRoles.add(s.role); }); }
             document.querySelectorAll('#verify-queue .verify-row').forEach(function (rowEl) {
                 if (rowEl.classList.contains('is-accepted') || rowEl.classList.contains('gap-card')) { return; }
                 var btn = rowEl.querySelector('.verify-accept-btn[data-role]');
-                if (!btn) { return; }
-                rows.push({
-                    role: btn.getAttribute('data-role'),
-                    aiPageFrom: parseInt(btn.getAttribute('data-ai-from'), 10),
-                    aiPageTo:   parseInt(btn.getAttribute('data-ai-to'), 10),
-                    pageFrom:   parseInt(btn.getAttribute('data-ai-from'), 10),
-                    pageTo:     parseInt(btn.getAttribute('data-ai-to'), 10),
-                    instrumentId: btn.getAttribute('data-instrument') ? parseInt(btn.getAttribute('data-instrument'), 10) : null
-                });
+                if (!btn || skippedRoles.has(btn.getAttribute('data-role'))) { return; }
+                markAccepted(rowEl, 'Przyjęto');
+                var f = parseInt(btn.getAttribute('data-ai-from'), 10);
+                var t = parseInt(btn.getAttribute('data-ai-to'), 10);
+                if (!isNaN(f) && !isNaN(t)) { sessionAccepted.push({ from: f, to: t }); applyClearLocal(f, t); }
             });
-            if (rows.length === 0) { return; }
-            bulk.disabled = true;
-            sendRows(rows, function (payload, err) {
-                if (err) {
-                    toast('Nie przyjęto — ' + (err.message || ''), 'error');
-                    var anyRemain = document.querySelectorAll('#verify-queue .verify-row:not(.is-accepted):not(.gap-card)').length > 0;
-                    bulk.disabled = !anyRemain;
-                    showCard(activeIdx);
-                    return;
-                }
-                var skippedRoles = new Set();
-                if (payload && payload.skipped) { payload.skipped.forEach(function (s) { skippedRoles.add(s.role); }); }
-                document.querySelectorAll('#verify-queue .verify-row').forEach(function (rowEl) {
-                    if (rowEl.classList.contains('is-accepted') || rowEl.classList.contains('gap-card')) { return; }
-                    var btn = rowEl.querySelector('.verify-accept-btn[data-role]');
-                    if (!btn || skippedRoles.has(btn.getAttribute('data-role'))) { return; }
-                    markAccepted(rowEl, 'Przyjęto');
-                    var f = parseInt(btn.getAttribute('data-ai-from'), 10);
-                    var t = parseInt(btn.getAttribute('data-ai-to'), 10);
-                    if (!isNaN(f) && !isNaN(t)) { sessionAccepted.push({ from: f, to: t }); applyClearLocal(f, t); }
-                });
-                var skipped = (payload && payload.created != null) ? Math.max(0, rows.length - payload.created) : 0;
-                toast('Przyjęte głosy: ' + ((payload && payload.created) || rows.length) +
-                      (skipped > 0 ? ' (pominięte: ' + skipped + ')' : '') + '.', 'success');
-                refreshGapsAndNav();
-                pendingTarget = -1; /* masowa akceptacja = bez zmian zakresów ⇒ brak odsłoniętej luki */
-            });
+            var skipped = (payload && payload.created != null) ? Math.max(0, rows.length - payload.created) : 0;
+            toast('Przyjęte głosy: ' + ((payload && payload.created) || rows.length) +
+                  (skipped > 0 ? ' (pominięte: ' + skipped + ')' : '') + '.', 'success');
+            refreshGapsAndNav();
+            pendingTarget = -1; /* masowa akceptacja = bez zmian zakresów ⇒ brak odsłoniętej luki */
         });
     }
 

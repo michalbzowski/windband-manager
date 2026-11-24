@@ -32,6 +32,20 @@ class AiVerifyReportUiTest extends UiTestBase {
     private static final Duration WAIT = Duration.ofSeconds(30);
     private static final int PAGE_COUNT = 10;
 
+    /** Pozy w stopce AKTYWNEJ karty (nawigacja i licznik mieszkają w karcie, nie w pływającym pasku). */
+    private static final String ACTIVE_POS_JS = """
+            var a=document.querySelector('#verify-queue .verify-row.is-active');
+            var p=a?a.querySelector('.verify-nav-pos'):null;
+            return p?p.textContent:'';""";
+
+    private static final String CLICK_ACTIVE_NEXT_JS = """
+            var b=document.querySelector('#verify-queue .verify-row.is-active [data-verify-nav="next"]');
+            if(b){b.click();}""";
+
+    private static final String CLICK_ACTIVE_PREV_JS = """
+            var b=document.querySelector('#verify-queue .verify-row.is-active [data-verify-nav="prev"]');
+            if(b){b.click();}""";
+
     private long compositionId;
 
     /** Plik nut seedowanej analizy (potrzebny do partii w TEJ przestrzeni stron). */
@@ -42,6 +56,9 @@ class AiVerifyReportUiTest extends UiTestBase {
 
     /** Dedykowany teamTag rozwiązany do powyższego instrumentu (chip → instrument w karcie). */
     private String resolvedSaxTag;
+
+    /** Instrument do wyboru w korekcie (nazwa „Klarnety raportowe …") — dokładny id ze seedu. */
+    private long raportClarinetId;
 
     /** Utwór + nuty (10 stron) + SUCCEEDED analiza z czterema głosami: dwa czyste, luka, przekroczenie. */
     private void seedSucceededAnalysis() throws Exception {
@@ -90,7 +107,8 @@ class AiVerifyReportUiTest extends UiTestBase {
                 compositionId, scoreFileId, artifact.toString());
 
         // Instrument ręcznie do wyboru w korekcie (wyraźna nazwa testowa).
-        createTestBand1Instrument("Klarnety raportowe " + UUID.randomUUID().toString().substring(0, 6), 85);
+        raportClarinetId = createTestBand1Instrument(
+                "Klarnety raportowe " + UUID.randomUUID().toString().substring(0, 6), 85);
         // Dedykowany instrument równy teamTag — jedyny wiersz „rozwiązany” na stronie raportu.
         createTestBand1Instrument(saxTag, 90);
         resolvedSaxTag = saxTag;
@@ -144,12 +162,12 @@ class AiVerifyReportUiTest extends UiTestBase {
                 "return document.querySelectorAll('#verify-queue .verify-row').length;");
         assertThat(rowCount).as("kolejka pokazuje cztery głosy AI + jedną kartę luki (1–10)").isEqualTo(5L);
 
-        // Jedna karta na raz: tylko aktywna jest widoczna; reszta dostępna z paska u dołu.
+        // Jedna karta na raz: tylko aktywna jest widoczna; reszta dostępna ze stopki aktywnej karty.
         long activeCount = (Long) js.executeScript(
                 "return document.querySelectorAll('#verify-queue .verify-row.is-active').length;");
         assertThat(activeCount).as("widoczna jest dokładnie jedna (aktywna) karta").isEqualTo(1L);
         String navPos = wait.until(d -> {
-            String p = (String) js.executeScript("return document.getElementById('verify-nav-pos').textContent;");
+            String p = (String) js.executeScript(ACTIVE_POS_JS);
             return p != null && p.length() > 0 ? p : null;
         });
         assertThat(navPos).as("licznik pozycji w kolejkach (4 głosy + karta luki)").isEqualTo("Karta 1 z 5");
@@ -254,16 +272,15 @@ class AiVerifyReportUiTest extends UiTestBase {
             return g != null && g >= 1 ? g : 0L;
         });
         assertThat(gapCards).as("luki pojawiły się jako karty do oznaczenia").isGreaterThanOrEqualTo(1L);
-        String navPos2 = (String) js.executeScript(
-                "return document.getElementById('verify-nav-pos').textContent;");
+        String navPos2 = (String) js.executeScript(ACTIVE_POS_JS);
         assertThat(navPos2).as("licznik po rozszerzeniu kolejki o luki").isEqualTo("Karta 2 z 6");
 
         // Po przyjęciu skróconego zakresu (AI 2–4 → 3–4, odsłonięta s. 2) „Następny"
         // przenosi na nowo powstałą kartę luki (s. 1–2), nie po prostu o krok dalej:
         // analogicznie w scenariuszu użytkownika 1–14 → 1–13 trafia tam s. 14 z podglądem.
-        ((JavascriptExecutor) driver).executeScript("document.getElementById('verify-next-btn').click();");
+        js.executeScript(CLICK_ACTIVE_NEXT_JS);
         String navPosGap = wait.until(d -> {
-            String p = (String) js.executeScript("return document.getElementById('verify-nav-pos').textContent;");
+            String p = (String) js.executeScript(ACTIVE_POS_JS);
             return "Karta 5 z 6".equals(p) ? p : null;
         });
         assertThat(navPosGap).as("„Następny” po skróceniu zakresu wskazuje kartę luki").isEqualTo("Karta 5 z 6");
@@ -310,7 +327,7 @@ class AiVerifyReportUiTest extends UiTestBase {
                 }
             """);
         org.openqa.selenium.WebElement bulkBtn = wait.until(ExpectedConditions.elementToBeClickable(
-                org.openqa.selenium.By.id("accept-unchanged-btn")));
+                org.openqa.selenium.By.cssSelector("#verify-queue .verify-row.is-active [data-verify-bulk]")));
         bulkBtn.click();
         wait.until(d -> Boolean.TRUE.equals(js.executeScript("return window.__bulkSettled === true;")));
         awaitPageSettled();
@@ -332,6 +349,75 @@ class AiVerifyReportUiTest extends UiTestBase {
 
         assertThat(partCount()).as("łącznie trzy zaakceptowane partie (Trąbka skorygowana + Tuba + Saksofon)")
                 .isEqualTo(3L);
+    }
+
+    @Test
+    @DisplayName("UX: Poprzedni/Następny/masowe przyjęcie mieszczą się w stopce karty (brak pływającego paska, bez overflowu przy 390px)")
+    void actionsJoinedToActiveCardAndMobileSafe() throws Exception {
+        seedSucceededAnalysis();
+        loginAndNavigateTo("/bands/1/compositions/" + compositionId);
+        JavascriptExecutor js = (JavascriptExecutor) driver;
+        WebDriverWait wait = new WebDriverWait(driver, WAIT);
+        WebElement entry = wait.until(
+                ExpectedConditions.visibilityOfElementLocated(org.openqa.selenium.By.id("ai-verify-entry")));
+        entry.click();
+        wait.until(ExpectedConditions.visibilityOfElementLocated(org.openqa.selenium.By.id("verify-queue")));
+
+        // (1) Przyciski „mieszkają” w karcie: stopka KAŻDEJ karty niesie własną nawigację, licznik
+        //     pozycji i masowe przyjęcie (tak głosy, jak karty luki — one też ją dostają).
+        boolean footersPresent = (Boolean) js.executeScript("""
+                var rows = Array.from(document.querySelectorAll('#verify-queue .verify-row'));
+                return rows.length > 0 && rows.every(function (r) {
+                    var f = r.querySelector('.verify-footer');
+                    if (!f || !f.contains(r.querySelector('[data-verify-nav="prev"]'))) { return false; }
+                    return !!f.querySelector('[data-verify-nav="next"]')
+                            && !!f.querySelector('.verify-nav-pos')
+                            && !!f.querySelector('[data-verify-bulk]')
+                            && !!f.querySelector('.verify-count');
+                });""");
+        assertThat(footersPresent)
+                .as("w stopce każdej karty: Poprzedni/Następny, licznik pozycji i masowe przyjęcie")
+                .isEqualTo(true);
+
+        // (2) Stary „pływający pasek” dolny nie istnieje.
+        assertThat((Boolean) js.executeScript("return document.getElementById('verify-actions') === null;"))
+                .as("pływający pasek dolny (#verify-actions) usunięty")
+                .isEqualTo(true);
+
+        // (3) Stan początkowy pierwszej karty: „Poprzedni” wyłączony, „Następny” włączony — w stopce.
+        assertThat((Boolean) js.executeScript("""
+                var a = document.querySelector('#verify-queue .verify-row.is-active');
+                if (!a) { return false; }
+                return a.querySelector('[data-verify-nav="prev"]').disabled
+                        && !a.querySelector('[data-verify-nav="next"]').disabled;"""))
+                .as("pierwsza karta: Poprzedni disabled, Następny enabled")
+                .isEqualTo(true);
+
+        // (4) Nawigacja z wnętrza karty działa i przesuwa aktywność w obie strony.
+        long total = (Long) js.executeScript(
+                "return document.querySelectorAll('#verify-queue .verify-row').length;");
+        js.executeScript(CLICK_ACTIVE_NEXT_JS);
+        wait.until(d -> ("Karta 2 z " + total).equals(js.executeScript(ACTIVE_POS_JS)));
+        js.executeScript(CLICK_ACTIVE_PREV_JS);
+        wait.until(d -> ("Karta 1 z " + total).equals(js.executeScript(ACTIVE_POS_JS)));
+
+        // (5) Widok mobilny (390px): brak poziomego przewijania; stopka renderuje się i ma wysokość.
+        org.openqa.selenium.Dimension before = driver.manage().window().getSize();
+        try {
+            driver.manage().window().setSize(new org.openqa.selenium.Dimension(390, 844));
+            awaitPageSettled();
+            assertThat((Boolean) js.executeScript("return document.body.scrollWidth <= window.innerWidth + 1;"))
+                    .as("brak poziomego overflowu w widoku mobilnym (390px)")
+                    .isEqualTo(true);
+            assertThat((Boolean) js.executeScript("""
+                    var a = document.querySelector('#verify-queue .verify-row.is-active');
+                    var f = a ? a.querySelector('.verify-footer') : null;
+                    return !!f && f.getBoundingClientRect().height > 0;"""))
+                    .as("stopka aktywnej karty renderuje się na mobile")
+                    .isEqualTo(true);
+        } finally {
+            driver.manage().window().setSize(before);
+        }
     }
 
     @Test
@@ -360,9 +446,8 @@ class AiVerifyReportUiTest extends UiTestBase {
 
         long tubaIdx = rowIndexByRole(js, "Tuba E");
         assertThat(tubaIdx).isGreaterThanOrEqualTo(0L);
-        long instrumentId = jdbcTemplate.queryForObject(
-                "SELECT id FROM instruments WHERE band_id = 1 AND name LIKE 'Klarnety raportowe%'",
-                Long.class);
+        // Dokładny id ze seedu — nie LIKE po nazwie (instruments nie czyszczony między testami).
+        long instrumentId = raportClarinetId;
 
         // Korekta zakresu 5–7 → 5–6 + jawny wybór instrumentu → akceptacja = aktualizacja partii.
         js.executeScript("document.getElementById('fix-to-' + arguments[0]).value = '6';",
