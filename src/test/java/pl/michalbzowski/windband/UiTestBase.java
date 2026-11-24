@@ -228,6 +228,39 @@ public abstract class UiTestBase {
     }
 
     /**
+     * Remove rows of {@code table} pointing at test-created members (ids outside the seeded set).
+     * Each call is standalone: a table that does not exist in this schema (Flyway-only entities,
+     * e.g. inventory_orders) is skipped silently; any other error is logged, never fatal — if a
+     * blocking row ever survives, {@link #assertNoStrayMembers(String)} turns it into a clear failure.
+     */
+    private void deleteRowsForMembers(String table, String column, String keepIds) {
+        try {
+            jdbcTemplate.update("DELETE FROM " + table + " WHERE " + column + " NOT IN (" + keepIds + ")");
+        } catch (Exception e) {
+            log.debug("cleanDatabase: {} cleanup skipped: {}", table, String.valueOf(e.getMessage()));
+        }
+    }
+
+    /**
+     * Fail fast if any non-seeded member row survived cleanDatabase() — this used to accumulate
+     * across the whole UI suite (shared H2, one context) and leak into later tests' member lists
+     * and AI verify-ai chips (RoleInstrumentResolver resolves chips from live members).
+     */
+    protected void assertNoStrayMembers(String context) {
+        try {
+            Integer count = jdbcTemplate.queryForObject("SELECT COUNT(*) FROM members", Integer.class);
+            if (count == null || count != 4) {
+                throw new IllegalStateException("cleanDatabase: expected exactly the 4 seeded members, found "
+                        + count + " — a prior test left committed member rows (" + context + ")");
+            }
+        } catch (IllegalStateException ise) {
+            throw ise;
+        } catch (Exception e) {
+            // Table missing or DB hiccup: don't mask the real failure as a leak.
+        }
+    }
+
+    /**
      * Opens the {@code ⋮} overflow menu on the unified detail-actions-bar so
      * that a hidden inner action (e.g. {@code #delete-event-btn},
      * {@code #quick-attendance-btn}) becomes interactable, then clicks it.
@@ -296,7 +329,7 @@ public abstract class UiTestBase {
         // them is left behind, the parent band_events wipe fails and stale events survive
         // for other tests (e.g. the dashboard list cap gets filled with events that have
         // no attendance records).
-        String allTables = "attendances, event_participations, event_invitations, event_compositions, " +
+        String allTables = "score_analysis, attendances, event_participations, event_invitations, event_compositions, " +
                 "event_part_deliveries, member_instruments, rehearsals, band_events, " +
                 "member_attribute_values, member_attribute_defs, team_members, " +
                 "composition_instruments, score_files, compositions";
@@ -351,11 +384,47 @@ public abstract class UiTestBase {
         // reseeding makes the baseline explicit and identical on both engines.
         reseedBaselineSchedule();
 
+        // Wipe test-created members (all rows except the 4 data.sql seeds, identified by their
+        // seeded emails — test helpers insert without an email). The shared H2 is NOT reset per
+        // class and the members table is intentionally kept for the seed baseline, so rows created
+        // by earlier test classes otherwise accumulate forever ("Busy-...", "TrumpetGuy-...") and
+        // leak into UI lists; with an instrument assigned they also show up as extra chips on AI
+        // verify-ai member lists (RoleInstrumentResolver resolves chips from live members).
+        // Child rows: some FKs are ON DELETE CASCADE, but the test schema (Hibernate create-drop)
+        // lacks several Flyway-only tables, so each child cleanup runs standalone and a missing
+        // table is ignored — anything left behind trips assertNoStrayMembers below.
+        try {
+            List<Long> seededMemberIds = jdbcTemplate.queryForList(
+                    "SELECT id FROM members WHERE email IN " +
+                            "('jan@test.com', 'anna@test.com', 'piotr@other.com', 'maria@other.com')",
+                    Long.class);
+            if (seededMemberIds.size() != 4) {
+                log.warn("cleanDatabase: expected 4 seeded members, found {} — identity check degraded",
+                        seededMemberIds.size());
+            } else {
+                String keepIds = seededMemberIds.stream().map(String::valueOf).collect(java.util.stream.Collectors.joining(","));
+                deleteRowsForMembers("member_consents", "member_id", keepIds);
+                deleteRowsForMembers("member_consent_tokens", "member_id", keepIds);
+                deleteRowsForMembers("inventory_needs", "requested_by_member_id", keepIds);
+                deleteRowsForMembers("private_possession_declarations", "member_id", keepIds);
+                // Flyway-only table; absent from the H2 UI-test schema (harmless when skipped).
+                deleteRowsForMembers("inventory_orders", "member_id", keepIds);
+                jdbcTemplate.update("DELETE FROM members WHERE id NOT IN (" + keepIds + ")");
+                // A UI test may deactivate a seeded member (toggle flow) — re-normalize the
+                // active flag so the baseline is identical before every test.
+                jdbcTemplate.update("UPDATE members SET active = TRUE WHERE email IN " +
+                        "('jan@test.com', 'anna@test.com', 'piotr@other.com', 'maria@other.com')");
+            }
+        } catch (Exception e) {
+            log.warn("cleanDatabase: extra-member wipe failed: {}", String.valueOf(e.getMessage()));
+        }
+
         // Restore the default member instruments from data.sql (Jan: Trąbka, Anna: Bęben).
         // member_instruments was wiped above and tests such as EventParticipationInstrument
         // assert these defaults; historically they only survived because the stale rows
         // from context startup were never cleaned on H2.
         restoreBaselineMemberInstruments();
+        assertNoStrayMembers(getClass().getSimpleName() + " (po cleanDatabase)");
     }
 
     /** Re-inserts data.sql's fixed member→instrument defaults if the wipe removed them. */
