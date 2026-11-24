@@ -53,8 +53,12 @@
                           th:title="'Pewność modelu (stała dla trybu detekcji)'">AI ~<span th:text="${T(java.lang.Math).round(row.confidence * 100)}"></span>%</span>
                 </div>
 
-                <p th:if="${row.memberNames != null and !row.memberNames.isEmpty()}"
-                   class="verify-members" th:text="'Muzycy: ' + ${#strings.listJoin(row.memberNames, ', ')}"></p>
+                <!-- Muzycy pokrywający tę rolę (resolver: instrument + mapa ról).
+                     Domyślnie jedna linia chipów; nadmiar chowa JS pod „…", klik rozwija/składa listę. -->
+                <ul th:if="${row.memberNames != null and !row.memberNames.isEmpty()}"
+                    class="verify-members" role="list" aria-label="Muzycy">
+                    <li th:each="m : ${row.memberNames}" class="member-chip" th:text="${m}"></li>
+                </ul>
 
                 <ul class="verify-issues" th:if="${row.issues != null && !row.issues.isEmpty()}">
                     <li th:each="issue : ${row.issues}"
@@ -113,14 +117,8 @@
                                 th:data-instrument="${row.instrumentIdOrNull != null ? row.instrumentIdOrNull : ''}">
                             Przyjmij ten głos
                         </button>
-                        <div class="verify-bulk-group">
-                            <!-- Nazwa podpowiada skutek: reszta (nieprzyjęte) idzie w oryginalnych zakresach AI. -->
-                            <button type="button" class="secondary verify-bulk-btn" data-verify-bulk>
-                                Przyjmij pozostałe głosy bez zmian
-                            </button>
-                            <span class="verify-count" role="status"
-                                  th:text="${#strings.concat('Przyjęte: 0 z ' + report.rowCount(), ' głosów')}"></span>
-                        </div>
+                        <span class="verify-count" role="status"
+                              th:text="${#strings.concat('Przyjęte: 0 z ' + report.rowCount(), ' głosów')}"></span>
                     </div>
                     <nav class="verify-nav" aria-label="Nawigacja po kartach głosów">
                         <button type="button" class="secondary verify-nav-btn" data-verify-nav="prev"
@@ -168,8 +166,11 @@
 #verify-queue img { cursor: zoom-in; -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
 
 /* Kolejka kart: z zasady widoczna jest tylko karta aktywna (nawigacja + akcje żyją w jej stopce). */
-.verify-queue { list-style: none; padding: 0; margin: 0; display: grid; gap: 0.9rem; counter-reset: verifyrow; }
-.verify-row { position: relative; background: #fff; border: 1px solid var(--pico-border-color, #e2e6ec); border-left: 4px solid #d3d9e0; border-radius: 10px; padding: 0.8rem 0.9rem; display: none; }
+/* minmax(0,1fr): kolumna gridowa ma ograniczoną szerokość — inaczej min-content sztywnej linii
+   chipów (.verify-members) rozciąga kartę i całą stronę poza viewport (overflow zamiast złożenia). */
+.verify-queue { list-style: none; padding: 0; margin: 0; display: grid; gap: 0.9rem; counter-reset: verifyrow;
+                grid-template-columns: minmax(0, 1fr); }
+.verify-row { position: relative; min-width: 0; background: #fff; border: 1px solid var(--pico-border-color, #e2e6ec); border-left: 4px solid #d3d9e0; border-radius: 10px; padding: 0.8rem 0.9rem; display: none; }
 .verify-row.is-active { display: block; }
 .row-error { border-left-color: #dc2626; }
 .row-warn  { border-left-color: #b45309; }
@@ -182,7 +183,14 @@
 .verify-instchip { background:#e7f6ef; color:#047857; border:1px solid #a9dfc9; padding:0.1rem 0.55rem; border-radius:999px; font-size:0.78rem; font-weight:600; }
 .verify-tagchip { background:#eef1f5; color:#33415c; border:1px solid #d3d9e0; padding:0.1rem 0.55rem; border-radius:999px; font-size:0.78rem; }
 .verify-tagmiss { background:#fdf0e2; color:#8a4a10; border:1px solid #f3d9b0; padding:0.1rem 0.55rem; border-radius:999px; font-size:0.78rem; }
-.verify-members { margin: 0.4rem 0 0; font-size: 0.82rem; color: #33415c; }
+/* Muzycy w głosce: jedna linia chipów — nadmiar chowa JS pod „…" (klik na listę = rozwiń/składaj). */
+.verify-members { list-style: none; margin: 0.3rem 0 0; padding: 0; display: flex; align-items: center; flex-wrap: nowrap; gap: 0.25rem 0.4rem; overflow: hidden; }
+.member-chip { white-space: nowrap; background: #eef1f5; color: #33415c; border: 1px solid #d3d9e0; padding: 0.06rem 0.5rem; border-radius: 999px; font-size: 0.78rem; line-height: 1.6; }
+.member-chip.is-hidden { display: none; }
+.members-more { margin-left: auto; flex: 0 0 auto; width: 24px; height: 24px; padding: 0; border-radius: 999px; background: #fff; color: #33415c; border: 1px solid #d3d9e0; font-size: 0.95rem; line-height: 1; cursor: pointer; }
+.members-more:hover { background: #f4f6f8; }
+.verify-members.is-expanded { flex-wrap: wrap; overflow: visible; }
+.verify-members.is-expanded .members-more { display: none; }
 
 .verify-issues { list-style: none; padding: 0.35rem 0 0; margin: 0.25rem 0 0; display: grid; gap: 0.25rem; }
 .verify-issue { font-size: 0.82rem; padding: 0.3rem 0.55rem; border-radius: 6px; }
@@ -191,22 +199,22 @@
 
 /* Podgląd stron z pliku nut — jeden rząd (od/do), odświeżany na żywo przy edycji zakresu.
    Przytrzymanie miniaturki powiększa ją na cały ekran; zwolnienie palca lub przycisku myszy wraca do normalnego rozmiaru. */
-.verify-lp { display: grid; grid-template-columns: 1fr 1fr; gap: 0.45rem; margin-top: 0.55rem; }
+.verify-lp { display: grid; grid-template-columns: 1fr 1fr; gap: 0.4rem; margin-top: 0.38rem; }
 .verify-lp-single { grid-template-columns: 1fr; }
 .verify-lp-page { margin: 0; background: #fbfcfe; border: 1px solid var(--pico-border-color, #e2e6ec); border-radius: 8px; overflow: hidden; }
-.verify-lp-page img { width: 100%; height: 140px; object-fit: cover; object-position: center top; display: block; background: #f6f7f9; }
+.verify-lp-page img { width: 100%; height: 120px; object-fit: cover; object-position: center top; display: block; background: #f6f7f9; }
 .verify-lp-page figcaption { font-size: 0.7rem; color: var(--pico-muted-color, #667); padding: 0.2rem 0.45rem; border-top: 1px solid #edeff3; text-align: center; display: flex; justify-content: space-between; }
 .verify-lp-page figcaption b { color: #33415c; }
 
-.verify-fix { margin-top: 0.55rem; display: grid; gap: 0.45rem; padding-top: 0.55rem; border-top: 1px dashed var(--pico-border-color, #e2e6ec); }
+.verify-fix { margin-top: 0.38rem; display: grid; gap: 0.4rem; padding-top: 0.38rem; border-top: 1px dashed var(--pico-border-color, #e2e6ec); }
 .verify-grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 0.45rem; }
 .verify-field span { display: block; font-size: 0.72rem; color: var(--pico-muted-color, #667); margin-bottom: 2px; }
-.verify-field input, .verify-field select { width: 100%; }
-.verify-row-status { font-size: 0.8rem; min-height: 1.1em; display: block; }
+.verify-field input, .verify-field select { width: 100%; padding: 0.32rem 0.5rem; }
+.verify-row-status { font-size: 0.8rem; min-height: 1em; display: block; }
 .verify-row-status.err { color: #b91c1c; }
 .verify-row-status.ok  { color: #047857; }
 
-.verify-accept-btn { white-space: nowrap; font-size: 0.9rem; }
+.verify-accept-btn { white-space: nowrap; font-size: 0.9rem; flex: 1 1 auto; display: inline-flex; justify-content: center; }
 .verify-row.is-accepted { opacity: 0.72; }
 .verify-row.is-accepted .verify-fix,
 .verify-row.is-accepted .verify-accept-btn,
@@ -223,13 +231,10 @@
 .verify-row.gap-excluded .gap-note { color: #6b5d3f; }
 .verify-exclbadge { margin-left: auto; padding: 0.1rem 0.55rem; border-radius: 999px; font-size: 0.72rem; background: #efe9dc; color: #6b5d3f; white-space: nowrap; font-style: italic; }
 
-/* Stopka karty: akcje decyzyjne + nawigacja w jednym zwartym elemencie (zamiast „pływającego paska”).
-   Mobile-first: kolumna przycisków full-width; ≥960px: rząd z grupą [masowe przyjęcie + licznik] po prawej. */
-.verify-footer { margin-top: 0.7rem; padding-top: 0.6rem; border-top: 1px dashed var(--pico-border-color, #e2e6ec); display: grid; gap: 0.55rem; }
-.verify-actions-main { display: flex; flex-direction: column; gap: 0.4rem; }
-.verify-bulk-group { display: flex; flex-direction: column; gap: 0.3rem; align-items: stretch; }
-.verify-bulk-btn { white-space: normal; }
-.verify-count { font-size: 0.8rem; color: var(--pico-muted-color, #667); text-align: center; }
+/* Stopka karty: główna akcja + licznik | nawigacja — zwarty, niski pasek (zamiast „pływającego paska”). */
+.verify-footer { margin-top: 0.5rem; padding-top: 0.45rem; border-top: 1px dashed var(--pico-border-color, #e2e6ec); display: grid; gap: 0.45rem; }
+.verify-actions-main { display: flex; align-items: center; gap: 0.55rem; flex-wrap: wrap; }
+.verify-count { font-size: 0.8rem; color: var(--pico-muted-color, #667); white-space: nowrap; margin-left: auto; }
 .verify-nav { display: flex; align-items: center; gap: 0.4rem; }
 .verify-nav .verify-nav-btn { flex: 1 1 auto; white-space: nowrap; }
 .verify-nav-pos { font-size: 0.8rem; color: #33415c; min-width: 6.5em; text-align: center; white-space: nowrap; }
@@ -238,9 +243,7 @@
 @media (min-width: 960px) {
     .verify-ai-page .container { max-width: 1080px; }
     .verify-page img { height: 210px; }
-    .verify-actions-main { flex-direction: row; align-items: center; gap: 0.7rem; }
-    .verify-bulk-group { margin-left: auto; flex-direction: row; align-items: center; gap: 0.7rem; }
-    .verify-count { text-align: right; white-space: nowrap; }
+    .verify-actions-main { gap: 0.7rem; }
     .verify-nav .verify-nav-btn { flex: 0 1 auto; padding-inline: 0.85rem; }
 }
 </style>
@@ -325,6 +328,12 @@
             if (pos) { pos.textContent = 'Karta ' + (i + 1) + ' z ' + n; }
             if (k === i) { cards[k].setAttribute('aria-current', 'true'); } else { cards[k].removeAttribute('aria-current'); }
         }
+        /* Karta aktywna jest widoczna — mierzymy dopasowanie chipów muzyków (zbiegnie / „…"). */
+        var activeCardEl = cards[i];
+        if (activeCardEl) {
+            var membersUl = activeCardEl.querySelector('.verify-members');
+            if (membersUl) { measureMembersFit(membersUl); }
+        }
     }
 
     function firstPendingIdx(startIdx) {
@@ -335,7 +344,7 @@
         return -1;
     }
 
-    /* Delegacja kliknięć na kolejce: stopka każdej karty ma własne [data-verify-nav] / [data-verify-bulk];
+    /* Delegacja kliknięć na kolejce: stopka każdej karty ma [data-verify-nav], lista muzyków — toggle „…";
        indeks karty liczymy żywo, bo karty luk dodają się i znikają podczas sesji. */
     if (queue) {
         queue.addEventListener('click', function (ev) {
@@ -361,24 +370,23 @@
             }
 
             var bulkBtn = target.closest('[data-verify-bulk]');
-            if (bulkBtn && queue.contains(bulkBtn)) { startBulkAccept(); }
+            if (bulkBtn && queue.contains(bulkBtn)) { startBulkAccept(); return; }
+
+            /* Lista muzyków: klik gdziekolwiek w wierszu chipów przełącza rozwiń/składaj. */
+            var membersList = target.closest('.verify-members');
+            if (membersList && queue.contains(membersList)) { toggleMembers(membersList); }
         });
     }
 
     // ── Licznik przyjętych ────────────────────────────────────────────────────
     function countAccepted() { return document.querySelectorAll('#verify-queue .verify-row.is-accepted').length; }
     function totalRows() { return cardList().length; }
-    /* Licznik i masowy przycisk żyją w stopce każdej karty — aktualizujemy wszystkie instancje naraz. */
-    function setAllBulk(disabled) {
-        var bulks = document.querySelectorAll('#verify-queue [data-verify-bulk]');
-        for (var b = 0; b < bulks.length; b++) { bulks[b].disabled = !!disabled; }
-    }
+    /* Licznik żyje w stopce każdej karty — aktualizujemy wszystkie instancje naraz. */
     function bumpCount() {
         var acc = countAccepted();
         var text = 'Przyjęte: ' + acc + ' z ' + totalRows() + ' głosów';
         var counts = document.querySelectorAll('#verify-queue .verify-count');
         for (var c = 0; c < counts.length; c++) { counts[c].textContent = text; }
-        setAllBulk(acc >= totalRows());
     }
 
     function markAccepted(rowEl, label) {
@@ -684,7 +692,7 @@
         return li;
     }
 
-    /* Buduje zwartą stopkę karty: [masowe przyjęcie + licznik] + [Poprzedni / Karta x z y / Następny].
+    /* Buduje zwartą stopkę karty: [licznik] + [Poprzedni / Karta x z y / Następny].
        Kliknięcia obsługiwane wspólnie przez delegację na #verify-queue (patrz handler 'click'). */
     function makeVerifyFooter() {
         var footer = document.createElement('div');
@@ -692,20 +700,11 @@
 
         var main = document.createElement('div');
         main.className = 'verify-actions-main';
-        var group = document.createElement('div');
-        group.className = 'verify-bulk-group';
-        var bulk = document.createElement('button');
-        bulk.type = 'button';
-        bulk.className = 'secondary verify-bulk-btn';
-        bulk.setAttribute('data-verify-bulk', '');
-        bulk.textContent = 'Przyjmij pozostałe głosy bez zmian';
         var count = document.createElement('span');
         count.className = 'verify-count';
         count.setAttribute('role', 'status');
         count.textContent = 'Przyjęte: 0 z 0 głosów';
-        group.appendChild(bulk);
-        group.appendChild(count);
-        main.appendChild(group);
+        main.appendChild(count);
         footer.appendChild(main);
 
         var nav = document.createElement('nav');
@@ -730,6 +729,85 @@
 
         return footer;
     }
+
+    // ── Muzycy w głosce: domyślnie jedna linia chipów; nadmiar chowany pod „…", klik rozwija/składa. ──────
+    /* Szerokości chipów: ukryte (display:none) mają offsetWidth 0 — mierzymy je przełączając klasę
+       w tej samej klatce JS (brak renderu między operacjami, więc brak widocznego migawiczenia). */
+    function memberWidths(chips) {
+        return chips.map(function (c) {
+            if (!c.classList.contains('is-hidden')) { return c.offsetWidth + 7; }
+            c.classList.remove('is-hidden'); /* 7 = szacowany gap między chipami */
+            var ww = c.offsetWidth + 7;
+            c.classList.add('is-hidden');
+            return ww;
+        });
+    }
+    function measureMembersFit(ul) {
+        var chips = Array.prototype.slice.call(ul.querySelectorAll('.member-chip'));
+        if (!chips.length || ul.offsetParent === null) {
+            return; /* karta niewidoczna albo lista pusta — nie mierzymy */
+        }
+        var width = ul.clientWidth;
+        var widths = memberWidths(chips);
+        /* Czy w ogóle jest nadmiar: pomiar przy pełnej szerokości wiersza. */
+        var fitAll = 0, usedAll = 0;
+        for (var a = 0; a < chips.length; a++) {
+            if (fitAll > 0 && usedAll + widths[a] > width) { break; }
+            fitAll++;
+            usedAll += widths[a];
+        }
+        if (fitAll >= chips.length) {
+            for (var va = 0; va < chips.length; va++) { chips[va].classList.remove('is-hidden'); }
+            var moreA = ul.querySelector('.members-more');
+            if (moreA && moreA.parentNode) { moreA.parentNode.removeChild(moreA); }
+            return;
+        }
+        /* Nadmiar istnieje: przycisk „…” żyje w tym samym wierszu — rezerwujemy dla niego miejsce,
+           inaczej po rozwiń/składaj wpada o jeden chip za dużo i wiersz przelewa. */
+        var avail = Math.max(80, width - 40);
+        var fit = 0, used = 0;
+        var more = ul.querySelector('.members-more');
+        for (var i = 0; i < chips.length; i++) {
+            if (fit > 0 && used + widths[i] > avail) { break; }
+            fit++;
+            used += widths[i];
+        }
+        if (fit < 1) { fit = 1; } /* zawsze widać przynajmniej jednego muzyka */
+        if (!more) {
+            more = document.createElement('button');
+            more.type = 'button';
+            more.className = 'members-more';
+            more.textContent = '\u2026';
+            ul.appendChild(more);
+        }
+        more.setAttribute('aria-expanded', 'false');
+        more.setAttribute('aria-label', 'Rozwiń listę muzyków (ukryto ' + (chips.length - fit) + ')');
+        for (var j = fit; j < chips.length; j++) { chips[j].classList.add('is-hidden'); }
+        for (var h = 0; h < fit; h++) { chips[h].classList.remove('is-hidden'); }
+    }
+
+    function collapseMembers(ul) {
+        ul.classList.remove('is-expanded');
+        measureMembersFit(ul);
+        var m = ul.querySelector('.members-more');
+        if (m) { m.setAttribute('aria-expanded', 'false'); m.setAttribute('aria-label', 'Rozwiń listę muzyków'); }
+    }
+
+    function expandMembers(ul) {
+        var chips = Array.prototype.slice.call(ul.querySelectorAll('.member-chip'));
+        for (var i = 0; i < chips.length; i++) { chips[i].classList.remove('is-hidden'); }
+        ul.classList.add('is-expanded');
+        var m2 = ul.querySelector('.members-more');
+        if (m2) { m2.setAttribute('aria-expanded', 'true'); }
+    }
+
+    function toggleMembers(ul) {
+        if (ul.classList.contains('is-expanded')) { collapseMembers(ul); } else { expandMembers(ul); }
+    }
+
+    /* Haki testów UI: funkcje żyją wewnątrz eventu startowego, więc nie są globalne — wystawiam je jawnie. */
+    window.__verifyMembersToggle = toggleMembers;
+    window.__verifyMembersFit = measureMembersFit;
 
     function refreshGapsAndNav() {
         var before = cardList().length;
@@ -870,8 +948,8 @@
         });
     });
 
-    // ── masowe: pozostałe głosy bez zmian (oryginalne zakresy AI) — wspólna logika
-    // dla stopki każdej karty (kliknięcie dociera tu przez delegację na kolejce). ──
+    // ── masowe: pozostałe głosy bez zmian (oryginalne zakresy AI) — wspólna logika.
+    // UI: przycisk bulk ukryty w rundzie UX r4; ścieżka testowalna przez hook window.__verifyBulkAccept. ──
     function startBulkAccept() {
         var rows = [];
         document.querySelectorAll('#verify-queue .verify-row').forEach(function (rowEl) {
@@ -888,12 +966,9 @@
             });
         });
         if (rows.length === 0) { return; }
-        setAllBulk(true);
         sendRows(rows, function (payload, err) {
             if (err) {
                 toast('Nie przyjęto — ' + (err.message || ''), 'error');
-                var anyRemain = document.querySelectorAll('#verify-queue .verify-row:not(.is-accepted):not(.gap-card)').length > 0;
-                setAllBulk(!anyRemain);
                 showCard(activeIdx);
                 return;
             }
@@ -915,6 +990,9 @@
             pendingTarget = -1; /* masowa akceptacja = bez zmian zakresów ⇒ brak odsłoniętej luki */
         });
     }
+
+    /* Hook automatyzacji i testów UI — przycisk masowy ukryty, ale ścieżka pozostaje pokryta testem. */
+    window.__verifyBulkAccept = startBulkAccept;
 
     // ── Pełnoekranowe powiększenie miniaturki: przytrzymaj, aby powiększyć; puść, aby wrócić ─
     var zoomBox = document.getElementById('verify-zoom');

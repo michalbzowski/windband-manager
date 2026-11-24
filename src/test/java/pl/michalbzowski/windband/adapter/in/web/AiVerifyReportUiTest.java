@@ -3,12 +3,14 @@ package pl.michalbzowski.windband.adapter.in.web;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.Duration;
+import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.UUID;
 
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.openqa.selenium.Dimension;
 import org.openqa.selenium.JavascriptExecutor;
 import org.openqa.selenium.WebElement;
 import org.openqa.selenium.support.ui.ExpectedConditions;
@@ -326,9 +328,8 @@ class AiVerifyReportUiTest extends UiTestBase {
                     window.__fetchHooked = true;
                 }
             """);
-        org.openqa.selenium.WebElement bulkBtn = wait.until(ExpectedConditions.elementToBeClickable(
-                org.openqa.selenium.By.cssSelector("#verify-queue .verify-row.is-active [data-verify-bulk]")));
-        bulkBtn.click();
+        // R4: przycisk masowy ukryty ze stopki — ta sama ścieżka kodu trafia przez jawny hook strony.
+        js.executeScript("window.__verifyBulkAccept();");
         wait.until(d -> Boolean.TRUE.equals(js.executeScript("return window.__bulkSettled === true;")));
         awaitPageSettled();
         assertThat(partCount()).as("rollback: ani jeden głos z partii masowej nie wszedł do bazy")
@@ -355,7 +356,31 @@ class AiVerifyReportUiTest extends UiTestBase {
     @DisplayName("UX: Poprzedni/Następny/masowe przyjęcie mieszczą się w stopce karty (brak pływającego paska, bez overflowu przy 390px)")
     void actionsJoinedToActiveCardAndMobileSafe() throws Exception {
         seedSucceededAnalysis();
+        // R4: dodatkowy wiersz głosu z muzykami — rola trafia dokładnie na imię instrumentu bandu 1 („Trąbka”).
+        // Anna→„Trąbka” wyłącznie na potrzeby tego testu (member_instruments czyśczone między testami → brak wycieku).
+        jdbcTemplate.update(
+                "INSERT INTO member_instruments (member_id, instrument_id, is_primary) "
+                        + "SELECT m.id, i.id, false FROM members m, instruments i "
+                        + "WHERE m.band_id = 1 AND m.active = true AND i.band_id = 1 AND i.name = 'Trąbka' "
+                        + "AND NOT EXISTS (SELECT 1 FROM member_instruments x "
+                        + "                 WHERE x.member_id = m.id AND x.instrument_id = i.id)");
+        Path chipsArtifact = Path.of(System.getProperty("java.io.tmpdir"), "windband-verify-report",
+                UUID.randomUUID() + "_arrangement.json");
+        Files.writeString(chipsArtifact, """
+                [
+                  {"role":"Trąbka I","pageFrom":2,"pageTo":4,"confidence":0.95},
+                  {"role":"Tuba E","pageFrom":5,"pageTo":7,"confidence":0.85},
+                  {"role":"Saksofon altowy","teamTag":"@@SAX_TAG@@","pageFrom":9,"pageTo":10,"confidence":0.8},
+                  {"role":"Klarnet basowy","pageFrom":11,"pageTo":12,"confidence":0.75},
+                  {"role":"Trąbka","pageFrom":8,"pageTo":8,"confidence":0.9}
+                ]
+                """.replace("@@SAX_TAG@", resolvedSaxTag));
+        jdbcTemplate.update("UPDATE score_analysis SET arrangement_json_path = ? WHERE composition_id = ?",
+                chipsArtifact.toString(), compositionId);
         loginAndNavigateTo("/bands/1/compositions/" + compositionId);
+        /* Deterministyczna geometria pomiaru „jedna linia muzyków": pin szerokości okna
+           (headless na wirtualnej powłoce potrafi dawać absurdalne rozmiary między runami). */
+        driver.manage().window().setSize(new Dimension(1400, 1000));
         JavascriptExecutor js = (JavascriptExecutor) driver;
         WebDriverWait wait = new WebDriverWait(driver, WAIT);
         WebElement entry = wait.until(
@@ -372,11 +397,17 @@ class AiVerifyReportUiTest extends UiTestBase {
                     if (!f || !f.contains(r.querySelector('[data-verify-nav="prev"]'))) { return false; }
                     return !!f.querySelector('[data-verify-nav="next"]')
                             && !!f.querySelector('.verify-nav-pos')
-                            && !!f.querySelector('[data-verify-bulk]')
                             && !!f.querySelector('.verify-count');
                 });""");
         assertThat(footersPresent)
-                .as("w stopce każdej karty: Poprzedni/Następny, licznik pozycji i masowe przyjęcie")
+                .as("w stopce każdej karty: Poprzedni/Następny, licznik pozycji i licznik przyjętych")
+                .isEqualTo(true);
+
+        // (1b) R4: przycisk „Przyjmij pozostałe głosy bez zmian” ukryty — brak śladu w całej kolejce;
+        //      droga masowego przyjmania pokryta testem bulk przez hook window.__verifyBulkAccept.
+        assertThat((Boolean) js.executeScript(
+                "return document.querySelector('#verify-queue [data-verify-bulk]') === null;"))
+                .as("przycisk masowego przyjęcia ukryty ze stopki (UX r4)")
                 .isEqualTo(true);
 
         // (2) Stary „pływający pasek” dolny nie istnieje.
@@ -418,6 +449,109 @@ class AiVerifyReportUiTest extends UiTestBase {
         } finally {
             driver.manage().window().setSize(before);
         }
+
+        // (6) R4: muzycy w głosce — chipy, domyślnie jedna linia; rola „Trąbka” obejmuje 2 muzyków.
+        long trumpIdx = rowIndexByRole(js, "Trąbka");
+        assertThat(trumpIdx).as("wiersz głosu z muzykami występuje w kolejce").isGreaterThanOrEqualTo(0L);
+        int guard = 0;
+        while (!(("Karta " + (trumpIdx + 1) + " z " + total)).equals(js.executeScript(ACTIVE_POS_JS))) {
+            js.executeScript(CLICK_ACTIVE_NEXT_JS);
+            assertThat(++guard).as("docieram do karty „Trąbka”").isLessThanOrEqualTo(30);
+        }
+        Map<String, Object> chipState = castMap(js.executeScript("""
+                var ul = document.querySelector('#verify-queue .verify-row.is-active .verify-members');
+                if (!ul) { return null; }
+                var names = Array.from(ul.querySelectorAll('.member-chip')).map(function (c) { return c.textContent.trim(); });
+                return {
+                    total: names.length,
+                    names: names,
+                    hidden: ul.querySelectorAll('.member-chip.is-hidden').length,
+                    more: !!ul.querySelector('.members-more'),
+                    expanded: ul.classList.contains('is-expanded'),
+                    wrap: getComputedStyle(ul).flexWrap
+                };"""));
+        assertThat(chipState).as("karta „Trąbka” ma listę muzyków (ul.verify-members)").isNotNull();
+        assertThat((int) chipNum(chipState, "total")).as("rola obejmuje co najmniej 2 muzyków").isGreaterThanOrEqualTo(2);
+        assertThat(castList(chipState.get("names"))).contains("Jan Kowalski", "Anna Nowak");
+        assertThat(bool(chipState, "expanded")).as("stan domyślny = złożony").isEqualTo(false);
+        assertThat(String.valueOf(chipState.get("wrap"))).as("domyślnie jedna linia (nowrap)").isEqualTo("nowrap");
+        assertThat(bool(chipState, "more"))
+                .as("kropki „…” tylko gdy coś jest ukryte")
+                .isEqualTo((int) chipNum(chipState, "hidden") > 0);
+
+        // (7) R4: mechanizm nadmiaru na tej samej realnej liście — nadmiar pod „…”, klik rozwija, klik składa.
+        /* Progi relatywne (min. 5 i połowa listy ukryta): szerokość okna testowego bywa bardzo duża,
+           więc stała liczba chipów nie dałaby pewnego overflowu. */
+        js.executeScript("""
+                var ul = document.querySelector('#verify-queue .verify-row.is-active .verify-members');
+                window.__synn = window.__synn || 0;
+                function hiddenCount() { return ul.querySelectorAll('.member-chip.is-hidden').length; }
+                function totalChips() { return ul.querySelectorAll('.member-chip').length; }
+                var guard = 31; /* 31 partii x5 = 155 chipów — ponad wystarczająco na każdy sensowny viewport */
+                while (hiddenCount() < Math.max(5, Math.ceil(totalChips() * 0.5))
+                       && window.__synn <= 150 && guard-- > 0) {
+                    for (var i = 0; i < 5; i++) {
+                        var li = document.createElement('li');
+                        li.className = 'member-chip';
+                        li.textContent = 'Syntetyczny Muzyk ' + (++window.__synn);
+                        ul.appendChild(li);
+                    }
+                    window.__verifyMembersFit(ul);
+                }
+                if (hiddenCount() < 5) {
+                    throw new Error('overflow never achieved: total=' + totalChips()
+                        + ' ulW=' + ul.clientWidth + ' offsetParentNull=' + (ul.offsetParent === null));
+                }""");
+        Map<String, Object> overflow = castMap(js.executeScript("""
+                var ul = document.querySelector('#verify-queue .verify-row.is-active .verify-members');
+                var more = ul.querySelector('.members-more');
+                return {
+                    hidden: ul.querySelectorAll('.member-chip.is-hidden').length,
+                    more: !!more,
+                    aria: more ? more.getAttribute('aria-expanded') : null };"""));
+        assertThat(bool(overflow, "more")).as("nadmiar schowany za przyciskiem „…”").isEqualTo(true);
+        assertThat((int) chipNum(overflow, "hidden") > 0).as("domyślnie ukryty jest choć jeden muzyk").isTrue();
+        assertThat(String.valueOf(overflow.get("aria"))).as("„…” informuje o złożonym stanie").isEqualTo("false");
+
+        // Rozwinięcie i złożenie idą przez realny handler (klik na liście = delegacja na kolejce).
+        js.executeScript("document.querySelector('#verify-queue .verify-row.is-active .verify-members').click();");
+        Map<String, Object> expanded = castMap(js.executeScript("""
+                var ul = document.querySelector('#verify-queue .verify-row.is-active .verify-members');
+                return { expanded: ul.classList.contains('is-expanded'),
+                         hidden: ul.querySelectorAll('.member-chip.is-hidden').length };"""));
+        assertThat(bool(expanded, "expanded")).as("klik na liście rozwija resztę nazwisk").isEqualTo(true);
+        assertThat((int) chipNum(expanded, "hidden")).as("w stanie rozwiniętym wszyscy muzycy widoczni").isZero();
+
+        js.executeScript("document.querySelector('#verify-queue .verify-row.is-active .verify-members').click();");
+        Map<String, Object> collapsed = castMap(js.executeScript("""
+                var ul = document.querySelector('#verify-queue .verify-row.is-active .verify-members');
+                return { expanded: ul.classList.contains('is-expanded'),
+                         hidden: ul.querySelectorAll('.member-chip.is-hidden').length,
+                         more: !!ul.querySelector('.members-more') };"""));
+        assertThat(bool(collapsed, "expanded")).as("ponowny klik na listę składa z powrotem").isEqualTo(false);
+        assertThat((int) chipNum(collapsed, "hidden") > 0).as("w stanie złożonym nadmiar wraca pod „…”").isTrue();
+        assertThat(bool(collapsed, "more")).isEqualTo(true);
+    }
+
+    private static Map<String, Object> castMap(Object state) {
+        if (!(state instanceof Map<?, ?> raw)) { return null; }
+        Map<String, Object> out = new java.util.LinkedHashMap<>();
+        raw.forEach((k, v) -> out.put(String.valueOf(k), v));
+        return out;
+    }
+
+    @SuppressWarnings("unchecked")
+    private static List<String> castList(Object value) {
+        return (List<String>) value;
+    }
+
+    private static boolean bool(Map<String, Object> state, String key) {
+        return Boolean.TRUE.equals(state.get(key));
+    }
+
+    private static long chipNum(Map<String, Object> state, String key) {
+        Number n = (Number) state.get(key);
+        return n == null ? -1 : n.longValue();
     }
 
     @Test
